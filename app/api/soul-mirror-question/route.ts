@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 
-const MIN_EXCHANGES = 10
-const MAX_EXCHANGES = 20
+const MIN_EXCHANGES = 5
+const MAX_EXCHANGES = 10
 
 export async function POST(req: Request) {
   try {
@@ -29,13 +29,13 @@ export async function POST(req: Request) {
       const hasEnough = checkResult.response.text().trim().toUpperCase().startsWith('YES')
 
       if (hasEnough) {
-        const closingResult = await model.generateContent(`You are the Soul Mirror — you talk like a cool, warm best friend. You can now picture this person clearly. Write a closing message under 25 words — casual, warm, gen z, tell them you see them and you're about to bring them to life.\n\nConversation:\n${conversationSoFar}\n\nReturn only the message.`)
+        const closingResult = await model.generateContent(`You are the Soul Mirror — you talk like a warm gen z bestie. You can now picture this person clearly. Write a closing message under 25 words — casual, warm, tell them you see them and you're about to bring them to life.\n\nConversation:\n${conversationSoFar}\n\nReturn only the message.`)
         return NextResponse.json({ question: closingResult.response.text().trim(), done: true })
       }
     }
 
     if (isForced) {
-      const closingResult = await model.generateContent(`You are the Soul Mirror. Write a warm gen-z closing message under 20 words saying you see them now. Return only the message.`)
+      const closingResult = await model.generateContent(`You are the Soul Mirror. Write a warm gen-z closing message under 20 words saying you see them now and you're ready. Return only the message.`)
       return NextResponse.json({ question: closingResult.response.text().trim(), done: true })
     }
 
@@ -59,10 +59,13 @@ Rules:
 - No buzzwords like "vibe", "aesthetic", "energy", "presence", "essence"
 - Do NOT push fantasy — if they go fantasy follow them, otherwise stay in their lane
 - Short reactions before the question are ok (like "omg wait" or "ok that's so") but keep it brief
+- You only have ${MAX_EXCHANGES} questions max so make them count
 ${isFirst ? '- First message must be exactly: "In another world, how do you see yourself?"' : ''}
 
 Conversation so far:
 ${conversationSoFar || 'None yet'}
+
+This is question ${exchangeNumber + 1} of max ${MAX_EXCHANGES}. ${canEnd ? 'You could wrap up soon if you have enough.' : `You have ${MIN_EXCHANGES - exchangeNumber} more before you can wrap up.`}
 
 Things to naturally learn over time:
 - What they look like or how they carry themselves

@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 
-const MIN_EXCHANGES = 10
-const MAX_EXCHANGES = 20
+const MIN_EXCHANGES = 5
+const MAX_EXCHANGES = 10
 
 const RULES = [
   { icon: '✦', title: 'Letters take time', desc: 'Nothing arrives instantly. Letters drift through space and arrive over days. Anticipation is part of the experience.' },
