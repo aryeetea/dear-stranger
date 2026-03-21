@@ -1,10 +1,16 @@
 import { supabase } from '../../lib/supabase'
 
-// Sign in anonymously and create a hub
+interface SelectedStyle {
+  id?: string
+  label?: string
+  desc?: string
+}
+
 export async function signInAndCreateHub(
   hubName: string,
   bio: string,
   askAbout: string,
+  selectedStyle?: SelectedStyle,
 ) {
   const { data: authData, error: authError } =
     await supabase.auth.signInAnonymously()
@@ -13,7 +19,7 @@ export async function signInAndCreateHub(
     console.error('Auth error code:', authError.code)
     console.error('Auth error message:', authError.message)
     throw authError
-}
+  }
 
   if (!authData.user) {
     throw new Error('No user returned after anonymous sign-in')
@@ -30,6 +36,8 @@ export async function signInAndCreateHub(
         hub_name: hubName,
         bio,
         ask_about: askAbout,
+        avatar_style_label: selectedStyle?.label || null,
+        avatar_style_desc: selectedStyle?.desc || null,
       },
     ])
     .select()
@@ -45,13 +53,15 @@ export async function signInAndCreateHub(
   return authData.user
 }
 
-// Get current session
+export async function signOut() {
+  await supabase.auth.signOut()
+}
+
 export async function getSession() {
   const { data } = await supabase.auth.getSession()
   return data.session
 }
 
-// Get current user's hub
 export async function getMyHub() {
   const {
     data: { user },
@@ -73,8 +83,15 @@ export async function getMyHub() {
   if (error) {
     console.log('getMyHub error code:', error.code)
     console.log('getMyHub error message:', error.message)
-    console.log('getMyHub error hint:', error.hint)
-    console.log('getMyHub error details:', error.details)
+    if (
+      error.code === 'PGRST116' ||
+      error.message?.includes('JWT') ||
+      error.message?.includes('refresh_token') ||
+      error.message?.includes('not found')
+    ) {
+      console.log('getMyHub: stale session detected, signing out')
+      await supabase.auth.signOut()
+    }
     return null
   }
 
@@ -82,7 +99,6 @@ export async function getMyHub() {
   return data
 }
 
-// Get all other hubs for the universe map
 export async function getAllHubs() {
   const {
     data: { user },
@@ -94,29 +110,26 @@ export async function getAllHubs() {
     .neq('id', user?.id || '')
 
   if (error) {
-    console.error('Get all hubs error code:', error.code)
-    console.error('Get all hubs error message:', error.message)
-    console.error('Get all hubs error details:', error.details)
-    console.error('Get all hubs error hint:', error.hint)
+    console.error('Get all hubs error:', error.message)
     return []
   }
 
   return data || []
 }
 
-// Update hub profile
 export async function updateHub(updates: {
   hub_name?: string
   bio?: string
   ask_about?: string
+  avatar_url?: string
+  avatar_style_label?: string
+  avatar_style_desc?: string
 }) {
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
-  if (!user) {
-    throw new Error('No user found')
-  }
+  if (!user) throw new Error('No user found')
 
   const cleanedUpdates = Object.fromEntries(
     Object.entries(updates).filter(([, value]) => value !== undefined)
@@ -130,17 +143,13 @@ export async function updateHub(updates: {
     .single()
 
   if (error) {
-    console.error('updateHub error code:', error.code)
-    console.error('updateHub error message:', error.message)
-    console.error('updateHub error details:', error.details)
-    console.error('updateHub error hint:', error.hint)
+    console.error('updateHub error:', error.message)
     throw error
   }
 
   return data
 }
 
-// Send a letter
 export async function sendLetter(
   recipientId: string | null,
   body: string,
@@ -151,104 +160,70 @@ export async function sendLetter(
     data: { user },
   } = await supabase.auth.getUser()
 
-  if (!user) {
-    console.error('sendLetter: no user found')
-    throw new Error('No user found')
-  }
-
-  if (!isUniverseLetter && !recipientId) {
-    throw new Error('Recipient is required for a normal letter')
-  }
+  if (!user) throw new Error('No user found')
+  if (!isUniverseLetter && !recipientId) throw new Error('Recipient is required')
 
   const trimmedBody = body.trim()
-  if (!trimmedBody) {
-    throw new Error('Letter body cannot be empty')
-  }
-
-  console.log('sendLetter: sender id:', user.id)
-  console.log('sendLetter: recipient id:', recipientId)
+  if (!trimmedBody) throw new Error('Letter body cannot be empty')
 
   const travelDays = Math.floor(Math.random() * 7) + 1
   const arrivesAt = new Date()
   arrivesAt.setDate(arrivesAt.getDate() + travelDays)
 
-  const letterPayload = {
-    sender_id: user.id,
-    recipient_id: recipientId,
-    body: trimmedBody,
-    paper_id: paperId,
-    is_universe_letter: isUniverseLetter,
-    arrives_at: arrivesAt.toISOString(),
-  }
-
-  console.log('sendLetter payload:', letterPayload)
-
   const { data, error } = await supabase
     .from('letters')
-    .insert([letterPayload])
+    .insert([
+      {
+        sender_id: user.id,
+        recipient_id: recipientId,
+        body: trimmedBody,
+        paper_id: paperId,
+        is_universe_letter: isUniverseLetter,
+        arrives_at: arrivesAt.toISOString(),
+      },
+    ])
     .select()
 
   if (error) {
-    console.error('sendLetter error code:', error.code)
-    console.error('sendLetter error message:', error.message)
-    console.error('sendLetter error hint:', error.hint)
-    console.error('sendLetter error details:', error.details)
+    console.error('sendLetter error:', error.message)
     throw error
   }
 
-  console.log('sendLetter success:', data)
   return data
 }
 
-// Get my letters
 export async function getMyLetters() {
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
-  if (!user) {
-    return { transit: [], arrived: [], archive: [] }
-  }
+  if (!user) return { transit: [], arrived: [], archive: [] }
 
   const now = new Date().toISOString()
 
-  const { error: updateError } = await supabase
+  await supabase
     .from('letters')
     .update({ status: 'arrived' })
     .eq('recipient_id', user.id)
     .eq('status', 'transit')
     .lt('arrives_at', now)
 
-  if (updateError) {
-    console.error('Auto-update letters error code:', updateError.code)
-    console.error('Auto-update letters error message:', updateError.message)
-    console.error('Auto-update letters error details:', updateError.details)
-    console.error('Auto-update letters error hint:', updateError.hint)
-  }
-
   const { data, error } = await supabase
     .from('letters')
-    .select(`
-      *,
-      sender:sender_id(hub_name),
-      recipient:recipient_id(hub_name)
-    `)
+    .select(`*, sender:sender_id(hub_name), recipient:recipient_id(hub_name)`)
     .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
     .order('created_at', { ascending: false })
 
   if (error) {
-    console.error('Get letters error code:', error.code)
-    console.error('Get letters error message:', error.message)
-    console.error('Get letters error details:', error.details)
-    console.error('Get letters error hint:', error.hint)
+    console.error('Get letters error:', error.message)
     return { transit: [], arrived: [], archive: [] }
   }
 
   const letters = data || []
 
   return {
-    transit: letters.filter((letter: any) => letter.status === 'transit'),
-    arrived: letters.filter((letter: any) => letter.status === 'arrived'),
-    archive: letters.filter((letter: any) => letter.status === 'archive'),
+    transit: letters.filter((l: any) => l.status === 'transit'),
+    arrived: letters.filter((l: any) => l.status === 'arrived'),
+    archive: letters.filter((l: any) => l.status === 'archive'),
   }
 }

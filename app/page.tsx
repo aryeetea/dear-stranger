@@ -9,6 +9,7 @@ import Observatory from './components/Observatory'
 import Profile from './components/Profile'
 import {
   signInAndCreateHub,
+  signOut,
   getSession,
   getMyHub,
   getAllHubs,
@@ -17,9 +18,6 @@ import {
 } from './lib/auth'
 
 type Screen = 'entry' | 'onboarding' | 'universe' | 'loading' | 'generating'
-
-// Must match TOTAL_EXCHANGES in SoulMirror.tsx
-const TOTAL_EXCHANGES = 10
 
 export default function Home() {
   const [screen, setScreen] = useState<Screen>('loading')
@@ -49,10 +47,12 @@ export default function Home() {
             setScreen('universe')
             return
           }
+          await signOut()
         }
         setScreen('entry')
       } catch (err) {
         console.error('checkSession failed:', err)
+        try { await signOut() } catch {}
         setScreen('entry')
       }
     }
@@ -60,11 +60,13 @@ export default function Home() {
   }, [])
 
   async function handleOnboardingComplete(answers: Record<number, string>) {
-    const hubNameAnswer = answers[TOTAL_EXCHANGES] || 'Your Hub'
+    // Hub name is always the last key — conversation answers are everything before it
+    const keys = Object.keys(answers).map(Number).sort((a, b) => a - b)
+    const hubNameAnswer = answers[keys[keys.length - 1]] || 'Your Hub'
 
     const conversationAnswers: Record<number, string> = {}
-    for (let i = 0; i < TOTAL_EXCHANGES; i++) {
-      if (answers[i]) conversationAnswers[i] = answers[i]
+    for (let i = 0; i < keys.length - 1; i++) {
+      conversationAnswers[i] = answers[keys[i]]
     }
 
     const fallbackBio = 'A wanderer who arrived here quietly, carrying something unspoken.'
@@ -98,7 +100,6 @@ export default function Home() {
       if (bioResponse.status === 'fulfilled' && !bioResponse.value.error) {
         bio = bioResponse.value.bio || fallbackBio
         askAbout = bioResponse.value.askAbout || fallbackAskAbout
-        console.log('Bio generated:', bio)
       } else {
         console.warn('Bio generation failed, using fallback')
       }
@@ -106,7 +107,6 @@ export default function Home() {
       let avatarUrl = ''
       if (avatarResponse.status === 'fulfilled' && !avatarResponse.value.error) {
         avatarUrl = avatarResponse.value.imageUrl || ''
-        console.log('Avatar generated successfully')
       } else {
         console.warn('Avatar generation failed:', avatarResponse.status === 'rejected'
           ? avatarResponse.reason
@@ -163,7 +163,6 @@ export default function Home() {
             radial-gradient(ellipse 50% 60% at 80% 70%, rgba(10,30,80,0.2) 0%, transparent 70%)
           `,
         }} />
-
         <div style={{ position: 'relative', zIndex: 2 }}>
           <div style={{
             width: '60px', height: '60px', borderRadius: '50%',
@@ -180,7 +179,6 @@ export default function Home() {
             </div>
           </div>
         </div>
-
         <div style={{ textAlign: 'center', position: 'relative', zIndex: 2 }}>
           <p style={{
             fontFamily: "'Cinzel', serif", fontSize: '11px',
@@ -193,7 +191,6 @@ export default function Home() {
             letterSpacing: '0.04em',
           }}>{generatingStatus}</p>
         </div>
-
         <style>{`
           @keyframes pulse {
             0%, 100% { transform: scale(1); opacity: 0.6; }
