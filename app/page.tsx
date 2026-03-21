@@ -1,186 +1,76 @@
-'use client'
+import { NextResponse } from 'next/server'
+import { GoogleGenerativeAI } from '@google/generative-ai'
 
-import { useEffect, useState } from 'react'
-import EntryScreen from './components/EntryScreen'
-import SoulMirror from './components/SoulMirror'
-import UniverseMap from './components/UniverseMap'
-import Scribe from './components/Scribe'
-import Observatory from './components/Observatory'
-import Profile from './components/Profile'
-import {
-  signInAndCreateHub,
-  getSession,
-  getMyHub,
-  getAllHubs,
-  sendLetter,
-} from './lib/auth'
+export async function POST(req: Request) {
+  try {
+    const { answers, step, totalAiSteps } = await req.json()
 
-type Screen = 'entry' | 'onboarding' | 'universe' | 'loading'
+    const apiKey = process.env.GEMINI_API_KEY
 
-export default function Home() {
-  const [screen, setScreen] = useState<Screen>('loading')
-  const [hubName, setHubName] = useState('')
-  const [hubBio, setHubBio] = useState('')
-  const [hubAskAbout, setHubAskAbout] = useState('')
-  const [lettersSent, setLettersSent] = useState(0)
-  const [scribeOpen, setScribeOpen] = useState(false)
-  const [scribeRecipient, setScribeRecipient] = useState<string | undefined>()
-  const [observatoryOpen, setObservatoryOpen] = useState(false)
-  const [profileOpen, setProfileOpen] = useState(false)
-
-  useEffect(() => {
-    async function checkSession() {
-      try {
-        const session = await getSession()
-
-        if (session) {
-          const hub = await getMyHub()
-
-          if (hub) {
-            setHubName(hub.hub_name || '')
-            setHubBio(hub.bio || '')
-            setHubAskAbout(hub.ask_about || '')
-            setLettersSent(hub.letters_sent || 0)
-            setScreen('universe')
-            return
-          }
-        }
-
-        setScreen('entry')
-      } catch (err) {
-        console.error('checkSession failed:', err)
-        setScreen('entry')
-      }
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: 'Missing GEMINI_API_KEY' },
+        { status: 500 }
+      )
     }
 
-    checkSession()
-  }, [])
+    const genAI = new GoogleGenerativeAI(apiKey)
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
 
-  async function handleOnboardingComplete(answers: Record<number, string>) {
-  const hubNameAnswer = answers[3] || 'Your Hub'
-  const bio = 'A wanderer who arrived here quietly, carrying something unspoken.'
-  const askAbout = 'Silence, slow mornings, and letters that take their time.'
+    const priorAnswersText = Object.entries(answers || {})
+      .map(([index, answer]) => `Answer ${Number(index) + 1}: ${String(answer)}`)
+      .join('\n')
 
-  try {
-    await signInAndCreateHub(hubNameAnswer, bio, askAbout)
-    setHubName(hubNameAnswer)
-    setHubBio(bio)
-    setHubAskAbout(askAbout)
-    setScreen('universe')
-  } catch (err) {
-    console.error('Error creating hub:', err)
+    const prompt = `
+You are asking a user simple questions to help design their avatar.
 
-    setHubName(hubNameAnswer)
-    setHubBio(bio)
-    setHubAskAbout(askAbout)
-    setScreen('universe')
-  }
-}
+Rules:
+- Ask ONLY ONE question
+- Use simple, clear English
+- Keep it under 20 words
+- Make it easy to understand
+- Do NOT be overly poetic
+- Do NOT be confusing
+- Do NOT explain anything
+- Do NOT greet the user
 
-  if (screen === 'loading') {
-    return (
-      <div
-        style={{
-          position: 'fixed',
-          inset: 0,
-          background: '#000005',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <div
-          style={{
-            fontFamily: "'Cinzel', serif",
-            fontSize: '11px',
-            letterSpacing: '0.4em',
-            color: 'rgba(201,168,76,0.4)',
-            textTransform: 'uppercase',
-          }}
-        >
-          ✦
-        </div>
-      </div>
+This is question ${step + 1} of ${totalAiSteps}.
+
+Previous answers:
+${priorAnswersText || 'None yet'}
+
+Ask about things like:
+- appearance
+- vibe
+- colors
+- clothing
+- personality
+- energy
+
+Examples of good questions:
+- What do you want your avatar to look like?
+- What kind of vibe should your avatar have?
+- What colors do you like for your avatar?
+- Should your avatar feel calm, powerful, or mysterious?
+
+Return ONLY the question.
+`
+
+    const result = await model.generateContent(prompt)
+    const question = result.response.text().trim()
+
+    return NextResponse.json({ question })
+  } catch (error) {
+    console.error('soul-mirror-question error:', error)
+
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to generate Soul Mirror question',
+      },
+      { status: 500 }
     )
   }
-
-  return (
-    <>
-      {screen === 'entry' && (
-        <EntryScreen onEnter={() => setScreen('onboarding')} />
-      )}
-
-      {screen === 'onboarding' && (
-        <SoulMirror onComplete={handleOnboardingComplete} />
-      )}
-
-      {screen === 'universe' && (
-        <UniverseMap
-          hubName={hubName}
-          onWriteLetter={(name) => {
-            setScribeRecipient(name)
-            setScribeOpen(true)
-          }}
-          onObservatory={() => setObservatoryOpen(true)}
-          onProfile={() => setProfileOpen(true)}
-        />
-      )}
-
-      {scribeOpen && (
-        <Scribe
-          recipientName={scribeRecipient}
-          lettersSent={lettersSent}
-          onClose={() => setScribeOpen(false)}
-          onSend={async (letter) => {
-            try {
-              const allHubs = await getAllHubs()
-              const recipient = allHubs.find(
-                (hub: any) => hub.hub_name === letter.to
-              )
-
-              const isUniverseLetter = !letter.to
-
-              if (!isUniverseLetter && !recipient) {
-                throw new Error('Recipient hub not found')
-              }
-
-              await sendLetter(
-                recipient?.id || null,
-                letter.body,
-                letter.paperId,
-                isUniverseLetter
-              )
-
-              setLettersSent((prev) => prev + 1)
-              console.log('Letter saved to Supabase!')
-              setScribeOpen(false)
-            } catch (err) {
-              console.error('Failed to send letter:', err)
-            }
-          }}
-        />
-      )}
-
-      {observatoryOpen && (
-        <Observatory
-          onClose={() => setObservatoryOpen(false)}
-          onWriteLetter={(name) => {
-            setObservatoryOpen(false)
-            setScribeRecipient(name)
-            setScribeOpen(true)
-          }}
-        />
-      )}
-
-      {profileOpen && (
-        <Profile
-          hubName={hubName}
-          bio={hubBio}
-          askAbout={hubAskAbout}
-          onClose={() => setProfileOpen(false)}
-          onUpdateHub={(name) => setHubName(name)}
-        />
-      )}
-    </>
-  )
 }
