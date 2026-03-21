@@ -1,65 +1,186 @@
-import Image from "next/image";
+'use client'
+
+import { useEffect, useState } from 'react'
+import EntryScreen from './components/EntryScreen'
+import SoulMirror from './components/SoulMirror'
+import UniverseMap from './components/UniverseMap'
+import Scribe from './components/Scribe'
+import Observatory from './components/Observatory'
+import Profile from './components/Profile'
+import {
+  signInAndCreateHub,
+  getSession,
+  getMyHub,
+  getAllHubs,
+  sendLetter,
+} from './lib/auth'
+
+type Screen = 'entry' | 'onboarding' | 'universe' | 'loading'
 
 export default function Home() {
+  const [screen, setScreen] = useState<Screen>('loading')
+  const [hubName, setHubName] = useState('')
+  const [hubBio, setHubBio] = useState('')
+  const [hubAskAbout, setHubAskAbout] = useState('')
+  const [lettersSent, setLettersSent] = useState(0)
+  const [scribeOpen, setScribeOpen] = useState(false)
+  const [scribeRecipient, setScribeRecipient] = useState<string | undefined>()
+  const [observatoryOpen, setObservatoryOpen] = useState(false)
+  const [profileOpen, setProfileOpen] = useState(false)
+
+  useEffect(() => {
+    async function checkSession() {
+      try {
+        const session = await getSession()
+
+        if (session) {
+          const hub = await getMyHub()
+
+          if (hub) {
+            setHubName(hub.hub_name || '')
+            setHubBio(hub.bio || '')
+            setHubAskAbout(hub.ask_about || '')
+            setLettersSent(hub.letters_sent || 0)
+            setScreen('universe')
+            return
+          }
+        }
+
+        setScreen('entry')
+      } catch (err) {
+        console.error('checkSession failed:', err)
+        setScreen('entry')
+      }
+    }
+
+    checkSession()
+  }, [])
+
+  async function handleOnboardingComplete(answers: Record<number, string>) {
+  const hubNameAnswer = answers[3] || 'Your Hub'
+  const bio = 'A wanderer who arrived here quietly, carrying something unspoken.'
+  const askAbout = 'Silence, slow mornings, and letters that take their time.'
+
+  try {
+    await signInAndCreateHub(hubNameAnswer, bio, askAbout)
+    setHubName(hubNameAnswer)
+    setHubBio(bio)
+    setHubAskAbout(askAbout)
+    setScreen('universe')
+  } catch (err) {
+    console.error('Error creating hub:', err)
+
+    setHubName(hubNameAnswer)
+    setHubBio(bio)
+    setHubAskAbout(askAbout)
+    setScreen('universe')
+  }
+}
+
+  if (screen === 'loading') {
+    return (
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: '#000005',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <div
+          style={{
+            fontFamily: "'Cinzel', serif",
+            fontSize: '11px',
+            letterSpacing: '0.4em',
+            color: 'rgba(201,168,76,0.4)',
+            textTransform: 'uppercase',
+          }}
+        >
+          ✦
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <>
+      {screen === 'entry' && (
+        <EntryScreen onEnter={() => setScreen('onboarding')} />
+      )}
+
+      {screen === 'onboarding' && (
+        <SoulMirror onComplete={handleOnboardingComplete} />
+      )}
+
+      {screen === 'universe' && (
+        <UniverseMap
+          hubName={hubName}
+          onWriteLetter={(name) => {
+            setScribeRecipient(name)
+            setScribeOpen(true)
+          }}
+          onObservatory={() => setObservatoryOpen(true)}
+          onProfile={() => setProfileOpen(true)}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
-  );
+      )}
+
+      {scribeOpen && (
+        <Scribe
+          recipientName={scribeRecipient}
+          lettersSent={lettersSent}
+          onClose={() => setScribeOpen(false)}
+          onSend={async (letter) => {
+            try {
+              const allHubs = await getAllHubs()
+              const recipient = allHubs.find(
+                (hub: any) => hub.hub_name === letter.to
+              )
+
+              const isUniverseLetter = !letter.to
+
+              if (!isUniverseLetter && !recipient) {
+                throw new Error('Recipient hub not found')
+              }
+
+              await sendLetter(
+                recipient?.id || null,
+                letter.body,
+                letter.paperId,
+                isUniverseLetter
+              )
+
+              setLettersSent((prev) => prev + 1)
+              console.log('Letter saved to Supabase!')
+              setScribeOpen(false)
+            } catch (err) {
+              console.error('Failed to send letter:', err)
+            }
+          }}
+        />
+      )}
+
+      {observatoryOpen && (
+        <Observatory
+          onClose={() => setObservatoryOpen(false)}
+          onWriteLetter={(name) => {
+            setObservatoryOpen(false)
+            setScribeRecipient(name)
+            setScribeOpen(true)
+          }}
+        />
+      )}
+
+      {profileOpen && (
+        <Profile
+          hubName={hubName}
+          bio={hubBio}
+          askAbout={hubAskAbout}
+          onClose={() => setProfileOpen(false)}
+          onUpdateHub={(name) => setHubName(name)}
+        />
+      )}
+    </>
+  )
 }
