@@ -6,12 +6,10 @@ const MAX_EXCHANGES = 20
 
 export async function POST(req: Request) {
   try {
-    const { messages, answers, exchangeNumber, style, styleDescription } = await req.json()
+    const { messages, answers, exchangeNumber } = await req.json()
 
     const apiKey = process.env.GEMINI_API_KEY
-    if (!apiKey) {
-      return NextResponse.json({ error: 'Missing GEMINI_API_KEY' }, { status: 500 })
-    }
+    if (!apiKey) return NextResponse.json({ error: 'Missing GEMINI_API_KEY' }, { status: 500 })
 
     const genAI = new GoogleGenerativeAI(apiKey)
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
@@ -22,144 +20,65 @@ export async function POST(req: Request) {
       )
       .join('\n')
 
-    const answersText = Object.entries(answers || {})
-      .map(([key, value]) => `${String(key)}: ${String(value)}`)
-      .join('\n')
-
-    const selectedStyle = typeof style === 'string' && style.trim() ? style.trim() : 'Fantasy Modern'
-    const selectedStyleDescription =
-      typeof styleDescription === 'string' && styleDescription.trim()
-        ? styleDescription.trim()
-        : 'a mix of magical and modern style'
-
     const isFirst = exchangeNumber === 0
     const isForced = exchangeNumber >= MAX_EXCHANGES - 1
     const canEnd = exchangeNumber >= MIN_EXCHANGES
 
     if (canEnd && !isForced) {
-      const checkResult = await model.generateContent(`
-Review this Soul Mirror conversation.
-
-The chosen avatar style is:
-- ${selectedStyle}
-- ${selectedStyleDescription}
-
-Do you have a vivid enough picture of this person to create a full-body avatar of them, including:
-- their energy
-- their world
-- their presence
-- their clothing/fashion
-- their overall visual identity
-
-Answer only YES or NO.
-
-Conversation:
-${conversationSoFar || 'None yet'}
-
-Answers so far:
-${answersText || 'None yet'}
-`)
-
+      const checkResult = await model.generateContent(`Review this Soul Mirror conversation. Do you have enough of a picture of this person to create a portrait — their look, setting, and presence? Answer only YES or NO.\n\nConversation:\n${conversationSoFar}`)
       const hasEnough = checkResult.response.text().trim().toUpperCase().startsWith('YES')
 
       if (hasEnough) {
-        const closingResult = await model.generateContent(`
-You are the Soul Mirror.
-
-You now have a clear vision of this person and are ready to create their avatar.
-
-Write a warm closing message under 25 words saying you can see them now and you're ready to bring them to life.
-Make it feel personal.
-Return only the message.
-
-Conversation:
-${conversationSoFar || 'None yet'}
-`)
-        return NextResponse.json({
-          question: closingResult.response.text().trim(),
-          done: true,
-        })
+        const closingResult = await model.generateContent(`You are the Soul Mirror — you talk like a cool, warm best friend. You can now picture this person clearly. Write a closing message under 25 words — casual, warm, gen z, tell them you see them and you're about to bring them to life.\n\nConversation:\n${conversationSoFar}\n\nReturn only the message.`)
+        return NextResponse.json({ question: closingResult.response.text().trim(), done: true })
       }
     }
 
     if (isForced) {
-      const closingResult = await model.generateContent(`
-You are the Soul Mirror.
-Write a warm closing message under 20 words saying you can see them clearly now.
-Return only the message.
-`)
-      return NextResponse.json({
-        question: closingResult.response.text().trim(),
-        done: true,
-      })
+      const closingResult = await model.generateContent(`You are the Soul Mirror. Write a warm gen-z closing message under 20 words saying you see them now. Return only the message.`)
+      return NextResponse.json({ question: closingResult.response.text().trim(), done: true })
     }
 
-    const prompt = `
-You are the Soul Mirror — a warm, curious guide inside a cosmic pen-pal universe called Dear Stranger.
+    const prompt = `You are the Soul Mirror inside a cosmic pen-pal universe called Dear Stranger. You're getting to know someone new so you can paint a portrait of them in another world.
 
-Your job is to understand the user well enough to help create a full-body avatar image of them.
+Your personality: you talk like a close friend — warm, funny, curious, gen z. Think texting your bestie. Casual, real, no filter but still kind. You're genuinely interested in them, not running a survey.
 
-The user has already chosen an avatar style:
-- Style: ${selectedStyle}
-- Style direction: ${selectedStyleDescription}
-
-This selected style should influence the kind of questions you ask.
-For example:
-- Modern = ask about fashion, silhouette, styling, confidence, environment, vibe
-- Fantasy = ask about magical presence, role, symbolic details, world, aura
-- Fantasy Modern = ask about both modern fashion and fantasy energy
-- Celestial = ask about cosmic elements, glow, divine atmosphere
-- Royal = ask about elegance, status, poise, luxurious details
-- Streetwear = ask about bold style, attitude, fashion pieces, expression
-- Futuristic = ask about advanced materials, sleek design, glowing details
-- Nature Inspired = ask about earthy beauty, floral details, natural presence
+Tone examples:
+- "ok but what are you actually wearing rn on a random tuesday"
+- "wait so what does your day-to-day look like"
+- "ok real talk — what do people always notice about you first"
+- "so what's the fit like in this other world lol"
+- "and who's always around you in this world"
+- "ok what's something you always have on you"
 
 Rules:
-- Ask exactly ONE question
-- Under 20 words
-- Warm and curious
-- Natural and conversational
-- Build on what they already said
-- Help reveal what their full-body avatar should look and feel like
-- Ask about things like presence, clothing, silhouette, role, world, energy, accessories, movement, atmosphere
-- You must eventually ask at least one question about what they wear or how they present themselves visually
-- Do NOT ask dry or clinical questions
-- Do NOT ask direct basic questions like "what color is your hair"
-- Do NOT force fantasy if the user's chosen style is more modern
-${isFirst ? '- First message: ask exactly "In another world, how do you see yourself?"' : ''}
+- ONE question only
+- Under 18 words
+- Sound like a real gen z friend, not a quiz or a therapist
+- Build directly on what they just said — react to it naturally first if it's interesting
+- No buzzwords like "vibe", "aesthetic", "energy", "presence", "essence"
+- Do NOT push fantasy — if they go fantasy follow them, otherwise stay in their lane
+- Short reactions before the question are ok (like "omg wait" or "ok that's so") but keep it brief
+${isFirst ? '- First message must be exactly: "In another world, how do you see yourself?"' : ''}
 
 Conversation so far:
 ${conversationSoFar || 'None yet'}
 
-Answers so far:
-${answersText || 'None yet'}
+Things to naturally learn over time:
+- What they look like or how they carry themselves
+- What they wear
+- Their world or setting
+- What they do or love
+- Who or what is always around them
+- Something small and specific that makes them them
 
-Good directions:
-- what kind of world they belong to
-- what they wear
-- what kind of presence they have
-- what they carry
-- what role they play
-- what energy surrounds them
-- what details make them stand out
-- what kind of movement or posture fits them
-- what kind of home, place, or atmosphere matches them
-- what fashion or styling feels most like them
-
-Return only the next question. No labels. No quotes.
-`
+Return only your next message. Nothing else.`
 
     const result = await model.generateContent(prompt)
+    return NextResponse.json({ question: result.response.text().trim(), done: false })
 
-    return NextResponse.json({
-      question: result.response.text().trim(),
-      done: false,
-    })
   } catch (error) {
     console.error('soul-mirror-question error:', error)
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed' }, { status: 500 })
   }
 }
