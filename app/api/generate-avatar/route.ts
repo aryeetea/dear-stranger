@@ -1,13 +1,17 @@
 import { NextResponse } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import OpenAI from 'openai'
+import { createClient } from '@supabase/supabase-js'
 
 export async function POST(req: Request) {
   try {
-    const { answers, feedback } = await req.json()
+    const { answers, feedback, userId } = await req.json()
 
     const geminiKey = process.env.GEMINI_API_KEY
     const openaiKey = process.env.OPENAI_API_KEY
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+
     if (!geminiKey) return NextResponse.json({ error: 'Missing GEMINI_API_KEY' }, { status: 500 })
     if (!openaiKey) return NextResponse.json({ error: 'Missing OPENAI_API_KEY' }, { status: 500 })
 
@@ -36,6 +40,7 @@ Return only the image prompt. No labels, no quotes.
 `)
 
     const imagePrompt = promptResult.response.text().trim()
+    console.log('DALL-E prompt:', imagePrompt)
 
     const openai = new OpenAI({ apiKey: openaiKey })
     const imageResponse = await openai.images.generate({
@@ -44,14 +49,22 @@ Return only the image prompt. No labels, no quotes.
       n: 1,
       size: '1024x1792',
       quality: 'standard',
-      response_format: 'b64_json',
     })
 
-    const b64 = imageResponse.data?.[0]?.b64_json
-    if (!b64) throw new Error('No image data returned from DALL-E')
+    const tempUrl = imageResponse.data?.[0]?.url
+    if (!tempUrl) throw new Error('No image URL returned from DALL-E')
 
-    // Return as data URL — permanent, no expiry
+    // Fetch the image and convert to base64 server-side
+    const imgRes = await fetch(tempUrl)
+    const buffer = await imgRes.arrayBuffer()
+    const b64 = Buffer.from(buffer).toString('base64')
     const imageUrl = `data:image/png;base64,${b64}`
+
+    // Save directly to Supabase from server if userId provided
+    if (userId) {
+      const supabase = createClient(supabaseUrl, supabaseKey)
+      await supabase.from('hubs').update({ avatar_url: imageUrl }).eq('id', userId)
+    }
 
     return NextResponse.json({ imageUrl, prompt: imagePrompt })
 
