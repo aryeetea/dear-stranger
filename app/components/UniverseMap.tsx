@@ -4,18 +4,19 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { getAllHubs } from '../lib/auth'
 
-const HOUSE_VARIANTS = [
-  { wall: '#4a3a6b', roof: '#2d1f4a', trim: '#8b6fc0', window: '#ffd88a' },
-  { wall: '#3a5a4a', roof: '#1f3a2d', trim: '#6faa88', window: '#aadeff' },
-  { wall: '#5a3a3a', roof: '#3a1f1f', trim: '#aa6f6f', window: '#ffd8a0' },
-  { wall: '#3a4a5a', roof: '#1f2d3a', trim: '#6f8faa', window: '#c8eeff' },
-  { wall: '#5a4a2a', roof: '#3a2d10', trim: '#aa8f5a', window: '#ffe0a0' },
-  { wall: '#4a2a5a', roof: '#2d1040', trim: '#8f5aaa', window: '#e8c8ff' },
-  { wall: '#2a4a5a', roof: '#102838', trim: '#5a8faa', window: '#b8f0ff' },
-  { wall: '#5a4a3a', roof: '#382d1a', trim: '#aa8f6f', window: '#ffecc8' },
+// Portal ring color variants
+const PORTAL_COLORS = [
+  { ring: '#8b6fc0', glow: '130,80,200', inner: '#4a2a7a' },
+  { ring: '#6faa88', glow: '80,160,120', inner: '#2a5a40' },
+  { ring: '#aa6f6f', glow: '180,80,80', inner: '#6a2a2a' },
+  { ring: '#6f8faa', glow: '80,120,180', inner: '#2a4a6a' },
+  { ring: '#aa8f5a', glow: '180,140,60', inner: '#6a5a20' },
+  { ring: '#8f5aaa', glow: '140,60,180', inner: '#4a1a6a' },
+  { ring: '#5a8faa', glow: '60,130,180', inner: '#1a4a6a' },
+  { ring: '#aa8f6f', glow: '180,140,80', inner: '#6a5a30' },
 ]
 
-const MY_HOUSE = { wall: '#3a2a0a', roof: '#1a1000', trim: '#c9a84c', window: '#ffd060' }
+const MY_PORTAL = { ring: '#c9a84c', glow: '201,168,76', inner: '#6a4a10' }
 
 interface Hub {
   x: number
@@ -23,215 +24,172 @@ interface Hub {
   name: string
   bio: string
   askAbout?: string
+  avatarUrl?: string
   online: boolean
   pulse: number
   size: number
   isMe?: boolean
   floatOffset: number
   floatSpeed: number
-  houseVariant: number
+  colorVariant: number
+  avatarImage?: HTMLImageElement
 }
 
 interface TooltipState { hub: Hub; sx: number; sy: number }
 interface ProfileState { hub: Hub }
 
-function shadeColor(hex: string, amount: number): string {
-  const num = parseInt(hex.slice(1), 16)
-  const r = Math.min(255, Math.max(0, (num >> 16) + amount))
-  const g = Math.min(255, Math.max(0, ((num >> 8) & 0xff) + amount))
-  const b = Math.min(255, Math.max(0, (num & 0xff) + amount))
-  return `rgb(${r},${g},${b})`
+// Preload avatar images into HTML image elements for canvas rendering
+const imageCache = new Map<string, HTMLImageElement>()
+function loadImage(url: string): Promise<HTMLImageElement> {
+  if (imageCache.has(url)) return Promise.resolve(imageCache.get(url)!)
+  return new Promise((resolve) => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => { imageCache.set(url, img); resolve(img) }
+    img.onerror = () => resolve(img)
+    img.src = url
+  })
 }
 
-function hexToRgb(hex: string): string {
-  const num = parseInt(hex.slice(1), 16)
-  return `${(num >> 16) & 255},${(num >> 8) & 255},${num & 255}`
-}
-
-function drawHouse(
+function drawPortal(
   ctx: CanvasRenderingContext2D,
   cx: number, cy: number,
   s: number,
-  variant: typeof MY_HOUSE,
+  colors: typeof MY_PORTAL,
   t: number,
   online: boolean,
   isMe: boolean,
+  avatarImage?: HTMLImageElement,
 ) {
-  const w = 28 * s, h = 22 * s, rh = 14 * s, dep = 8 * s
-  const iw = 44 * s, id = 6 * s
+  const r = 28 * s // portal ring radius
+  const pulse = 0.85 + 0.15 * Math.sin(t * (isMe ? 1.2 : 0.8))
 
-  const shadowGrad = ctx.createRadialGradient(cx, cy + id * 1.5, 0, cx, cy + id * 1.5, iw * 0.8)
-  shadowGrad.addColorStop(0, isMe ? 'rgba(201,168,76,0.22)' : 'rgba(80,60,120,0.2)')
-  shadowGrad.addColorStop(1, 'rgba(0,0,0,0)')
+  // Outer glow aura
+  const auraR = r * 2.2 * pulse
+  const aura = ctx.createRadialGradient(cx, cy, r * 0.5, cx, cy, auraR)
+  aura.addColorStop(0, `rgba(${colors.glow},${isMe ? 0.18 : 0.1})`)
+  aura.addColorStop(1, `rgba(${colors.glow},0)`)
   ctx.beginPath()
-  ctx.ellipse(cx, cy + id * 1.6, iw * 0.85, id * 0.6, 0, 0, Math.PI * 2)
-  ctx.fillStyle = shadowGrad
-  ctx.fill()
-
-  ctx.beginPath()
-  ctx.ellipse(cx, cy, iw * 0.5, id * 0.3, 0, 0, Math.PI * 2)
-  ctx.fillStyle = isMe ? '#8a6b20' : '#2a3a28'
+  ctx.arc(cx, cy, auraR, 0, Math.PI * 2)
+  ctx.fillStyle = aura
   ctx.fill()
 
-  ctx.beginPath()
-  ctx.ellipse(cx, cy - id * 0.06, iw * 0.5, id * 0.25, 0, 0, Math.PI * 2)
-  ctx.fillStyle = isMe ? '#c9a84c' : (online ? '#3a6a48' : '#2a3a2a')
-  ctx.fill()
-
-  ctx.beginPath()
-  ctx.moveTo(cx - iw * 0.5, cy)
-  ctx.bezierCurveTo(cx - iw * 0.52, cy + id * 0.8, cx - iw * 0.38, cy + id * 1.4, cx - iw * 0.28, cy + id * 1.6)
-  ctx.lineTo(cx + iw * 0.28, cy + id * 1.6)
-  ctx.bezierCurveTo(cx + iw * 0.38, cy + id * 1.4, cx + iw * 0.52, cy + id * 0.8, cx + iw * 0.5, cy)
-  ctx.closePath()
-  const ig = ctx.createLinearGradient(cx, cy, cx, cy + id * 1.6)
-  ig.addColorStop(0, isMe ? '#6b4a18' : '#3a2e20')
-  ig.addColorStop(1, isMe ? '#3a2800' : '#1e1810')
-  ctx.fillStyle = ig
-  ctx.fill()
-
-  const hy = cy - id * 0.1
-
-  ctx.beginPath()
-  ctx.moveTo(cx + w * 0.5, hy - h)
-  ctx.lineTo(cx + w * 0.5 + dep * 0.7, hy - h + dep * 0.4)
-  ctx.lineTo(cx + w * 0.5 + dep * 0.7, hy + dep * 0.4)
-  ctx.lineTo(cx + w * 0.5, hy)
-  ctx.closePath()
-  ctx.fillStyle = shadeColor(variant.wall, -30)
-  ctx.fill()
-
-  ctx.beginPath()
-  ctx.moveTo(cx - w * 0.5, hy - h)
-  ctx.lineTo(cx + w * 0.5, hy - h)
-  ctx.lineTo(cx + w * 0.5, hy)
-  ctx.lineTo(cx - w * 0.5, hy)
-  ctx.closePath()
-  ctx.fillStyle = variant.wall
-  ctx.fill()
-
-  const dw = w * 0.22, dh = h * 0.48
-  ctx.beginPath()
-  ctx.roundRect(cx - dw * 0.5, hy - dh, dw, dh, [dw * 0.5, dw * 0.5, 0, 0])
-  ctx.fillStyle = shadeColor(variant.wall, -50)
-  ctx.fill()
-  ctx.beginPath()
-  ctx.arc(cx - dw * 0.5 + dw * 0.7, hy - dh * 0.35, 1.2 * s, 0, Math.PI * 2)
-  ctx.fillStyle = variant.trim
-  ctx.fill()
-
-  const ws = w * 0.2, wx = cx - w * 0.3, wy = hy - h * 0.75
-  const wg = 0.6 + 0.4 * Math.sin(t * 1.5 + 1)
-  ctx.beginPath()
-  ctx.rect(wx - ws * 0.5, wy - ws * 0.5, ws, ws)
-  ctx.fillStyle = variant.trim
-  ctx.fill()
-  ctx.beginPath()
-  ctx.rect(wx - ws * 0.35, wy - ws * 0.35, ws * 0.7, ws * 0.7)
-  ctx.fillStyle = `rgba(${hexToRgb(variant.window)},${wg * 0.9})`
-  ctx.fill()
-  ctx.strokeStyle = variant.trim
-  ctx.lineWidth = 0.8 * s
-  ctx.beginPath()
-  ctx.moveTo(wx, wy - ws * 0.35); ctx.lineTo(wx, wy + ws * 0.35)
-  ctx.moveTo(wx - ws * 0.35, wy); ctx.lineTo(wx + ws * 0.35, wy)
-  ctx.stroke()
-
-  const wgg = ctx.createRadialGradient(wx, wy, 0, wx, wy, ws * 2)
-  wgg.addColorStop(0, `rgba(${hexToRgb(variant.window)},${wg * 0.15})`)
-  wgg.addColorStop(1, 'rgba(255,220,100,0)')
-  ctx.beginPath()
-  ctx.arc(wx, wy, ws * 2, 0, Math.PI * 2)
-  ctx.fillStyle = wgg
-  ctx.fill()
-
-  const rwx = cx + w * 0.5 + dep * 0.35, rwy = hy - h * 0.65
-  ctx.beginPath()
-  ctx.rect(rwx - ws * 0.3, rwy - ws * 0.35, ws * 0.55, ws * 0.7)
-  ctx.fillStyle = variant.trim
-  ctx.fill()
-  ctx.beginPath()
-  ctx.rect(rwx - ws * 0.18, rwy - ws * 0.22, ws * 0.35, ws * 0.44)
-  ctx.fillStyle = `rgba(${hexToRgb(variant.window)},${wg * 0.7})`
-  ctx.fill()
-
-  ctx.beginPath()
-  ctx.moveTo(cx, hy - h - rh)
-  ctx.lineTo(cx + w * 0.5, hy - h)
-  ctx.lineTo(cx + w * 0.5 + dep * 0.7, hy - h + dep * 0.4)
-  ctx.lineTo(cx + dep * 0.7, hy - h - rh + dep * 0.4)
-  ctx.closePath()
-  ctx.fillStyle = shadeColor(variant.roof, -20)
-  ctx.fill()
-
-  ctx.beginPath()
-  ctx.moveTo(cx, hy - h - rh)
-  ctx.lineTo(cx - w * 0.5, hy - h)
-  ctx.lineTo(cx + w * 0.5, hy - h)
-  ctx.closePath()
-  ctx.fillStyle = variant.roof
-  ctx.fill()
-
-  ctx.beginPath()
-  ctx.moveTo(cx, hy - h - rh)
-  ctx.lineTo(cx + dep * 0.7, hy - h - rh + dep * 0.4)
-  ctx.strokeStyle = variant.trim
-  ctx.lineWidth = 1.2 * s
-  ctx.globalAlpha = 0.5
-  ctx.stroke()
-  ctx.globalAlpha = 1
-
-  const chx = cx + w * 0.2, chy = hy - h - rh * 0.55
-  ctx.beginPath()
-  ctx.rect(chx, chy - 7 * s, 4 * s, 7 * s)
-  ctx.fillStyle = shadeColor(variant.roof, -10)
-  ctx.fill()
-  ctx.beginPath()
-  ctx.rect(chx - s, chy - 8 * s, 6 * s, 2 * s)
-  ctx.fillStyle = variant.trim
-  ctx.fill()
-
-  if (online || isMe) {
-    for (let i = 0; i < 3; i++) {
-      const st = t * 0.8 + i * 0.8
-      const sx2 = chx + 2 * s + Math.sin(st * 2) * 2 * s
-      const sy2 = chy - 8 * s - ((st % 2) / 2) * 14 * s
-      const sa = 0.12 - ((st % 2) / 2) * 0.12
+  // Rotating outer ring particles
+  if (isMe || online) {
+    for (let i = 0; i < (isMe ? 8 : 5); i++) {
+      const angle = (i / (isMe ? 8 : 5)) * Math.PI * 2 + t * (isMe ? 0.6 : 0.4)
+      const px = cx + Math.cos(angle) * r * 1.25
+      const py = cy + Math.sin(angle) * r * 1.25
+      const pa = 0.3 + 0.4 * Math.sin(t * 2 + i)
       ctx.beginPath()
-      ctx.arc(sx2, sy2, (2 + i * 1.5) * s, 0, Math.PI * 2)
-      ctx.fillStyle = `rgba(200,200,220,${sa})`
+      ctx.arc(px, py, 1.5 * s, 0, Math.PI * 2)
+      ctx.fillStyle = `rgba(${colors.glow},${pa})`
       ctx.fill()
     }
   }
 
-  const ar = iw * (0.75 + 0.06 * Math.sin(t * 1.0))
-  const ag = ctx.createRadialGradient(cx, cy, 0, cx, cy, ar)
-  if (isMe) { ag.addColorStop(0, 'rgba(201,168,76,0.2)'); ag.addColorStop(1, 'rgba(201,168,76,0)') }
-  else if (online) { ag.addColorStop(0, 'rgba(100,150,255,0.1)'); ag.addColorStop(1, 'rgba(100,150,255,0)') }
-  else { ag.addColorStop(0, 'rgba(80,80,100,0.06)'); ag.addColorStop(1, 'rgba(80,80,100,0)') }
+  // Portal inner fill (dark void with subtle gradient)
+  const innerGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * 0.9)
+  innerGrad.addColorStop(0, `rgba(${colors.glow},0.08)`)
+  innerGrad.addColorStop(0.6, colors.inner + 'cc')
+  innerGrad.addColorStop(1, '#020308')
   ctx.beginPath()
-  ctx.arc(cx, cy, ar, 0, Math.PI * 2)
-  ctx.fillStyle = ag
+  ctx.arc(cx, cy, r * 0.9, 0, Math.PI * 2)
+  ctx.fillStyle = innerGrad
   ctx.fill()
 
+  // Avatar image inside portal
+  if (avatarImage && avatarImage.complete && avatarImage.naturalWidth > 0) {
+    ctx.save()
+    ctx.beginPath()
+    ctx.arc(cx, cy, r * 0.88, 0, Math.PI * 2)
+    ctx.clip()
+    ctx.drawImage(avatarImage, cx - r * 0.88, cy - r * 0.88, r * 1.76, r * 1.76)
+    ctx.restore()
+  } else {
+    // Placeholder star
+    ctx.font = `${Math.max(10, 14 * s)}px serif`
+    ctx.fillStyle = `rgba(${colors.glow},${0.5 + 0.3 * Math.sin(t * 1.5)})`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText('✦', cx, cy)
+    ctx.textBaseline = 'alphabetic'
+  }
+
+  // Main ring — outer stroke
+  ctx.beginPath()
+  ctx.arc(cx, cy, r, 0, Math.PI * 2)
+  ctx.strokeStyle = colors.ring
+  ctx.lineWidth = 2.5 * s * pulse
+  ctx.globalAlpha = 0.9
+  ctx.stroke()
+  ctx.globalAlpha = 1
+
+  // Inner ring
+  ctx.beginPath()
+  ctx.arc(cx, cy, r * 0.92, 0, Math.PI * 2)
+  ctx.strokeStyle = `rgba(${colors.glow},0.35)`
+  ctx.lineWidth = 1 * s
+  ctx.stroke()
+
+  // Ring glow
+  ctx.beginPath()
+  ctx.arc(cx, cy, r, 0, Math.PI * 2)
+  ctx.strokeStyle = `rgba(${colors.glow},${0.3 * pulse})`
+  ctx.lineWidth = 6 * s * pulse
+  ctx.globalAlpha = 0.6
+  ctx.stroke()
+  ctx.globalAlpha = 1
+
+  // Online dot
+  if (!isMe) {
+    const dotX = cx + r * 0.7
+    const dotY = cy - r * 0.7
+    ctx.beginPath()
+    ctx.arc(dotX, dotY, 3 * s, 0, Math.PI * 2)
+    ctx.fillStyle = online ? '#7ecf7e' : 'rgba(255,255,255,0.2)'
+    if (online) {
+      const dotGlow = ctx.createRadialGradient(dotX, dotY, 0, dotX, dotY, 6 * s)
+      dotGlow.addColorStop(0, 'rgba(126,207,126,0.8)')
+      dotGlow.addColorStop(1, 'rgba(126,207,126,0)')
+      ctx.fillStyle = dotGlow
+      ctx.beginPath()
+      ctx.arc(dotX, dotY, 6 * s, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.beginPath()
+      ctx.arc(dotX, dotY, 3 * s, 0, Math.PI * 2)
+      ctx.fillStyle = '#7ecf7e'
+    }
+    ctx.fill()
+  }
+
+  // Gold sparkles for my hub
   if (isMe) {
-    [{ dx: -iw * 0.55, dy: -h * 1.6 }, { dx: iw * 0.55, dy: -h * 1.8 }, { dx: iw * 0.1, dy: -h * 2.2 }].forEach(({ dx, dy }, i) => {
-      const a = 0.4 + 0.5 * Math.sin(t * 2.2 + i * 1.4)
+    for (let i = 0; i < 3; i++) {
+      const angle = (i / 3) * Math.PI * 2 + t * 0.5
+      const sparkR = r * 1.5
+      const sparkX = cx + Math.cos(angle) * sparkR
+      const sparkY = cy + Math.sin(angle) * sparkR
+      const sa = 0.4 + 0.5 * Math.sin(t * 2.2 + i * 1.4)
       ctx.font = `${Math.max(7, 9 * s)}px serif`
-      ctx.fillStyle = `rgba(201,168,76,${a})`
+      ctx.fillStyle = `rgba(201,168,76,${sa})`
       ctx.textAlign = 'center'
-      ctx.fillText('✦', cx + dx, cy + dy)
-    })
+      ctx.textBaseline = 'middle'
+      ctx.fillText('✦', sparkX, sparkY)
+      ctx.textBaseline = 'alphabetic'
+    }
   }
 }
 
 export default function UniverseMap({
   hubName,
+  hubAvatarUrl,
   onWriteLetter,
   onObservatory,
   onProfile,
 }: {
   hubName?: string
+  hubAvatarUrl?: string
   onWriteLetter?: (recipientName?: string) => void
   onObservatory?: () => void
   onProfile?: () => void
@@ -264,37 +222,43 @@ export default function UniverseMap({
       resize()
       window.addEventListener('resize', resize)
 
-      // Load real hubs from Supabase
       const realHubs = await getAllHubs()
-      console.log('Real hubs loaded:', realHubs.length)
+
+      // Load all avatar images in parallel
+      const myAvatarImg = hubAvatarUrl ? await loadImage(hubAvatarUrl) : undefined
+
+      const otherHubs = await Promise.all(realHubs.map(async (hub: any, i: number) => {
+        const angle = (i / Math.max(realHubs.length, 1)) * Math.PI * 2 + Math.random() * 0.5
+        const dist = 180 + Math.random() * 320
+        const avatarImg = hub.avatar_url ? await loadImage(hub.avatar_url) : undefined
+        return {
+          x: Math.cos(angle) * dist,
+          y: Math.sin(angle) * dist,
+          name: hub.hub_name,
+          bio: hub.bio || '',
+          askAbout: hub.ask_about || '',
+          avatarUrl: hub.avatar_url || '',
+          avatarImage: avatarImg,
+          online: hub.online ?? true,
+          pulse: Math.random() * Math.PI * 2,
+          size: 0.9 + Math.random() * 0.3,
+          floatOffset: Math.random() * Math.PI * 2,
+          floatSpeed: 0.4 + Math.random() * 0.3,
+          colorVariant: i % PORTAL_COLORS.length,
+        }
+      }))
 
       hubsRef.current = [
-        // User's own hub at center
         {
           x: 0, y: 0,
           name: hubName || 'Your Hub',
           bio: 'This is your place in the universe.',
+          avatarUrl: hubAvatarUrl || '',
+          avatarImage: myAvatarImg,
           online: true, pulse: 0, size: 1.2, isMe: true,
-          floatOffset: 0, floatSpeed: 0.5, houseVariant: 0,
+          floatOffset: 0, floatSpeed: 0.5, colorVariant: 0,
         },
-        // Real hubs from Supabase
-        ...realHubs.map((hub: any, i: number) => {
-          const angle = (i / Math.max(realHubs.length, 1)) * Math.PI * 2 + Math.random() * 0.5
-          const dist = 180 + Math.random() * 320
-          return {
-            x: Math.cos(angle) * dist,
-            y: Math.sin(angle) * dist,
-            name: hub.hub_name,
-            bio: hub.bio || '',
-            askAbout: hub.ask_about || '',
-            online: hub.online ?? true,
-            pulse: Math.random() * Math.PI * 2,
-            size: 0.9 + Math.random() * 0.3,
-            floatOffset: Math.random() * Math.PI * 2,
-            floatSpeed: 0.4 + Math.random() * 0.3,
-            houseVariant: i % HOUSE_VARIANTS.length,
-          }
-        })
+        ...otherHubs,
       ]
 
       // Stars
@@ -322,12 +286,12 @@ export default function UniverseMap({
         hubsRef.current.forEach(hub => {
           const sx = offset.x + hub.x * scale
           const sy = offset.y + hub.y * scale
-          if (sx < -300 || sx > canvas.width + 300 || sy < -300 || sy > canvas.height + 300) return
-          const floatY = Math.sin(t * hub.floatSpeed + hub.floatOffset) * 5
+          if (sx < -200 || sx > canvas.width + 200 || sy < -200 || sy > canvas.height + 200) return
+          const floatY = Math.sin(t * hub.floatSpeed + hub.floatOffset) * 4
           const s = hub.size * scale
-          const variant = hub.isMe ? MY_HOUSE : HOUSE_VARIANTS[hub.houseVariant % HOUSE_VARIANTS.length]
+          const colors = hub.isMe ? MY_PORTAL : PORTAL_COLORS[hub.colorVariant % PORTAL_COLORS.length]
           ctx.save()
-          drawHouse(ctx, sx, sy + floatY, s, variant, t, hub.online, !!hub.isMe)
+          drawPortal(ctx, sx, sy + floatY, s, colors, t, hub.online, !!hub.isMe, hub.avatarImage)
           ctx.restore()
         })
 
@@ -342,7 +306,7 @@ export default function UniverseMap({
     }
 
     init()
-  }, [hubName])
+  }, [hubName, hubAvatarUrl])
 
   const getHubAt = useCallback((mx: number, my: number): Hub | null => {
     const scale = scaleRef.current
@@ -351,7 +315,9 @@ export default function UniverseMap({
     hubsRef.current.forEach(hub => {
       const sx = offset.x + hub.x * scale
       const sy = offset.y + hub.y * scale
-      if (Math.abs(mx - sx) < hub.size * scale * 50 && Math.abs(my - sy) < hub.size * scale * 50) found = hub
+      const r = 28 * hub.size * scale
+      const dist = Math.sqrt((mx - sx) ** 2 + (my - sy) ** 2)
+      if (dist < r * 1.3) found = hub
     })
     return found
   }, [])
@@ -416,7 +382,7 @@ export default function UniverseMap({
       <AnimatePresence>
         {tooltip && !profile && (
           <motion.div key="tip" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}
-            style={{ position: 'fixed', left: tooltip.sx, top: tooltip.sy - tooltip.hub.size * scaleRef.current * 60, transform: 'translateX(-50%)', pointerEvents: 'none', zIndex: 60 }}>
+            style={{ position: 'fixed', left: tooltip.sx, top: tooltip.sy - tooltip.hub.size * scaleRef.current * 48, transform: 'translateX(-50%)', pointerEvents: 'none', zIndex: 60 }}>
             <div style={{ background: 'rgba(8,10,28,0.9)', border: `1px solid ${tooltip.hub.isMe ? 'rgba(201,168,76,0.5)' : 'rgba(255,255,255,0.15)'}`, borderRadius: '20px', padding: '6px 16px', backdropFilter: 'blur(12px)', boxShadow: tooltip.hub.isMe ? '0 0 14px rgba(201,168,76,0.25)' : '0 4px 16px rgba(0,0,0,0.6)' }}>
               <p style={{ fontFamily: "'Cinzel', serif", fontSize: '11px', letterSpacing: '0.18em', color: tooltip.hub.isMe ? '#c9a84c' : 'rgba(255,255,255,0.78)', whiteSpace: 'nowrap' }}>{tooltip.hub.name}</p>
             </div>
@@ -424,7 +390,7 @@ export default function UniverseMap({
         )}
       </AnimatePresence>
 
-      {/* Profile card */}
+      {/* Hub profile card */}
       <AnimatePresence>
         {profile && (
           <motion.div key="profile" initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.3 }}
@@ -436,11 +402,12 @@ export default function UniverseMap({
               {/* Avatar panel */}
               <div style={{ width: '45%', minHeight: '420px', background: 'linear-gradient(135deg, rgba(20,25,60,0.9), rgba(10,15,40,0.95))', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden', flexShrink: 0 }}>
                 <div style={{ position: 'absolute', width: '280px', height: '280px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(100,140,255,0.12) 0%, transparent 70%)', border: '1px solid rgba(150,180,255,0.1)' }} />
-                <div style={{ width: '160px', height: '220px', borderRadius: '8px', background: 'linear-gradient(180deg, rgba(60,80,160,0.4), rgba(20,30,80,0.6))', border: '1px solid rgba(201,168,76,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '48px', position: 'relative', zIndex: 2, boxShadow: '0 0 30px rgba(100,140,255,0.12)' }}>✦</div>
-                {[...Array(12)].map((_, i) => <div key={i} style={{ position: 'absolute', width: '2px', height: '2px', borderRadius: '50%', background: 'rgba(255,255,255,0.35)', left: `${10 + Math.random() * 80}%`, top: `${5 + Math.random() * 90}%` }} />)}
-                <div style={{ position: 'absolute', bottom: '20px', left: '50%', transform: 'translateX(-50%)' }}>
-                  <button style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.25em', color: 'rgba(201,168,76,0.7)', padding: '8px 20px', border: '1px solid rgba(201,168,76,0.2)', borderRadius: '4px', background: 'rgba(0,0,0,0.3)', cursor: 'pointer' }}>Soul Mirror</button>
+                <div style={{ width: '200px', height: '280px', borderRadius: '8px', background: 'linear-gradient(180deg, rgba(60,80,160,0.4), rgba(20,30,80,0.6))', border: '1px solid rgba(201,168,76,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '48px', position: 'relative', zIndex: 2, boxShadow: '0 0 30px rgba(100,140,255,0.12)', overflow: 'hidden' }}>
+                  {profile.hub.avatarUrl ? (
+                    <img src={profile.hub.avatarUrl} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '8px' }} />
+                  ) : '✦'}
                 </div>
+                {[...Array(12)].map((_, i) => <div key={i} style={{ position: 'absolute', width: '2px', height: '2px', borderRadius: '50%', background: 'rgba(255,255,255,0.35)', left: `${10 + Math.random() * 80}%`, top: `${5 + Math.random() * 90}%` }} />)}
               </div>
 
               {/* Info */}
