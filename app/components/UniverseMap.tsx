@@ -4,7 +4,6 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { getAllHubs } from '../lib/auth'
 
-// Portal ring color variants
 const PORTAL_COLORS = [
   { ring: '#8b6fc0', glow: '130,80,200', inner: '#4a2a7a' },
   { ring: '#6faa88', glow: '80,160,120', inner: '#2a5a40' },
@@ -17,6 +16,17 @@ const PORTAL_COLORS = [
 ]
 
 const MY_PORTAL = { ring: '#c9a84c', glow: '201,168,76', inner: '#6a4a10' }
+
+const STYLE_PORTAL_MAP: Record<string, { ring: string; glow: string; inner: string }> = {
+  fantasy: { ring: '#9b7cff', glow: '155,124,255', inner: '#36215f' },
+  modern: { ring: '#d7dbe6', glow: '215,219,230', inner: '#3a4150' },
+  'fantasy modern': { ring: '#c99cff', glow: '201,156,255', inner: '#44305f' },
+  celestial: { ring: '#9fd6ff', glow: '159,214,255', inner: '#203a5c' },
+  royal: { ring: '#f0c96b', glow: '240,201,107', inner: '#5a4315' },
+  streetwear: { ring: '#ff8c6b', glow: '255,140,107', inner: '#5a2c20' },
+  futuristic: { ring: '#6cf0ff', glow: '108,240,255', inner: '#173f47' },
+  'nature inspired': { ring: '#87d68d', glow: '135,214,141', inner: '#23452b' },
+}
 
 interface Hub {
   x: number
@@ -47,7 +57,6 @@ interface ProfileState {
   hub: Hub
 }
 
-// Preload avatar images into HTML image elements for canvas rendering
 const imageCache = new Map<string, HTMLImageElement>()
 
 function loadImage(url: string): Promise<HTMLImageElement> {
@@ -63,6 +72,14 @@ function loadImage(url: string): Promise<HTMLImageElement> {
     img.onerror = () => resolve(img)
     img.src = url
   })
+}
+
+function getPortalColorsFromStyle(styleLabel?: string, isMe?: boolean, fallbackVariant?: number) {
+  if (isMe) return MY_PORTAL
+  if (!styleLabel) return PORTAL_COLORS[(fallbackVariant || 0) % PORTAL_COLORS.length]
+
+  const normalized = styleLabel.trim().toLowerCase()
+  return STYLE_PORTAL_MAP[normalized] || PORTAL_COLORS[(fallbackVariant || 0) % PORTAL_COLORS.length]
 }
 
 function drawPortal(
@@ -189,12 +206,17 @@ function drawPortal(
 export default function UniverseMap({
   hubName,
   hubAvatarUrl,
+  selectedStyle,
   onWriteLetter,
   onObservatory,
   onProfile,
 }: {
   hubName?: string
   hubAvatarUrl?: string
+  selectedStyle?: {
+    label?: string
+    desc?: string
+  }
   onWriteLetter?: (recipientName?: string) => void
   onObservatory?: () => void
   onProfile?: () => void
@@ -214,28 +236,23 @@ export default function UniverseMap({
   const [hoveredNav, setHoveredNav] = useState<number | null>(null)
 
   useEffect(() => {
-    let isMounted = true
+    let resizeHandler: (() => void) | undefined
 
-    const init = async () => {
+    async function init() {
       const canvas = canvasRef.current
       if (!canvas) return
-
       const ctx = canvas.getContext('2d')
       if (!ctx) return
 
-      const resize = () => {
+      resizeHandler = () => {
         canvas.width = window.innerWidth
         canvas.height = window.innerHeight
         offsetRef.current = { x: canvas.width / 2, y: canvas.height / 2 }
       }
-
-      resize()
-      window.addEventListener('resize', resize)
+      resizeHandler()
+      window.addEventListener('resize', resizeHandler)
 
       const realHubs = await getAllHubs()
-
-      if (!isMounted) return
-
       const myAvatarImg = hubAvatarUrl ? await loadImage(hubAvatarUrl) : undefined
 
       const otherHubs = await Promise.all(
@@ -243,7 +260,6 @@ export default function UniverseMap({
           const angle = (i / Math.max(realHubs.length, 1)) * Math.PI * 2 + Math.random() * 0.5
           const dist = 180 + Math.random() * 320
           const avatarImg = hub.avatar_url ? await loadImage(hub.avatar_url) : undefined
-
           return {
             x: Math.cos(angle) * dist,
             y: Math.sin(angle) * dist,
@@ -260,11 +276,9 @@ export default function UniverseMap({
             floatOffset: Math.random() * Math.PI * 2,
             floatSpeed: 0.4 + Math.random() * 0.3,
             colorVariant: i % PORTAL_COLORS.length,
-          } satisfies Hub
+          } as Hub
         })
       )
-
-      if (!isMounted) return
 
       hubsRef.current = [
         {
@@ -274,8 +288,8 @@ export default function UniverseMap({
           bio: 'This is your place in the universe.',
           avatarUrl: hubAvatarUrl || '',
           avatarImage: myAvatarImg,
-          styleLabel: 'Your Style',
-          styleDesc: '',
+          styleLabel: selectedStyle?.label || 'Unknown',
+          styleDesc: selectedStyle?.desc || '',
           online: true,
           pulse: 0,
           size: 1.2,
@@ -316,7 +330,7 @@ export default function UniverseMap({
           if (sx < -200 || sx > canvas.width + 200 || sy < -200 || sy > canvas.height + 200) return
           const floatY = Math.sin(t * hub.floatSpeed + hub.floatOffset) * 4
           const s = hub.size * scale
-          const colors = hub.isMe ? MY_PORTAL : PORTAL_COLORS[hub.colorVariant % PORTAL_COLORS.length]
+          const colors = getPortalColorsFromStyle(hub.styleLabel, !!hub.isMe, hub.colorVariant)
           ctx.save()
           drawPortal(ctx, sx, sy + floatY, s, colors, t, hub.online, !!hub.isMe, hub.avatarImage)
           ctx.restore()
@@ -326,28 +340,20 @@ export default function UniverseMap({
       }
 
       draw()
-
-      return () => {
-        cancelAnimationFrame(animFrameRef.current)
-        window.removeEventListener('resize', resize)
-      }
     }
 
-    const cleanupPromise = init()
+    void init()
 
     return () => {
-      isMounted = false
       cancelAnimationFrame(animFrameRef.current)
-      window.removeEventListener('resize', () => {})
-      void cleanupPromise
+      if (resizeHandler) window.removeEventListener('resize', resizeHandler)
     }
-  }, [hubName, hubAvatarUrl])
+  }, [hubName, hubAvatarUrl, selectedStyle])
 
   const getHubAt = useCallback((mx: number, my: number): Hub | null => {
     const scale = scaleRef.current
     const offset = offsetRef.current
     let found: Hub | null = null
-
     hubsRef.current.forEach(hub => {
       const sx = offset.x + hub.x * scale
       const sy = offset.y + hub.y * scale
@@ -355,33 +361,24 @@ export default function UniverseMap({
       const dist = Math.sqrt((mx - sx) ** 2 + (my - sy) ** 2)
       if (dist < r * 1.3) found = hub
     })
-
     return found
   }, [])
 
   const handleMouseDown = (e: React.MouseEvent) => {
     isDraggingRef.current = true
     hasDraggedRef.current = false
-    dragStartRef.current = {
-      x: e.clientX - offsetRef.current.x,
-      y: e.clientY - offsetRef.current.y,
-    }
+    dragStartRef.current = { x: e.clientX - offsetRef.current.x, y: e.clientY - offsetRef.current.y }
   }
 
   const handleMouseMove = (e: React.MouseEvent) => {
     const dx = Math.abs(e.clientX - (dragStartRef.current.x + offsetRef.current.x))
     const dy = Math.abs(e.clientY - (dragStartRef.current.y + offsetRef.current.y))
-
     if (isDraggingRef.current && (dx > 4 || dy > 4)) {
       hasDraggedRef.current = true
-      offsetRef.current = {
-        x: e.clientX - dragStartRef.current.x,
-        y: e.clientY - dragStartRef.current.y,
-      }
+      offsetRef.current = { x: e.clientX - dragStartRef.current.x, y: e.clientY - dragStartRef.current.y }
       setTooltip(null)
       return
     }
-
     if (!isDraggingRef.current) {
       const hub = getHubAt(e.clientX, e.clientY)
       if (hub) {
@@ -406,16 +403,12 @@ export default function UniverseMap({
         setProfile(null)
       }
     }
-
     isDraggingRef.current = false
   }
 
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault()
-    scaleRef.current = Math.min(
-      3.5,
-      Math.max(0.25, scaleRef.current * (e.deltaY > 0 ? 0.88 : 1.12))
-    )
+    scaleRef.current = Math.min(3.5, Math.max(0.25, scaleRef.current * (e.deltaY > 0 ? 0.88 : 1.12)))
   }
 
   const navItems = [
@@ -427,15 +420,7 @@ export default function UniverseMap({
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: '#04050f' }}>
-      <div
-        style={{
-          position: 'fixed',
-          inset: 0,
-          pointerEvents: 'none',
-          background:
-            'radial-gradient(ellipse 60% 40% at 15% 25%, rgba(50,20,100,0.28) 0%, transparent 65%), radial-gradient(ellipse 50% 55% at 82% 72%, rgba(15,28,90,0.22) 0%, transparent 65%)',
-        }}
-      />
+      <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', background: 'radial-gradient(ellipse 60% 40% at 15% 25%, rgba(50,20,100,0.28) 0%, transparent 65%), radial-gradient(ellipse 50% 55% at 82% 72%, rgba(15,28,90,0.22) 0%, transparent 65%)' }} />
 
       <canvas
         ref={canvasRef}
@@ -467,27 +452,8 @@ export default function UniverseMap({
               zIndex: 60,
             }}
           >
-            <div
-              style={{
-                background: 'rgba(8,10,28,0.9)',
-                border: `1px solid ${tooltip.hub.isMe ? 'rgba(201,168,76,0.5)' : 'rgba(255,255,255,0.15)'}`,
-                borderRadius: '20px',
-                padding: '6px 16px',
-                backdropFilter: 'blur(12px)',
-                boxShadow: tooltip.hub.isMe
-                  ? '0 0 14px rgba(201,168,76,0.25)'
-                  : '0 4px 16px rgba(0,0,0,0.6)',
-              }}
-            >
-              <p
-                style={{
-                  fontFamily: "'Cinzel', serif",
-                  fontSize: '11px',
-                  letterSpacing: '0.18em',
-                  color: tooltip.hub.isMe ? '#c9a84c' : 'rgba(255,255,255,0.78)',
-                  whiteSpace: 'nowrap',
-                }}
-              >
+            <div style={{ background: 'rgba(8,10,28,0.9)', border: `1px solid ${tooltip.hub.isMe ? 'rgba(201,168,76,0.5)' : 'rgba(255,255,255,0.15)'}`, borderRadius: '20px', padding: '6px 16px', backdropFilter: 'blur(12px)', boxShadow: tooltip.hub.isMe ? '0 0 14px rgba(201,168,76,0.25)' : '0 4px 16px rgba(0,0,0,0.6)' }}>
+              <p style={{ fontFamily: "'Cinzel', serif", fontSize: '11px', letterSpacing: '0.18em', color: tooltip.hub.isMe ? '#c9a84c' : 'rgba(255,255,255,0.78)', whiteSpace: 'nowrap' }}>
                 {tooltip.hub.name}
               </p>
             </div>
@@ -503,181 +469,48 @@ export default function UniverseMap({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.3 }}
-            style={{
-              position: 'fixed',
-              inset: 0,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 60,
-              padding: '20px',
-              background: 'rgba(0,0,5,0.6)',
-              backdropFilter: 'blur(4px)',
-            }}
+            style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60, padding: '20px', background: 'rgba(0,0,5,0.6)', backdropFilter: 'blur(4px)' }}
             onClick={() => setProfile(null)}
           >
             <motion.div
               onClick={e => e.stopPropagation()}
-              style={{
-                background: 'rgba(8,10,28,0.9)',
-                border: '1px solid rgba(201,168,76,0.2)',
-                borderRadius: '16px',
-                width: 'min(780px, 95vw)',
-                minHeight: '420px',
-                display: 'flex',
-                overflow: 'hidden',
-                boxShadow: '0 0 80px rgba(0,0,0,0.9)',
-                backdropFilter: 'blur(20px)',
-                position: 'relative',
-              }}
+              style={{ background: 'rgba(8,10,28,0.9)', border: '1px solid rgba(201,168,76,0.2)', borderRadius: '16px', width: 'min(780px, 95vw)', minHeight: '420px', display: 'flex', overflow: 'hidden', boxShadow: '0 0 80px rgba(0,0,0,0.9)', backdropFilter: 'blur(20px)', position: 'relative' }}
             >
-              <div
-                style={{
-                  width: '45%',
-                  minHeight: '420px',
-                  background: 'linear-gradient(135deg, rgba(20,25,60,0.9), rgba(10,15,40,0.95))',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  position: 'relative',
-                  overflow: 'hidden',
-                  flexShrink: 0,
-                }}
-              >
-                <div
-                  style={{
-                    position: 'absolute',
-                    width: '280px',
-                    height: '280px',
-                    borderRadius: '50%',
-                    background: 'radial-gradient(circle, rgba(100,140,255,0.12) 0%, transparent 70%)',
-                    border: '1px solid rgba(150,180,255,0.1)',
-                  }}
-                />
-                <div
-                  style={{
-                    width: '200px',
-                    height: '280px',
-                    borderRadius: '8px',
-                    background: 'linear-gradient(180deg, rgba(60,80,160,0.4), rgba(20,30,80,0.6))',
-                    border: '1px solid rgba(201,168,76,0.2)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '48px',
-                    position: 'relative',
-                    zIndex: 2,
-                    boxShadow: '0 0 30px rgba(100,140,255,0.12)',
-                    overflow: 'hidden',
-                  }}
-                >
+              <div style={{ width: '45%', minHeight: '420px', background: 'linear-gradient(135deg, rgba(20,25,60,0.9), rgba(10,15,40,0.95))', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden', flexShrink: 0 }}>
+                <div style={{ position: 'absolute', width: '280px', height: '280px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(100,140,255,0.12) 0%, transparent 70%)', border: '1px solid rgba(150,180,255,0.1)' }} />
+                <div style={{ width: '200px', height: '280px', borderRadius: '8px', background: 'linear-gradient(180deg, rgba(60,80,160,0.4), rgba(20,30,80,0.6))', border: '1px solid rgba(201,168,76,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '48px', position: 'relative', zIndex: 2, boxShadow: '0 0 30px rgba(100,140,255,0.12)', overflow: 'hidden' }}>
                   {profile.hub.avatarUrl ? (
-                    <img
-                      src={profile.hub.avatarUrl}
-                      alt="Avatar"
-                      style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '8px' }}
-                    />
-                  ) : (
-                    '✦'
-                  )}
+                    <img src={profile.hub.avatarUrl} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '8px' }} />
+                  ) : '✦'}
                 </div>
                 {[...Array(12)].map((_, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      position: 'absolute',
-                      width: '2px',
-                      height: '2px',
-                      borderRadius: '50%',
-                      background: 'rgba(255,255,255,0.35)',
-                      left: `${10 + Math.random() * 80}%`,
-                      top: `${5 + Math.random() * 90}%`,
-                    }}
-                  />
+                  <div key={i} style={{ position: 'absolute', width: '2px', height: '2px', borderRadius: '50%', background: 'rgba(255,255,255,0.35)', left: `${10 + Math.random() * 80}%`, top: `${5 + Math.random() * 90}%` }} />
                 ))}
               </div>
 
-              <div
-                style={{
-                  flex: 1,
-                  padding: 'clamp(24px,4vw,40px)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                }}
-              >
+              <div style={{ flex: 1, padding: 'clamp(24px,4vw,40px)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                 <div>
-                  <p
-                    style={{
-                      fontFamily: "'Cinzel', serif",
-                      fontSize: 'clamp(16px,2.5vw,22px)',
-                      letterSpacing: '0.15em',
-                      color: 'rgba(255,255,255,0.92)',
-                      marginBottom: '6px',
-                    }}
-                  >
+                  <p style={{ fontFamily: "'Cinzel', serif", fontSize: 'clamp(16px,2.5vw,22px)', letterSpacing: '0.15em', color: 'rgba(255,255,255,0.92)', marginBottom: '6px' }}>
                     {profile.hub.name}
                   </p>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '24px' }}>
-                    <div
-                      style={{
-                        width: '6px',
-                        height: '6px',
-                        borderRadius: '50%',
-                        background: profile.hub.online ? '#7ecf7e' : 'rgba(255,255,255,0.2)',
-                        boxShadow: profile.hub.online ? '0 0 6px rgba(126,207,126,0.6)' : 'none',
-                      }}
-                    />
-                    <span
-                      style={{
-                        fontFamily: "'Cinzel', serif",
-                        fontSize: '9px',
-                        letterSpacing: '0.25em',
-                        color: profile.hub.online ? 'rgba(126,207,126,0.7)' : 'rgba(255,255,255,0.2)',
-                        textTransform: 'uppercase',
-                      }}
-                    >
+                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: profile.hub.online ? '#7ecf7e' : 'rgba(255,255,255,0.2)', boxShadow: profile.hub.online ? '0 0 6px rgba(126,207,126,0.6)' : 'none' }} />
+                    <span style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.25em', color: profile.hub.online ? 'rgba(126,207,126,0.7)' : 'rgba(255,255,255,0.2)', textTransform: 'uppercase' }}>
                       {profile.hub.online ? 'online' : 'away'}
                     </span>
                   </div>
 
                   {profile.hub.styleLabel && (
                     <div style={{ marginBottom: '16px' }}>
-                      <p
-                        style={{
-                          fontFamily: "'Cinzel', serif",
-                          fontSize: '9px',
-                          letterSpacing: '0.25em',
-                          color: 'rgba(201,168,76,0.6)',
-                          textTransform: 'uppercase',
-                          marginBottom: '4px',
-                        }}
-                      >
+                      <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.25em', color: 'rgba(201,168,76,0.6)', textTransform: 'uppercase', marginBottom: '4px' }}>
                         Style
                       </p>
-
-                      <p
-                        style={{
-                          fontFamily: "'Cormorant Garamond', serif",
-                          fontSize: '15px',
-                          color: 'rgba(255,255,255,0.6)',
-                          marginBottom: profile.hub.styleDesc ? '4px' : '0',
-                        }}
-                      >
+                      <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '15px', color: 'rgba(255,255,255,0.6)', marginBottom: profile.hub.styleDesc ? '4px' : '0' }}>
                         {profile.hub.styleLabel}
                       </p>
-
                       {profile.hub.styleDesc && (
-                        <p
-                          style={{
-                            fontFamily: "'IM Fell English', serif",
-                            fontStyle: 'italic',
-                            fontSize: '13px',
-                            color: 'rgba(255,255,255,0.42)',
-                            lineHeight: 1.5,
-                          }}
-                        >
+                        <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(255,255,255,0.42)', lineHeight: 1.5 }}>
                           {profile.hub.styleDesc}
                         </p>
                       )}
@@ -685,54 +518,20 @@ export default function UniverseMap({
                   )}
 
                   <div style={{ marginBottom: '20px' }}>
-                    <p
-                      style={{
-                        fontFamily: "'Cinzel', serif",
-                        fontSize: '10px',
-                        letterSpacing: '0.3em',
-                        color: 'rgba(201,168,76,0.5)',
-                        textTransform: 'uppercase',
-                        marginBottom: '8px',
-                      }}
-                    >
+                    <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.3em', color: 'rgba(201,168,76,0.5)', textTransform: 'uppercase', marginBottom: '8px' }}>
                       Bio
                     </p>
-                    <p
-                      style={{
-                        fontFamily: "'IM Fell English', serif",
-                        fontStyle: 'italic',
-                        fontSize: 'clamp(13px,1.8vw,15px)',
-                        color: 'rgba(255,255,255,0.6)',
-                        lineHeight: 1.7,
-                      }}
-                    >
+                    <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: 'clamp(13px,1.8vw,15px)', color: 'rgba(255,255,255,0.6)', lineHeight: 1.7 }}>
                       {profile.hub.bio}
                     </p>
                   </div>
 
                   {!profile.hub.isMe && profile.hub.askAbout && (
                     <div>
-                      <p
-                        style={{
-                          fontFamily: "'Cinzel', serif",
-                          fontSize: '10px',
-                          letterSpacing: '0.3em',
-                          color: 'rgba(201,168,76,0.5)',
-                          textTransform: 'uppercase',
-                          marginBottom: '8px',
-                        }}
-                      >
+                      <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.3em', color: 'rgba(201,168,76,0.5)', textTransform: 'uppercase', marginBottom: '8px' }}>
                         Ask me about
                       </p>
-                      <p
-                        style={{
-                          fontFamily: "'IM Fell English', serif",
-                          fontStyle: 'italic',
-                          fontSize: 'clamp(13px,1.8vw,15px)',
-                          color: 'rgba(255,255,255,0.5)',
-                          lineHeight: 1.6,
-                        }}
-                      >
+                      <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: 'clamp(13px,1.8vw,15px)', color: 'rgba(255,255,255,0.5)', lineHeight: 1.6 }}>
                         {profile.hub.askAbout}
                       </p>
                     </div>
@@ -742,26 +541,7 @@ export default function UniverseMap({
                 <div style={{ display: 'flex', gap: '10px', marginTop: '28px', flexWrap: 'wrap' }}>
                   <button
                     onClick={() => setProfile(null)}
-                    style={{
-                      fontFamily: "'Cinzel', serif",
-                      fontSize: '9px',
-                      letterSpacing: '0.25em',
-                      color: 'rgba(255,255,255,0.35)',
-                      padding: '10px 18px',
-                      border: '1px solid rgba(255,255,255,0.1)',
-                      borderRadius: '4px',
-                      background: 'transparent',
-                      cursor: 'pointer',
-                      textTransform: 'uppercase',
-                    }}
-                    onMouseEnter={e => {
-                      e.currentTarget.style.color = 'rgba(255,255,255,0.6)'
-                      e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)'
-                    }}
-                    onMouseLeave={e => {
-                      e.currentTarget.style.color = 'rgba(255,255,255,0.35)'
-                      e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'
-                    }}
+                    style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.25em', color: 'rgba(255,255,255,0.35)', padding: '10px 18px', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase' }}
                   >
                     ✦ Dismiss
                   </button>
@@ -772,28 +552,7 @@ export default function UniverseMap({
                         setProfile(null)
                         onWriteLetter?.(profile.hub.name)
                       }}
-                      style={{
-                        fontFamily: "'Cinzel', serif",
-                        fontSize: '9px',
-                        letterSpacing: '0.25em',
-                        color: 'rgba(201,168,76,0.8)',
-                        padding: '10px 18px',
-                        border: '1px solid rgba(201,168,76,0.25)',
-                        borderRadius: '4px',
-                        background: 'rgba(201,168,76,0.05)',
-                        cursor: 'pointer',
-                        textTransform: 'uppercase',
-                      }}
-                      onMouseEnter={e => {
-                        e.currentTarget.style.color = '#c9a84c'
-                        e.currentTarget.style.borderColor = '#c9a84c'
-                        e.currentTarget.style.boxShadow = '0 0 16px rgba(201,168,76,0.15)'
-                      }}
-                      onMouseLeave={e => {
-                        e.currentTarget.style.color = 'rgba(201,168,76,0.8)'
-                        e.currentTarget.style.borderColor = 'rgba(201,168,76,0.25)'
-                        e.currentTarget.style.boxShadow = 'none'
-                      }}
+                      style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.25em', color: 'rgba(201,168,76,0.8)', padding: '10px 18px', border: '1px solid rgba(201,168,76,0.25)', borderRadius: '4px', background: 'rgba(201,168,76,0.05)', cursor: 'pointer', textTransform: 'uppercase' }}
                     >
                       ✦ Send Shooting Star
                     </button>
@@ -803,22 +562,7 @@ export default function UniverseMap({
 
               <button
                 onClick={() => setProfile(null)}
-                style={{
-                  position: 'absolute',
-                  top: '16px',
-                  right: '16px',
-                  background: 'none',
-                  border: 'none',
-                  color: 'rgba(255,255,255,0.2)',
-                  fontSize: '18px',
-                  cursor: 'pointer',
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.color = 'rgba(255,255,255,0.6)'
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.color = 'rgba(255,255,255,0.2)'
-                }}
+                style={{ position: 'absolute', top: '16px', right: '16px', background: 'none', border: 'none', color: 'rgba(255,255,255,0.2)', fontSize: '18px', cursor: 'pointer' }}
               >
                 ×
               </button>
@@ -831,21 +575,7 @@ export default function UniverseMap({
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.5, duration: 0.6 }}
-        style={{
-          position: 'fixed',
-          bottom: '32px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          display: 'flex',
-          gap: '4px',
-          background: 'rgba(8,10,28,0.82)',
-          border: '1px solid rgba(255,255,255,0.07)',
-          borderRadius: '16px',
-          backdropFilter: 'blur(20px)',
-          padding: '8px 12px',
-          boxShadow: '0 4px 40px rgba(0,0,0,0.6)',
-          zIndex: 50,
-        }}
+        style={{ position: 'fixed', bottom: '32px', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: '4px', background: 'rgba(8,10,28,0.82)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px', backdropFilter: 'blur(20px)', padding: '8px 12px', boxShadow: '0 4px 40px rgba(0,0,0,0.6)', zIndex: 50 }}
       >
         {navItems.map((item, i) => (
           <button
@@ -858,44 +588,12 @@ export default function UniverseMap({
             }}
             onMouseEnter={() => setHoveredNav(i)}
             onMouseLeave={() => setHoveredNav(null)}
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: '5px',
-              padding: '10px 18px',
-              background:
-                activeNav === i
-                  ? 'rgba(201,168,76,0.1)'
-                  : hoveredNav === i
-                    ? 'rgba(255,255,255,0.04)'
-                    : 'transparent',
-              border: 'none',
-              borderRadius: '10px',
-              cursor: 'pointer',
-              minWidth: '64px',
-            }}
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px', padding: '10px 18px', background: activeNav === i ? 'rgba(201,168,76,0.1)' : hoveredNav === i ? 'rgba(255,255,255,0.04)' : 'transparent', border: 'none', borderRadius: '10px', cursor: 'pointer', minWidth: '64px' }}
           >
-            <span
-              style={{
-                fontSize: '18px',
-                lineHeight: 1,
-                color: activeNav === i ? '#c9a84c' : 'rgba(255,255,255,0.55)',
-                filter: activeNav === i ? 'drop-shadow(0 0 6px rgba(201,168,76,0.5))' : 'none',
-              }}
-            >
+            <span style={{ fontSize: '18px', lineHeight: 1, color: activeNav === i ? '#c9a84c' : 'rgba(255,255,255,0.55)', filter: activeNav === i ? 'drop-shadow(0 0 6px rgba(201,168,76,0.5))' : 'none' }}>
               {item.icon}
             </span>
-            <span
-              style={{
-                fontFamily: "'Cinzel', serif",
-                fontSize: '8px',
-                letterSpacing: '0.18em',
-                textTransform: 'uppercase',
-                color: activeNav === i ? 'rgba(201,168,76,0.8)' : 'rgba(255,255,255,0.3)',
-                whiteSpace: 'nowrap',
-              }}
-            >
+            <span style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.18em', textTransform: 'uppercase', color: activeNav === i ? 'rgba(201,168,76,0.8)' : 'rgba(255,255,255,0.3)', whiteSpace: 'nowrap' }}>
               {item.label}
             </span>
           </button>
@@ -906,20 +604,7 @@ export default function UniverseMap({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 1.4, duration: 0.8 }}
-        style={{
-          position: 'fixed',
-          top: '28px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          fontFamily: "'IM Fell English', serif",
-          fontStyle: 'italic',
-          fontSize: '12px',
-          color: 'rgba(255,255,255,0.16)',
-          letterSpacing: '0.08em',
-          pointerEvents: 'none',
-          whiteSpace: 'nowrap',
-          zIndex: 50,
-        }}
+        style={{ position: 'fixed', top: '28px', left: '50%', transform: 'translateX(-50%)', fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '12px', color: 'rgba(255,255,255,0.16)', letterSpacing: '0.08em', pointerEvents: 'none', whiteSpace: 'nowrap', zIndex: 50 }}
       >
         drag to explore · scroll to zoom
       </motion.p>
