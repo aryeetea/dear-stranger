@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import EntryScreen from './components/EntryScreen'
 import SoulMirror from './components/SoulMirror'
+import type { MirrorVoice, SoulMirrorResumeState, StyleOption } from './components/SoulMirror'
 import UniverseMap from './components/UniverseMap'
 import type { HubStyle } from './components/UniverseMap'
 import Scribe from './components/Scribe'
@@ -50,6 +51,7 @@ export default function Home() {
   const [profileOpen, setProfileOpen] = useState(false)
   const [pendingCredentials, setPendingCredentials] = useState<{ email: string; password: string } | null>(null)
   const [onboardingError, setOnboardingError] = useState('')
+  const [onboardingResumeState, setOnboardingResumeState] = useState<SoulMirrorResumeState | null>(null)
 
   function clearHubState() {
     setHubName('')
@@ -58,6 +60,7 @@ export default function Home() {
     setHubAvatarUrl('')
     setHubStyle('portal')
     setLettersSent(0)
+    setOnboardingResumeState(null)
   }
 
   async function routeFromSession() {
@@ -77,6 +80,7 @@ export default function Home() {
       setHubStyle((hub.hub_style as HubStyle) || 'portal')
       setLettersSent(hub.letters_sent || 0)
       setOnboardingError('')
+      setOnboardingResumeState(null)
       setScreen('universe')
       return
     }
@@ -124,9 +128,9 @@ export default function Home() {
 
   async function handleOnboardingComplete(
     answers: Record<number, string>,
-    selectedStyle?: { id: string; label: string; desc: string },
+    selectedStyle?: StyleOption,
     selectedHubStyle?: HubStyle,
-    mirrorVoice?: { id: string; label: string },
+    mirrorVoice?: MirrorVoice,
     userBio?: string,
     userHubName?: string,
   ) {
@@ -140,6 +144,15 @@ export default function Home() {
     const fallbackAskAbout = 'Silence, slow mornings, and letters that take their time.'
     const chosenHubStyle = selectedHubStyle || 'portal'
     const chosenBio = userBio?.trim() || fallbackBio
+    const resumeState: SoulMirrorResumeState = {
+      phase: 'hubname',
+      selectedStyle,
+      selectedHubStyle: chosenHubStyle,
+      selectedVoice: mirrorVoice,
+      userAnswers: keys.slice(0, -1).map((key) => answers[key]),
+      hubName: hubNameAnswer,
+      bio: chosenBio,
+    }
 
     try {
       setScreen('generating')
@@ -208,10 +221,14 @@ export default function Home() {
 
       setHubAskAbout(fallbackAskAbout)
       setHubAvatarUrl(avatarUrl)
+      setOnboardingResumeState(null)
       setScreen('universe')
 
     } catch (err) {
       console.error('Error during onboarding:', err)
+      if (err instanceof Error && err.message === 'That hub name is already taken. Choose another one.') {
+        setOnboardingResumeState(resumeState)
+      }
       setScreen('onboarding')
       setOnboardingError(err instanceof Error ? err.message : 'Your hub could not be created yet. Please try again.')
     }
@@ -252,6 +269,7 @@ export default function Home() {
         <LoginScreen
           onSuccess={async () => {
             setPendingCredentials(null)
+            setOnboardingResumeState(null)
             const hub = await getMyHub()
             if (hub) {
               setHubName(hub.hub_name || '')
@@ -297,7 +315,11 @@ export default function Home() {
       )}
 
       {screen === 'onboarding' && (
-        <SoulMirror onComplete={handleOnboardingComplete} errorMessage={onboardingError} />
+        <SoulMirror
+          onComplete={handleOnboardingComplete}
+          errorMessage={onboardingError}
+          resumeState={onboardingResumeState}
+        />
       )}
 
       {screen === 'universe' && (

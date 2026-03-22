@@ -39,12 +39,22 @@ const RULES = [
 
 export interface StyleOption { id: string; label: string; desc: string }
 export interface MirrorVoice { id: string; label: string; desc: string; icon: string; prompt: string }
+export interface SoulMirrorResumeState {
+  phase?: 'hubname' | 'bio' | 'welcome'
+  selectedStyle?: StyleOption
+  selectedHubStyle?: HubStyle
+  selectedVoice?: MirrorVoice
+  userAnswers?: string[]
+  hubName?: string
+  bio?: string
+}
 
 type Phase = 'voice' | 'style' | 'hubstyle' | 'chat' | 'hubname' | 'bio' | 'welcome'
 
 interface SoulMirrorProps {
   isReturning?: boolean
   errorMessage?: string
+  resumeState?: SoulMirrorResumeState | null
   onComplete?: (
     answers: Record<number, string>,
     selectedStyle?: StyleOption,
@@ -55,19 +65,19 @@ interface SoulMirrorProps {
   ) => void
 }
 
-export default function SoulMirror({ isReturning = false, errorMessage = '', onComplete }: SoulMirrorProps) {
-  const [phase, setPhase] = useState<Phase>('voice')
-  const [selectedVoice, setSelectedVoice] = useState<MirrorVoice | null>(null)
-  const [selectedStyle, setSelectedStyle] = useState<StyleOption | null>(null)
-  const [selectedHubStyle, setSelectedHubStyle] = useState<HubStyle>('portal')
+export default function SoulMirror({ isReturning = false, errorMessage = '', resumeState = null, onComplete }: SoulMirrorProps) {
+  const [phase, setPhase] = useState<Phase>(resumeState?.phase || 'voice')
+  const [selectedVoice, setSelectedVoice] = useState<MirrorVoice | null>(resumeState?.selectedVoice || null)
+  const [selectedStyle, setSelectedStyle] = useState<StyleOption | null>(resumeState?.selectedStyle || null)
+  const [selectedHubStyle, setSelectedHubStyle] = useState<HubStyle>(resumeState?.selectedHubStyle || 'portal')
   const [messages, setMessages] = useState<{ role: 'ai' | 'user'; text: string; isClosing?: boolean; chips?: string[] }[]>([])
-  const [userAnswers, setUserAnswers] = useState<string[]>([])
+  const [userAnswers, setUserAnswers] = useState<string[]>(resumeState?.userAnswers || [])
   const [inputValue, setInputValue] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [chatDone, setChatDone] = useState(false)
-  const [hubName, setHubName] = useState('')
-  const [bio, setBio] = useState('')
+  const [chatDone, setChatDone] = useState(Boolean(resumeState?.phase))
+  const [hubName, setHubName] = useState(resumeState?.hubName || '')
+  const [bio, setBio] = useState(resumeState?.bio || '')
   const bottomRef = useRef<HTMLDivElement>(null)
   const hasInitialized = useRef(false)
 
