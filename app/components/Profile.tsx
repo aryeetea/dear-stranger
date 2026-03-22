@@ -32,6 +32,7 @@ export default function Profile({
   const [hubDraft, setHubDraft] = useState(hubNameState)
   const [bioDraft, setBioDraft] = useState(bioState)
   const [askDraft, setAskDraft] = useState(askState)
+  const [saveError, setSaveError] = useState('')
 
   const [leavingConfirm, setLeavingConfirm] = useState(false)
   const [deleteStep, setDeleteStep] = useState<DeleteStep>('idle')
@@ -86,6 +87,7 @@ export default function Profile({
       })
       const data = await res.json()
       if (!res.ok || data.error) throw new Error(data.error || 'Failed')
+      if (!data.imageUrl) throw new Error('No avatar image came back from the mirror.')
       setCurrentAvatarUrl(data.imageUrl); setRegenCount(c => c + 1); setRegenFeedback('')
       await updateHub({ avatar_url: data.imageUrl })
     } catch (err) { console.error('Regen failed:', err) }
@@ -93,15 +95,24 @@ export default function Profile({
   }
 
   async function saveHub() {
-    try { setSaving(true); await updateHub({ hub_name: hubDraft }); setHubNameState(hubDraft); onUpdateHub?.(hubDraft); setEditingHub(false) }
-    catch (err) { console.error(err) } finally { setSaving(false) }
+    try {
+      setSaving(true); setSaveError('')
+      await updateHub({ hub_name: hubDraft })
+      setHubNameState(hubDraft)
+      onUpdateHub?.(hubDraft)
+      setEditingHub(false)
+    }
+    catch (err) {
+      console.error(err)
+      setSaveError(err instanceof Error ? err.message : 'Could not save hub name.')
+    } finally { setSaving(false) }
   }
   async function saveBio() {
-    try { setSaving(true); await updateHub({ bio: bioDraft }); setBioState(bioDraft); setEditingBio(false) }
+    try { setSaving(true); setSaveError(''); await updateHub({ bio: bioDraft }); setBioState(bioDraft); setEditingBio(false) }
     catch (err) { console.error(err) } finally { setSaving(false) }
   }
   async function saveAsk() {
-    try { setSaving(true); await updateHub({ ask_about: askDraft }); setAskState(askDraft); setEditingAsk(false) }
+    try { setSaving(true); setSaveError(''); await updateHub({ ask_about: askDraft }); setAskState(askDraft); setEditingAsk(false) }
     catch (err) { console.error(err) } finally { setSaving(false) }
   }
 
@@ -162,6 +173,10 @@ export default function Profile({
                 <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 'clamp(28px,4vw,48px)', letterSpacing: '0.06em', color: 'rgba(255,255,255,0.95)', lineHeight: 1.1 }}>{hubNameState}</p>
                 <button onClick={() => { setHubDraft(hubNameState); setEditingHub(true) }} style={editBtn}>Edit</button>
               </div>
+            )}
+
+            {saveError && (
+              <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(235,140,140,0.9)', marginTop: '10px' }}>{saveError}</p>
             )}
 
             {/* Soul Cycle + Reimagine */}

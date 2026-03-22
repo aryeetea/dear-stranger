@@ -58,6 +58,12 @@ After that:
 - Use only one question mark total in the whole response.
 - Do not use decorative symbols, sparkle icons, bullet points, or markdown emphasis.
 - Keep the wording natural and conversational for the selected voice.
+- Make sure every follow-up clearly responds to what the person just said.
+- Do not ignore vivid details they already gave you.
+- If they already gave a lot, narrow in on the single most useful missing visual detail.
+- Do not ask generic questions when a more specific follow-up is possible.
+- Do not contradict earlier details.
+- Keep continuity across the conversation so it feels like one thoughtful exchange, not separate prompts.
 
 ${hasEnough ? `
 ASSESSMENT: You now have ${exchangeNumber} exchanges. Do you have enough visual detail for a strong ${style} portrait?

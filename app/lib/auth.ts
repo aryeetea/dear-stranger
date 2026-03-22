@@ -1,10 +1,42 @@
 import { supabase } from '../../lib/supabase'
 
+function normalizeHubName(hubName: string) {
+  return hubName.trim().toLowerCase()
+}
+
+async function assertHubNameAvailable(hubName: string, excludeUserId?: string) {
+  const normalized = normalizeHubName(hubName)
+  if (!normalized) throw new Error('Hub name is required.')
+
+  const { data, error } = await supabase.from('hubs').select('id, hub_name')
+  if (error) throw error
+
+  const existing = (data || []).find((hub: { id: string; hub_name: string | null }) => {
+    if (excludeUserId && hub.id === excludeUserId) return false
+    return normalizeHubName(hub.hub_name || '') === normalized
+  })
+
+  if (existing) throw new Error('That hub name is already taken. Choose another one.')
+}
+
+export async function isHubNameAvailable(hubName: string, excludeUserId?: string) {
+  try {
+    await assertHubNameAvailable(hubName, excludeUserId)
+    return true
+  } catch (error) {
+    if (error instanceof Error && error.message === 'That hub name is already taken. Choose another one.') {
+      return false
+    }
+    throw error
+  }
+}
+
 // ── EMAIL / PASSWORD SIGN UP ──
 export async function signUpAndCreateHub(
   email: string, password: string,
   hubName: string, bio: string, askAbout: string,
 ) {
+  await assertHubNameAvailable(hubName)
   const { data: authData, error: authError } = await supabase.auth.signUp({ email, password })
   if (authError) throw authError
   if (!authData.user) throw new Error('No user returned after signup')
@@ -50,6 +82,8 @@ export async function createHubForCurrentUser(
   if (existingHubError) throw existingHubError
   if (existingHub) return existingHub
 
+  await assertHubNameAvailable(hubName, user.id)
+
   const email = user.email || null
   const { data, error } = await supabase
     .from('hubs')
@@ -63,6 +97,7 @@ export async function createHubForCurrentUser(
 
 // ── ANONYMOUS SIGN IN ──
 export async function signInAndCreateHub(hubName: string, bio: string, askAbout: string) {
+  await assertHubNameAvailable(hubName)
   const { data: authData, error: authError } = await supabase.auth.signInAnonymously()
   if (authError) throw authError
   if (!authData.user) throw new Error('No user returned')
@@ -187,7 +222,7 @@ export async function getMyHub() {
     if (!user) return null
     const { data, error } = await supabase.from('hubs').select('*').eq('id', user.id).single()
     if (error) {
-      if (error.code === 'PGRST116' || error.message?.includes('JWT') || error.message?.includes('not found')) {
+      if (error.message?.includes('JWT') || error.message?.includes('Refresh Token') || error.message?.includes('refresh_token')) {
         try { await supabase.auth.signOut() } catch {}
       }
       return null
@@ -217,6 +252,9 @@ export async function updateHub(updates: {
   const { data: { user }, error: userError } = await supabase.auth.getUser()
   if (userError) throw userError
   if (!user) throw new Error('No user found')
+  if (updates.hub_name && normalizeHubName(updates.hub_name)) {
+    await assertHubNameAvailable(updates.hub_name, user.id)
+  }
   const cleaned = Object.fromEntries(Object.entries(updates).filter(([, v]) => v !== undefined))
   const { data, error } = await supabase.from('hubs').update(cleaned).eq('id', user.id).select().single()
   if (error) throw error

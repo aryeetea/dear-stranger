@@ -11,7 +11,7 @@ import Profile from './components/Profile'
 import { LoginScreen, SignupScreen } from './components/AuthScreens'
 import {
   signInAndCreateHub, signUpAndCreateHub, signOut,
-  createHubForCurrentUser, getSession, getMyHub, getAllHubs, sendLetter, updateHub,
+  createHubForCurrentUser, getSession, getMyHub, getAllHubs, sendLetter, updateHub, signIn,
 } from './lib/auth'
 
 type Screen = 'entry' | 'login' | 'signup' | 'onboarding' | 'universe' | 'loading' | 'generating'
@@ -48,6 +48,7 @@ export default function Home() {
   const [observatoryOpen, setObservatoryOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const [pendingCredentials, setPendingCredentials] = useState<{ email: string; password: string } | null>(null)
+  const [onboardingError, setOnboardingError] = useState('')
 
   useEffect(() => {
     async function checkSession() {
@@ -86,8 +87,9 @@ export default function Home() {
     userBio?: string,
     userHubName?: string,
   ) {
+    setOnboardingError('')
     const keys = Object.keys(answers).map(Number).sort((a, b) => a - b)
-    const hubNameAnswer = userHubName || answers[keys[keys.length - 1]] || 'Your Hub'
+    const hubNameAnswer = (userHubName || answers[keys[keys.length - 1]] || 'Your Hub').trim()
     const conversationAnswers: Record<number, string> = {}
     for (let i = 0; i < keys.length - 1; i++) conversationAnswers[i] = answers[keys[i]]
 
@@ -100,20 +102,27 @@ export default function Home() {
       setScreen('generating')
       setGeneratingStatus('Crafting your soul mirror...')
 
-      if (pendingCredentials) {
-        await signUpAndCreateHub(pendingCredentials.email, pendingCredentials.password, hubNameAnswer, chosenBio, fallbackAskAbout)
-        setPendingCredentials(null)
-      } else if (await getSession()) {
+      let session = await getSession()
+
+      if (session) {
         await createHubForCurrentUser(hubNameAnswer, chosenBio, fallbackAskAbout)
+      } else if (pendingCredentials) {
+        await signUpAndCreateHub(pendingCredentials.email, pendingCredentials.password, hubNameAnswer, chosenBio, fallbackAskAbout)
+        session = await getSession()
+        if (!session) {
+          await signIn(pendingCredentials.email, pendingCredentials.password)
+          session = await getSession()
+        }
+        setPendingCredentials(null)
       } else {
         await signInAndCreateHub(hubNameAnswer, chosenBio, fallbackAskAbout)
+        session = await getSession()
       }
 
       setHubName(hubNameAnswer)
       setHubStyle(chosenHubStyle)
       setHubBio(chosenBio)
 
-      const session = await getSession()
       const userId = session?.user?.id
 
       setGeneratingStatus('The mirror is reflecting your presence...')
@@ -130,8 +139,14 @@ export default function Home() {
       ])
 
       let avatarUrl = ''
-      if (avatarResponse.status === 'fulfilled' && !avatarResponse.value.error) {
-        avatarUrl = avatarResponse.value.imageUrl || ''
+      if (avatarResponse.status === 'fulfilled') {
+        if (avatarResponse.value.error) {
+          console.error('Avatar generation failed:', avatarResponse.value.error)
+        } else {
+          avatarUrl = avatarResponse.value.imageUrl || ''
+        }
+      } else {
+        console.error('Avatar generation request failed:', avatarResponse.reason)
       }
 
       setGeneratingStatus('Placing your hub in the universe...')
@@ -149,10 +164,8 @@ export default function Home() {
 
     } catch (err) {
       console.error('Error during onboarding:', err)
-      setHubName(hubNameAnswer)
-      setHubBio(chosenBio)
-      setHubAskAbout(fallbackAskAbout)
-      setScreen('universe')
+      setScreen('onboarding')
+      setOnboardingError(err instanceof Error ? err.message : 'Your hub could not be created yet. Please try again.')
     }
   }
 
@@ -199,10 +212,13 @@ export default function Home() {
               setHubStyle((hub.hub_style as HubStyle) || 'portal')
               setLettersSent(hub.letters_sent || 0)
               setScreen('universe')
+              return
             }
+            setOnboardingError('')
+            setScreen('onboarding')
           }}
-          onGoToSignup={() => setScreen('signup')}
-          onGuestEnter={() => setScreen('onboarding')}
+          onGoToSignup={() => { setOnboardingError(''); setPendingCredentials(null); setScreen('signup') }}
+          onGuestEnter={() => { setOnboardingError(''); setPendingCredentials(null); setScreen('onboarding') }}
         />
       </div>
     )
@@ -213,9 +229,8 @@ export default function Home() {
       <div style={{ position: 'fixed', inset: 0, background: '#000005', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <AuthBackground />
         <SignupScreen
-          onSuccess={() => setScreen('onboarding')}
-          onGoToLogin={() => setScreen('login')}
-          pendingCredentials={pendingCredentials}
+          onSuccess={() => { setOnboardingError(''); setScreen('onboarding') }}
+          onGoToLogin={() => { setOnboardingError(''); setPendingCredentials(null); setScreen('login') }}
           setPendingCredentials={setPendingCredentials}
         />
       </div>
@@ -226,14 +241,14 @@ export default function Home() {
     <>
       {screen === 'entry' && (
         <EntryScreen
-          onEnter={() => setScreen('onboarding')}
-          onLogin={() => setScreen('login')}
-          onSignup={() => setScreen('signup')}
+          onEnter={() => { setOnboardingError(''); setPendingCredentials(null); setScreen('onboarding') }}
+          onLogin={() => { setOnboardingError(''); setPendingCredentials(null); setScreen('login') }}
+          onSignup={() => { setOnboardingError(''); setPendingCredentials(null); setScreen('signup') }}
         />
       )}
 
       {screen === 'onboarding' && (
-        <SoulMirror onComplete={handleOnboardingComplete} />
+        <SoulMirror onComplete={handleOnboardingComplete} errorMessage={onboardingError} />
       )}
 
       {screen === 'universe' && (

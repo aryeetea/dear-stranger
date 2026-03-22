@@ -43,6 +43,7 @@ type Phase = 'voice' | 'style' | 'hubstyle' | 'chat' | 'hubname' | 'bio' | 'welc
 
 interface SoulMirrorProps {
   isReturning?: boolean
+  errorMessage?: string
   onComplete?: (
     answers: Record<number, string>,
     selectedStyle?: StyleOption,
@@ -53,7 +54,7 @@ interface SoulMirrorProps {
   ) => void
 }
 
-export default function SoulMirror({ isReturning = false, onComplete }: SoulMirrorProps) {
+export default function SoulMirror({ isReturning = false, errorMessage = '', onComplete }: SoulMirrorProps) {
   const [phase, setPhase] = useState<Phase>('voice')
   const [selectedVoice, setSelectedVoice] = useState<MirrorVoice | null>(null)
   const [selectedStyle, setSelectedStyle] = useState<StyleOption | null>(null)
@@ -154,6 +155,12 @@ export default function SoulMirror({ isReturning = false, onComplete }: SoulMirr
   return (
     <div style={{ position: 'fixed', inset: 0, background: '#000005', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '20px', overflowY: 'auto' }}>
       <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', background: 'radial-gradient(ellipse 60% 40% at 20% 30%, rgba(40,20,80,0.25) 0%, transparent 70%), radial-gradient(ellipse 50% 60% at 80% 70%, rgba(10,30,80,0.2) 0%, transparent 70%)' }} />
+
+      {errorMessage && (
+        <div style={{ position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)', width: 'min(620px, calc(100vw - 40px))', padding: '12px 16px', background: 'rgba(60,15,20,0.88)', border: '1px solid rgba(220,120,120,0.35)', borderRadius: '10px', zIndex: 60, boxShadow: '0 14px 40px rgba(0,0,0,0.35)' }}>
+          <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(255,220,220,0.92)', textAlign: 'center' }}>{errorMessage}</p>
+        </div>
+      )}
 
       <AnimatePresence mode="wait">
 

@@ -120,12 +120,10 @@ export function LoginScreen({
 export function SignupScreen({
   onSuccess,
   onGoToLogin,
-  pendingCredentials,
   setPendingCredentials,
 }: {
   onSuccess: () => void
   onGoToLogin: () => void
-  pendingCredentials: { email: string; password: string } | null
   setPendingCredentials: (creds: { email: string; password: string } | null) => void
 }) {
   const [email, setEmail] = useState('')
@@ -152,6 +150,7 @@ export function SignupScreen({
   async function handleGoogle() {
     setGoogleLoading(true); setError('')
     try {
+      setPendingCredentials(null)
       await signInWithGoogle()
     } catch (err: any) {
       setError(err.message || 'Google sign-in failed.')
@@ -209,7 +208,7 @@ export function SignupScreen({
         style={{ width: '100%', padding: '14px', background: 'transparent', border: '1px solid rgba(201,168,76,0.5)', color: '#c9a84c', fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.3em', textTransform: 'uppercase', cursor: 'pointer', borderRadius: '4px', marginBottom: '20px', opacity: loading ? 0.6 : 1, transition: 'all 0.2s' }}
         onMouseEnter={e => { if (!loading) e.currentTarget.style.background = 'rgba(201,168,76,0.08)' }}
         onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
-        {loading ? 'Preparing...' : 'Create My Hub ✦'}
+        {loading ? 'Preparing...' : 'Continue to Soul Mirror ✦'}
       </button>
 
       <div style={{ textAlign: 'center' }}>
