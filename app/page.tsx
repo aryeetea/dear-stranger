@@ -9,6 +9,7 @@ import Scribe from './components/Scribe'
 import Observatory from './components/Observatory'
 import Profile from './components/Profile'
 import { LoginScreen, SignupScreen } from './components/AuthScreens'
+import { supabase } from '../lib/supabase'
 import {
   signInAndCreateHub, signUpAndCreateHub, signOut,
   createHubForCurrentUser, getSession, getMyHub, getAllHubs, sendLetter, updateHub, signIn,
@@ -50,33 +51,75 @@ export default function Home() {
   const [pendingCredentials, setPendingCredentials] = useState<{ email: string; password: string } | null>(null)
   const [onboardingError, setOnboardingError] = useState('')
 
+  function clearHubState() {
+    setHubName('')
+    setHubBio('')
+    setHubAskAbout('')
+    setHubAvatarUrl('')
+    setHubStyle('portal')
+    setLettersSent(0)
+  }
+
+  async function routeFromSession() {
+    const session = await getSession()
+    if (!session) {
+      clearHubState()
+      setScreen('entry')
+      return
+    }
+
+    const hub = await getMyHub()
+    if (hub) {
+      setHubName(hub.hub_name || '')
+      setHubBio(hub.bio || '')
+      setHubAskAbout(hub.ask_about || '')
+      setHubAvatarUrl(hub.avatar_url || '')
+      setHubStyle((hub.hub_style as HubStyle) || 'portal')
+      setLettersSent(hub.letters_sent || 0)
+      setOnboardingError('')
+      setScreen('universe')
+      return
+    }
+
+    clearHubState()
+    setScreen('onboarding')
+  }
+
   useEffect(() => {
     async function checkSession() {
       try {
-        const session = await getSession()
-        if (session) {
-          const hub = await getMyHub()
-          if (hub) {
-            setHubName(hub.hub_name || '')
-            setHubBio(hub.bio || '')
-            setHubAskAbout(hub.ask_about || '')
-            setHubAvatarUrl(hub.avatar_url || '')
-            setHubStyle((hub.hub_style as HubStyle) || 'portal')
-            setLettersSent(hub.letters_sent || 0)
-            setScreen('universe')
-            return
-          }
-          setScreen('onboarding')
-          return
-        }
-        setScreen('entry')
+        await routeFromSession()
       } catch (err) {
         console.error('checkSession failed:', err)
         try { await signOut() } catch {}
+        clearHubState()
         setScreen('entry')
       }
     }
+
     checkSession()
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event) => {
+      if (event === 'SIGNED_OUT') {
+        clearHubState()
+        setPendingCredentials(null)
+        setOnboardingError('')
+        setScreen('entry')
+        return
+      }
+
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
+        try {
+          await routeFromSession()
+        } catch (err) {
+          console.error('auth state sync failed:', err)
+        }
+      }
+    })
+
+    return () => {
+      authListener.subscription.unsubscribe()
+    }
   }, [])
 
   async function handleOnboardingComplete(

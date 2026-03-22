@@ -27,38 +27,55 @@ const STYLE_OPTIONS = [
   { id: 'nature', label: 'Nature Inspired', desc: 'earthy, floral, organic, peaceful' },
 ]
 
+const BACKDROPS = [
+  { id: 'void', label: 'Deep Space Void', desc: 'Stars, nebulae, the dark cosmos stretching forever', icon: '🌌', colors: ['#000005', '#04050f', '#0a0820'] },
+  { id: 'golden', label: 'Golden Hour', desc: 'Warm amber light, hazy and eternal', icon: '🌅', colors: ['#1a0a00', '#2a1200', '#3a1a00'] },
+  { id: 'forest', label: 'Ancient Forest', desc: 'Moss, roots, soft light filtering through canopy', icon: '🌿', colors: ['#020a04', '#041408', '#081e0c'] },
+  { id: 'storm', label: 'Storm Clouds', desc: 'Dramatic, electric, moody — the sky before it breaks', icon: '⛈', colors: ['#080810', '#0c0c18', '#101020'] },
+  { id: 'candle', label: 'Candlelit Room', desc: 'Warm, intimate, flickering light on old walls', icon: '🕯', colors: ['#100800', '#1a0e00', '#201200'] },
+  { id: 'aurora', label: 'Arctic Aurora', desc: 'Cold, ethereal, ribbons of light dancing overhead', icon: '🌌', colors: ['#001a10', '#002018', '#003020'] },
+  { id: 'underwater', label: 'Underwater', desc: 'Bioluminescent, deep blue, weightless and alive', icon: '🌊', colors: ['#000818', '#001020', '#001828'] },
+  { id: 'desert', label: 'Desert at Night', desc: 'Vast, quiet, infinite stars above endless sand', icon: '🏜', colors: ['#0a0800', '#120e04', '#1a1208'] },
+  { id: 'rooftop', label: 'Rooftop at Dusk', desc: 'City skyline, warm breeze, the world going golden below', icon: '🏙', colors: ['#0a0608', '#140c10', '#1a1018'] },
+  { id: 'coffeeshop', label: 'Coffee Shop Window', desc: 'Rain outside, warm inside, soft chatter in the background', icon: '☕', colors: ['#080604', '#100c08', '#18100a'] },
+  { id: 'garden', label: 'Campus Garden', desc: 'Petals falling, birdsong, soft spring sun on your face', icon: '🌸', colors: ['#040a04', '#081408', '#0c1a0c'] },
+]
+
 const RULES = [
   { icon: '✦', title: 'Letters travel slowly — and that is the point', desc: 'Nothing in Dear Stranger arrives instantly. When you send a letter, it drifts through the universe for anywhere between one and seven days before landing. This is not a bug. The wait is part of the experience — it gives your words weight, and gives the reader time to anticipate. Write like your letter deserves the journey.' },
   { icon: '◎', title: 'Every hub is a real person', desc: 'Every glowing point, every lantern, every archway you see floating in the universe belongs to someone real — a student, a wanderer, someone who sat with the same questions you did during onboarding. Click a hub to see their presence. Write to connect.' },
   { icon: '✒', title: 'There are no likes. No followers. No feed.', desc: 'Dear Stranger has no metrics. Nobody sees how many letters you have sent or received unless you tell them. There is no algorithm deciding who matters. The only way to be known here is to write — and to mean it.' },
   { icon: '⟡', title: 'The Observatory holds your correspondence', desc: 'Every letter you send or receive lives in the Observatory. Track letters still traveling, open ones that have arrived, and revisit your archive. Universe letters appear as shooting stars drifting across the map. Catch one and read a piece of what a stranger sent into the void.' },
   { icon: '🌀', title: 'Your Soul Mirror is sealed for 90 days', desc: 'On your first day, the mirror gives you three chances to shape how you appear. After the third, your form is fixed. After 90 days the mirror opens again. Your presence here should feel considered, not constantly edited. You are not a profile. You are a place.' },
-  { icon: '◉', title: 'Your hub style and voice are yours', desc: 'During onboarding you choose how your hub looks and how the mirror speaks to you. You can update your bio and ask-about anytime from your profile — but your hub form should feel chosen, not constantly rebuilt.' },
+  { icon: '◉', title: 'Your hub style, backdrop, and voice are yours', desc: 'During onboarding you chose how your hub looks, what world sits behind it, and how the mirror spoke to you. You can update your bio and ask-about anytime from your profile — but your hub form and backdrop change only when the mirror reopens.' },
   { icon: '🌍', title: 'This space is for everyone — but it started for students', desc: 'Dear Stranger was built with college students in mind — the 2am questions, the distance from home, the strange intimacy of sharing a campus with thousands of strangers. But if you found your way here, you are welcome.' },
 ]
 
 export interface StyleOption { id: string; label: string; desc: string }
 export interface MirrorVoice { id: string; label: string; desc: string; icon: string; prompt: string }
-type Phase = 'voice' | 'style' | 'hubstyle' | 'chat' | 'hubname' | 'bio' | 'welcome'
+export interface BackdropOption { id: string; label: string; desc: string; icon: string; colors: string[] }
+
+type Phase = 'voice' | 'style' | 'hubstyle' | 'backdrop' | 'chat' | 'hubname' | 'bio' | 'welcome'
 
 interface SoulMirrorProps {
   isReturning?: boolean
-  errorMessage?: string
   onComplete?: (
     answers: Record<number, string>,
     selectedStyle?: StyleOption,
     hubStyle?: HubStyle,
     mirrorVoice?: MirrorVoice,
+    backdrop?: BackdropOption,
     bio?: string,
     hubNameFromOnboarding?: string,
   ) => void
 }
 
-export default function SoulMirror({ isReturning = false, errorMessage = '', onComplete }: SoulMirrorProps) {
+export default function SoulMirror({ isReturning = false, onComplete }: SoulMirrorProps) {
   const [phase, setPhase] = useState<Phase>('voice')
   const [selectedVoice, setSelectedVoice] = useState<MirrorVoice | null>(null)
   const [selectedStyle, setSelectedStyle] = useState<StyleOption | null>(null)
   const [selectedHubStyle, setSelectedHubStyle] = useState<HubStyle>('portal')
+  const [selectedBackdrop, setSelectedBackdrop] = useState<BackdropOption | null>(null)
   const [messages, setMessages] = useState<{ role: 'ai' | 'user'; text: string; isClosing?: boolean; chips?: string[] }[]>([])
   const [userAnswers, setUserAnswers] = useState<string[]>([])
   const [inputValue, setInputValue] = useState('')
@@ -122,7 +139,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', onC
     const answersRecord: Record<number, string> = {}
     userAnswers.forEach((a, i) => { answersRecord[i] = a })
     answersRecord[userAnswers.length] = hubName.trim()
-    onComplete?.(answersRecord, selectedStyle || undefined, selectedHubStyle, selectedVoice || undefined, bio.trim(), hubName.trim())
+    onComplete?.(answersRecord, selectedStyle || undefined, selectedHubStyle, selectedVoice || undefined, selectedBackdrop || undefined, bio.trim(), hubName.trim())
   }
 
   const progressPct = Math.min(100, (userAnswers.length / MIN_EXCHANGES) * 100)
@@ -155,12 +172,6 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', onC
   return (
     <div style={{ position: 'fixed', inset: 0, background: '#000005', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '20px', overflowY: 'auto' }}>
       <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', background: 'radial-gradient(ellipse 60% 40% at 20% 30%, rgba(40,20,80,0.25) 0%, transparent 70%), radial-gradient(ellipse 50% 60% at 80% 70%, rgba(10,30,80,0.2) 0%, transparent 70%)' }} />
-
-      {errorMessage && (
-        <div style={{ position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)', width: 'min(620px, calc(100vw - 40px))', padding: '12px 16px', background: 'rgba(60,15,20,0.88)', border: '1px solid rgba(220,120,120,0.35)', borderRadius: '10px', zIndex: 60, boxShadow: '0 14px 40px rgba(0,0,0,0.35)' }}>
-          <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(255,220,220,0.92)', textAlign: 'center' }}>{errorMessage}</p>
-        </div>
-      )}
 
       <AnimatePresence mode="wait">
 
@@ -232,7 +243,39 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', onC
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <button onClick={() => setPhase('style')} style={backBtn}>← Back</button>
-              <button onClick={() => setPhase('chat')} style={continueBtn}>Enter the Mirror ✦</button>
+              <button onClick={() => setPhase('backdrop')} style={continueBtn}>Continue ✦</button>
+            </div>
+          </motion.div>
+        )}
+
+        {phase === 'backdrop' && (
+          <motion.div key="backdrop" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.4 }}
+            style={{ ...cardStyle, width: 'min(760px, 95vw)', padding: 'clamp(28px,5vw,44px)' }}>
+            <GoldLines />
+            <SectionHeader step="Soul Mirror · Step 4 of 5" title="What world sits behind your hub?" sub="This becomes the atmosphere others feel when they visit your corner of the universe." />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px', marginBottom: '28px' }}>
+              {BACKDROPS.map(bd => {
+                const isSelected = selectedBackdrop?.id === bd.id
+                return (
+                  <motion.button key={bd.id} whileHover={{ y: -2 }} whileTap={{ scale: 0.97 }}
+                    onClick={() => setSelectedBackdrop(bd)}
+                    style={{ textAlign: 'left', padding: '16px', borderRadius: '12px', border: isSelected ? '1px solid rgba(230,199,110,0.7)' : '1px solid rgba(255,255,255,0.1)', background: isSelected ? 'rgba(230,199,110,0.1)' : `linear-gradient(135deg, ${bd.colors[0]}, ${bd.colors[1]})`, cursor: 'pointer', transition: 'all 0.2s', position: 'relative' }}
+                    onMouseEnter={e => { if (!isSelected) e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)' }}
+                    onMouseLeave={e => { if (!isSelected) e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)' }}>
+                    {isSelected && <div style={{ position: 'absolute', top: '10px', right: '12px', width: '16px', height: '16px', borderRadius: '50%', background: '#c9a84c', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', color: '#000', fontWeight: 'bold' }}>✓</div>}
+                    <p style={{ fontSize: '20px', marginBottom: '8px' }}>{bd.icon}</p>
+                    <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.18em', color: isSelected ? '#e6c76e' : 'rgba(255,255,255,0.75)', textTransform: 'uppercase', marginBottom: '5px' }}>{bd.label}</p>
+                    <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '12px', color: 'rgba(255,255,255,0.5)', lineHeight: 1.5 }}>{bd.desc}</p>
+                  </motion.button>
+                )
+              })}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <button onClick={() => setPhase('hubstyle')} style={backBtn}>← Back</button>
+              <button onClick={() => selectedBackdrop && setPhase('chat')} disabled={!selectedBackdrop}
+                style={{ ...continueBtn, opacity: selectedBackdrop ? 1 : 0.4, cursor: selectedBackdrop ? 'pointer' : 'default' }}>
+                Enter the Mirror ✦
+              </button>
             </div>
           </motion.div>
         )}
@@ -245,9 +288,9 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', onC
             <div style={{ padding: '16px 22px 12px', borderBottom: '1px solid rgba(255,255,255,0.07)', flexShrink: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
-                  <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.4em', color: '#e6c76e', textTransform: 'uppercase' }}>Soul Mirror · Step 4 of 4</p>
+                  <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.4em', color: '#e6c76e', textTransform: 'uppercase' }}>Soul Mirror · Step 5 of 5</p>
                   <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '12px', color: 'rgba(255,255,255,0.55)', marginTop: '3px' }}>
-                    {selectedVoice?.label} · {selectedStyle?.label} · {HUB_STYLES.find(style => style.id === selectedHubStyle)?.label}
+                    {selectedVoice?.label} · {selectedStyle?.label} · {selectedBackdrop?.label}
                   </p>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
@@ -268,7 +311,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', onC
                     <div style={{ maxWidth: '84%', padding: '12px 16px', borderRadius: msg.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px', background: msg.isClosing ? 'rgba(230,199,110,0.1)' : msg.role === 'user' ? 'rgba(230,199,110,0.13)' : 'rgba(255,255,255,0.06)', border: msg.isClosing ? '1px solid rgba(230,199,110,0.4)' : msg.role === 'user' ? '1px solid rgba(230,199,110,0.25)' : '1px solid rgba(255,255,255,0.09)' }}>
                       {msg.role === 'ai' && (
                         <p style={{ fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.2em', color: msg.isClosing ? '#e6c76e' : 'rgba(230,199,110,0.75)', textTransform: 'uppercase', marginBottom: '6px' }}>
-                          {msg.isClosing ? 'Mirror · I can see you now' : `${selectedVoice?.label || 'Mirror'}`}
+                          {msg.isClosing ? '✦ Mirror · I can see you now' : `✦ ${selectedVoice?.label || 'Mirror'}`}
                         </p>
                       )}
                       <p style={{ fontFamily: msg.role === 'ai' ? "'IM Fell English', serif" : "'Cormorant Garamond', serif", fontStyle: msg.role === 'ai' ? 'italic' : 'normal', fontSize: msg.role === 'ai' ? '16px' : '15px', color: 'rgba(255,255,255,0.9)', lineHeight: 1.65 }}>

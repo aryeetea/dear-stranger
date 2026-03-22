@@ -1,6 +1,8 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { NextResponse } from 'next/server'
 
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
+
 const VOICE_PROMPTS: Record<string, string> = {
   friend: `You are a warm, gentle, encouraging friend helping someone create their avatar. You speak with genuine care and interest — never clinical, never performative. Use natural, conversational language.`,
   poetic: `You are poetic and mysterious. Speak in metaphors and layered imagery. Let silence breathe. Ask questions that feel like riddles worth answering.`,
@@ -22,12 +24,6 @@ export async function POST(req: Request) {
     const voiceInstruction = mirrorVoicePrompt || VOICE_PROMPTS[mirrorVoice] || VOICE_PROMPTS.friend
     const hasEnough = exchangeNumber >= minExchanges
     const mustClose = exchangeNumber >= maxExchanges
-    const isFirstTurn = exchangeNumber === 0
-    const apiKey = process.env.GEMINI_API_KEY
-
-    if (!apiKey) {
-      return NextResponse.json({ error: 'Missing GEMINI_API_KEY' }, { status: 500 })
-    }
 
     const systemPrompt = `
 ${voiceInstruction}
@@ -36,34 +32,15 @@ Your role: You are a Soul Mirror helping someone create their ${style || 'artist
 
 ${isReturning ? `IMPORTANT: This person is RETURNING after 90 days. Open with a warm returning greeting like "Hello, my old friend. It has been a while." in your voice style.` : ''}
 
-${isFirstTurn ? `
 Your FIRST question must:
-- Be centered on this exact question: "In another world, how do you see yourself? Describe yourself in as much detail as you can."
-- You may add a brief lead-in in your voice style, but do not rewrite or replace that core question.
-- Contain exactly ONE question
-` : `
-You are continuing an existing conversation.
-- Do NOT reintroduce yourself.
-- Do NOT repeat your opening.
-- Ask only the single best next follow-up question.
-`}
+- Introduce yourself briefly in your voice style
+- Ask them to describe themselves in as much detail as possible — appearance, energy, the world they inhabit, how they carry themselves
+- Explicitly say something like "go into as much detail as you can — the more you share, the more the mirror can reflect back"
 
 After that:
 - Ask targeted follow-up questions ONLY if you need more visual detail
 - Focus on: physical appearance, energy/vibe, colors or textures that feel like them, setting or world
 - Ask ONE thing at a time. Stay in your voice style throughout.
-- Every turn must contain exactly ONE question.
-- Never stack questions.
-- Never ask about appearance, vibe, colors, and setting in the same turn.
-- Use only one question mark total in the whole response.
-- Do not use decorative symbols, sparkle icons, bullet points, or markdown emphasis.
-- Keep the wording natural and conversational for the selected voice.
-- Make sure every follow-up clearly responds to what the person just said.
-- Do not ignore vivid details they already gave you.
-- If they already gave a lot, narrow in on the single most useful missing visual detail.
-- Do not ask generic questions when a more specific follow-up is possible.
-- Do not contradict earlier details.
-- Keep continuity across the conversation so it feels like one thoughtful exchange, not separate prompts.
 
 ${hasEnough ? `
 ASSESSMENT: You now have ${exchangeNumber} exchanges. Do you have enough visual detail for a strong ${style} portrait?
@@ -88,62 +65,12 @@ Never reuse chips from previous turns. Make them feel alive and specific to the 
 Keep responses concise. Never use bullet points or numbered lists.
 `
 
-    const genAI = new GoogleGenerativeAI(apiKey)
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash',
-      systemInstruction: systemPrompt,
-    })
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
 
-    const rawHistory = Array.isArray(messages) ? [...messages] : []
-    const latestUserMessage =
-      answers[answers.length - 1] ||
-      (rawHistory.length > 0 && rawHistory[rawHistory.length - 1]?.role === 'user'
-        ? rawHistory[rawHistory.length - 1].text
-        : 'Continue.')
-
-    // Gemini chat history must begin with a user turn, so we exclude the
-    // current user message from history and fold the initial AI opener into
-    // the first user turn once a reply exists.
-    const historyForChat =
-      rawHistory.length > 0 && rawHistory[rawHistory.length - 1]?.role === 'user'
-        ? rawHistory.slice(0, -1)
-        : rawHistory
-
-    const normalizedHistory: { role: 'user' | 'model'; parts: { text: string }[] }[] = []
-    let foldedLatestUserMessage = latestUserMessage
-
-    if (historyForChat.length > 0 && historyForChat[0]?.role === 'ai') {
-      const openingPrompt = historyForChat[0].text
-      const openingReply =
-        historyForChat.length > 1 && historyForChat[1]?.role === 'user'
-          ? historyForChat[1].text
-          : null
-
-      if (openingReply) {
-        normalizedHistory.push({
-          role: 'user',
-          parts: [{
-            text: `The Soul Mirror asked: ${openingPrompt}\nMy answer: ${openingReply}`,
-          }],
-        })
-      } else if (foldedLatestUserMessage) {
-        foldedLatestUserMessage = `The Soul Mirror asked: ${openingPrompt}\nMy answer: ${foldedLatestUserMessage}`
-      }
-    }
-
-    const remainingHistoryStart =
-      historyForChat.length > 1 && historyForChat[0]?.role === 'ai' && historyForChat[1]?.role === 'user'
-        ? 2
-        : historyForChat.length > 0 && historyForChat[0]?.role === 'ai'
-          ? 1
-          : 0
-
-    const conversationHistory = normalizedHistory.concat(
-      historyForChat.slice(remainingHistoryStart).map((m: { role: string; text: string }) => ({
-        role: m.role === 'ai' ? 'model' : 'user',
-        parts: [{ text: m.text }],
-      }))
-    )
+    const conversationHistory = messages.map((m: { role: string; text: string }) => ({
+      role: m.role === 'ai' ? 'model' : 'user',
+      parts: [{ text: m.text }],
+    }))
 
     const chat = model.startChat({
       history: conversationHistory,
@@ -151,12 +78,11 @@ Keep responses concise. Never use bullet points or numbered lists.
         maxOutputTokens: 400,
         temperature: mirrorVoice === 'genz' ? 1.1 : mirrorVoice === 'poetic' ? 0.95 : 0.85,
       },
+      systemInstruction: systemPrompt,
     })
 
     const result = await chat.sendMessage(
-      conversationHistory.length === 0 && answers.length === 0
-        ? 'Begin. Ask your opening question.'
-        : foldedLatestUserMessage
+      conversationHistory.length === 0 ? 'Begin. Ask your opening question.' : answers[answers.length - 1] || 'Continue.'
     )
 
     const raw = result.response.text()
@@ -167,7 +93,7 @@ Keep responses concise. Never use bullet points or numbered lists.
       ? chipsMatch[1].split('|').map((c: string) => c.trim()).filter(Boolean).slice(0, 6)
       : []
 
-    const cleaned = raw.replace('[DONE]', '').replace(/\[CHIPS:[\s\S]*?\]/g, '').trim()
+    const cleaned = raw.replace('[DONE]', '').replace(/\[CHIPS:[\s\S]*?\]/, '').trim()
 
     return NextResponse.json({ question: cleaned, done: isDone, chips })
   } catch (err) {
