@@ -19,13 +19,13 @@ interface Letter {
 }
 
 const PAPER_COLORS: Record<string, { accent: string; bg: string }> = {
-  parchment: { accent: '#c9a84c', bg: 'rgba(200,160,80,0.08)' },
-  midnight: { accent: '#6688cc', bg: 'rgba(80,110,200,0.08)' },
-  scroll: { accent: '#a07840', bg: 'rgba(160,120,60,0.08)' },
-  ivory: { accent: '#aaaaaa', bg: 'rgba(200,200,200,0.06)' },
-  starfield: { accent: '#c9a84c', bg: 'rgba(201,168,76,0.06)' },
-  ember: { accent: '#cc6622', bg: 'rgba(200,80,30,0.08)' },
-  vellum: { accent: '#8899ff', bg: 'rgba(130,150,255,0.07)' },
+  parchment: { accent: '#e6c76e', bg: 'rgba(230,199,110,0.1)' },
+  midnight: { accent: '#8aa7ff', bg: 'rgba(110,140,255,0.1)' },
+  scroll: { accent: '#c89b5a', bg: 'rgba(200,150,90,0.1)' },
+  ivory: { accent: '#d8d8d8', bg: 'rgba(220,220,220,0.08)' },
+  starfield: { accent: '#e6c76e', bg: 'rgba(230,199,110,0.08)' },
+  ember: { accent: '#ff8a47', bg: 'rgba(255,120,60,0.1)' },
+  vellum: { accent: '#9fb2ff', bg: 'rgba(150,170,255,0.09)' },
 }
 
 function clamp(value: number, min: number, max: number) {
@@ -196,8 +196,8 @@ export default function Observatory({
           top: '28px',
           right: '28px',
           background: 'none',
-          border: '1px solid rgba(255,255,255,0.08)',
-          color: 'rgba(255,255,255,0.25)',
+          border: '1px solid rgba(255,255,255,0.22)',
+          color: 'rgba(255,255,255,0.82)',
           fontFamily: "'Cinzel', serif",
           fontSize: '9px',
           letterSpacing: '0.3em',
@@ -205,14 +205,17 @@ export default function Observatory({
           cursor: 'pointer',
           textTransform: 'uppercase',
           zIndex: 80,
+          textShadow: '0 0 6px rgba(0,0,0,0.45)',
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.color = 'rgba(255,255,255,0.5)'
-          e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)'
+          e.currentTarget.style.color = 'rgba(255,255,255,0.98)'
+          e.currentTarget.style.borderColor = 'rgba(255,255,255,0.4)'
+          e.currentTarget.style.background = 'rgba(255,255,255,0.04)'
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.color = 'rgba(255,255,255,0.25)'
-          e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'
+          e.currentTarget.style.color = 'rgba(255,255,255,0.82)'
+          e.currentTarget.style.borderColor = 'rgba(255,255,255,0.22)'
+          e.currentTarget.style.background = 'none'
         }}
       >
         ← Universe
@@ -231,9 +234,10 @@ export default function Observatory({
               fontSize: 'clamp(20px, 3vw, 28px)',
               fontWeight: 300,
               letterSpacing: '0.4em',
-              color: '#c9a84c',
+              color: '#e6c76e',
               textTransform: 'uppercase',
               marginBottom: '10px',
+              textShadow: '0 0 10px rgba(230,199,110,0.22)',
             }}
           >
             The Observatory
@@ -243,8 +247,9 @@ export default function Observatory({
               fontFamily: "'IM Fell English', serif",
               fontStyle: 'italic',
               fontSize: '15px',
-              color: 'rgba(255,255,255,0.3)',
+              color: 'rgba(255,255,255,0.82)',
               letterSpacing: '0.06em',
+              textShadow: '0 0 6px rgba(0,0,0,0.4)',
             }}
           >
             letters in motion, letters at rest
@@ -258,9 +263,9 @@ export default function Observatory({
           style={{
             display: 'flex',
             gap: '0',
-            background: 'rgba(10,12,30,0.6)',
-            border: '1px solid rgba(201,168,76,0.1)',
-            borderRadius: '2px',
+            background: 'rgba(10,12,30,0.68)',
+            border: '1px solid rgba(230,199,110,0.16)',
+            borderRadius: '4px',
             overflow: 'hidden',
             marginBottom: '32px',
           }}
@@ -272,9 +277,9 @@ export default function Observatory({
               style={{
                 flex: 1,
                 padding: '14px 8px',
-                background: activeTab === tab.id ? 'rgba(201,168,76,0.08)' : 'transparent',
+                background: activeTab === tab.id ? 'rgba(230,199,110,0.1)' : 'transparent',
                 border: 'none',
-                borderRight: i < 2 ? '1px solid rgba(255,255,255,0.05)' : 'none',
+                borderRight: i < 2 ? '1px solid rgba(255,255,255,0.08)' : 'none',
                 cursor: 'pointer',
                 transition: 'background 0.3s',
                 display: 'flex',
@@ -289,8 +294,9 @@ export default function Observatory({
                   fontSize: '10px',
                   letterSpacing: '0.25em',
                   textTransform: 'uppercase',
-                  color: activeTab === tab.id ? '#c9a84c' : 'rgba(255,255,255,0.3)',
+                  color: activeTab === tab.id ? '#e6c76e' : 'rgba(255,255,255,0.72)',
                   transition: 'color 0.3s',
+                  textShadow: activeTab === tab.id ? '0 0 8px rgba(230,199,110,0.16)' : 'none',
                 }}
               >
                 {tab.label}
@@ -301,8 +307,8 @@ export default function Observatory({
                   fontSize: '9px',
                   color:
                     activeTab === tab.id
-                      ? 'rgba(201,168,76,0.6)'
-                      : 'rgba(255,255,255,0.15)',
+                      ? 'rgba(230,199,110,0.82)'
+                      : 'rgba(255,255,255,0.55)',
                   transition: 'color 0.3s',
                 }}
               >
@@ -327,7 +333,8 @@ export default function Observatory({
                     fontFamily: "'IM Fell English', serif",
                     fontStyle: 'italic',
                     fontSize: '16px',
-                    color: 'rgba(255,255,255,0.2)',
+                    color: 'rgba(255,255,255,0.75)',
+                    textShadow: '0 0 5px rgba(0,0,0,0.35)',
                   }}
                 >
                   loading letters...
@@ -340,7 +347,8 @@ export default function Observatory({
                     fontFamily: "'IM Fell English', serif",
                     fontStyle: 'italic',
                     fontSize: '16px',
-                    color: 'rgba(255,255,255,0.2)',
+                    color: 'rgba(255,255,255,0.75)',
+                    textShadow: '0 0 5px rgba(0,0,0,0.35)',
                   }}
                 >
                   {activeTab === 'transit' && 'No letters traveling at the moment.'}
@@ -405,15 +413,15 @@ function LetterEntry({
         padding: '18px 20px',
         background: colors.bg,
         border: `1px solid ${
-          isTransit ? 'rgba(201,168,76,0.1)' : 'rgba(255,255,255,0.05)'
+          isTransit ? 'rgba(230,199,110,0.16)' : 'rgba(255,255,255,0.1)'
         }`,
-        borderRadius: '2px',
+        borderRadius: '4px',
         cursor: isTransit ? 'default' : 'pointer',
         transition: 'background 0.2s, border-color 0.2s',
         position: 'relative',
         overflow: 'hidden',
       }}
-      whileHover={!isTransit ? ({ backgroundColor: 'rgba(255,255,255,0.03)' } as never) : {}}
+      whileHover={!isTransit ? ({ backgroundColor: 'rgba(255,255,255,0.04)' } as never) : {}}
     >
       <div
         style={{
@@ -421,7 +429,7 @@ function LetterEntry({
           lineHeight: 1,
           flexShrink: 0,
           marginTop: '2px',
-          opacity: isTransit ? 0.5 : letter.status === 'archive' ? 0.4 : 1,
+          opacity: isTransit ? 0.75 : letter.status === 'archive' ? 0.6 : 1,
           filter: isTransit ? 'none' : `drop-shadow(0 0 4px ${colors.accent}60)`,
         }}
       >
@@ -445,6 +453,7 @@ function LetterEntry({
               letterSpacing: '0.18em',
               color: colors.accent,
               textTransform: 'uppercase',
+              textShadow: '0 0 6px rgba(0,0,0,0.35)',
             }}
           >
             {letter.direction === 'received' ? `From · ${letter.from}` : `To · ${letter.to}`}
@@ -454,7 +463,7 @@ function LetterEntry({
               fontFamily: "'Cinzel', serif",
               fontSize: '9px',
               letterSpacing: '0.15em',
-              color: 'rgba(255,255,255,0.18)',
+              color: 'rgba(255,255,255,0.58)',
               whiteSpace: 'nowrap',
               flexShrink: 0,
             }}
@@ -468,11 +477,12 @@ function LetterEntry({
             fontFamily: "'IM Fell English', serif",
             fontStyle: 'italic',
             fontSize: '14px',
-            color: 'rgba(255,255,255,0.45)',
+            color: 'rgba(255,255,255,0.84)',
             lineHeight: 1.5,
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
+            textShadow: '0 0 4px rgba(0,0,0,0.3)',
           }}
         >
           {letter.preview}
@@ -486,7 +496,7 @@ function LetterEntry({
                   fontFamily: "'Cinzel', serif",
                   fontSize: '8px',
                   letterSpacing: '0.2em',
-                  color: 'rgba(255,255,255,0.15)',
+                  color: 'rgba(255,255,255,0.62)',
                   textTransform: 'uppercase',
                 }}
               >
@@ -497,7 +507,7 @@ function LetterEntry({
                   fontFamily: "'Cinzel', serif",
                   fontSize: '8px',
                   letterSpacing: '0.15em',
-                  color: 'rgba(201,168,76,0.4)',
+                  color: 'rgba(230,199,110,0.85)',
                 }}
               >
                 {letter.travelProgress ?? 0}%
@@ -505,8 +515,8 @@ function LetterEntry({
             </div>
             <div
               style={{
-                height: '1px',
-                background: 'rgba(255,255,255,0.05)',
+                height: '2px',
+                background: 'rgba(255,255,255,0.08)',
                 borderRadius: '1px',
                 overflow: 'hidden',
                 position: 'relative',
@@ -560,7 +570,7 @@ function LetterModal({
     },
     midnight: {
       background: 'linear-gradient(135deg, #0d1128, #111830)',
-      color: 'rgba(200,220,255,0.85)',
+      color: 'rgba(220,230,255,0.92)',
     },
     scroll: {
       background: 'linear-gradient(135deg, #d4b896, #c8a878)',
@@ -572,15 +582,15 @@ function LetterModal({
     },
     starfield: {
       background: 'linear-gradient(135deg, #03040d, #060816)',
-      color: 'rgba(255,255,255,0.88)',
+      color: 'rgba(255,255,255,0.94)',
     },
     ember: {
       background: 'linear-gradient(135deg, #1a0808, #200c0c)',
-      color: 'rgba(255,220,180,0.88)',
+      color: 'rgba(255,230,200,0.92)',
     },
     vellum: {
       background: 'linear-gradient(135deg, rgba(20,25,60,0.95), rgba(15,20,50,0.98))',
-      color: 'rgba(220,235,255,0.9)',
+      color: 'rgba(230,240,255,0.95)',
     },
   }
 
@@ -641,7 +651,8 @@ function LetterModal({
             color: colors.accent,
             textTransform: 'uppercase',
             marginBottom: '20px',
-            opacity: 0.7,
+            opacity: 0.88,
+            textShadow: '0 0 6px rgba(0,0,0,0.25)',
           }}
         >
           {letter.direction === 'received' ? `From · ${letter.from}` : `To · ${letter.to}`}
@@ -652,7 +663,7 @@ function LetterModal({
             fontFamily: "'IM Fell English', serif",
             fontStyle: 'italic',
             fontSize: '11px',
-            opacity: 0.5,
+            opacity: 0.76,
             marginBottom: '20px',
           }}
         >
@@ -669,7 +680,7 @@ function LetterModal({
             fontFamily: "'Cormorant Garamond', serif",
             fontSize: '17px',
             fontStyle: 'italic',
-            opacity: 0.6,
+            opacity: 0.9,
             marginBottom: '16px',
             lineHeight: 1.8,
           }}
@@ -683,6 +694,7 @@ function LetterModal({
             fontSize: 'clamp(15px, 2vw, 18px)',
             lineHeight: 2,
             letterSpacing: '0.02em',
+            opacity: 0.98,
           }}
         >
           {letter.body}
@@ -693,14 +705,14 @@ function LetterModal({
             fontFamily: "'Cormorant Garamond', serif",
             fontStyle: 'italic',
             fontSize: '15px',
-            opacity: 0.5,
+            opacity: 0.86,
             marginTop: '24px',
             lineHeight: 1.9,
           }}
         >
           With presence,
           <br />
-          <span style={{ color: colors.accent, opacity: 0.8 }}>A Stranger</span>
+          <span style={{ color: colors.accent, opacity: 0.95 }}>A Stranger</span>
         </p>
 
         {letter.direction === 'received' && (
@@ -709,8 +721,14 @@ function LetterModal({
               marginTop: '32px',
               paddingTop: '20px',
               borderTop: `1px solid rgba(${
-                colors.accent === '#c9a84c' ? '201,168,76' : '100,120,200'
-              },0.15)`,
+                colors.accent === '#e6c76e'
+                  ? '230,199,110'
+                  : colors.accent === '#8aa7ff' || colors.accent === '#9fb2ff'
+                    ? '140,167,255'
+                    : colors.accent === '#ff8a47'
+                      ? '255,138,71'
+                      : '200,180,140'
+              },0.22)`,
             }}
           >
             <button
@@ -721,12 +739,13 @@ function LetterModal({
                 letterSpacing: '0.3em',
                 color: colors.accent,
                 padding: '10px 24px',
-                border: `1px solid ${colors.accent}50`,
+                border: `1px solid ${colors.accent}70`,
                 borderRadius: '2px',
                 background: 'transparent',
                 cursor: 'pointer',
                 textTransform: 'uppercase',
                 transition: 'all 0.2s',
+                textShadow: '0 0 8px rgba(0,0,0,0.2)',
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = `${colors.accent}12`
@@ -735,7 +754,7 @@ function LetterModal({
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.background = 'transparent'
-                e.currentTarget.style.borderColor = `${colors.accent}50`
+                e.currentTarget.style.borderColor = `${colors.accent}70`
                 e.currentTarget.style.boxShadow = 'none'
               }}
             >
@@ -765,15 +784,15 @@ function LetterModal({
             border: 'none',
             fontSize: '18px',
             cursor: 'pointer',
-            opacity: 0.3,
+            opacity: 0.6,
             transition: 'opacity 0.2s',
             color: 'inherit',
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.opacity = '0.7'
+            e.currentTarget.style.opacity = '0.95'
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.opacity = '0.3'
+            e.currentTarget.style.opacity = '0.6'
           }}
         >
           ×

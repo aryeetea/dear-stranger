@@ -2,8 +2,7 @@
 
 import { useState, type CSSProperties } from 'react'
 import { motion } from 'framer-motion'
-import { updateHub } from '../lib/auth'
-import type { StyleOption } from './SoulMirror'
+import { updateHub, signOut } from '../lib/auth'
 
 interface ProfileData {
   hubName: string
@@ -23,7 +22,6 @@ export default function Profile({
   bio,
   askAbout,
   avatarUrl: initialAvatarUrl,
-  selectedStyle,
   onClose,
   onUpdateHub,
 }: {
@@ -31,7 +29,6 @@ export default function Profile({
   bio?: string
   askAbout?: string
   avatarUrl?: string
-  selectedStyle?: StyleOption
   onClose?: () => void
   onUpdateHub?: (name: string) => void
 }) {
@@ -50,6 +47,7 @@ export default function Profile({
   const [regenLoading, setRegenLoading] = useState(false)
   const [regenFeedback, setRegenFeedback] = useState('')
   const [showRegenInput, setShowRegenInput] = useState(false)
+  const [leavingConfirm, setLeavingConfirm] = useState(false)
 
   const [editingHub, setEditingHub] = useState(false)
   const [editingBio, setEditingBio] = useState(false)
@@ -60,38 +58,39 @@ export default function Profile({
   const [bioDraft, setBioDraft] = useState(profile.bio)
   const [askDraft, setAskDraft] = useState(profile.askAbout)
 
-  const refreshProgress = ((AVATAR_REFRESH_DAYS - profile.avatarRefreshDaysLeft) / AVATAR_REFRESH_DAYS) * 100
+  const refreshProgress =
+    ((AVATAR_REFRESH_DAYS - profile.avatarRefreshDaysLeft) / AVATAR_REFRESH_DAYS) * 100
   const attemptsLeft = MAX_REGEN_ATTEMPTS - regenCount
+
+  async function handleLeaveUniverse() {
+    if (!leavingConfirm) {
+      setLeavingConfirm(true)
+      setTimeout(() => setLeavingConfirm(false), 4000)
+      return
+    }
+    await signOut()
+    window.location.reload()
+  }
 
   async function regenerateAvatar() {
     if (regenCount >= MAX_REGEN_ATTEMPTS || regenLoading) return
-
     try {
       setRegenLoading(true)
       setShowRegenInput(false)
-
       const res = await fetch('/api/generate-avatar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          answers: {
-            bio: profile.bio,
-            askAbout: profile.askAbout,
-            changes: regenFeedback,
-          },
-          selectedStyle,
+          answers: { 0: profile.bio, 1: profile.askAbout, 2: regenFeedback },
           feedback: regenFeedback,
         }),
       })
-
       const data = await res.json()
       if (!res.ok || data.error) throw new Error(data.error || 'Failed')
-
       const newUrl = data.imageUrl
       setCurrentAvatarUrl(newUrl)
-      setRegenCount(c => c + 1)
+      setRegenCount((c) => c + 1)
       setRegenFeedback('')
-
       await updateHub({ avatar_url: newUrl })
     } catch (err) {
       console.error('Regen failed:', err)
@@ -104,7 +103,7 @@ export default function Profile({
     try {
       setSaving(true)
       await updateHub({ hub_name: hubDraft })
-      setProfile(p => ({ ...p, hubName: hubDraft }))
+      setProfile((p) => ({ ...p, hubName: hubDraft }))
       onUpdateHub?.(hubDraft)
       setEditingHub(false)
     } catch (err) {
@@ -118,7 +117,7 @@ export default function Profile({
     try {
       setSaving(true)
       await updateHub({ bio: bioDraft })
-      setProfile(p => ({ ...p, bio: bioDraft }))
+      setProfile((p) => ({ ...p, bio: bioDraft }))
       setEditingBio(false)
     } catch (err) {
       console.error(err)
@@ -131,7 +130,7 @@ export default function Profile({
     try {
       setSaving(true)
       await updateHub({ ask_about: askDraft })
-      setProfile(p => ({ ...p, askAbout: askDraft }))
+      setProfile((p) => ({ ...p, askAbout: askDraft }))
       setEditingAsk(false)
     } catch (err) {
       console.error(err)
@@ -193,8 +192,8 @@ export default function Profile({
           top: '28px',
           right: '28px',
           background: 'none',
-          border: '1px solid rgba(255,255,255,0.08)',
-          color: 'rgba(255,255,255,0.25)',
+          border: '1px solid rgba(255,255,255,0.22)',
+          color: 'rgba(255,255,255,0.82)',
           fontFamily: "'Cinzel', serif",
           fontSize: '9px',
           letterSpacing: '0.3em',
@@ -202,14 +201,17 @@ export default function Profile({
           cursor: 'pointer',
           textTransform: 'uppercase',
           zIndex: 80,
+          textShadow: '0 0 6px rgba(0,0,0,0.45)',
         }}
-        onMouseEnter={e => {
-          e.currentTarget.style.color = 'rgba(255,255,255,0.5)'
-          e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)'
+        onMouseEnter={(e) => {
+          e.currentTarget.style.color = 'rgba(255,255,255,0.98)'
+          e.currentTarget.style.borderColor = 'rgba(255,255,255,0.4)'
+          e.currentTarget.style.background = 'rgba(255,255,255,0.04)'
         }}
-        onMouseLeave={e => {
-          e.currentTarget.style.color = 'rgba(255,255,255,0.25)'
-          e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'
+        onMouseLeave={(e) => {
+          e.currentTarget.style.color = 'rgba(255,255,255,0.82)'
+          e.currentTarget.style.borderColor = 'rgba(255,255,255,0.22)'
+          e.currentTarget.style.background = 'none'
         }}
       >
         ← Universe
@@ -254,8 +256,8 @@ export default function Profile({
                     width: '40px',
                     height: '40px',
                     borderRadius: '50%',
-                    border: '2px solid rgba(201,168,76,0.3)',
-                    borderTopColor: '#c9a84c',
+                    border: '2px solid rgba(230,199,110,0.28)',
+                    borderTopColor: '#e6c76e',
                     margin: '0 auto 16px',
                   }}
                 />
@@ -264,8 +266,9 @@ export default function Profile({
                     fontFamily: "'Cinzel', serif",
                     fontSize: '9px',
                     letterSpacing: '0.3em',
-                    color: 'rgba(201,168,76,0.7)',
+                    color: '#e6c76e',
                     textTransform: 'uppercase',
+                    textShadow: '0 0 8px rgba(230,199,110,0.22)',
                   }}
                 >
                   Reimagining...
@@ -304,11 +307,13 @@ export default function Profile({
                   width: '100px',
                   height: '100px',
                   borderRadius: '50%',
-                  border: '1px solid rgba(201,168,76,0.3)',
+                  border: '1px solid rgba(230,199,110,0.32)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   fontSize: '40px',
+                  color: '#e6c76e',
+                  textShadow: '0 0 10px rgba(230,199,110,0.25)',
                 }}
               >
                 ✦
@@ -335,24 +340,33 @@ export default function Profile({
                 fontFamily: "'Cinzel', serif",
                 fontSize: '9px',
                 letterSpacing: '0.5em',
-                color: 'rgba(201,168,76,0.4)',
+                color: '#e6c76e',
                 textTransform: 'uppercase',
                 marginBottom: '6px',
+                textShadow: '0 0 8px rgba(230,199,110,0.2)',
               }}
             >
               Soul Mirror
             </p>
 
             {editingHub ? (
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '8px' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  gap: '8px',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  marginBottom: '8px',
+                }}
+              >
                 <input
                   value={hubDraft}
-                  onChange={e => setHubDraft(e.target.value)}
+                  onChange={(e) => setHubDraft(e.target.value)}
                   autoFocus
                   style={{
-                    background: 'rgba(255,255,255,0.04)',
-                    border: '1px solid rgba(201,168,76,0.3)',
-                    color: 'rgba(255,255,255,0.9)',
+                    background: 'rgba(255,255,255,0.06)',
+                    border: '1px solid rgba(230,199,110,0.35)',
+                    color: 'rgba(255,255,255,0.97)',
                     fontFamily: "'Cormorant Garamond', serif",
                     fontSize: 'clamp(22px, 3vw, 32px)',
                     letterSpacing: '0.06em',
@@ -360,15 +374,19 @@ export default function Profile({
                     outline: 'none',
                     borderRadius: '2px',
                     flex: 1,
-                    caretColor: '#c9a84c',
+                    caretColor: '#e6c76e',
                   }}
-                  onKeyDown={e => {
+                  onKeyDown={(e) => {
                     if (e.key === 'Enter') void saveHub()
                     if (e.key === 'Escape') setEditingHub(false)
                   }}
                 />
-                <button onClick={() => void saveHub()} style={saveBtn} disabled={saving}>Save</button>
-                <button onClick={() => setEditingHub(false)} style={cancelBtn} disabled={saving}>Cancel</button>
+                <button onClick={() => void saveHub()} style={saveBtn} disabled={saving}>
+                  Save
+                </button>
+                <button onClick={() => setEditingHub(false)} style={cancelBtn} disabled={saving}>
+                  Cancel
+                </button>
               </div>
             ) : (
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
@@ -377,8 +395,9 @@ export default function Profile({
                     fontFamily: "'Cormorant Garamond', serif",
                     fontSize: 'clamp(28px, 4vw, 48px)',
                     letterSpacing: '0.06em',
-                    color: 'rgba(255,255,255,0.92)',
+                    color: 'rgba(255,255,255,0.97)',
                     lineHeight: 1.1,
+                    textShadow: '0 0 8px rgba(0,0,0,0.45)',
                   }}
                 >
                   {profile.hubName}
@@ -395,22 +414,42 @@ export default function Profile({
               </div>
             )}
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '14px', flexWrap: 'wrap' }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '16px',
+                marginTop: '14px',
+                flexWrap: 'wrap',
+              }}
+            >
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <div style={{ position: 'relative', width: '36px', height: '36px' }}>
-                  <svg width="36" height="36" viewBox="0 0 36 36" style={{ transform: 'rotate(-90deg)' }}>
-                    <circle cx="18" cy="18" r="15" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="2" />
+                  <svg
+                    width="36"
+                    height="36"
+                    viewBox="0 0 36 36"
+                    style={{ transform: 'rotate(-90deg)' }}
+                  >
                     <circle
                       cx="18"
                       cy="18"
                       r="15"
                       fill="none"
-                      stroke="#c9a84c"
+                      stroke="rgba(255,255,255,0.12)"
+                      strokeWidth="2"
+                    />
+                    <circle
+                      cx="18"
+                      cy="18"
+                      r="15"
+                      fill="none"
+                      stroke="#e6c76e"
                       strokeWidth="2"
                       strokeDasharray={`${2 * Math.PI * 15}`}
                       strokeDashoffset={`${2 * Math.PI * 15 * (1 - refreshProgress / 100)}`}
                       strokeLinecap="round"
-                      style={{ opacity: 0.6 }}
+                      style={{ opacity: 0.78 }}
                     />
                   </svg>
                   <div
@@ -422,7 +461,8 @@ export default function Profile({
                       justifyContent: 'center',
                       fontFamily: "'Cinzel', serif",
                       fontSize: '7px',
-                      color: 'rgba(201,168,76,0.6)',
+                      color: '#e6c76e',
+                      textShadow: '0 0 6px rgba(230,199,110,0.18)',
                     }}
                   >
                     {profile.avatarRefreshDaysLeft}d
@@ -433,7 +473,7 @@ export default function Profile({
                     fontFamily: "'Cinzel', serif",
                     fontSize: '8px',
                     letterSpacing: '0.2em',
-                    color: 'rgba(255,255,255,0.2)',
+                    color: 'rgba(255,255,255,0.62)',
                     textTransform: 'uppercase',
                   }}
                 >
@@ -441,44 +481,33 @@ export default function Profile({
                 </p>
               </div>
 
-              {selectedStyle && (
-                <p
-                  style={{
-                    fontFamily: "'Cinzel', serif",
-                    fontSize: '8px',
-                    letterSpacing: '0.18em',
-                    color: 'rgba(201,168,76,0.55)',
-                    textTransform: 'uppercase',
-                  }}
-                >
-                  Style · {selectedStyle.label}
-                </p>
-              )}
-
               {attemptsLeft > 0 && (
                 <button
-                  onClick={() => setShowRegenInput(v => !v)}
+                  onClick={() => setShowRegenInput((v) => !v)}
                   disabled={regenLoading}
                   style={{
                     fontFamily: "'Cinzel', serif",
                     fontSize: '8px',
                     letterSpacing: '0.2em',
-                    color: 'rgba(201,168,76,0.6)',
+                    color: '#e6c76e',
                     padding: '6px 12px',
-                    border: '1px solid rgba(201,168,76,0.2)',
+                    border: '1px solid rgba(230,199,110,0.35)',
                     background: 'transparent',
                     cursor: 'pointer',
                     textTransform: 'uppercase',
                     borderRadius: '4px',
                     transition: 'all 0.2s',
+                    textShadow: '0 0 8px rgba(230,199,110,0.15)',
                   }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.color = '#c9a84c'
-                    e.currentTarget.style.borderColor = 'rgba(201,168,76,0.4)'
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = '#f0d58a'
+                    e.currentTarget.style.borderColor = 'rgba(230,199,110,0.55)'
+                    e.currentTarget.style.background = 'rgba(230,199,110,0.06)'
                   }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.color = 'rgba(201,168,76,0.6)'
-                    e.currentTarget.style.borderColor = 'rgba(201,168,76,0.2)'
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = '#e6c76e'
+                    e.currentTarget.style.borderColor = 'rgba(230,199,110,0.35)'
+                    e.currentTarget.style.background = 'transparent'
                   }}
                 >
                   ✦ Reimagine · {attemptsLeft} left
@@ -491,24 +520,29 @@ export default function Profile({
                     fontFamily: "'Cinzel', serif",
                     fontSize: '8px',
                     letterSpacing: '0.15em',
-                    color: 'rgba(255,255,255,0.15)',
+                    color: 'rgba(255,255,255,0.5)',
                     textTransform: 'uppercase',
                   }}
                 >
-                  No reimaginations left
+                  Your form is sealed · {profile.avatarRefreshDaysLeft} days until the mirror opens
                 </p>
               )}
             </div>
 
             {showRegenInput && attemptsLeft > 0 && (
-              <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} style={{ marginTop: '12px' }}>
+              <motion.div
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                style={{ marginTop: '12px' }}
+              >
                 <p
                   style={{
                     fontFamily: "'IM Fell English', serif",
                     fontStyle: 'italic',
                     fontSize: '13px',
-                    color: 'rgba(255,255,255,0.4)',
+                    color: 'rgba(255,255,255,0.78)',
                     marginBottom: '8px',
+                    textShadow: '0 0 5px rgba(0,0,0,0.35)',
                   }}
                 >
                   Tell the mirror what to change — or leave blank to reimagine freely.
@@ -516,21 +550,21 @@ export default function Profile({
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <input
                     value={regenFeedback}
-                    onChange={e => setRegenFeedback(e.target.value)}
+                    onChange={(e) => setRegenFeedback(e.target.value)}
                     placeholder="e.g. more dark and moody, different outfit..."
                     style={{
                       flex: 1,
-                      background: 'rgba(255,255,255,0.04)',
-                      border: '1px solid rgba(201,168,76,0.2)',
+                      background: 'rgba(255,255,255,0.05)',
+                      border: '1px solid rgba(230,199,110,0.24)',
                       borderRadius: '6px',
-                      color: 'rgba(255,255,255,0.8)',
+                      color: 'rgba(255,255,255,0.92)',
                       fontFamily: "'Cormorant Garamond', serif",
                       fontSize: '14px',
                       padding: '8px 12px',
                       outline: 'none',
-                      caretColor: '#c9a84c',
+                      caretColor: '#e6c76e',
                     }}
-                    onKeyDown={e => {
+                    onKeyDown={(e) => {
                       if (e.key === 'Enter') void regenerateAvatar()
                     }}
                   />
@@ -541,14 +575,15 @@ export default function Profile({
                       fontFamily: "'Cinzel', serif",
                       fontSize: '9px',
                       letterSpacing: '0.2em',
-                      color: '#c9a84c',
+                      color: '#e6c76e',
                       padding: '8px 16px',
-                      border: '1px solid rgba(201,168,76,0.35)',
+                      border: '1px solid rgba(230,199,110,0.38)',
                       background: 'transparent',
                       cursor: 'pointer',
                       textTransform: 'uppercase',
                       borderRadius: '6px',
                       whiteSpace: 'nowrap',
+                      textShadow: '0 0 8px rgba(230,199,110,0.15)',
                     }}
                   >
                     Reimagine ✦
@@ -558,7 +593,13 @@ export default function Profile({
             )}
           </div>
 
-          <div style={{ height: '1px', background: 'linear-gradient(90deg, rgba(201,168,76,0.3), transparent)', marginBottom: '32px' }} />
+          <div
+            style={{
+              height: '1px',
+              background: 'linear-gradient(90deg, rgba(230,199,110,0.35), transparent)',
+              marginBottom: '32px',
+            }}
+          />
 
           <div style={{ marginBottom: '28px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '10px' }}>
@@ -567,8 +608,9 @@ export default function Profile({
                   fontFamily: "'Cinzel', serif",
                   fontSize: '9px',
                   letterSpacing: '0.4em',
-                  color: 'rgba(201,168,76,0.5)',
+                  color: '#e6c76e',
                   textTransform: 'uppercase',
+                  textShadow: '0 0 8px rgba(230,199,110,0.18)',
                 }}
               >
                 Bio
@@ -589,14 +631,14 @@ export default function Profile({
               <div>
                 <textarea
                   value={bioDraft}
-                  onChange={e => setBioDraft(e.target.value)}
+                  onChange={(e) => setBioDraft(e.target.value)}
                   autoFocus
                   rows={4}
                   style={{
                     width: '100%',
-                    background: 'rgba(255,255,255,0.03)',
-                    border: '1px solid rgba(201,168,76,0.25)',
-                    color: 'rgba(255,255,255,0.88)',
+                    background: 'rgba(255,255,255,0.05)',
+                    border: '1px solid rgba(230,199,110,0.25)',
+                    color: 'rgba(255,255,255,0.94)',
                     fontFamily: "'IM Fell English', serif",
                     fontStyle: 'italic',
                     fontSize: '16px',
@@ -605,13 +647,17 @@ export default function Profile({
                     outline: 'none',
                     resize: 'none',
                     borderRadius: '4px',
-                    caretColor: '#c9a84c',
+                    caretColor: '#e6c76e',
                     marginBottom: '10px',
                   }}
                 />
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <button onClick={() => void saveBio()} style={saveBtn} disabled={saving}>Save</button>
-                  <button onClick={() => setEditingBio(false)} style={cancelBtn} disabled={saving}>Cancel</button>
+                  <button onClick={() => void saveBio()} style={saveBtn} disabled={saving}>
+                    Save
+                  </button>
+                  <button onClick={() => setEditingBio(false)} style={cancelBtn} disabled={saving}>
+                    Cancel
+                  </button>
                 </div>
               </div>
             ) : (
@@ -621,8 +667,9 @@ export default function Profile({
                     fontFamily: "'IM Fell English', serif",
                     fontStyle: 'italic',
                     fontSize: 'clamp(15px, 1.8vw, 18px)',
-                    color: 'rgba(255,255,255,0.65)',
+                    color: 'rgba(255,255,255,0.9)',
                     lineHeight: 1.8,
+                    textShadow: '0 0 4px rgba(0,0,0,0.35)',
                   }}
                 >
                   {profile.bio}
@@ -632,7 +679,7 @@ export default function Profile({
                     fontFamily: "'Cinzel', serif",
                     fontSize: '7px',
                     letterSpacing: '0.2em',
-                    color: 'rgba(255,255,255,0.15)',
+                    color: 'rgba(255,255,255,0.48)',
                     textTransform: 'uppercase',
                     marginTop: '8px',
                   }}
@@ -650,8 +697,9 @@ export default function Profile({
                   fontFamily: "'Cinzel', serif",
                   fontSize: '9px',
                   letterSpacing: '0.4em',
-                  color: 'rgba(201,168,76,0.5)',
+                  color: '#e6c76e',
                   textTransform: 'uppercase',
+                  textShadow: '0 0 8px rgba(230,199,110,0.18)',
                 }}
               >
                 Ask me about
@@ -672,14 +720,14 @@ export default function Profile({
               <div>
                 <textarea
                   value={askDraft}
-                  onChange={e => setAskDraft(e.target.value)}
+                  onChange={(e) => setAskDraft(e.target.value)}
                   autoFocus
                   rows={2}
                   style={{
                     width: '100%',
-                    background: 'rgba(255,255,255,0.03)',
-                    border: '1px solid rgba(201,168,76,0.25)',
-                    color: 'rgba(255,255,255,0.88)',
+                    background: 'rgba(255,255,255,0.05)',
+                    border: '1px solid rgba(230,199,110,0.25)',
+                    color: 'rgba(255,255,255,0.94)',
                     fontFamily: "'IM Fell English', serif",
                     fontStyle: 'italic',
                     fontSize: '16px',
@@ -688,13 +736,17 @@ export default function Profile({
                     outline: 'none',
                     resize: 'none',
                     borderRadius: '4px',
-                    caretColor: '#c9a84c',
+                    caretColor: '#e6c76e',
                     marginBottom: '10px',
                   }}
                 />
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <button onClick={() => void saveAsk()} style={saveBtn} disabled={saving}>Save</button>
-                  <button onClick={() => setEditingAsk(false)} style={cancelBtn} disabled={saving}>Cancel</button>
+                  <button onClick={() => void saveAsk()} style={saveBtn} disabled={saving}>
+                    Save
+                  </button>
+                  <button onClick={() => setEditingAsk(false)} style={cancelBtn} disabled={saving}>
+                    Cancel
+                  </button>
                 </div>
               </div>
             ) : (
@@ -703,8 +755,9 @@ export default function Profile({
                   fontFamily: "'IM Fell English', serif",
                   fontStyle: 'italic',
                   fontSize: 'clamp(15px, 1.8vw, 18px)',
-                  color: 'rgba(255,255,255,0.5)',
+                  color: 'rgba(255,255,255,0.82)',
                   lineHeight: 1.7,
+                  textShadow: '0 0 4px rgba(0,0,0,0.3)',
                 }}
               >
                 {profile.askAbout}
@@ -712,7 +765,13 @@ export default function Profile({
             )}
           </div>
 
-          <div style={{ height: '1px', background: 'linear-gradient(90deg, rgba(255,255,255,0.06), transparent)', marginBottom: '28px' }} />
+          <div
+            style={{
+              height: '1px',
+              background: 'linear-gradient(90deg, rgba(255,255,255,0.12), transparent)',
+              marginBottom: '28px',
+            }}
+          />
 
           <div style={{ display: 'flex', marginBottom: '36px' }}>
             {[
@@ -724,7 +783,7 @@ export default function Profile({
                 key={i}
                 style={{
                   flex: 1,
-                  borderRight: i < 2 ? '1px solid rgba(255,255,255,0.06)' : 'none',
+                  borderRight: i < 2 ? '1px solid rgba(255,255,255,0.12)' : 'none',
                   paddingRight: i < 2 ? '20px' : '0',
                   paddingLeft: i > 0 ? '20px' : '0',
                 }}
@@ -734,9 +793,9 @@ export default function Profile({
                     fontFamily: "'Cinzel', serif",
                     fontSize: 'clamp(22px, 3vw, 32px)',
                     fontWeight: 300,
-                    color: '#c9a84c',
+                    color: '#e6c76e',
                     marginBottom: '4px',
-                    textShadow: '0 0 20px rgba(201,168,76,0.3)',
+                    textShadow: '0 0 20px rgba(230,199,110,0.28)',
                   }}
                 >
                   {stat.value}
@@ -746,7 +805,7 @@ export default function Profile({
                     fontFamily: "'Cinzel', serif",
                     fontSize: '8px',
                     letterSpacing: '0.2em',
-                    color: 'rgba(255,255,255,0.2)',
+                    color: 'rgba(255,255,255,0.62)',
                     textTransform: 'uppercase',
                   }}
                 >
@@ -762,47 +821,116 @@ export default function Profile({
                 fontFamily: "'Cinzel', serif",
                 fontSize: '9px',
                 letterSpacing: '0.4em',
-                color: 'rgba(201,168,76,0.45)',
+                color: '#e6c76e',
                 textTransform: 'uppercase',
                 marginBottom: '16px',
+                textShadow: '0 0 8px rgba(230,199,110,0.18)',
               }}
             >
               Settings
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {[
-                { label: 'Receive Universe Letters', desc: 'Allow random letters from strangers to find you', enabled: true },
-                { label: 'Show Online Status', desc: 'Let others see when your hub is glowing', enabled: true },
-                { label: 'Letter Travel Time', desc: 'Slow — letters arrive over 1 to 7 days', enabled: true },
-              ].map((s, i) => <SettingRow key={i} label={s.label} desc={s.desc} enabled={s.enabled} />)}
+                {
+                  label: 'Receive Universe Letters',
+                  desc: 'Allow random letters from strangers to find you',
+                  enabled: true,
+                },
+                {
+                  label: 'Show Online Status',
+                  desc: 'Let others see when your hub is glowing',
+                  enabled: true,
+                },
+                {
+                  label: 'Letter Travel Time',
+                  desc: 'Slow — letters arrive over 1 to 7 days',
+                  enabled: true,
+                },
+              ].map((s, i) => (
+                <SettingRow key={i} label={s.label} desc={s.desc} enabled={s.enabled} />
+              ))}
             </div>
           </div>
 
-          <div style={{ paddingTop: '20px', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
-            <button
-              style={{
-                fontFamily: "'Cinzel', serif",
-                fontSize: '8px',
-                letterSpacing: '0.25em',
-                color: 'rgba(200,60,60,0.4)',
-                padding: '8px 16px',
-                border: '1px solid rgba(200,60,60,0.15)',
-                background: 'transparent',
-                cursor: 'pointer',
-                textTransform: 'uppercase',
-                transition: 'all 0.2s',
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.color = 'rgba(200,60,60,0.7)'
-                e.currentTarget.style.borderColor = 'rgba(200,60,60,0.3)'
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.color = 'rgba(200,60,60,0.4)'
-                e.currentTarget.style.borderColor = 'rgba(200,60,60,0.15)'
-              }}
-            >
-              Leave the Universe
-            </button>
+          <div style={{ paddingTop: '20px', borderTop: '1px solid rgba(255,255,255,0.09)' }}>
+            {leavingConfirm ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                <p
+                  style={{
+                    fontFamily: "'IM Fell English', serif",
+                    fontStyle: 'italic',
+                    fontSize: '14px',
+                    color: 'rgba(255,255,255,0.82)',
+                    textShadow: '0 0 4px rgba(0,0,0,0.35)',
+                  }}
+                >
+                  Are you sure? This will sign you out.
+                </p>
+                <button
+                  onClick={() => void handleLeaveUniverse()}
+                  style={{
+                    fontFamily: "'Cinzel', serif",
+                    fontSize: '8px',
+                    letterSpacing: '0.25em',
+                    color: 'rgba(240,120,120,0.95)',
+                    padding: '8px 16px',
+                    border: '1px solid rgba(220,80,80,0.5)',
+                    background: 'rgba(220,80,80,0.08)',
+                    cursor: 'pointer',
+                    textTransform: 'uppercase',
+                    transition: 'all 0.2s',
+                    borderRadius: '2px',
+                  }}
+                >
+                  Yes, leave
+                </button>
+                <button
+                  onClick={() => setLeavingConfirm(false)}
+                  style={{
+                    fontFamily: "'Cinzel', serif",
+                    fontSize: '8px',
+                    letterSpacing: '0.25em',
+                    color: 'rgba(255,255,255,0.72)',
+                    padding: '8px 16px',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    background: 'transparent',
+                    cursor: 'pointer',
+                    textTransform: 'uppercase',
+                    borderRadius: '2px',
+                  }}
+                >
+                  Stay
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => void handleLeaveUniverse()}
+                style={{
+                  fontFamily: "'Cinzel', serif",
+                  fontSize: '8px',
+                  letterSpacing: '0.25em',
+                  color: 'rgba(220,90,90,0.78)',
+                  padding: '8px 16px',
+                  border: '1px solid rgba(220,90,90,0.28)',
+                  background: 'transparent',
+                  cursor: 'pointer',
+                  textTransform: 'uppercase',
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = 'rgba(240,120,120,0.98)'
+                  e.currentTarget.style.borderColor = 'rgba(220,80,80,0.48)'
+                  e.currentTarget.style.background = 'rgba(220,80,80,0.05)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = 'rgba(220,90,90,0.78)'
+                  e.currentTarget.style.borderColor = 'rgba(220,90,90,0.28)'
+                  e.currentTarget.style.background = 'transparent'
+                }}
+              >
+                Leave the Universe
+              </button>
+            )}
           </div>
         </motion.div>
       </div>
@@ -812,41 +940,51 @@ export default function Profile({
 
 const editBtn: CSSProperties = {
   background: 'none',
-  border: '1px solid rgba(255,255,255,0.08)',
-  color: 'rgba(255,255,255,0.25)',
+  border: '1px solid rgba(255,255,255,0.22)',
+  color: 'rgba(255,255,255,0.78)',
   fontFamily: "'Cinzel', serif",
   fontSize: '7px',
   letterSpacing: '0.25em',
   padding: '5px 10px',
   cursor: 'pointer',
   textTransform: 'uppercase',
+  textShadow: '0 0 5px rgba(0,0,0,0.35)',
 }
 
 const saveBtn: CSSProperties = {
   fontFamily: "'Cinzel', serif",
   fontSize: '8px',
   letterSpacing: '0.25em',
-  color: '#c9a84c',
+  color: '#e6c76e',
   padding: '7px 14px',
-  border: '1px solid rgba(201,168,76,0.3)',
+  border: '1px solid rgba(230,199,110,0.38)',
   background: 'transparent',
   cursor: 'pointer',
   textTransform: 'uppercase',
+  textShadow: '0 0 8px rgba(230,199,110,0.15)',
 }
 
 const cancelBtn: CSSProperties = {
   fontFamily: "'Cinzel', serif",
   fontSize: '8px',
   letterSpacing: '0.25em',
-  color: 'rgba(255,255,255,0.3)',
+  color: 'rgba(255,255,255,0.72)',
   padding: '7px 14px',
-  border: '1px solid rgba(255,255,255,0.1)',
+  border: '1px solid rgba(255,255,255,0.2)',
   background: 'transparent',
   cursor: 'pointer',
   textTransform: 'uppercase',
 }
 
-function SettingRow({ label, desc, enabled: init }: { label: string; desc: string; enabled: boolean }) {
+function SettingRow({
+  label,
+  desc,
+  enabled: init,
+}: {
+  label: string
+  desc: string
+  enabled: boolean
+}) {
   const [enabled, setEnabled] = useState(init)
 
   return (
@@ -856,8 +994,8 @@ function SettingRow({ label, desc, enabled: init }: { label: string; desc: strin
         justifyContent: 'space-between',
         alignItems: 'center',
         padding: '12px 16px',
-        background: 'rgba(255,255,255,0.02)',
-        border: '1px solid rgba(255,255,255,0.04)',
+        background: 'rgba(255,255,255,0.04)',
+        border: '1px solid rgba(255,255,255,0.1)',
         borderRadius: '2px',
         gap: '16px',
       }}
@@ -868,9 +1006,10 @@ function SettingRow({ label, desc, enabled: init }: { label: string; desc: strin
             fontFamily: "'Cinzel', serif",
             fontSize: '10px',
             letterSpacing: '0.15em',
-            color: 'rgba(255,255,255,0.65)',
+            color: 'rgba(255,255,255,0.88)',
             textTransform: 'uppercase',
             marginBottom: '3px',
+            textShadow: '0 0 4px rgba(0,0,0,0.35)',
           }}
         >
           {label}
@@ -880,21 +1019,22 @@ function SettingRow({ label, desc, enabled: init }: { label: string; desc: strin
             fontFamily: "'IM Fell English', serif",
             fontStyle: 'italic',
             fontSize: '13px',
-            color: 'rgba(255,255,255,0.28)',
+            color: 'rgba(255,255,255,0.72)',
           }}
         >
           {desc}
         </p>
       </div>
-
       <div
         onClick={() => setEnabled(!enabled)}
         style={{
           width: '40px',
           height: '22px',
           borderRadius: '11px',
-          background: enabled ? 'rgba(201,168,76,0.3)' : 'rgba(255,255,255,0.08)',
-          border: `1px solid ${enabled ? 'rgba(201,168,76,0.5)' : 'rgba(255,255,255,0.1)'}`,
+          background: enabled ? 'rgba(230,199,110,0.32)' : 'rgba(255,255,255,0.1)',
+          border: `1px solid ${
+            enabled ? 'rgba(230,199,110,0.5)' : 'rgba(255,255,255,0.16)'
+          }`,
           position: 'relative',
           cursor: 'pointer',
           transition: 'all 0.3s',
@@ -910,7 +1050,8 @@ function SettingRow({ label, desc, enabled: init }: { label: string; desc: strin
             width: '14px',
             height: '14px',
             borderRadius: '50%',
-            background: enabled ? '#c9a84c' : 'rgba(255,255,255,0.3)',
+            background: enabled ? '#e6c76e' : 'rgba(255,255,255,0.5)',
+            boxShadow: enabled ? '0 0 8px rgba(230,199,110,0.22)' : 'none',
           }}
         />
       </div>

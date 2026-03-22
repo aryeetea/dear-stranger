@@ -52,7 +52,9 @@ export default function Home() {
         setScreen('entry')
       } catch (err) {
         console.error('checkSession failed:', err)
-        try { await signOut() } catch {}
+        try {
+          await signOut()
+        } catch {}
         setScreen('entry')
       }
     }
@@ -68,8 +70,10 @@ export default function Home() {
       conversationAnswers[i] = answers[keys[i]]
     }
 
-    const fallbackBio = 'A wanderer who arrived here quietly, carrying something unspoken.'
-    const fallbackAskAbout = 'Silence, slow mornings, and letters that take their time.'
+    const fallbackBio =
+      'A wanderer who arrived here quietly, carrying something unspoken.'
+    const fallbackAskAbout =
+      'Silence, slow mornings, and letters that take their time.'
 
     try {
       setScreen('generating')
@@ -78,7 +82,6 @@ export default function Home() {
       await signInAndCreateHub(hubNameAnswer, fallbackBio, fallbackAskAbout)
       setHubName(hubNameAnswer)
 
-      // Get userId to pass to avatar API so it can save directly to Supabase
       const session = await getSession()
       const userId = session?.user?.id
 
@@ -89,13 +92,13 @@ export default function Home() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ answers: conversationAnswers }),
-        }).then(r => r.json()),
+        }).then((r) => r.json()),
 
         fetch('/api/generate-avatar', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ answers: conversationAnswers, userId }),
-        }).then(r => r.json()),
+        }).then((r) => r.json()),
       ])
 
       let bio = fallbackBio
@@ -111,9 +114,12 @@ export default function Home() {
       if (avatarResponse.status === 'fulfilled' && !avatarResponse.value.error) {
         avatarUrl = avatarResponse.value.imageUrl || ''
       } else {
-        console.warn('Avatar generation failed:', avatarResponse.status === 'rejected'
-          ? avatarResponse.reason
-          : avatarResponse.value?.error)
+        console.warn(
+          'Avatar generation failed:',
+          avatarResponse.status === 'rejected'
+            ? avatarResponse.reason
+            : avatarResponse.value?.error
+        )
       }
 
       setGeneratingStatus('Placing your hub in the universe...')
@@ -127,7 +133,6 @@ export default function Home() {
       setHubAskAbout(askAbout)
       setHubAvatarUrl(avatarUrl)
       setScreen('universe')
-
     } catch (err) {
       console.error('Error during onboarding:', err)
       setHubName(hubNameAnswer)
@@ -139,65 +144,136 @@ export default function Home() {
 
   if (screen === 'loading') {
     return (
-      <div style={{
-        position: 'fixed', inset: 0, background: '#000005',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}>
-        <div style={{
-          fontFamily: "'Cinzel', serif", fontSize: '11px',
-          letterSpacing: '0.4em', color: 'rgba(201,168,76,0.4)',
-          textTransform: 'uppercase',
-        }}>✦</div>
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: '#000005',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <div
+          style={{
+            fontFamily: "'Cinzel', serif",
+            fontSize: '11px',
+            letterSpacing: '0.4em',
+            color: '#e6c76e',
+            textTransform: 'uppercase',
+            textShadow: '0 0 10px rgba(230, 199, 110, 0.35)',
+          }}
+        >
+          ✦
+        </div>
       </div>
     )
   }
 
   if (screen === 'generating') {
     return (
-      <div style={{
-        position: 'fixed', inset: 0, background: '#000005',
-        display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center', gap: '24px',
-      }}>
-        <div style={{
-          position: 'fixed', inset: 0, pointerEvents: 'none',
-          background: `
-            radial-gradient(ellipse 60% 40% at 20% 30%, rgba(40,20,80,0.25) 0%, transparent 70%),
-            radial-gradient(ellipse 50% 60% at 80% 70%, rgba(10,30,80,0.2) 0%, transparent 70%)
-          `,
-        }} />
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: '#000005',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '24px',
+        }}
+      >
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            pointerEvents: 'none',
+            background: `
+              radial-gradient(ellipse 60% 40% at 20% 30%, rgba(40,20,80,0.25) 0%, transparent 70%),
+              radial-gradient(ellipse 50% 60% at 80% 70%, rgba(10,30,80,0.2) 0%, transparent 70%)
+            `,
+          }}
+        />
+
         <div style={{ position: 'relative', zIndex: 2 }}>
-          <div style={{
-            width: '60px', height: '60px', borderRadius: '50%',
-            border: '1px solid rgba(201,168,76,0.2)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            animation: 'pulse 2s ease-in-out infinite',
-          }}>
-            <div style={{
-              width: '40px', height: '40px', borderRadius: '50%',
-              border: '1px solid rgba(201,168,76,0.4)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <span style={{ fontSize: '18px', color: '#c9a84c' }}>✦</span>
+          <div
+            style={{
+              width: '60px',
+              height: '60px',
+              borderRadius: '50%',
+              border: '1px solid rgba(230, 199, 110, 0.28)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              animation: 'pulse 2s ease-in-out infinite',
+              boxShadow: '0 0 20px rgba(230, 199, 110, 0.08)',
+            }}
+          >
+            <div
+              style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '50%',
+                border: '1px solid rgba(230, 199, 110, 0.55)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 0 14px rgba(230, 199, 110, 0.12)',
+              }}
+            >
+              <span
+                style={{
+                  fontSize: '18px',
+                  color: '#e6c76e',
+                  textShadow: '0 0 10px rgba(230, 199, 110, 0.4)',
+                }}
+              >
+                ✦
+              </span>
             </div>
           </div>
         </div>
+
         <div style={{ textAlign: 'center', position: 'relative', zIndex: 2 }}>
-          <p style={{
-            fontFamily: "'Cinzel', serif", fontSize: '11px',
-            letterSpacing: '0.4em', color: 'rgba(201,168,76,0.7)',
-            textTransform: 'uppercase', marginBottom: '10px',
-          }}>Soul Mirror</p>
-          <p style={{
-            fontFamily: "'IM Fell English', serif", fontStyle: 'italic',
-            fontSize: '15px', color: 'rgba(255,255,255,0.35)',
-            letterSpacing: '0.04em',
-          }}>{generatingStatus}</p>
+          <p
+            style={{
+              fontFamily: "'Cinzel', serif",
+              fontSize: '11px',
+              letterSpacing: '0.4em',
+              color: '#e6c76e',
+              textTransform: 'uppercase',
+              marginBottom: '10px',
+              textShadow: '0 0 10px rgba(230, 199, 110, 0.35)',
+            }}
+          >
+            Soul Mirror
+          </p>
+
+          <p
+            style={{
+              fontFamily: "'IM Fell English', serif",
+              fontStyle: 'italic',
+              fontSize: '15px',
+              color: 'rgba(255,255,255,0.88)',
+              letterSpacing: '0.04em',
+              textShadow: '0 0 8px rgba(255,255,255,0.08)',
+            }}
+          >
+            {generatingStatus}
+          </p>
         </div>
+
         <style>{`
           @keyframes pulse {
-            0%, 100% { transform: scale(1); opacity: 0.6; }
-            50% { transform: scale(1.08); opacity: 1; }
+            0%, 100% {
+              transform: scale(1);
+              opacity: 0.7;
+            }
+            50% {
+              transform: scale(1.08);
+              opacity: 1;
+            }
           }
         `}</style>
       </div>
@@ -239,15 +315,18 @@ export default function Home() {
                 (hub: any) => hub.hub_name === letter.to
               )
               const isUniverseLetter = !letter.to
+
               if (!isUniverseLetter && !recipient) {
                 throw new Error('Recipient hub not found')
               }
+
               await sendLetter(
                 recipient?.id || null,
                 letter.body,
                 letter.paperId,
                 isUniverseLetter
               )
+
               setLettersSent((prev) => prev + 1)
               setScribeOpen(false)
             } catch (err) {

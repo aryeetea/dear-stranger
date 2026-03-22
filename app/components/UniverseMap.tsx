@@ -1,4 +1,4 @@
-'use client'
+ 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -420,7 +420,15 @@ export default function UniverseMap({
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: '#04050f' }}>
-      <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', background: 'radial-gradient(ellipse 60% 40% at 15% 25%, rgba(50,20,100,0.28) 0%, transparent 65%), radial-gradient(ellipse 50% 55% at 82% 72%, rgba(15,28,90,0.22) 0%, transparent 65%)' }} />
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          pointerEvents: 'none',
+          background:
+            'radial-gradient(ellipse 60% 40% at 15% 25%, rgba(50,20,100,0.28) 0%, transparent 65%), radial-gradient(ellipse 50% 55% at 82% 72%, rgba(15,28,90,0.22) 0%, transparent 65%)',
+        }}
+      />
 
       <canvas
         ref={canvasRef}
@@ -452,8 +460,30 @@ export default function UniverseMap({
               zIndex: 60,
             }}
           >
-            <div style={{ background: 'rgba(8,10,28,0.9)', border: `1px solid ${tooltip.hub.isMe ? 'rgba(201,168,76,0.5)' : 'rgba(255,255,255,0.15)'}`, borderRadius: '20px', padding: '6px 16px', backdropFilter: 'blur(12px)', boxShadow: tooltip.hub.isMe ? '0 0 14px rgba(201,168,76,0.25)' : '0 4px 16px rgba(0,0,0,0.6)' }}>
-              <p style={{ fontFamily: "'Cinzel', serif", fontSize: '11px', letterSpacing: '0.18em', color: tooltip.hub.isMe ? '#c9a84c' : 'rgba(255,255,255,0.78)', whiteSpace: 'nowrap' }}>
+            <div
+              style={{
+                background: 'rgba(8,10,28,0.92)',
+                border: `1px solid ${
+                  tooltip.hub.isMe ? 'rgba(230,199,110,0.55)' : 'rgba(255,255,255,0.2)'
+                }`,
+                borderRadius: '20px',
+                padding: '6px 16px',
+                backdropFilter: 'blur(12px)',
+                boxShadow: tooltip.hub.isMe
+                  ? '0 0 14px rgba(230,199,110,0.25)'
+                  : '0 4px 16px rgba(0,0,0,0.6)',
+              }}
+            >
+              <p
+                style={{
+                  fontFamily: "'Cinzel', serif",
+                  fontSize: '11px',
+                  letterSpacing: '0.18em',
+                  color: tooltip.hub.isMe ? '#e6c76e' : 'rgba(255,255,255,0.9)',
+                  whiteSpace: 'nowrap',
+                  textShadow: '0 0 6px rgba(0,0,0,0.6)',
+                }}
+              >
                 {tooltip.hub.name}
               </p>
             </div>
@@ -469,48 +499,184 @@ export default function UniverseMap({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.3 }}
-            style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60, padding: '20px', background: 'rgba(0,0,5,0.6)', backdropFilter: 'blur(4px)' }}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 60,
+              padding: '20px',
+              background: 'rgba(0,0,5,0.6)',
+              backdropFilter: 'blur(4px)',
+            }}
             onClick={() => setProfile(null)}
           >
             <motion.div
               onClick={e => e.stopPropagation()}
-              style={{ background: 'rgba(8,10,28,0.9)', border: '1px solid rgba(201,168,76,0.2)', borderRadius: '16px', width: 'min(780px, 95vw)', minHeight: '420px', display: 'flex', overflow: 'hidden', boxShadow: '0 0 80px rgba(0,0,0,0.9)', backdropFilter: 'blur(20px)', position: 'relative' }}
+              style={{
+                background: 'rgba(8,10,28,0.92)',
+                border: '1px solid rgba(230,199,110,0.22)',
+                borderRadius: '16px',
+                width: 'min(780px, 95vw)',
+                minHeight: '420px',
+                display: 'flex',
+                overflow: 'hidden',
+                boxShadow: '0 0 80px rgba(0,0,0,0.9)',
+                backdropFilter: 'blur(20px)',
+                position: 'relative',
+              }}
             >
-              <div style={{ width: '45%', minHeight: '420px', background: 'linear-gradient(135deg, rgba(20,25,60,0.9), rgba(10,15,40,0.95))', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden', flexShrink: 0 }}>
-                <div style={{ position: 'absolute', width: '280px', height: '280px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(100,140,255,0.12) 0%, transparent 70%)', border: '1px solid rgba(150,180,255,0.1)' }} />
-                <div style={{ width: '200px', height: '280px', borderRadius: '8px', background: 'linear-gradient(180deg, rgba(60,80,160,0.4), rgba(20,30,80,0.6))', border: '1px solid rgba(201,168,76,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '48px', position: 'relative', zIndex: 2, boxShadow: '0 0 30px rgba(100,140,255,0.12)', overflow: 'hidden' }}>
+              <div
+                style={{
+                  width: '45%',
+                  minHeight: '420px',
+                  background: 'linear-gradient(135deg, rgba(20,25,60,0.9), rgba(10,15,40,0.95))',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  position: 'relative',
+                  overflow: 'hidden',
+                  flexShrink: 0,
+                }}
+              >
+                <div
+                  style={{
+                    position: 'absolute',
+                    width: '280px',
+                    height: '280px',
+                    borderRadius: '50%',
+                    background: 'radial-gradient(circle, rgba(100,140,255,0.12) 0%, transparent 70%)',
+                    border: '1px solid rgba(150,180,255,0.1)',
+                  }}
+                />
+                <div
+                  style={{
+                    width: '200px',
+                    height: '280px',
+                    borderRadius: '8px',
+                    background: 'linear-gradient(180deg, rgba(60,80,160,0.4), rgba(20,30,80,0.6))',
+                    border: '1px solid rgba(230,199,110,0.22)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '48px',
+                    position: 'relative',
+                    zIndex: 2,
+                    boxShadow: '0 0 30px rgba(100,140,255,0.12)',
+                    overflow: 'hidden',
+                  }}
+                >
                   {profile.hub.avatarUrl ? (
-                    <img src={profile.hub.avatarUrl} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '8px' }} />
-                  ) : '✦'}
+                    <img
+                      src={profile.hub.avatarUrl}
+                      alt="Avatar"
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '8px' }}
+                    />
+                  ) : (
+                    '✦'
+                  )}
                 </div>
                 {[...Array(12)].map((_, i) => (
-                  <div key={i} style={{ position: 'absolute', width: '2px', height: '2px', borderRadius: '50%', background: 'rgba(255,255,255,0.35)', left: `${10 + Math.random() * 80}%`, top: `${5 + Math.random() * 90}%` }} />
+                  <div
+                    key={i}
+                    style={{
+                      position: 'absolute',
+                      width: '2px',
+                      height: '2px',
+                      borderRadius: '50%',
+                      background: 'rgba(255,255,255,0.35)',
+                      left: `${10 + Math.random() * 80}%`,
+                      top: `${5 + Math.random() * 90}%`,
+                    }}
+                  />
                 ))}
               </div>
 
-              <div style={{ flex: 1, padding: 'clamp(24px,4vw,40px)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+              <div
+                style={{
+                  flex: 1,
+                  padding: 'clamp(24px,4vw,40px)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                }}
+              >
                 <div>
-                  <p style={{ fontFamily: "'Cinzel', serif", fontSize: 'clamp(16px,2.5vw,22px)', letterSpacing: '0.15em', color: 'rgba(255,255,255,0.92)', marginBottom: '6px' }}>
+                  <p
+                    style={{
+                      fontFamily: "'Cinzel', serif",
+                      fontSize: 'clamp(16px,2.5vw,22px)',
+                      letterSpacing: '0.15em',
+                      color: 'rgba(255,255,255,0.95)',
+                      marginBottom: '6px',
+                      textShadow: '0 0 6px rgba(0,0,0,0.5)',
+                    }}
+                  >
                     {profile.hub.name}
                   </p>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '24px' }}>
-                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: profile.hub.online ? '#7ecf7e' : 'rgba(255,255,255,0.2)', boxShadow: profile.hub.online ? '0 0 6px rgba(126,207,126,0.6)' : 'none' }} />
-                    <span style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.25em', color: profile.hub.online ? 'rgba(126,207,126,0.7)' : 'rgba(255,255,255,0.2)', textTransform: 'uppercase' }}>
+                    <div
+                      style={{
+                        width: '6px',
+                        height: '6px',
+                        borderRadius: '50%',
+                        background: profile.hub.online ? '#7ecf7e' : 'rgba(255,255,255,0.35)',
+                        boxShadow: profile.hub.online ? '0 0 6px rgba(126,207,126,0.6)' : 'none',
+                      }}
+                    />
+                    <span
+                      style={{
+                        fontFamily: "'Cinzel', serif",
+                        fontSize: '9px',
+                        letterSpacing: '0.25em',
+                        color: profile.hub.online
+                          ? 'rgba(126,207,126,0.9)'
+                          : 'rgba(255,255,255,0.5)',
+                        textTransform: 'uppercase',
+                      }}
+                    >
                       {profile.hub.online ? 'online' : 'away'}
                     </span>
                   </div>
 
                   {profile.hub.styleLabel && (
                     <div style={{ marginBottom: '16px' }}>
-                      <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.25em', color: 'rgba(201,168,76,0.6)', textTransform: 'uppercase', marginBottom: '4px' }}>
+                      <p
+                        style={{
+                          fontFamily: "'Cinzel', serif",
+                          fontSize: '9px',
+                          letterSpacing: '0.25em',
+                          color: '#e6c76e',
+                          textTransform: 'uppercase',
+                          marginBottom: '4px',
+                          textShadow: '0 0 8px rgba(230,199,110,0.18)',
+                        }}
+                      >
                         Style
                       </p>
-                      <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '15px', color: 'rgba(255,255,255,0.6)', marginBottom: profile.hub.styleDesc ? '4px' : '0' }}>
+                      <p
+                        style={{
+                          fontFamily: "'Cormorant Garamond', serif",
+                          fontSize: '15px',
+                          color: 'rgba(255,255,255,0.82)',
+                          marginBottom: profile.hub.styleDesc ? '4px' : '0',
+                        }}
+                      >
                         {profile.hub.styleLabel}
                       </p>
                       {profile.hub.styleDesc && (
-                        <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(255,255,255,0.42)', lineHeight: 1.5 }}>
+                        <p
+                          style={{
+                            fontFamily: "'IM Fell English', serif",
+                            fontStyle: 'italic',
+                            fontSize: '13px',
+                            color: 'rgba(255,255,255,0.75)',
+                            lineHeight: 1.5,
+                            textShadow: '0 0 4px rgba(0,0,0,0.35)',
+                          }}
+                        >
                           {profile.hub.styleDesc}
                         </p>
                       )}
@@ -518,20 +684,58 @@ export default function UniverseMap({
                   )}
 
                   <div style={{ marginBottom: '20px' }}>
-                    <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.3em', color: 'rgba(201,168,76,0.5)', textTransform: 'uppercase', marginBottom: '8px' }}>
+                    <p
+                      style={{
+                        fontFamily: "'Cinzel', serif",
+                        fontSize: '10px',
+                        letterSpacing: '0.3em',
+                        color: '#e6c76e',
+                        textTransform: 'uppercase',
+                        marginBottom: '8px',
+                        textShadow: '0 0 8px rgba(230,199,110,0.18)',
+                      }}
+                    >
                       Bio
                     </p>
-                    <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: 'clamp(13px,1.8vw,15px)', color: 'rgba(255,255,255,0.6)', lineHeight: 1.7 }}>
+                    <p
+                      style={{
+                        fontFamily: "'IM Fell English', serif",
+                        fontStyle: 'italic',
+                        fontSize: 'clamp(13px,1.8vw,15px)',
+                        color: 'rgba(255,255,255,0.88)',
+                        lineHeight: 1.7,
+                        textShadow: '0 0 4px rgba(0,0,0,0.4)',
+                      }}
+                    >
                       {profile.hub.bio}
                     </p>
                   </div>
 
                   {!profile.hub.isMe && profile.hub.askAbout && (
                     <div>
-                      <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.3em', color: 'rgba(201,168,76,0.5)', textTransform: 'uppercase', marginBottom: '8px' }}>
+                      <p
+                        style={{
+                          fontFamily: "'Cinzel', serif",
+                          fontSize: '10px',
+                          letterSpacing: '0.3em',
+                          color: '#e6c76e',
+                          textTransform: 'uppercase',
+                          marginBottom: '8px',
+                          textShadow: '0 0 8px rgba(230,199,110,0.18)',
+                        }}
+                      >
                         Ask me about
                       </p>
-                      <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: 'clamp(13px,1.8vw,15px)', color: 'rgba(255,255,255,0.5)', lineHeight: 1.6 }}>
+                      <p
+                        style={{
+                          fontFamily: "'IM Fell English', serif",
+                          fontStyle: 'italic',
+                          fontSize: 'clamp(13px,1.8vw,15px)',
+                          color: 'rgba(255,255,255,0.78)',
+                          lineHeight: 1.6,
+                          textShadow: '0 0 4px rgba(0,0,0,0.35)',
+                        }}
+                      >
                         {profile.hub.askAbout}
                       </p>
                     </div>
@@ -541,7 +745,18 @@ export default function UniverseMap({
                 <div style={{ display: 'flex', gap: '10px', marginTop: '28px', flexWrap: 'wrap' }}>
                   <button
                     onClick={() => setProfile(null)}
-                    style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.25em', color: 'rgba(255,255,255,0.35)', padding: '10px 18px', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase' }}
+                    style={{
+                      fontFamily: "'Cinzel', serif",
+                      fontSize: '9px',
+                      letterSpacing: '0.25em',
+                      color: 'rgba(255,255,255,0.75)',
+                      padding: '10px 18px',
+                      border: '1px solid rgba(255,255,255,0.25)',
+                      borderRadius: '4px',
+                      background: 'transparent',
+                      cursor: 'pointer',
+                      textTransform: 'uppercase',
+                    }}
                   >
                     ✦ Dismiss
                   </button>
@@ -552,7 +767,19 @@ export default function UniverseMap({
                         setProfile(null)
                         onWriteLetter?.(profile.hub.name)
                       }}
-                      style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.25em', color: 'rgba(201,168,76,0.8)', padding: '10px 18px', border: '1px solid rgba(201,168,76,0.25)', borderRadius: '4px', background: 'rgba(201,168,76,0.05)', cursor: 'pointer', textTransform: 'uppercase' }}
+                      style={{
+                        fontFamily: "'Cinzel', serif",
+                        fontSize: '9px',
+                        letterSpacing: '0.25em',
+                        color: '#e6c76e',
+                        padding: '10px 18px',
+                        border: '1px solid rgba(230,199,110,0.4)',
+                        borderRadius: '4px',
+                        background: 'rgba(230,199,110,0.08)',
+                        cursor: 'pointer',
+                        textTransform: 'uppercase',
+                        textShadow: '0 0 8px rgba(230,199,110,0.18)',
+                      }}
                     >
                       ✦ Send Shooting Star
                     </button>
@@ -562,7 +789,16 @@ export default function UniverseMap({
 
               <button
                 onClick={() => setProfile(null)}
-                style={{ position: 'absolute', top: '16px', right: '16px', background: 'none', border: 'none', color: 'rgba(255,255,255,0.2)', fontSize: '18px', cursor: 'pointer' }}
+                style={{
+                  position: 'absolute',
+                  top: '16px',
+                  right: '16px',
+                  background: 'none',
+                  border: 'none',
+                  color: 'rgba(255,255,255,0.6)',
+                  fontSize: '18px',
+                  cursor: 'pointer',
+                }}
               >
                 ×
               </button>
@@ -575,7 +811,21 @@ export default function UniverseMap({
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.5, duration: 0.6 }}
-        style={{ position: 'fixed', bottom: '32px', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: '4px', background: 'rgba(8,10,28,0.82)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px', backdropFilter: 'blur(20px)', padding: '8px 12px', boxShadow: '0 4px 40px rgba(0,0,0,0.6)', zIndex: 50 }}
+        style={{
+          position: 'fixed',
+          bottom: '32px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          display: 'flex',
+          gap: '4px',
+          background: 'rgba(8,10,28,0.86)',
+          border: '1px solid rgba(255,255,255,0.1)',
+          borderRadius: '16px',
+          backdropFilter: 'blur(20px)',
+          padding: '8px 12px',
+          boxShadow: '0 4px 40px rgba(0,0,0,0.6)',
+          zIndex: 50,
+        }}
       >
         {navItems.map((item, i) => (
           <button
@@ -588,12 +838,44 @@ export default function UniverseMap({
             }}
             onMouseEnter={() => setHoveredNav(i)}
             onMouseLeave={() => setHoveredNav(null)}
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px', padding: '10px 18px', background: activeNav === i ? 'rgba(201,168,76,0.1)' : hoveredNav === i ? 'rgba(255,255,255,0.04)' : 'transparent', border: 'none', borderRadius: '10px', cursor: 'pointer', minWidth: '64px' }}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '5px',
+              padding: '10px 18px',
+              background:
+                activeNav === i
+                  ? 'rgba(230,199,110,0.1)'
+                  : hoveredNav === i
+                    ? 'rgba(255,255,255,0.06)'
+                    : 'transparent',
+              border: 'none',
+              borderRadius: '10px',
+              cursor: 'pointer',
+              minWidth: '64px',
+            }}
           >
-            <span style={{ fontSize: '18px', lineHeight: 1, color: activeNav === i ? '#c9a84c' : 'rgba(255,255,255,0.55)', filter: activeNav === i ? 'drop-shadow(0 0 6px rgba(201,168,76,0.5))' : 'none' }}>
+            <span
+              style={{
+                fontSize: '18px',
+                lineHeight: 1,
+                color: activeNav === i ? '#e6c76e' : 'rgba(255,255,255,0.75)',
+                filter: activeNav === i ? 'drop-shadow(0 0 6px rgba(230,199,110,0.5))' : 'none',
+              }}
+            >
               {item.icon}
             </span>
-            <span style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.18em', textTransform: 'uppercase', color: activeNav === i ? 'rgba(201,168,76,0.8)' : 'rgba(255,255,255,0.3)', whiteSpace: 'nowrap' }}>
+            <span
+              style={{
+                fontFamily: "'Cinzel', serif",
+                fontSize: '8px',
+                letterSpacing: '0.18em',
+                textTransform: 'uppercase',
+                color: activeNav === i ? '#e6c76e' : 'rgba(255,255,255,0.6)',
+                whiteSpace: 'nowrap',
+              }}
+            >
               {item.label}
             </span>
           </button>
@@ -604,7 +886,21 @@ export default function UniverseMap({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 1.4, duration: 0.8 }}
-        style={{ position: 'fixed', top: '28px', left: '50%', transform: 'translateX(-50%)', fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '12px', color: 'rgba(255,255,255,0.16)', letterSpacing: '0.08em', pointerEvents: 'none', whiteSpace: 'nowrap', zIndex: 50 }}
+        style={{
+          position: 'fixed',
+          top: '28px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          fontFamily: "'IM Fell English', serif",
+          fontStyle: 'italic',
+          fontSize: '12px',
+          color: 'rgba(255,255,255,0.6)',
+          letterSpacing: '0.08em',
+          pointerEvents: 'none',
+          whiteSpace: 'nowrap',
+          zIndex: 50,
+          textShadow: '0 0 6px rgba(0,0,0,0.45)',
+        }}
       >
         drag to explore · scroll to zoom
       </motion.p>

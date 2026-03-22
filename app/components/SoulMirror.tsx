@@ -231,13 +231,13 @@ export default function SoulMirror({ onComplete }: SoulMirrorProps) {
             exit={{ opacity: 0, y: -16 }}
             transition={{ duration: 0.4 }}
             style={{
-              background: 'rgba(10,12,30,0.85)',
-              border: '1px solid rgba(201,168,76,0.15)',
+              background: 'rgba(10,12,30,0.88)',
+              border: '1px solid rgba(230,199,110,0.22)',
               borderRadius: '12px',
               width: 'min(680px, 95vw)',
               padding: 'clamp(28px, 5vw, 44px)',
               backdropFilter: 'blur(24px)',
-              boxShadow: '0 0 80px rgba(0,0,0,0.8), 0 0 40px rgba(201,168,76,0.06)',
+              boxShadow: '0 0 80px rgba(0,0,0,0.8), 0 0 40px rgba(230,199,110,0.08)',
               position: 'relative',
               overflow: 'hidden',
             }}
@@ -249,7 +249,7 @@ export default function SoulMirror({ onComplete }: SoulMirrorProps) {
                 left: '20%',
                 right: '20%',
                 height: '1px',
-                background: 'linear-gradient(90deg, transparent, rgba(201,168,76,0.4), transparent)',
+                background: 'linear-gradient(90deg, transparent, rgba(230,199,110,0.45), transparent)',
               }}
             />
 
@@ -259,9 +259,10 @@ export default function SoulMirror({ onComplete }: SoulMirrorProps) {
                   fontFamily: "'Cinzel', serif",
                   fontSize: '10px',
                   letterSpacing: '0.4em',
-                  color: '#c9a84c',
+                  color: '#e6c76e',
                   textTransform: 'uppercase',
                   marginBottom: '12px',
+                  textShadow: '0 0 8px rgba(230,199,110,0.2)',
                 }}
               >
                 Soul Mirror
@@ -272,9 +273,10 @@ export default function SoulMirror({ onComplete }: SoulMirrorProps) {
                   fontFamily: "'IM Fell English', serif",
                   fontStyle: 'italic',
                   fontSize: 'clamp(20px, 3vw, 28px)',
-                  color: 'rgba(255,255,255,0.88)',
+                  color: 'rgba(255,255,255,0.92)',
                   lineHeight: 1.5,
                   marginBottom: '8px',
+                  textShadow: '0 0 6px rgba(0,0,0,0.4)',
                 }}
               >
                 Choose the style you want your avatar to have
@@ -284,8 +286,9 @@ export default function SoulMirror({ onComplete }: SoulMirrorProps) {
                 style={{
                   fontFamily: "'Cormorant Garamond', serif",
                   fontSize: '16px',
-                  color: 'rgba(255,255,255,0.5)',
+                  color: 'rgba(255,255,255,0.76)',
                   lineHeight: 1.5,
+                  textShadow: '0 0 4px rgba(0,0,0,0.35)',
                 }}
               >
                 This choice will shape how your Soul Mirror avatar image is designed.
@@ -309,18 +312,18 @@ export default function SoulMirror({ onComplete }: SoulMirrorProps) {
                     textAlign: 'left',
                     padding: '16px',
                     borderRadius: '12px',
-                    border: '1px solid rgba(201,168,76,0.18)',
-                    background: 'rgba(255,255,255,0.04)',
+                    border: '1px solid rgba(230,199,110,0.22)',
+                    background: 'rgba(255,255,255,0.05)',
                     cursor: 'pointer',
                     transition: 'all 0.2s',
                   }}
                   onMouseEnter={e => {
-                    e.currentTarget.style.background = 'rgba(201,168,76,0.08)'
-                    e.currentTarget.style.borderColor = 'rgba(201,168,76,0.35)'
+                    e.currentTarget.style.background = 'rgba(230,199,110,0.1)'
+                    e.currentTarget.style.borderColor = 'rgba(230,199,110,0.4)'
                   }}
                   onMouseLeave={e => {
-                    e.currentTarget.style.background = 'rgba(255,255,255,0.04)'
-                    e.currentTarget.style.borderColor = 'rgba(201,168,76,0.18)'
+                    e.currentTarget.style.background = 'rgba(255,255,255,0.05)'
+                    e.currentTarget.style.borderColor = 'rgba(230,199,110,0.22)'
                   }}
                 >
                   <p
@@ -328,9 +331,10 @@ export default function SoulMirror({ onComplete }: SoulMirrorProps) {
                       fontFamily: "'Cinzel', serif",
                       fontSize: '11px',
                       letterSpacing: '0.18em',
-                      color: '#c9a84c',
+                      color: '#e6c76e',
                       textTransform: 'uppercase',
                       marginBottom: '8px',
+                      textShadow: '0 0 6px rgba(230,199,110,0.15)',
                     }}
                   >
                     {style.label}
@@ -341,7 +345,7 @@ export default function SoulMirror({ onComplete }: SoulMirrorProps) {
                       fontFamily: "'Cormorant Garamond', serif",
                       fontSize: '15px',
                       lineHeight: 1.5,
-                      color: 'rgba(255,255,255,0.7)',
+                      color: 'rgba(255,255,255,0.82)',
                     }}
                   >
                     {style.desc}
@@ -357,7 +361,7 @@ export default function SoulMirror({ onComplete }: SoulMirrorProps) {
                 left: '20%',
                 right: '20%',
                 height: '1px',
-                background: 'linear-gradient(90deg, transparent, rgba(201,168,76,0.2), transparent)',
+                background: 'linear-gradient(90deg, transparent, rgba(230,199,110,0.22), transparent)',
               }}
             />
           </motion.div>
@@ -371,15 +375,15 @@ export default function SoulMirror({ onComplete }: SoulMirrorProps) {
             exit={{ opacity: 0, y: -16 }}
             transition={{ duration: 0.4 }}
             style={{
-              background: 'rgba(10,12,30,0.85)',
-              border: '1px solid rgba(201,168,76,0.15)',
+              background: 'rgba(10,12,30,0.88)',
+              border: '1px solid rgba(230,199,110,0.22)',
               borderRadius: '12px',
               width: 'min(580px, 95vw)',
               height: 'min(720px, 92vh)',
               display: 'flex',
               flexDirection: 'column',
               backdropFilter: 'blur(24px)',
-              boxShadow: '0 0 80px rgba(0,0,0,0.8), 0 0 40px rgba(201,168,76,0.06)',
+              boxShadow: '0 0 80px rgba(0,0,0,0.8), 0 0 40px rgba(230,199,110,0.08)',
               overflow: 'hidden',
               position: 'relative',
             }}
@@ -391,11 +395,11 @@ export default function SoulMirror({ onComplete }: SoulMirrorProps) {
                 left: '20%',
                 right: '20%',
                 height: '1px',
-                background: 'linear-gradient(90deg, transparent, rgba(201,168,76,0.4), transparent)',
+                background: 'linear-gradient(90deg, transparent, rgba(230,199,110,0.45), transparent)',
               }}
             />
 
-            <div style={{ padding: '18px 24px 14px', borderBottom: '1px solid rgba(255,255,255,0.05)', flexShrink: 0 }}>
+            <div style={{ padding: '18px 24px 14px', borderBottom: '1px solid rgba(255,255,255,0.08)', flexShrink: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
                 <div>
                   <p
@@ -403,8 +407,9 @@ export default function SoulMirror({ onComplete }: SoulMirrorProps) {
                       fontFamily: "'Cinzel', serif",
                       fontSize: '10px',
                       letterSpacing: '0.4em',
-                      color: '#c9a84c',
+                      color: '#e6c76e',
                       textTransform: 'uppercase',
+                      textShadow: '0 0 8px rgba(230,199,110,0.18)',
                     }}
                   >
                     Soul Mirror
@@ -415,8 +420,9 @@ export default function SoulMirror({ onComplete }: SoulMirrorProps) {
                       fontFamily: "'IM Fell English', serif",
                       fontStyle: 'italic',
                       fontSize: '12px',
-                      color: 'rgba(255,255,255,0.25)',
+                      color: 'rgba(255,255,255,0.72)',
                       marginTop: '2px',
+                      textShadow: '0 0 4px rgba(0,0,0,0.35)',
                     }}
                   >
                     tell me about yourself
@@ -429,7 +435,7 @@ export default function SoulMirror({ onComplete }: SoulMirrorProps) {
                       fontFamily: "'Cinzel', serif",
                       fontSize: '8px',
                       letterSpacing: '0.2em',
-                      color: 'rgba(255,255,255,0.2)',
+                      color: 'rgba(255,255,255,0.6)',
                       textTransform: 'uppercase',
                     }}
                   >
@@ -440,7 +446,7 @@ export default function SoulMirror({ onComplete }: SoulMirrorProps) {
                     style={{
                       width: '80px',
                       height: '2px',
-                      background: 'rgba(255,255,255,0.08)',
+                      background: 'rgba(255,255,255,0.12)',
                       borderRadius: '2px',
                       overflow: 'hidden',
                     }}
@@ -450,7 +456,7 @@ export default function SoulMirror({ onComplete }: SoulMirrorProps) {
                       transition={{ duration: 0.4 }}
                       style={{
                         height: '100%',
-                        background: chatDone ? '#c9a84c' : 'rgba(201,168,76,0.6)',
+                        background: chatDone ? '#e6c76e' : 'rgba(230,199,110,0.8)',
                         borderRadius: '2px',
                       }}
                     />
@@ -465,7 +471,7 @@ export default function SoulMirror({ onComplete }: SoulMirrorProps) {
                       fontFamily: "'Cinzel', serif",
                       fontSize: '8px',
                       letterSpacing: '0.18em',
-                      color: 'rgba(255,255,255,0.18)',
+                      color: 'rgba(255,255,255,0.58)',
                       textTransform: 'uppercase',
                       marginBottom: '6px',
                     }}
@@ -480,15 +486,15 @@ export default function SoulMirror({ onComplete }: SoulMirrorProps) {
                       gap: '8px',
                       padding: '6px 12px',
                       borderRadius: '999px',
-                      background: 'rgba(201,168,76,0.08)',
-                      border: '1px solid rgba(201,168,76,0.2)',
+                      background: 'rgba(230,199,110,0.1)',
+                      border: '1px solid rgba(230,199,110,0.28)',
                     }}
                   >
                     <span
                       style={{
                         fontFamily: "'Cormorant Garamond', serif",
                         fontSize: '14px',
-                        color: '#c9a84c',
+                        color: '#e6c76e',
                       }}
                     >
                       {selectedStyle.label}
@@ -523,15 +529,15 @@ export default function SoulMirror({ onComplete }: SoulMirrorProps) {
                         padding: '12px 16px',
                         borderRadius: msg.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
                         background: msg.isClosing
-                          ? 'rgba(201,168,76,0.08)'
+                          ? 'rgba(230,199,110,0.1)'
                           : msg.role === 'user'
-                            ? 'rgba(201,168,76,0.12)'
-                            : 'rgba(255,255,255,0.05)',
+                            ? 'rgba(230,199,110,0.14)'
+                            : 'rgba(255,255,255,0.06)',
                         border: msg.isClosing
-                          ? '1px solid rgba(201,168,76,0.3)'
+                          ? '1px solid rgba(230,199,110,0.35)'
                           : msg.role === 'user'
-                            ? '1px solid rgba(201,168,76,0.25)'
-                            : '1px solid rgba(255,255,255,0.08)',
+                            ? '1px solid rgba(230,199,110,0.28)'
+                            : '1px solid rgba(255,255,255,0.1)',
                       }}
                     >
                       {msg.role === 'ai' && (
@@ -540,9 +546,10 @@ export default function SoulMirror({ onComplete }: SoulMirrorProps) {
                             fontFamily: "'Cinzel', serif",
                             fontSize: '8px',
                             letterSpacing: '0.2em',
-                            color: msg.isClosing ? 'rgba(201,168,76,0.8)' : 'rgba(201,168,76,0.5)',
+                            color: msg.isClosing ? '#e6c76e' : 'rgba(230,199,110,0.82)',
                             textTransform: 'uppercase',
                             marginBottom: '6px',
+                            textShadow: '0 0 6px rgba(230,199,110,0.12)',
                           }}
                         >
                           {msg.isClosing ? '✦ Mirror · I can see you' : '✦ Mirror'}
@@ -555,11 +562,12 @@ export default function SoulMirror({ onComplete }: SoulMirrorProps) {
                           fontStyle: msg.role === 'ai' ? 'italic' : 'normal',
                           fontSize: msg.role === 'ai' ? '16px' : '15px',
                           color: msg.isClosing
-                            ? 'rgba(255,255,255,0.9)'
+                            ? 'rgba(255,255,255,0.94)'
                             : msg.role === 'user'
-                              ? 'rgba(255,255,255,0.8)'
-                              : 'rgba(255,255,255,0.75)',
+                              ? 'rgba(255,255,255,0.88)'
+                              : 'rgba(255,255,255,0.86)',
                           lineHeight: 1.6,
+                          textShadow: '0 0 4px rgba(0,0,0,0.28)',
                         }}
                       >
                         {msg.text}
@@ -575,8 +583,8 @@ export default function SoulMirror({ onComplete }: SoulMirrorProps) {
                     style={{
                       padding: '12px 18px',
                       borderRadius: '16px 16px 16px 4px',
-                      background: 'rgba(255,255,255,0.05)',
-                      border: '1px solid rgba(255,255,255,0.08)',
+                      background: 'rgba(255,255,255,0.06)',
+                      border: '1px solid rgba(255,255,255,0.1)',
                       display: 'flex',
                       gap: '5px',
                       alignItems: 'center',
@@ -591,7 +599,7 @@ export default function SoulMirror({ onComplete }: SoulMirrorProps) {
                           width: '5px',
                           height: '5px',
                           borderRadius: '50%',
-                          background: 'rgba(201,168,76,0.6)',
+                          background: 'rgba(230,199,110,0.8)',
                         }}
                       />
                     ))}
@@ -605,8 +613,9 @@ export default function SoulMirror({ onComplete }: SoulMirrorProps) {
                     fontFamily: "'IM Fell English', serif",
                     fontStyle: 'italic',
                     fontSize: '13px',
-                    color: 'rgba(220,120,120,0.7)',
+                    color: 'rgba(235,140,140,0.88)',
                     textAlign: 'center',
+                    textShadow: '0 0 4px rgba(0,0,0,0.3)',
                   }}
                 >
                   {error}
@@ -623,7 +632,7 @@ export default function SoulMirror({ onComplete }: SoulMirrorProps) {
                     fontFamily: "'Cinzel', serif",
                     fontSize: '7px',
                     letterSpacing: '0.25em',
-                    color: 'rgba(255,255,255,0.15)',
+                    color: 'rgba(255,255,255,0.58)',
                     textTransform: 'uppercase',
                     marginBottom: '8px',
                   }}
@@ -643,24 +652,25 @@ export default function SoulMirror({ onComplete }: SoulMirrorProps) {
                       style={{
                         fontFamily: "'Cormorant Garamond', serif",
                         fontSize: '13px',
-                        color: 'rgba(201,168,76,0.7)',
+                        color: 'rgba(230,199,110,0.88)',
                         padding: '5px 12px',
-                        border: '1px solid rgba(201,168,76,0.2)',
+                        border: '1px solid rgba(230,199,110,0.28)',
                         borderRadius: '20px',
-                        background: 'rgba(201,168,76,0.05)',
+                        background: 'rgba(230,199,110,0.06)',
                         cursor: 'pointer',
                         transition: 'all 0.2s',
                         whiteSpace: 'nowrap',
+                        textShadow: '0 0 4px rgba(0,0,0,0.2)',
                       }}
                       onMouseEnter={e => {
-                        e.currentTarget.style.background = 'rgba(201,168,76,0.12)'
-                        e.currentTarget.style.borderColor = 'rgba(201,168,76,0.4)'
-                        e.currentTarget.style.color = '#c9a84c'
+                        e.currentTarget.style.background = 'rgba(230,199,110,0.14)'
+                        e.currentTarget.style.borderColor = 'rgba(230,199,110,0.45)'
+                        e.currentTarget.style.color = '#e6c76e'
                       }}
                       onMouseLeave={e => {
-                        e.currentTarget.style.background = 'rgba(201,168,76,0.05)'
-                        e.currentTarget.style.borderColor = 'rgba(201,168,76,0.2)'
-                        e.currentTarget.style.color = 'rgba(201,168,76,0.7)'
+                        e.currentTarget.style.background = 'rgba(230,199,110,0.06)'
+                        e.currentTarget.style.borderColor = 'rgba(230,199,110,0.28)'
+                        e.currentTarget.style.color = 'rgba(230,199,110,0.88)'
                       }}
                     >
                       {chip}
@@ -673,7 +683,7 @@ export default function SoulMirror({ onComplete }: SoulMirrorProps) {
             <div
               style={{
                 padding: '10px 16px 18px',
-                borderTop: '1px solid rgba(255,255,255,0.05)',
+                borderTop: '1px solid rgba(255,255,255,0.08)',
                 flexShrink: 0,
                 marginTop: '8px',
               }}
@@ -686,9 +696,9 @@ export default function SoulMirror({ onComplete }: SoulMirrorProps) {
                   style={{
                     width: '100%',
                     padding: '14px',
-                    background: 'rgba(201,168,76,0.1)',
-                    border: '1px solid rgba(201,168,76,0.5)',
-                    color: '#c9a84c',
+                    background: 'rgba(230,199,110,0.12)',
+                    border: '1px solid rgba(230,199,110,0.55)',
+                    color: '#e6c76e',
                     fontFamily: "'Cinzel', serif",
                     fontSize: '11px',
                     letterSpacing: '0.3em',
@@ -696,13 +706,14 @@ export default function SoulMirror({ onComplete }: SoulMirrorProps) {
                     cursor: 'pointer',
                     borderRadius: '8px',
                     transition: 'all 0.3s',
+                    textShadow: '0 0 8px rgba(230,199,110,0.15)',
                   }}
                   onMouseEnter={e => {
-                    e.currentTarget.style.background = 'rgba(201,168,76,0.18)'
-                    e.currentTarget.style.boxShadow = '0 0 24px rgba(201,168,76,0.2)'
+                    e.currentTarget.style.background = 'rgba(230,199,110,0.2)'
+                    e.currentTarget.style.boxShadow = '0 0 24px rgba(230,199,110,0.2)'
                   }}
                   onMouseLeave={e => {
-                    e.currentTarget.style.background = 'rgba(201,168,76,0.1)'
+                    e.currentTarget.style.background = 'rgba(230,199,110,0.12)'
                     e.currentTarget.style.boxShadow = 'none'
                   }}
                 >
@@ -725,25 +736,25 @@ export default function SoulMirror({ onComplete }: SoulMirrorProps) {
                       }}
                       style={{
                         flex: 1,
-                        background: 'rgba(255,255,255,0.04)',
-                        border: '1px solid rgba(255,255,255,0.08)',
+                        background: 'rgba(255,255,255,0.06)',
+                        border: '1px solid rgba(255,255,255,0.12)',
                         borderRadius: '10px',
-                        color: 'rgba(255,255,255,0.88)',
+                        color: 'rgba(255,255,255,0.92)',
                         fontFamily: "'Cormorant Garamond', serif",
                         fontSize: '15px',
                         lineHeight: 1.6,
                         padding: '10px 14px',
                         resize: 'none',
                         outline: 'none',
-                        caretColor: '#c9a84c',
+                        caretColor: '#e6c76e',
                         opacity: loading ? 0.5 : 1,
                         transition: 'border-color 0.2s',
                       }}
                       onFocus={e => {
-                        e.target.style.borderColor = 'rgba(201,168,76,0.4)'
+                        e.target.style.borderColor = 'rgba(230,199,110,0.45)'
                       }}
                       onBlur={e => {
-                        e.target.style.borderColor = 'rgba(255,255,255,0.08)'
+                        e.target.style.borderColor = 'rgba(255,255,255,0.12)'
                       }}
                     />
 
@@ -754,9 +765,9 @@ export default function SoulMirror({ onComplete }: SoulMirrorProps) {
                         width: '42px',
                         height: '42px',
                         borderRadius: '10px',
-                        background: inputValue.trim() && !loading ? 'rgba(201,168,76,0.15)' : 'rgba(255,255,255,0.03)',
-                        border: `1px solid ${inputValue.trim() && !loading ? 'rgba(201,168,76,0.4)' : 'rgba(255,255,255,0.06)'}`,
-                        color: inputValue.trim() && !loading ? '#c9a84c' : 'rgba(255,255,255,0.2)',
+                        background: inputValue.trim() && !loading ? 'rgba(230,199,110,0.18)' : 'rgba(255,255,255,0.04)',
+                        border: `1px solid ${inputValue.trim() && !loading ? 'rgba(230,199,110,0.45)' : 'rgba(255,255,255,0.08)'}`,
+                        color: inputValue.trim() && !loading ? '#e6c76e' : 'rgba(255,255,255,0.42)',
                         fontSize: '16px',
                         cursor: inputValue.trim() && !loading ? 'pointer' : 'default',
                         display: 'flex',
@@ -775,7 +786,7 @@ export default function SoulMirror({ onComplete }: SoulMirrorProps) {
                       fontFamily: "'Cinzel', serif",
                       fontSize: '8px',
                       letterSpacing: '0.15em',
-                      color: 'rgba(255,255,255,0.12)',
+                      color: 'rgba(255,255,255,0.5)',
                       textAlign: 'center',
                       marginTop: '8px',
                       textTransform: 'uppercase',
@@ -797,8 +808,8 @@ export default function SoulMirror({ onComplete }: SoulMirrorProps) {
             exit={{ opacity: 0, y: -16 }}
             transition={{ duration: 0.4 }}
             style={{
-              background: 'rgba(10,12,30,0.85)',
-              border: '1px solid rgba(201,168,76,0.15)',
+              background: 'rgba(10,12,30,0.88)',
+              border: '1px solid rgba(230,199,110,0.22)',
               borderRadius: '12px',
               padding: 'clamp(40px, 6vw, 64px)',
               width: 'min(480px, 95vw)',
@@ -816,7 +827,7 @@ export default function SoulMirror({ onComplete }: SoulMirrorProps) {
                 left: '20%',
                 right: '20%',
                 height: '1px',
-                background: 'linear-gradient(90deg, transparent, rgba(201,168,76,0.4), transparent)',
+                background: 'linear-gradient(90deg, transparent, rgba(230,199,110,0.45), transparent)',
               }}
             />
 
@@ -825,9 +836,10 @@ export default function SoulMirror({ onComplete }: SoulMirrorProps) {
                 fontFamily: "'Cinzel', serif",
                 fontSize: '9px',
                 letterSpacing: '0.5em',
-                color: 'rgba(201,168,76,0.5)',
+                color: '#e6c76e',
                 textTransform: 'uppercase',
                 marginBottom: '16px',
+                textShadow: '0 0 8px rgba(230,199,110,0.18)',
               }}
             >
               One last thing
@@ -838,9 +850,10 @@ export default function SoulMirror({ onComplete }: SoulMirrorProps) {
                 fontFamily: "'IM Fell English', serif",
                 fontStyle: 'italic',
                 fontSize: 'clamp(18px, 3vw, 24px)',
-                color: 'rgba(255,255,255,0.88)',
+                color: 'rgba(255,255,255,0.92)',
                 lineHeight: 1.6,
                 marginBottom: '18px',
+                textShadow: '0 0 6px rgba(0,0,0,0.35)',
               }}
             >
               What would you name your place in the universe?
@@ -851,7 +864,7 @@ export default function SoulMirror({ onComplete }: SoulMirrorProps) {
                 style={{
                   fontFamily: "'Cormorant Garamond', serif",
                   fontSize: '15px',
-                  color: 'rgba(255,255,255,0.45)',
+                  color: 'rgba(255,255,255,0.74)',
                   marginBottom: '18px',
                 }}
               >
@@ -871,8 +884,8 @@ export default function SoulMirror({ onComplete }: SoulMirrorProps) {
                 width: '100%',
                 background: 'transparent',
                 border: 'none',
-                borderBottom: '1px solid rgba(255,255,255,0.12)',
-                color: 'rgba(255,255,255,0.88)',
+                borderBottom: '1px solid rgba(255,255,255,0.2)',
+                color: 'rgba(255,255,255,0.94)',
                 fontFamily: "'Cormorant Garamond', serif",
                 fontSize: '22px',
                 lineHeight: 1.6,
@@ -880,14 +893,14 @@ export default function SoulMirror({ onComplete }: SoulMirrorProps) {
                 outline: 'none',
                 textAlign: 'center',
                 letterSpacing: '0.08em',
-                caretColor: '#c9a84c',
+                caretColor: '#e6c76e',
                 marginBottom: '28px',
               }}
               onFocus={e => {
-                e.target.style.borderBottomColor = '#c9a84c'
+                e.target.style.borderBottomColor = '#e6c76e'
               }}
               onBlur={e => {
-                e.target.style.borderBottomColor = 'rgba(255,255,255,0.12)'
+                e.target.style.borderBottomColor = 'rgba(255,255,255,0.2)'
               }}
             />
 
@@ -898,18 +911,19 @@ export default function SoulMirror({ onComplete }: SoulMirrorProps) {
                 width: '100%',
                 padding: '14px',
                 background: 'transparent',
-                border: '1px solid rgba(201,168,76,0.35)',
-                color: hubName.trim() ? '#c9a84c' : 'rgba(201,168,76,0.3)',
+                border: '1px solid rgba(230,199,110,0.42)',
+                color: hubName.trim() ? '#e6c76e' : 'rgba(230,199,110,0.42)',
                 fontFamily: "'Cinzel', serif",
                 fontSize: '11px',
                 letterSpacing: '0.3em',
                 textTransform: 'uppercase',
                 cursor: hubName.trim() ? 'pointer' : 'default',
                 transition: 'all 0.3s',
+                textShadow: hubName.trim() ? '0 0 8px rgba(230,199,110,0.15)' : 'none',
               }}
               onMouseEnter={e => {
                 if (!hubName.trim()) return
-                e.currentTarget.style.background = 'rgba(201,168,76,0.08)'
+                e.currentTarget.style.background = 'rgba(230,199,110,0.08)'
               }}
               onMouseLeave={e => {
                 e.currentTarget.style.background = 'transparent'
@@ -925,7 +939,7 @@ export default function SoulMirror({ onComplete }: SoulMirrorProps) {
                 left: '20%',
                 right: '20%',
                 height: '1px',
-                background: 'linear-gradient(90deg, transparent, rgba(201,168,76,0.2), transparent)',
+                background: 'linear-gradient(90deg, transparent, rgba(230,199,110,0.22), transparent)',
               }}
             />
           </motion.div>
@@ -939,8 +953,8 @@ export default function SoulMirror({ onComplete }: SoulMirrorProps) {
             exit={{ opacity: 0, y: -16 }}
             transition={{ duration: 0.5 }}
             style={{
-              background: 'rgba(10,12,30,0.85)',
-              border: '1px solid rgba(201,168,76,0.15)',
+              background: 'rgba(10,12,30,0.88)',
+              border: '1px solid rgba(230,199,110,0.22)',
               borderRadius: '12px',
               padding: 'clamp(36px, 5vw, 56px)',
               width: 'min(560px, 95vw)',
@@ -957,7 +971,7 @@ export default function SoulMirror({ onComplete }: SoulMirrorProps) {
                 left: '15%',
                 right: '15%',
                 height: '1px',
-                background: 'linear-gradient(90deg, transparent, rgba(201,168,76,0.4), transparent)',
+                background: 'linear-gradient(90deg, transparent, rgba(230,199,110,0.45), transparent)',
               }}
             />
 
@@ -967,9 +981,10 @@ export default function SoulMirror({ onComplete }: SoulMirrorProps) {
                   fontFamily: "'Cinzel', serif",
                   fontSize: '9px',
                   letterSpacing: '0.5em',
-                  color: 'rgba(201,168,76,0.5)',
+                  color: '#e6c76e',
                   textTransform: 'uppercase',
                   marginBottom: '12px',
+                  textShadow: '0 0 8px rgba(230,199,110,0.18)',
                 }}
               >
                 Welcome to the Universe
@@ -980,8 +995,9 @@ export default function SoulMirror({ onComplete }: SoulMirrorProps) {
                   fontFamily: "'IM Fell English', serif",
                   fontStyle: 'italic',
                   fontSize: 'clamp(16px, 2.5vw, 20px)',
-                  color: 'rgba(255,255,255,0.85)',
+                  color: 'rgba(255,255,255,0.9)',
                   lineHeight: 1.6,
+                  textShadow: '0 0 6px rgba(0,0,0,0.35)',
                 }}
               >
                 Before you enter, a few things to know
@@ -992,7 +1008,7 @@ export default function SoulMirror({ onComplete }: SoulMirrorProps) {
                   style={{
                     fontFamily: "'Cormorant Garamond', serif",
                     fontSize: '16px',
-                    color: 'rgba(255,255,255,0.45)',
+                    color: 'rgba(255,255,255,0.74)',
                     marginTop: '10px',
                   }}
                 >
@@ -1003,7 +1019,7 @@ export default function SoulMirror({ onComplete }: SoulMirrorProps) {
               <div
                 style={{
                   height: '1px',
-                  background: 'linear-gradient(90deg, transparent, rgba(201,168,76,0.2), transparent)',
+                  background: 'linear-gradient(90deg, transparent, rgba(230,199,110,0.24), transparent)',
                   marginTop: '16px',
                 }}
               />
@@ -1023,8 +1039,8 @@ export default function SoulMirror({ onComplete }: SoulMirrorProps) {
                       width: '28px',
                       height: '28px',
                       borderRadius: '50%',
-                      background: 'rgba(201,168,76,0.08)',
-                      border: '1px solid rgba(201,168,76,0.2)',
+                      background: 'rgba(230,199,110,0.1)',
+                      border: '1px solid rgba(230,199,110,0.24)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -1042,9 +1058,10 @@ export default function SoulMirror({ onComplete }: SoulMirrorProps) {
                         fontFamily: "'Cinzel', serif",
                         fontSize: '10px',
                         letterSpacing: '0.2em',
-                        color: 'rgba(201,168,76,0.8)',
+                        color: '#e6c76e',
                         textTransform: 'uppercase',
                         marginBottom: '4px',
+                        textShadow: '0 0 6px rgba(230,199,110,0.12)',
                       }}
                     >
                       {rule.title}
@@ -1055,8 +1072,9 @@ export default function SoulMirror({ onComplete }: SoulMirrorProps) {
                         fontFamily: "'IM Fell English', serif",
                         fontStyle: 'italic',
                         fontSize: '14px',
-                        color: 'rgba(255,255,255,0.45)',
+                        color: 'rgba(255,255,255,0.8)',
                         lineHeight: 1.6,
+                        textShadow: '0 0 4px rgba(0,0,0,0.28)',
                       }}
                     >
                       {rule.desc}
@@ -1076,18 +1094,19 @@ export default function SoulMirror({ onComplete }: SoulMirrorProps) {
                 width: '100%',
                 padding: '16px',
                 background: 'transparent',
-                border: '1px solid rgba(201,168,76,0.5)',
-                color: '#c9a84c',
+                border: '1px solid rgba(230,199,110,0.55)',
+                color: '#e6c76e',
                 fontFamily: "'Cinzel', serif",
                 fontSize: '11px',
                 letterSpacing: '0.35em',
                 textTransform: 'uppercase',
                 cursor: 'pointer',
                 transition: 'all 0.3s',
+                textShadow: '0 0 8px rgba(230,199,110,0.15)',
               }}
               onMouseEnter={e => {
-                e.currentTarget.style.background = 'rgba(201,168,76,0.1)'
-                e.currentTarget.style.boxShadow = '0 0 28px rgba(201,168,76,0.2)'
+                e.currentTarget.style.background = 'rgba(230,199,110,0.12)'
+                e.currentTarget.style.boxShadow = '0 0 28px rgba(230,199,110,0.2)'
               }}
               onMouseLeave={e => {
                 e.currentTarget.style.background = 'transparent'
@@ -1104,7 +1123,7 @@ export default function SoulMirror({ onComplete }: SoulMirrorProps) {
                 left: '15%',
                 right: '15%',
                 height: '1px',
-                background: 'linear-gradient(90deg, transparent, rgba(201,168,76,0.2), transparent)',
+                background: 'linear-gradient(90deg, transparent, rgba(230,199,110,0.22), transparent)',
               }}
             />
           </motion.div>
