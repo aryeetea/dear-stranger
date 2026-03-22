@@ -64,6 +64,20 @@ async function requestAvatarImage(
   }
 }
 
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string) {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined
+
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(message)), timeoutMs)
+  })
+
+  try {
+    return await Promise.race([promise, timeoutPromise])
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId)
+  }
+}
+
 export default function Home() {
   const [screen, setScreen] = useState<Screen>('loading')
   const [hubName, setHubName] = useState('')
@@ -186,26 +200,42 @@ export default function Home() {
       setScreen('generating')
       setGeneratingStatus('Crafting your soul mirror...')
 
-      let session = await getSession()
+      let session = await withTimeout(getSession(), 10000, 'Connecting to your account took too long. Please try again.')
       const isAnonymousSession = Boolean((session?.user as { is_anonymous?: boolean } | undefined)?.is_anonymous)
 
       if (pendingCredentials) {
         if (isAnonymousSession) {
-          await signOut()
+          await withTimeout(signOut(), 8000, 'Resetting your session took too long. Please try again.')
           session = null
         }
-        await signUpAndCreateHub(pendingCredentials.email, pendingCredentials.password, hubNameAnswer, chosenBio, fallbackAskAbout)
-        session = await getSession()
+        await withTimeout(
+          signUpAndCreateHub(pendingCredentials.email, pendingCredentials.password, hubNameAnswer, chosenBio, fallbackAskAbout),
+          20000,
+          'Creating your account took too long. Please try again.',
+        )
+        session = await withTimeout(getSession(), 10000, 'Connecting to your new account took too long. Please try again.')
         if (!session) {
-          await signIn(pendingCredentials.email, pendingCredentials.password)
-          session = await getSession()
+          await withTimeout(
+            signIn(pendingCredentials.email, pendingCredentials.password),
+            12000,
+            'Signing you in took too long. Please try again.',
+          )
+          session = await withTimeout(getSession(), 10000, 'Loading your session took too long. Please try again.')
         }
         setPendingCredentials(null)
       } else if (session) {
-        await createHubForCurrentUser(hubNameAnswer, chosenBio, fallbackAskAbout)
+        await withTimeout(
+          createHubForCurrentUser(hubNameAnswer, chosenBio, fallbackAskAbout),
+          15000,
+          'Creating your hub took too long. Please try again.',
+        )
       } else {
-        await signInAndCreateHub(hubNameAnswer, chosenBio, fallbackAskAbout)
-        session = await getSession()
+        await withTimeout(
+          signInAndCreateHub(hubNameAnswer, chosenBio, fallbackAskAbout),
+          15000,
+          'Opening your hub took too long. Please try again.',
+        )
+        session = await withTimeout(getSession(), 10000, 'Loading your session took too long. Please try again.')
       }
 
       setHubName(hubNameAnswer)
@@ -216,12 +246,16 @@ export default function Home() {
       const userId = session?.user?.id
 
       setGeneratingStatus('Placing your hub in the universe...')
-      await updateHub({
-        bio: chosenBio,
-        ask_about: fallbackAskAbout,
-        hub_style: chosenHubStyle,
-        backdrop_id: 'void',
-      } as any)
+      await withTimeout(
+        updateHub({
+          bio: chosenBio,
+          ask_about: fallbackAskAbout,
+          hub_style: chosenHubStyle,
+          backdrop_id: 'void',
+        } as any),
+        12000,
+        'Saving your hub took too long. Please try again.',
+      )
 
       setHubAvatarUrl('')
       setOnboardingResumeState(null)
