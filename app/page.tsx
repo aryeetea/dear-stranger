@@ -83,7 +83,6 @@ export default function Home() {
     selectedStyle?: { id: string; label: string; desc: string },
     selectedHubStyle?: HubStyle,
     mirrorVoice?: { id: string; label: string },
-    backdrop?: { id: string; label: string; colors: string[] },
     userBio?: string,
     userHubName?: string,
   ) {
@@ -140,7 +139,7 @@ export default function Home() {
         bio: chosenBio,
         ask_about: fallbackAskAbout,
         hub_style: chosenHubStyle,
-        backdrop_id: backdrop?.id || 'void',
+        backdrop_id: 'void',
         ...(avatarUrl ? { avatar_url: avatarUrl } : {}),
       } as any)
 

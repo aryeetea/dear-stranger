@@ -9,9 +9,9 @@ export type HubStyle = 'portal' | 'lantern' | 'ruin' | 'hourglass' | 'telescope'
 export const HUB_STYLES: { id: HubStyle; label: string; desc: string; icon: string }[] = [
   { id: 'portal', label: 'Portal Ring', desc: 'A spinning cosmic gateway', icon: '◎' },
   { id: 'lantern', label: 'Floating Lantern', desc: 'A soft glowing orb drifting in space', icon: '◉' },
-  { id: 'ruin', label: 'Ancient Ruin', desc: 'A crumbled stone archway from another age', icon: '⟁' },
-  { id: 'hourglass', label: 'Hourglass', desc: 'Sand drifting between two chambers', icon: '⧗' },
-  { id: 'telescope', label: 'Observatory Dome', desc: 'Magnifies the world when you look closer', icon: '⟡' },
+  { id: 'ruin', label: 'Moon Gate', desc: 'A silver-lit arch with a quiet lunar pull', icon: '☽' },
+  { id: 'hourglass', label: 'Prism Bloom', desc: 'A faceted crystal flower suspended in light', icon: '◇' },
+  { id: 'telescope', label: 'Starwatch Shrine', desc: 'A celestial shrine with a lens of focused light', icon: '✧' },
   { id: 'greenhouse', label: 'Greenhouse Bubble', desc: 'A glass dome brimming with quiet life', icon: '✦' },
 ]
 
@@ -173,10 +173,6 @@ function drawRuin(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: numb
   ctx.fillStyle = `rgba(${colors.glow},0.18)`
   ctx.fillRect(-r * 0.8 - 7 * s, -r * 0.6, 8 * s, r * 1.4)
   ctx.fillStyle = `rgba(${colors.glow},0.1)`
-  // Crumble chunks left
-  ;[[0, 0.3], [0.3, 0.6], [0.1, 0.9]].forEach((chunk) => {
-  ctx.fillRect(-r * 0.8 - 9 * s + chunk[0] * 4 * s, -r * 0.6 + chunk[1] * r * 0.5, 4 * s, 3 * s)
-})
   ctx.restore()
   // Right pillar
   ctx.save(); ctx.translate(cx + sway * 0.3, cy)
@@ -191,6 +187,17 @@ function drawRuin(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: numb
   // Keystone
   ctx.fillStyle = `rgba(${colors.glow},0.35)`
   ctx.fillRect(-6 * s, -r * 0.55 - r * 0.85 - 4 * s, 12 * s, 10 * s)
+  ctx.restore()
+  // Crescent moon suspended in the arch
+  ctx.save()
+  ctx.translate(cx + r * 0.08, cy - r * 0.98)
+  ctx.rotate(-0.2 + Math.sin(t * 0.35) * 0.04)
+  ctx.beginPath()
+  ctx.arc(0, 0, 8 * s, Math.PI * 0.2, Math.PI * 1.8)
+  ctx.arc(3.5 * s, 0, 6 * s, Math.PI * 1.8, Math.PI * 0.2, true)
+  ctx.closePath()
+  ctx.fillStyle = `rgba(${colors.glow},0.55)`
+  ctx.fill()
   ctx.restore()
   // Portal within archway
   if (avatarImage?.complete && avatarImage.naturalWidth > 0) {
@@ -221,73 +228,89 @@ function drawRuin(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: numb
 }
 
 function drawHourglass(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: number, colors: typeof MY_PORTAL, t: number, online: boolean, isMe: boolean, avatarImage?: HTMLImageElement) {
-  const r = 28 * s
-  const h = r * 1.6; const w = r * 0.7
-  // Frame
-  ctx.strokeStyle = `rgba(${colors.glow},0.6)`; ctx.lineWidth = 2 * s
+  const r = 30 * s
+  const pulse = 0.92 + 0.08 * Math.sin(t * 0.8)
+  const bloomR = r * pulse
+  const points = [
+    { x: cx, y: cy - bloomR },
+    { x: cx + bloomR * 0.72, y: cy },
+    { x: cx, y: cy + bloomR },
+    { x: cx - bloomR * 0.72, y: cy },
+  ]
+
+  const aura = ctx.createRadialGradient(cx, cy, bloomR * 0.15, cx, cy, bloomR * 2.2)
+  aura.addColorStop(0, `rgba(${colors.glow},0.18)`)
+  aura.addColorStop(1, `rgba(${colors.glow},0)`)
+  ctx.beginPath(); ctx.arc(cx, cy, bloomR * 2.2, 0, Math.PI * 2)
+  ctx.fillStyle = aura; ctx.fill()
+
+  const crystalGrad = ctx.createLinearGradient(cx, cy - bloomR, cx, cy + bloomR)
+  crystalGrad.addColorStop(0, `rgba(230,245,255,0.34)`)
+  crystalGrad.addColorStop(0.45, `rgba(${colors.glow},0.22)`)
+  crystalGrad.addColorStop(1, `rgba(${colors.glow},0.08)`)
   ctx.beginPath()
-  ctx.moveTo(cx - w, cy - h / 2); ctx.lineTo(cx + w, cy - h / 2) // top bar
-  ctx.moveTo(cx - w, cy + h / 2); ctx.lineTo(cx + w, cy + h / 2) // bottom bar
+  ctx.moveTo(points[0].x, points[0].y)
+  points.slice(1).forEach(point => ctx.lineTo(point.x, point.y))
+  ctx.closePath()
+  ctx.fillStyle = crystalGrad
+  ctx.fill()
+  ctx.strokeStyle = `rgba(${colors.glow},0.58)`
+  ctx.lineWidth = 1.6 * s
   ctx.stroke()
-  // Glass sides
+
   ctx.beginPath()
-  ctx.moveTo(cx - w, cy - h / 2); ctx.quadraticCurveTo(cx - w * 0.15, cy, cx - 2 * s, cy)
-  ctx.moveTo(cx + w, cy - h / 2); ctx.quadraticCurveTo(cx + w * 0.15, cy, cx + 2 * s, cy)
-  ctx.moveTo(cx - w, cy + h / 2); ctx.quadraticCurveTo(cx - w * 0.15, cy, cx - 2 * s, cy)
-  ctx.moveTo(cx + w, cy + h / 2); ctx.quadraticCurveTo(cx + w * 0.15, cy, cx + 2 * s, cy)
-  ctx.strokeStyle = `rgba(${colors.glow},0.3)`; ctx.lineWidth = 1.5 * s; ctx.stroke()
-  // Sand fill (top chamber drains slowly)
-  const cycle = (t * 0.08) % 1
-  const topFill = 1 - cycle; const botFill = cycle
-  // Top sand
-  ctx.save()
-  ctx.beginPath()
-  ctx.moveTo(cx - w + 4 * s, cy - h / 2 + 4 * s)
-  ctx.lineTo(cx + w - 4 * s, cy - h / 2 + 4 * s)
-  ctx.quadraticCurveTo(cx + w * 0.12, cy, cx, cy)
-  ctx.quadraticCurveTo(cx - w * 0.12, cy, cx - w + 4 * s, cy)
-  ctx.clip()
-  const sandGrad = ctx.createLinearGradient(cx, cy - h / 2, cx, cy)
-  sandGrad.addColorStop(0, `rgba(${colors.glow},0.7)`)
-  sandGrad.addColorStop(topFill, `rgba(${colors.glow},0.5)`)
-  sandGrad.addColorStop(topFill + 0.01, `rgba(${colors.glow},0.0)`)
-  sandGrad.addColorStop(1, `rgba(${colors.glow},0.0)`)
-  ctx.fillStyle = sandGrad; ctx.fillRect(cx - w, cy - h / 2, w * 2, h / 2); ctx.restore()
-  // Bottom sand
-  ctx.save()
-  ctx.beginPath()
-  ctx.moveTo(cx - w + 4 * s, cy + h / 2 - 4 * s)
-  ctx.lineTo(cx + w - 4 * s, cy + h / 2 - 4 * s)
-  ctx.quadraticCurveTo(cx + w * 0.12, cy, cx, cy)
-  ctx.quadraticCurveTo(cx - w * 0.12, cy, cx - w + 4 * s, cy)
-  ctx.clip()
-  const botGrad = ctx.createLinearGradient(cx, cy, cx, cy + h / 2)
-  botGrad.addColorStop(0, `rgba(${colors.glow},0.0)`)
-  botGrad.addColorStop(1 - botFill - 0.01, `rgba(${colors.glow},0.0)`)
-  botGrad.addColorStop(1 - botFill, `rgba(${colors.glow},0.5)`)
-  botGrad.addColorStop(1, `rgba(${colors.glow},0.7)`)
-  ctx.fillStyle = botGrad; ctx.fillRect(cx - w, cy, w * 2, h / 2); ctx.restore()
-  // Falling sand particles
-  for (let i = 0; i < 3; i++) {
-    const py = cy + ((t * 60 + i * 20) % (h * 0.4)) * s * 0.5 - h * 0.2
-    const pa = 0.4 + 0.4 * Math.sin(t * 3 + i)
-    ctx.beginPath(); ctx.arc(cx + (i - 1) * 1.5 * s, py, 1.2 * s, 0, Math.PI * 2)
-    ctx.fillStyle = `rgba(${colors.glow},${pa})`; ctx.fill()
-  }
-  // Avatar reflected in glass
+  ctx.moveTo(cx, cy - bloomR)
+  ctx.lineTo(cx, cy + bloomR)
+  ctx.moveTo(cx - bloomR * 0.72, cy)
+  ctx.lineTo(cx + bloomR * 0.72, cy)
+  ctx.moveTo(cx - bloomR * 0.36, cy - bloomR * 0.5)
+  ctx.lineTo(cx + bloomR * 0.36, cy - bloomR * 0.5)
+  ctx.moveTo(cx - bloomR * 0.36, cy + bloomR * 0.5)
+  ctx.lineTo(cx + bloomR * 0.36, cy + bloomR * 0.5)
+  ctx.strokeStyle = `rgba(220,245,255,0.18)`
+  ctx.lineWidth = 0.9 * s
+  ctx.stroke()
+
   if (avatarImage?.complete && avatarImage.naturalWidth > 0) {
-    ctx.save(); ctx.globalAlpha = 0.25
-    ctx.drawImage(avatarImage, cx - w * 0.6, cy - h * 0.4, w * 1.2, h * 0.8)
+    ctx.save()
+    ctx.globalAlpha = 0.3
+    ctx.beginPath()
+    ctx.moveTo(cx, cy - bloomR * 0.78)
+    ctx.lineTo(cx + bloomR * 0.5, cy)
+    ctx.lineTo(cx, cy + bloomR * 0.78)
+    ctx.lineTo(cx - bloomR * 0.5, cy)
+    ctx.closePath()
+    ctx.clip()
+    ctx.drawImage(avatarImage, cx - bloomR * 0.7, cy - bloomR * 0.7, bloomR * 1.4, bloomR * 1.4)
     ctx.restore()
   }
-  // Glow at waist
-  const waistGlow = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * 0.5)
-  waistGlow.addColorStop(0, `rgba(${colors.glow},0.35)`)
-  waistGlow.addColorStop(1, `rgba(${colors.glow},0)`)
-  ctx.beginPath(); ctx.arc(cx, cy, r * 0.5, 0, Math.PI * 2)
-  ctx.fillStyle = waistGlow; ctx.fill()
+
+  for (let i = 0; i < 6; i++) {
+    const angle = (i / 6) * Math.PI * 2 + t * 0.45
+    const px = cx + Math.cos(angle) * bloomR * 0.95
+    const py = cy + Math.sin(angle) * bloomR * 0.95
+    ctx.save()
+    ctx.translate(px, py)
+    ctx.rotate(angle + t * 0.2)
+    ctx.beginPath()
+    ctx.moveTo(0, -4 * s)
+    ctx.lineTo(3 * s, 0)
+    ctx.lineTo(0, 4 * s)
+    ctx.lineTo(-3 * s, 0)
+    ctx.closePath()
+    ctx.fillStyle = `rgba(${colors.glow},${0.28 + 0.18 * Math.sin(t * 1.8 + i)})`
+    ctx.fill()
+    ctx.restore()
+  }
+
+  const coreGlow = ctx.createRadialGradient(cx, cy, 0, cx, cy, bloomR * 0.5)
+  coreGlow.addColorStop(0, `rgba(${colors.glow},0.35)`)
+  coreGlow.addColorStop(1, `rgba(${colors.glow},0)`)
+  ctx.beginPath(); ctx.arc(cx, cy, bloomR * 0.5, 0, Math.PI * 2)
+  ctx.fillStyle = coreGlow; ctx.fill()
+
   if (!isMe) {
-    ctx.beginPath(); ctx.arc(cx + w + 3 * s, cy - h / 2, 3 * s, 0, Math.PI * 2)
+    ctx.beginPath(); ctx.arc(cx + bloomR * 0.8, cy - bloomR * 0.8, 3 * s, 0, Math.PI * 2)
     ctx.fillStyle = online ? '#7ecf7e' : 'rgba(255,255,255,0.2)'; ctx.fill()
   }
 }

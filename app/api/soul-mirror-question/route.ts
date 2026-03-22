@@ -74,7 +74,25 @@ Keep responses concise. Never use bullet points or numbered lists.
       systemInstruction: systemPrompt,
     })
 
-    const conversationHistory = messages.map((m: { role: string; text: string }) => ({
+    const rawHistory = Array.isArray(messages) ? [...messages] : []
+    const latestUserMessage =
+      answers[answers.length - 1] ||
+      (rawHistory.length > 0 && rawHistory[rawHistory.length - 1]?.role === 'user'
+        ? rawHistory[rawHistory.length - 1].text
+        : 'Continue.')
+
+    // Gemini chat history must begin with a user turn, so we exclude the
+    // current user message from history and trim any leading AI-only opener.
+    const historyForChat =
+      rawHistory.length > 0 && rawHistory[rawHistory.length - 1]?.role === 'user'
+        ? rawHistory.slice(0, -1)
+        : rawHistory
+
+    while (historyForChat.length > 0 && historyForChat[0]?.role === 'ai') {
+      historyForChat.shift()
+    }
+
+    const conversationHistory = historyForChat.map((m: { role: string; text: string }) => ({
       role: m.role === 'ai' ? 'model' : 'user',
       parts: [{ text: m.text }],
     }))
@@ -88,7 +106,9 @@ Keep responses concise. Never use bullet points or numbered lists.
     })
 
     const result = await chat.sendMessage(
-      conversationHistory.length === 0 ? 'Begin. Ask your opening question.' : answers[answers.length - 1] || 'Continue.'
+      conversationHistory.length === 0 && answers.length === 0
+        ? 'Begin. Ask your opening question.'
+        : latestUserMessage
     )
 
     const raw = result.response.text()
