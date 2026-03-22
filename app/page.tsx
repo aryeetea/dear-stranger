@@ -36,6 +36,34 @@ function AuthBackground() {
   )
 }
 
+async function requestAvatarImage(
+  answers: Record<number, string>,
+  userId?: string,
+  style?: string,
+  timeoutMs = 25000,
+) {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), timeoutMs)
+
+  try {
+    const response = await fetch('/api/generate-avatar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ answers, userId, style }),
+      signal: controller.signal,
+    })
+
+    const data = await response.json().catch(() => ({}))
+    if (!response.ok || data.error) {
+      throw new Error(data.error || `Avatar request failed with status ${response.status}`)
+    }
+
+    return typeof data.imageUrl === 'string' ? data.imageUrl : ''
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
 export default function Home() {
   const [screen, setScreen] = useState<Screen>('loading')
   const [hubName, setHubName] = useState('')
@@ -183,32 +211,9 @@ export default function Home() {
       setHubName(hubNameAnswer)
       setHubStyle(chosenHubStyle)
       setHubBio(chosenBio)
+      setHubAskAbout(fallbackAskAbout)
 
       const userId = session?.user?.id
-
-      setGeneratingStatus('The mirror is reflecting your presence...')
-
-      // Only generate avatar — bio is user-written now
-      const [, avatarResponse] = await Promise.allSettled([
-        // Bio generation skipped — user wrote their own
-        Promise.resolve({ bio: chosenBio, askAbout: fallbackAskAbout }),
-        fetch('/api/generate-avatar', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ answers: conversationAnswers, userId, style: selectedStyle?.label }),
-        }).then(r => r.json()),
-      ])
-
-      let avatarUrl = ''
-      if (avatarResponse.status === 'fulfilled') {
-        if (avatarResponse.value.error) {
-          console.error('Avatar generation failed:', avatarResponse.value.error)
-        } else {
-          avatarUrl = avatarResponse.value.imageUrl || ''
-        }
-      } else {
-        console.error('Avatar generation request failed:', avatarResponse.reason)
-      }
 
       setGeneratingStatus('Placing your hub in the universe...')
       await updateHub({
@@ -216,13 +221,22 @@ export default function Home() {
         ask_about: fallbackAskAbout,
         hub_style: chosenHubStyle,
         backdrop_id: 'void',
-        ...(avatarUrl ? { avatar_url: avatarUrl } : {}),
       } as any)
 
-      setHubAskAbout(fallbackAskAbout)
-      setHubAvatarUrl(avatarUrl)
+      setHubAvatarUrl('')
       setOnboardingResumeState(null)
       setScreen('universe')
+
+      void (async () => {
+        try {
+          const avatarUrl = await requestAvatarImage(conversationAnswers, userId, selectedStyle?.label)
+          if (!avatarUrl) return
+          await updateHub({ avatar_url: avatarUrl })
+          setHubAvatarUrl(avatarUrl)
+        } catch (avatarError) {
+          console.error('Avatar generation failed after hub creation:', avatarError)
+        }
+      })()
 
     } catch (err) {
       console.error('Error during onboarding:', err)
