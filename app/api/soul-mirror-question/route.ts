@@ -27,6 +27,10 @@ function looksIncomplete(text: string, isDone: boolean) {
   return false
 }
 
+function countWords(text: string) {
+  return stripFormatting(text).split(/\s+/).filter(Boolean).length
+}
+
 async function repairMirrorReply(model: ReturnType<GoogleGenerativeAI['getGenerativeModel']>, rawReply: string, latestUserMessage: string, isDone: boolean) {
   const repairPrompt = isDone
     ? `Rewrite this into one complete closing message. Keep the same voice, remove markdown styling, and make it feel finished.
@@ -42,6 +46,7 @@ Return only the rewritten closing, followed by a new line in this format:
 - respond to the user's latest answer
 - ask exactly one clear question
 - contain exactly one question mark
+- be 20 words or fewer
 - remove markdown styling and decorative symbols
 - sound complete, not cut off
 
@@ -97,6 +102,7 @@ Your first message must:
 - Be centered on this exact question: "In another world, how do you see yourself? Describe yourself in as much detail as you can."
 - You may add a brief lead-in in your voice style, but do not rewrite or replace that core question.
 - Contain exactly one question.
+- Keep the full question to 20 words or fewer.
 ` : `
 You are continuing an existing conversation.
 - Do not reintroduce yourself.
@@ -110,6 +116,7 @@ After that:
 - Focus on physical appearance, energy/vibe, colors or textures, or the world/setting.
 - Ask one thing at a time.
 - Every turn must contain exactly one question.
+- Every question must be 20 words or fewer.
 - Never stack questions.
 - Use only one question mark total in the whole response.
 - Do not use decorative symbols, bullet points, or markdown emphasis.
@@ -203,7 +210,7 @@ Keep responses concise.
     let raw = result.response.text().trim()
     let isDone = raw.includes('[DONE]') || mustClose
 
-    if (looksIncomplete(raw, isDone)) {
+    if (looksIncomplete(raw, isDone) || (!isDone && countWords(raw.replace(/\[CHIPS:[\s\S]*?\]/g, '')) > 20)) {
       raw = await repairMirrorReply(model, raw, foldedLatestUserMessage, isDone)
       isDone = raw.includes('[DONE]') || mustClose
     }

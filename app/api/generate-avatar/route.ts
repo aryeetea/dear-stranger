@@ -2,9 +2,71 @@ import { NextResponse } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import OpenAI from 'openai'
 
+async function generateAvatarImage(openai: OpenAI, prompt: string, userId?: string) {
+  try {
+    const response = await openai.images.generate({
+      model: 'gpt-image-1',
+      prompt,
+      size: '1024x1536',
+      quality: 'medium',
+      output_format: 'png',
+      user: userId || undefined,
+    })
+
+    const image = response.data?.[0]
+    if (image?.b64_json) {
+      return {
+        imageUrl: `data:image/png;base64,${image.b64_json}`,
+        revisedPrompt: image.revised_prompt || prompt,
+      }
+    }
+  } catch (error) {
+    console.warn('gpt-image-1 failed, falling back to dall-e-3:', error)
+  }
+
+  const fallback = await openai.images.generate({
+    model: 'dall-e-3',
+    prompt,
+    n: 1,
+    size: '1024x1792',
+    quality: 'standard',
+    style: 'natural',
+    response_format: 'b64_json',
+    user: userId || undefined,
+  })
+
+  const image = fallback.data?.[0]
+  if (!image) {
+    throw new Error('No image was returned from OpenAI.')
+  }
+
+  if (image.b64_json) {
+    return {
+      imageUrl: `data:image/png;base64,${image.b64_json}`,
+      revisedPrompt: image.revised_prompt || prompt,
+    }
+  }
+
+  if (image.url) {
+    const imgRes = await fetch(image.url)
+    if (!imgRes.ok) {
+      throw new Error(`Image fetch failed with status ${imgRes.status}`)
+    }
+
+    const buffer = await imgRes.arrayBuffer()
+    const b64 = Buffer.from(buffer).toString('base64')
+    return {
+      imageUrl: `data:image/png;base64,${b64}`,
+      revisedPrompt: image.revised_prompt || prompt,
+    }
+  }
+
+  throw new Error('No image data returned from OpenAI.')
+}
+
 export async function POST(req: Request) {
   try {
-    const { answers, feedback, userId } = await req.json()
+    const { answers, feedback, userId, style } = await req.json()
 
     const geminiKey = process.env.GEMINI_API_KEY
     const openaiKey = process.env.OPENAI_API_KEY
@@ -48,6 +110,7 @@ You are writing one clean image prompt for a character portrait generator.
 User character details:
 ${answersText}
 ${feedback ? `\nRegeneration feedback: ${feedback}` : ''}
+${style ? `\nRequested portrait style: ${style}` : ''}
 
 Rules:
 - Follow the user's description exactly.
@@ -73,47 +136,11 @@ Return only the final image prompt.
     console.log('Avatar image prompt:', imagePrompt)
 
     const openai = new OpenAI({ apiKey: openaiKey })
-
-    const imageResponse = await openai.images.generate({
-      model: 'dall-e-3',
-      prompt: imagePrompt,
-      n: 1,
-      size: '1024x1792',
-      quality: 'standard',
-      style: 'natural',
-      response_format: 'b64_json',
-      user: userId || undefined,
-    })
-
-    const image = imageResponse.data?.[0]
-
-    if (!image) {
-      throw new Error('No image was returned from OpenAI.')
-    }
-
-    let imageUrl = ''
-
-    if (image.b64_json) {
-      imageUrl = `data:image/png;base64,${image.b64_json}`
-    } else if (image.url) {
-      const imgRes = await fetch(image.url)
-
-      if (!imgRes.ok) {
-        throw new Error(`Image fetch failed with status ${imgRes.status}`)
-      }
-
-      const buffer = await imgRes.arrayBuffer()
-      const b64 = Buffer.from(buffer).toString('base64')
-      imageUrl = `data:image/png;base64,${b64}`
-    }
-
-    if (!imageUrl) {
-      throw new Error('No image data returned from OpenAI.')
-    }
+    const { imageUrl, revisedPrompt } = await generateAvatarImage(openai, imagePrompt, userId)
 
     return NextResponse.json({
       imageUrl,
-      prompt: image.revised_prompt || imagePrompt,
+      prompt: revisedPrompt,
     })
   } catch (error) {
     console.error('generate-avatar error:', error)

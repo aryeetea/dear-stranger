@@ -182,7 +182,7 @@ export default function Home() {
         fetch('/api/generate-avatar', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ answers: conversationAnswers, userId }),
+          body: JSON.stringify({ answers: conversationAnswers, userId, style: selectedStyle?.label }),
         }).then(r => r.json()),
       ])
 

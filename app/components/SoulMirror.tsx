@@ -4,8 +4,8 @@ import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { HUB_STYLES, type HubStyle } from './UniverseMap'
 
-const MIN_EXCHANGES = 3
-const MAX_EXCHANGES = 8
+const MIN_EXCHANGES = 5
+const MAX_EXCHANGES = 9
 
 const MIRROR_VOICES = [
   { id: 'friend', label: 'Supportive Friend', desc: 'Warm, gentle, encouraging. Like talking to someone who always has your back.', icon: '🤍', prompt: 'You are a warm, gentle, encouraging friend. You speak with care and genuine interest. Never clinical, never performative — just real.' },
