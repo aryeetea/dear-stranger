@@ -1,10 +1,9 @@
 'use client'
 
-import { useState, type CSSProperties } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { updateHub, signOut, deleteAccount, exportMyLetters } from '../lib/auth'
 
-const AVATAR_REFRESH_DAYS = 90
 const MAX_REGEN_ATTEMPTS = 3
 
 type DeleteStep = 'idle' | 'exporting' | 'exported' | 'deleting' | 'deleted'
@@ -14,7 +13,8 @@ export default function Profile({
   onClose, onUpdateHub,
 }: {
   hubName?: string; bio?: string; askAbout?: string; avatarUrl?: string
-  onClose?: () => void; onUpdateHub?: (name: string) => void
+  onClose?: () => void
+  onUpdateHub?: (updates: { hubName?: string; bio?: string; askAbout?: string; avatarUrl?: string }) => void
 }) {
   const [hubNameState, setHubNameState] = useState(hubName || 'Your Hub')
   const [bioState, setBioState] = useState(bio || 'A wanderer who arrived here quietly, carrying something unspoken.')
@@ -38,6 +38,10 @@ export default function Profile({
   const [deleteStep, setDeleteStep] = useState<DeleteStep>('idle')
   const [exportedText, setExportedText] = useState('')
   const [deleteError, setDeleteError] = useState('')
+
+  useEffect(() => {
+    setCurrentAvatarUrl(initialAvatarUrl || '')
+  }, [initialAvatarUrl])
 
   const attemptsLeft = MAX_REGEN_ATTEMPTS - regenCount
   const refreshProgress = 0
@@ -90,6 +94,7 @@ export default function Profile({
       if (!data.imageUrl) throw new Error('No avatar image came back from the mirror.')
       setCurrentAvatarUrl(data.imageUrl); setRegenCount(c => c + 1); setRegenFeedback('')
       await updateHub({ avatar_url: data.imageUrl })
+      onUpdateHub?.({ avatarUrl: data.imageUrl })
     } catch (err) { console.error('Regen failed:', err) }
     finally { setRegenLoading(false) }
   }
@@ -99,7 +104,7 @@ export default function Profile({
       setSaving(true); setSaveError('')
       await updateHub({ hub_name: hubDraft })
       setHubNameState(hubDraft)
-      onUpdateHub?.(hubDraft)
+      onUpdateHub?.({ hubName: hubDraft })
       setEditingHub(false)
     }
     catch (err) {
@@ -108,11 +113,23 @@ export default function Profile({
     } finally { setSaving(false) }
   }
   async function saveBio() {
-    try { setSaving(true); setSaveError(''); await updateHub({ bio: bioDraft }); setBioState(bioDraft); setEditingBio(false) }
+    try {
+      setSaving(true); setSaveError('')
+      await updateHub({ bio: bioDraft })
+      setBioState(bioDraft)
+      onUpdateHub?.({ bio: bioDraft })
+      setEditingBio(false)
+    }
     catch (err) { console.error(err) } finally { setSaving(false) }
   }
   async function saveAsk() {
-    try { setSaving(true); setSaveError(''); await updateHub({ ask_about: askDraft }); setAskState(askDraft); setEditingAsk(false) }
+    try {
+      setSaving(true); setSaveError('')
+      await updateHub({ ask_about: askDraft })
+      setAskState(askDraft)
+      onUpdateHub?.({ askAbout: askDraft })
+      setEditingAsk(false)
+    }
     catch (err) { console.error(err) } finally { setSaving(false) }
   }
 

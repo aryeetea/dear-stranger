@@ -40,7 +40,7 @@ async function requestAvatarImage(
   answers: Record<number, string>,
   userId?: string,
   style?: string,
-  timeoutMs = 25000,
+  timeoutMs = 55000,
 ) {
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), timeoutMs)
@@ -262,7 +262,7 @@ export default function Home() {
           ask_about: fallbackAskAbout,
           hub_style: chosenHubStyle,
           backdrop_id: 'void',
-        } as any),
+        }),
         12000,
         'Saving your hub took too long. Please try again.',
       )
@@ -275,8 +275,8 @@ export default function Home() {
         try {
           const avatarUrl = await requestAvatarImage(conversationAnswers, userId, selectedStyle?.label)
           if (!avatarUrl) return
-          await updateHub({ avatar_url: avatarUrl })
           setHubAvatarUrl(avatarUrl)
+          await updateHub({ avatar_url: avatarUrl })
         } catch (avatarError) {
           console.error('Avatar generation failed after hub creation:', avatarError)
         }
@@ -403,7 +403,7 @@ export default function Home() {
           onSend={async (letter) => {
             try {
               const allHubs = await getAllHubs()
-              const recipient = allHubs.find((hub: any) => hub.hub_name === letter.to)
+              const recipient = allHubs.find((hub) => hub.hub_name === letter.to)
               const isUniverseLetter = !letter.to
               if (!isUniverseLetter && !recipient) throw new Error('Recipient not found')
               await sendLetter(recipient?.id || null, letter.body, letter.paperId, isUniverseLetter, letter.subject, letter.fontId)
@@ -428,7 +428,12 @@ export default function Home() {
           askAbout={hubAskAbout}
           avatarUrl={hubAvatarUrl}
           onClose={() => setProfileOpen(false)}
-          onUpdateHub={(name) => setHubName(name)}
+          onUpdateHub={({ hubName: nextHubName, bio: nextBio, askAbout: nextAskAbout, avatarUrl: nextAvatarUrl }) => {
+            if (typeof nextHubName === 'string') setHubName(nextHubName)
+            if (typeof nextBio === 'string') setHubBio(nextBio)
+            if (typeof nextAskAbout === 'string') setHubAskAbout(nextAskAbout)
+            if (typeof nextAvatarUrl === 'string') setHubAvatarUrl(nextAvatarUrl)
+          }}
         />
       )}
     </>
