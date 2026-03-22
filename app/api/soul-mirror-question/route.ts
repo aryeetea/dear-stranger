@@ -10,6 +10,55 @@ const VOICE_PROMPTS: Record<string, string> = {
   playful: `You are playful and endlessly curious. Approach each answer with wonder and delight.`,
 }
 
+function stripFormatting(text: string) {
+  return text
+    .replace(/\*\*/g, '')
+    .replace(/\*/g, '')
+    .replace(/[_`]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function looksIncomplete(text: string, isDone: boolean) {
+  const cleaned = stripFormatting(text)
+  if (!cleaned) return true
+  if (/[,:;\-–—]$/.test(cleaned)) return true
+  if (!isDone && !cleaned.includes('?')) return true
+  return false
+}
+
+async function repairMirrorReply(model: ReturnType<GoogleGenerativeAI['getGenerativeModel']>, rawReply: string, latestUserMessage: string, isDone: boolean) {
+  const repairPrompt = isDone
+    ? `Rewrite this into one complete closing message. Keep the same voice, remove markdown styling, and make it feel finished.
+
+Original reply:
+${rawReply}
+
+Return only the rewritten closing, followed by a new line in this format:
+[CHIPS: reflecting now | I can see you | ready to enter | continue]
+`
+    : `Rewrite this into one complete follow-up question. It must:
+- stay in the same voice
+- respond to the user's latest answer
+- ask exactly one clear question
+- contain exactly one question mark
+- remove markdown styling and decorative symbols
+- sound complete, not cut off
+
+User's latest answer:
+${latestUserMessage}
+
+Original reply:
+${rawReply}
+
+Return only the rewritten question, followed by a new line in this format:
+[CHIPS: chip1 | chip2 | chip3 | chip4]
+`
+
+  const repaired = await model.generateContent(repairPrompt)
+  return repaired.response.text().trim()
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json()
@@ -56,6 +105,7 @@ You are continuing an existing conversation.
 `}
 
 After that:
+- Start asking the real question quickly. Do not spend the whole message on reaction or hype.
 - Ask targeted follow-up questions only if you still need visual detail.
 - Focus on physical appearance, energy/vibe, colors or textures, or the world/setting.
 - Ask one thing at a time.
@@ -150,15 +200,20 @@ Keep responses concise.
         : foldedLatestUserMessage
     )
 
-    const raw = result.response.text()
-    const isDone = raw.includes('[DONE]') || mustClose
+    let raw = result.response.text().trim()
+    let isDone = raw.includes('[DONE]') || mustClose
+
+    if (looksIncomplete(raw, isDone)) {
+      raw = await repairMirrorReply(model, raw, foldedLatestUserMessage, isDone)
+      isDone = raw.includes('[DONE]') || mustClose
+    }
 
     const chipsMatch = raw.match(/\[CHIPS:\s*(.+?)\]/)
     const chips: string[] = chipsMatch
       ? chipsMatch[1].split('|').map((chip: string) => chip.trim()).filter(Boolean).slice(0, 4)
       : []
 
-    const cleaned = raw.replace('[DONE]', '').replace(/\[CHIPS:[\s\S]*?\]/g, '').trim()
+    const cleaned = stripFormatting(raw.replace('[DONE]', '').replace(/\[CHIPS:[\s\S]*?\]/g, '').trim())
 
     return NextResponse.json({ question: cleaned, done: isDone, chips })
   } catch (err) {
