@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import EntryScreen from './components/EntryScreen'
 import SoulMirror from './components/SoulMirror'
 import type { MirrorVoice, SoulMirrorResumeState, StyleOption } from './components/SoulMirror'
@@ -94,16 +94,22 @@ export default function Home() {
   const [pendingCredentials, setPendingCredentials] = useState<{ email: string; password: string } | null>(null)
   const [onboardingError, setOnboardingError] = useState('')
   const [onboardingResumeState, setOnboardingResumeState] = useState<SoulMirrorResumeState | null>(null)
+  const screenRef = useRef<Screen>('loading')
+  const onboardingInFlightRef = useRef(false)
 
-  function clearHubState() {
+  function clearHubState(resetResume = true) {
     setHubName('')
     setHubBio('')
     setHubAskAbout('')
     setHubAvatarUrl('')
     setHubStyle('portal')
     setLettersSent(0)
-    setOnboardingResumeState(null)
+    if (resetResume) setOnboardingResumeState(null)
   }
+
+  useEffect(() => {
+    screenRef.current = screen
+  }, [screen])
 
   async function routeFromSession() {
     const session = await getSession()
@@ -127,7 +133,7 @@ export default function Home() {
       return
     }
 
-    clearHubState()
+    clearHubState(false)
     setScreen('onboarding')
   }
 
@@ -155,6 +161,9 @@ export default function Home() {
       }
 
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
+        if (onboardingInFlightRef.current || screenRef.current === 'generating') {
+          return
+        }
         try {
           await routeFromSession()
         } catch (err) {
@@ -187,7 +196,7 @@ export default function Home() {
     const chosenHubStyle = selectedHubStyle || 'portal'
     const chosenBio = userBio?.trim() || fallbackBio
     const resumeState: SoulMirrorResumeState = {
-      phase: 'hubname',
+      phase: 'welcome',
       selectedStyle,
       selectedHubStyle: chosenHubStyle,
       selectedVoice: mirrorVoice,
@@ -197,6 +206,7 @@ export default function Home() {
     }
 
     try {
+      onboardingInFlightRef.current = true
       setScreen('generating')
       setGeneratingStatus('Crafting your soul mirror...')
 
@@ -275,10 +285,14 @@ export default function Home() {
     } catch (err) {
       console.error('Error during onboarding:', err)
       if (err instanceof Error && err.message === 'That hub name is already taken. Choose another one.') {
+        setOnboardingResumeState({ ...resumeState, phase: 'hubname' })
+      } else {
         setOnboardingResumeState(resumeState)
       }
       setScreen('onboarding')
       setOnboardingError(err instanceof Error ? err.message : 'Your hub could not be created yet. Please try again.')
+    } finally {
+      onboardingInFlightRef.current = false
     }
   }
 
