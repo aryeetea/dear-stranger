@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { signIn, signInWithGoogle } from '../lib/auth'
+import { signIn, signInWithGoogle, signOut } from '../lib/auth'
 
 type AuthView = 'login' | 'signup'
 
@@ -36,6 +36,7 @@ export function LoginScreen({
     if (!email.trim() || !password) { setError('Please fill in all fields.'); return }
     setLoading(true); setError('')
     try {
+      await signOut()
       await signIn(email.trim(), password)
       onSuccess()
     } catch (err: any) {
@@ -46,6 +47,7 @@ export function LoginScreen({
   async function handleGoogle() {
     setGoogleLoading(true); setError('')
     try {
+      await signOut()
       await signInWithGoogle()
       // Supabase redirects — onSuccess will be called after redirect back
     } catch (err: any) {
@@ -139,6 +141,7 @@ export function SignupScreen({
     if (password.length < 6) { setError('Password must be at least 6 characters.'); return }
     setLoading(true); setError('')
     try {
+      await signOut()
       // Store credentials so onboarding can use them to create the real account
       setPendingCredentials({ email: email.trim(), password })
       onSuccess()
@@ -150,6 +153,7 @@ export function SignupScreen({
   async function handleGoogle() {
     setGoogleLoading(true); setError('')
     try {
+      await signOut()
       setPendingCredentials(null)
       await signInWithGoogle()
     } catch (err: any) {

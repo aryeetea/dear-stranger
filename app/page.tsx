@@ -103,10 +103,13 @@ export default function Home() {
       setGeneratingStatus('Crafting your soul mirror...')
 
       let session = await getSession()
+      const isAnonymousSession = Boolean((session?.user as { is_anonymous?: boolean } | undefined)?.is_anonymous)
 
-      if (session) {
-        await createHubForCurrentUser(hubNameAnswer, chosenBio, fallbackAskAbout)
-      } else if (pendingCredentials) {
+      if (pendingCredentials) {
+        if (isAnonymousSession) {
+          await signOut()
+          session = null
+        }
         await signUpAndCreateHub(pendingCredentials.email, pendingCredentials.password, hubNameAnswer, chosenBio, fallbackAskAbout)
         session = await getSession()
         if (!session) {
@@ -114,6 +117,8 @@ export default function Home() {
           session = await getSession()
         }
         setPendingCredentials(null)
+      } else if (session) {
+        await createHubForCurrentUser(hubNameAnswer, chosenBio, fallbackAskAbout)
       } else {
         await signInAndCreateHub(hubNameAnswer, chosenBio, fallbackAskAbout)
         session = await getSession()
@@ -203,6 +208,7 @@ export default function Home() {
         <AuthBackground />
         <LoginScreen
           onSuccess={async () => {
+            setPendingCredentials(null)
             const hub = await getMyHub()
             if (hub) {
               setHubName(hub.hub_name || '')
