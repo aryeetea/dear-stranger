@@ -10,45 +10,7 @@ const VOICE_PROMPTS: Record<string, string> = {
   playful: `You are playful and endlessly curious. Approach each answer with wonder and delight. Treat every detail like a discovery worth celebrating.`,
 }
 
-function fallbackSoulMirrorResponse(
-  exchangeNumber: number,
-  isReturning: boolean,
-  style?: string,
-) {
-  if (exchangeNumber <= 0) {
-    return {
-      question: `${isReturning ? 'Welcome back. ' : ''}Describe yourself in as much detail as you can so the mirror has something real to reflect. Tell me about your appearance, your energy, the colors or textures that feel like you, and the kind of world you belong in${style ? ` through a ${style.toLowerCase()} lens` : ''}.`,
-      done: false,
-      chips: ['my appearance', 'my energy', 'my colors', 'my world'],
-    }
-  }
-
-  if (exchangeNumber === 1) {
-    return {
-      question: 'What details make you instantly recognizable in a portrait: your features, posture, clothing, or the way you carry yourself?',
-      done: false,
-      chips: ['my face', 'how I dress', 'my posture', 'my presence'],
-    }
-  }
-
-  if (exchangeNumber === 2) {
-    return {
-      question: 'Now give the mirror atmosphere. What setting, lighting, or mood should surround you so the portrait feels unmistakably yours?',
-      done: false,
-      chips: ['night city glow', 'soft morning light', 'forest air', 'coffee shop warmth'],
-    }
-  }
-
-  return {
-    question: 'The mirror has enough to work with now. Give your hub a name so the universe can know where to find you.',
-    done: true,
-    chips: ['ready', 'one more detail', 'name my hub', 'continue'],
-  }
-}
-
 export async function POST(req: Request) {
-  let fallbackContext: { exchangeNumber?: number; isReturning?: boolean; style?: string } = {}
-
   try {
     const body = await req.json()
     const {
@@ -56,7 +18,6 @@ export async function POST(req: Request) {
       style, styleDescription, mirrorVoice = 'friend', mirrorVoicePrompt,
       isReturning = false, minExchanges = 3, maxExchanges = 8,
     } = body
-    fallbackContext = { exchangeNumber, isReturning, style }
 
     const voiceInstruction = mirrorVoicePrompt || VOICE_PROMPTS[mirrorVoice] || VOICE_PROMPTS.friend
     const hasEnough = exchangeNumber >= minExchanges
@@ -64,7 +25,7 @@ export async function POST(req: Request) {
     const apiKey = process.env.GEMINI_API_KEY
 
     if (!apiKey) {
-      return NextResponse.json(fallbackSoulMirrorResponse(exchangeNumber, isReturning, style))
+      return NextResponse.json({ error: 'Missing GEMINI_API_KEY' }, { status: 500 })
     }
 
     const systemPrompt = `
@@ -141,12 +102,6 @@ Keep responses concise. Never use bullet points or numbered lists.
     return NextResponse.json({ question: cleaned, done: isDone, chips })
   } catch (err) {
     console.error('Soul mirror error:', err)
-    return NextResponse.json(
-      fallbackSoulMirrorResponse(
-        fallbackContext.exchangeNumber ?? 0,
-        fallbackContext.isReturning ?? false,
-        fallbackContext.style,
-      )
-    )
+    return NextResponse.json({ error: 'Mirror went quiet.' }, { status: 500 })
   }
 }
