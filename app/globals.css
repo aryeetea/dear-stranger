@@ -1,14 +1,18 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=IM+Fell+English:ital@0;1&family=Dancing+Script:wght@400;600&family=Pacifico&family=Courier+Prime&family=Special+Elite&family=Satisfy&family=Indie+Flower&family=Playfair+Display:ital,wght@0,400;1,400&family=Roboto&family=Lato&display=swap');
 
 :root {
   --background: #04050f;
   --foreground: #ffffff;
+  --gold: #c9a84c;
+  --gold-light: #e6c76e;
+  --void: #000005;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Cormorant Garamond', Georgia, serif;
   margin: 0;
   padding: 0;
   overflow: hidden;

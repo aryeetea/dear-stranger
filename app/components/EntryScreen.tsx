@@ -3,13 +3,16 @@
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 
-export default function EntryScreen({ onEnter }: { onEnter?: () => void }) {
+export default function EntryScreen({
+  onEnter,
+  onLogin,
+  onSignup,
+}: {
+  onEnter?: () => void
+  onLogin?: () => void
+  onSignup?: () => void
+}) {
   const [phase, setPhase] = useState(0)
-  // phase 0: black
-  // phase 1: gold line
-  // phase 2: title
-  // phase 3: subtitle
-  // phase 4: button
 
   useEffect(() => {
     const timers = [
@@ -87,45 +90,96 @@ export default function EntryScreen({ onEnter }: { onEnter?: () => void }) {
 
       <AnimatePresence>
         {phase >= 4 && (
-          <motion.button
+          <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 1, ease: 'easeOut' }}
-            onClick={onEnter}
-            onMouseEnter={e => {
-              const el = e.currentTarget
-              el.style.background = 'rgba(230,199,110,0.12)'
-              el.style.borderColor = '#e6c76e'
-              el.style.boxShadow =
-                '0 0 28px rgba(230,199,110,0.3), inset 0 0 20px rgba(230,199,110,0.08)'
-              el.style.color = '#f3df9a'
-            }}
-            onMouseLeave={e => {
-              const el = e.currentTarget
-              el.style.background = 'transparent'
-              el.style.borderColor = 'rgba(230,199,110,0.5)'
-              el.style.boxShadow = 'none'
-              el.style.color = '#e6c76e'
-            }}
-            style={{
-              marginTop: '64px',
-              padding: '14px 40px',
-              background: 'transparent',
-              border: '1px solid rgba(230,199,110,0.5)',
-              color: '#e6c76e',
-              fontFamily: "'Cinzel', serif",
-              fontSize: '12px',
-              fontWeight: 400,
-              letterSpacing: '0.3em',
-              textTransform: 'uppercase',
-              cursor: 'pointer',
-              backdropFilter: 'blur(8px)',
-              transition: 'all 0.3s ease',
-              textShadow: '0 0 8px rgba(230,199,110,0.18)',
-            }}
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px', marginTop: '64px' }}
           >
-            Enter the Universe
-          </motion.button>
+            {/* Enter the Universe — guest/new user */}
+            <button
+              onClick={onEnter}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = 'rgba(230,199,110,0.12)'
+                e.currentTarget.style.borderColor = '#e6c76e'
+                e.currentTarget.style.boxShadow = '0 0 28px rgba(230,199,110,0.3), inset 0 0 20px rgba(230,199,110,0.08)'
+                e.currentTarget.style.color = '#f3df9a'
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = 'transparent'
+                e.currentTarget.style.borderColor = 'rgba(230,199,110,0.5)'
+                e.currentTarget.style.boxShadow = 'none'
+                e.currentTarget.style.color = '#e6c76e'
+              }}
+              style={{
+                padding: '14px 40px',
+                background: 'transparent',
+                border: '1px solid rgba(230,199,110,0.5)',
+                color: '#e6c76e',
+                fontFamily: "'Cinzel', serif",
+                fontSize: '12px',
+                fontWeight: 400,
+                letterSpacing: '0.3em',
+                textTransform: 'uppercase',
+                cursor: 'pointer',
+                backdropFilter: 'blur(8px)',
+                transition: 'all 0.3s ease',
+                textShadow: '0 0 8px rgba(230,199,110,0.18)',
+              }}
+            >
+              Enter the Universe
+            </button>
+
+            {/* Create an Account */}
+            <button
+              onClick={onSignup}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = 'rgba(230,199,110,0.07)'
+                e.currentTarget.style.borderColor = 'rgba(230,199,110,0.4)'
+                e.currentTarget.style.color = 'rgba(230,199,110,0.85)'
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = 'transparent'
+                e.currentTarget.style.borderColor = 'rgba(230,199,110,0.2)'
+                e.currentTarget.style.color = 'rgba(230,199,110,0.5)'
+              }}
+              style={{
+                padding: '10px 32px',
+                background: 'transparent',
+                border: '1px solid rgba(230,199,110,0.2)',
+                color: 'rgba(230,199,110,0.5)',
+                fontFamily: "'Cinzel', serif",
+                fontSize: '10px',
+                letterSpacing: '0.3em',
+                textTransform: 'uppercase',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+              }}
+            >
+              Create an Account
+            </button>
+
+            {/* Sign In */}
+            <button
+              onClick={onLogin}
+              onMouseEnter={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.55)' }}
+              onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.28)' }}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'rgba(255,255,255,0.28)',
+                fontFamily: "'Cinzel', serif",
+                fontSize: '9px',
+                letterSpacing: '0.35em',
+                textTransform: 'uppercase',
+                cursor: 'pointer',
+                transition: 'color 0.3s ease',
+                padding: '4px 8px',
+              }}
+            >
+              Sign In
+            </button>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

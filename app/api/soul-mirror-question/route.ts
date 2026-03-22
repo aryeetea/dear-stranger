@@ -1,87 +1,103 @@
-import { NextResponse } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
+import { NextResponse } from 'next/server'
 
-const MIN_EXCHANGES = 5
-const MAX_EXCHANGES = 10
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
+
+const VOICE_PROMPTS: Record<string, string> = {
+  friend: `You are a warm, gentle, encouraging friend helping someone create their avatar. You speak with genuine care and interest — never clinical, never performative. Use natural, conversational language.`,
+  poetic: `You are poetic and mysterious. Speak in metaphors and layered imagery. Let silence breathe. Ask questions that feel like riddles worth answering.`,
+  direct: `You are direct and honest. Ask exactly what you mean with no filler or softening. Be refreshingly real.`,
+  genz: `You are extremely Gen Z. Use current slang naturally — no cap, slay, lowkey, periodt, understood the assignment, it's giving, main character energy, ate and left no crumbs, etc. Be chaotic but genuinely curious.`,
+  elder: `You are a wise elder — calm, patient, and philosophical. Ask questions that reveal deeper truths. Speak with weight and purpose.`,
+  playful: `You are playful and endlessly curious. Approach each answer with wonder and delight. Treat every detail like a discovery worth celebrating.`,
+}
 
 export async function POST(req: Request) {
   try {
-    const { messages, answers, exchangeNumber } = await req.json()
+    const body = await req.json()
+    const {
+      messages = [], answers = [], exchangeNumber = 0,
+      style, styleDescription, mirrorVoice = 'friend', mirrorVoicePrompt,
+      isReturning = false, minExchanges = 3, maxExchanges = 8,
+    } = body
 
-    const apiKey = process.env.GEMINI_API_KEY
-    if (!apiKey) return NextResponse.json({ error: 'Missing GEMINI_API_KEY' }, { status: 500 })
+    const voiceInstruction = mirrorVoicePrompt || VOICE_PROMPTS[mirrorVoice] || VOICE_PROMPTS.friend
+    const hasEnough = exchangeNumber >= minExchanges
+    const mustClose = exchangeNumber >= maxExchanges
 
-    const genAI = new GoogleGenerativeAI(apiKey)
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
+    const systemPrompt = `
+${voiceInstruction}
 
-    const conversationSoFar = (messages || [])
-      .map((m: { role: string; text: string }) =>
-        m.role === 'ai' ? `You: ${m.text}` : `Them: ${m.text}`
-      )
-      .join('\n')
+Your role: You are a Soul Mirror helping someone create their ${style || 'artistic'} style avatar (${styleDescription || ''}) for Dear Stranger, a slow pen-pal app.
 
-    const isFirst = exchangeNumber === 0
-    const isForced = exchangeNumber >= MAX_EXCHANGES - 1
-    const canEnd = exchangeNumber >= MIN_EXCHANGES
+${isReturning ? `IMPORTANT: This person is RETURNING after 90 days. Open with a warm returning greeting like "Hello, my old friend. It has been a while." in your voice style.` : ''}
 
-    if (canEnd && !isForced) {
-      const checkResult = await model.generateContent(`Review this Soul Mirror conversation. Do you have enough of a picture of this person to create a portrait — their look, setting, and presence? Answer only YES or NO.\n\nConversation:\n${conversationSoFar}`)
-      const hasEnough = checkResult.response.text().trim().toUpperCase().startsWith('YES')
+Your FIRST question must:
+- Introduce yourself briefly in your voice style
+- Ask them to describe themselves in as much detail as possible — appearance, energy, the world they inhabit, how they carry themselves
+- Explicitly say something like "go into as much detail as you can — the more you share, the more the mirror can reflect back"
 
-      if (hasEnough) {
-        const closingResult = await model.generateContent(`You are the Soul Mirror — you talk like a warm gen z bestie. You can now picture this person clearly. Write a closing message under 25 words — casual, warm, tell them you see them and you're about to bring them to life.\n\nConversation:\n${conversationSoFar}\n\nReturn only the message.`)
-        return NextResponse.json({ question: closingResult.response.text().trim(), done: true })
-      }
-    }
+After that:
+- Ask targeted follow-up questions ONLY if you need more visual detail
+- Focus on: physical appearance, energy/vibe, colors or textures that feel like them, setting or world
+- Ask ONE thing at a time. Stay in your voice style throughout.
 
-    if (isForced) {
-      const closingResult = await model.generateContent(`You are the Soul Mirror. Write a warm gen-z closing message under 20 words saying you see them now and you're ready. Return only the message.`)
-      return NextResponse.json({ question: closingResult.response.text().trim(), done: true })
-    }
+${hasEnough ? `
+ASSESSMENT: You now have ${exchangeNumber} exchanges. Do you have enough visual detail for a strong ${style} portrait?
+- If YES: Write a warm closing in your voice (2-3 sentences) then end with exactly: [DONE]
+- If NO: Ask one more focused visual question
+` : ''}
+${mustClose ? `You MUST close now. Write your closing and end with [DONE].` : ''}
 
-    const prompt = `You are the Soul Mirror inside a cosmic pen-pal universe called Dear Stranger. You're getting to know someone new so you can paint a portrait of them in another world.
+CRITICAL — after your question or closing, always add this on a new line:
+[CHIPS: chip1 | chip2 | chip3 | chip4]
 
-Your personality: you talk like a close friend — warm, funny, curious, gen z. Think texting your bestie. Casual, real, no filter but still kind. You're genuinely interested in them, not running a survey.
+Chips must be SHORT (2-5 words), directly relevant to what you just asked, feel like natural things the person might actually say.
 
-Tone examples:
-- "ok but what are you actually wearing rn on a random tuesday"
-- "wait so what does your day-to-day look like"
-- "ok real talk — what do people always notice about you first"
-- "so what's the fit like in this other world lol"
-- "and who's always around you in this world"
-- "ok what's something you always have on you"
+Good chip examples by question type:
+- appearance: "tall and lanky | dark curly hair | petite and soft | broad shoulders"
+- energy: "quiet but intense | loud in small doses | always in motion | still as water"
+- colors: "deep burgundy | forest at night | all black everything | warm terracotta"
+- setting: "city rooftop at 3am | overgrown greenhouse | empty library | coastal town"
+- style: "vintage thrift finds | sharp and minimal | layered and earthy | streetwear always"
 
-Rules:
-- ONE question only
-- Under 18 words
-- Sound like a real gen z friend, not a quiz or a therapist
-- Build directly on what they just said — react to it naturally first if it's interesting
-- No buzzwords like "vibe", "aesthetic", "energy", "presence", "essence"
-- Do NOT push fantasy — if they go fantasy follow them, otherwise stay in their lane
-- Short reactions before the question are ok (like "omg wait" or "ok that's so") but keep it brief
-- You only have ${MAX_EXCHANGES} questions max so make them count
-${isFirst ? '- First message must be exactly: "In another world, how do you see yourself?"' : ''}
+Never reuse chips from previous turns. Make them feel alive and specific to the question.
+Keep responses concise. Never use bullet points or numbered lists.
+`
 
-Conversation so far:
-${conversationSoFar || 'None yet'}
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
 
-This is question ${exchangeNumber + 1} of max ${MAX_EXCHANGES}. ${canEnd ? 'You could wrap up soon if you have enough.' : `You have ${MIN_EXCHANGES - exchangeNumber} more before you can wrap up.`}
+    const conversationHistory = messages.map((m: { role: string; text: string }) => ({
+      role: m.role === 'ai' ? 'model' : 'user',
+      parts: [{ text: m.text }],
+    }))
 
-Things to naturally learn over time:
-- What they look like or how they carry themselves
-- What they wear
-- Their world or setting
-- What they do or love
-- Who or what is always around them
-- Something small and specific that makes them them
+    const chat = model.startChat({
+      history: conversationHistory,
+      generationConfig: {
+        maxOutputTokens: 400,
+        temperature: mirrorVoice === 'genz' ? 1.1 : mirrorVoice === 'poetic' ? 0.95 : 0.85,
+      },
+      systemInstruction: systemPrompt,
+    })
 
-Return only your next message. Nothing else.`
+    const result = await chat.sendMessage(
+      conversationHistory.length === 0 ? 'Begin. Ask your opening question.' : answers[answers.length - 1] || 'Continue.'
+    )
 
-    const result = await model.generateContent(prompt)
-    return NextResponse.json({ question: result.response.text().trim(), done: false })
+    const raw = result.response.text()
+    const isDone = raw.includes('[DONE]') || mustClose
 
-  } catch (error) {
-    console.error('soul-mirror-question error:', error)
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed' }, { status: 500 })
+    const chipsMatch = raw.match(/\[CHIPS:\s*(.+?)\]/)
+    const chips: string[] = chipsMatch
+      ? chipsMatch[1].split('|').map((c: string) => c.trim()).filter(Boolean).slice(0, 6)
+      : []
+
+    const cleaned = raw.replace('[DONE]', '').replace(/\[CHIPS:[\s\S]*?\]/g, '').trim()
+
+    return NextResponse.json({ question: cleaned, done: isDone, chips })
+  } catch (err) {
+    console.error('Soul mirror error:', err)
+    return NextResponse.json({ error: 'Mirror went quiet.' }, { status: 500 })
   }
 }

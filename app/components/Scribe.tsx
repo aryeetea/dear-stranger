@@ -3,6 +3,13 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 
+const SCRIBE_STARS = Array.from({ length: 20 }, (_, i) => ({
+  width: `${(i % 3) * 0.45 + 0.3}px`,
+  left: `${((i * 47 + 13) % 100)}%`,
+  top: `${((i * 61 + 7) % 100)}%`,
+  opacity: (i % 5) * 0.04 + 0.04,
+}))
+
 const PAPERS = [
   { id: 'ornate', label: 'Ornate Stationery', sublabel: 'Gold border, cream paper', unlocksAt: 0, swatch: 'linear-gradient(135deg, #f4ead0, #e8d090)' },
   { id: 'floral', label: 'Floral Letter', sublabel: 'Soft pink flower outlines', unlocksAt: 0, swatch: 'linear-gradient(135deg, #f8f0f4, #f0e0ea)' },
@@ -177,10 +184,7 @@ function PostageLetter({ children }: { children: React.ReactNode }) {
           <p style={{ fontFamily:'serif', fontSize:'7px', color:'rgba(140,30,30,0.7)', letterSpacing:'0.5px', fontWeight:'bold' }}>POSTAGE</p>
         </div>
         <div style={{ position:'absolute', bottom:'28px', right:'28px', transform:'rotate(12deg)', opacity:0.45 }}>
-          <svg width="80" height="70" viewBox="0 0 80 70">
-            <ellipse cx="40" cy="35" rx="36" ry="30" fill="none" stroke="rgba(140,60,40,0.8)" strokeWidth="2"/>
-            <text x="40" y="30" textAnchor="middle" fontSize="8" fontFamily="serif" fill="rgba(120,50,30,0.8)" fontWeight="bold">SENT</text>
-          </svg>
+          <svg width="80" height="70" viewBox="0 0 80 70"><ellipse cx="40" cy="35" rx="36" ry="30" fill="none" stroke="rgba(140,60,40,0.8)" strokeWidth="2"/><text x="40" y="30" textAnchor="middle" fontSize="8" fontFamily="serif" fill="rgba(120,50,30,0.8)" fontWeight="bold">SENT</text></svg>
         </div>
         <div style={{ position:'absolute', top:'110px', left:'50%', transform:'translateX(-50%)', whiteSpace:'nowrap' }}>
           <p style={{ fontFamily:"'Cinzel', serif", fontSize:'11px', letterSpacing:'0.5em', color:'rgba(100,60,140,0.74)', textTransform:'uppercase' }}>A Letter</p>
@@ -256,7 +260,6 @@ function AgedDistressed({ children }: { children: React.ReactNode }) {
     <div style={{ position:'relative' }}>
       <div style={{ position:'relative', background:'linear-gradient(155deg, #c8a870 0%, #b89050 40%, #c0a060 100%)', clipPath:`polygon(0% 1.5%, 1% 0%, 2.5% 1.8%, 4% 0.3%, 6% 1.5%, 8% 0%, 10% 1.8%, 13% 0.5%, 16% 1.5%, 20% 0%, 24% 1.8%, 28% 0.3%, 32% 1.5%, 37% 0%, 42% 1.8%, 48% 0.5%, 54% 1.5%, 60% 0%, 66% 1.8%, 72% 0.3%, 78% 1.5%, 84% 0%, 90% 1.8%, 95% 0.3%, 100% 1.5%, 100% 98.5%, 99% 100%, 97.5% 98.2%, 96% 99.7%, 94% 98.5%, 91% 100%, 88% 98.2%, 85% 99.5%, 81% 98.5%, 76% 100%, 71% 98.2%, 66% 99.7%, 61% 98.5%, 55% 100%, 49% 98.2%, 43% 99.5%, 37% 98.5%, 31% 100%, 25% 98.2%, 19% 99.7%, 14% 98.5%, 9% 100%, 5% 98.2%, 2% 99.5%, 0% 98.5%)`, boxShadow:'0 20px 80px rgba(0,0,0,0.7)', overflow:'hidden', minHeight:'400px' }}>
         <div style={{ position:'absolute', inset:0, pointerEvents:'none', backgroundImage:`url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0.3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.12'/%3E%3C/svg%3E")`, backgroundSize:'200px', mixBlendMode:'multiply' }}/>
-        <div style={{ position:'absolute', right:'15%', top:'30%', width:'120px', height:'100px', background:'radial-gradient(ellipse, rgba(80,50,10,0.1) 0%, transparent 70%)', borderRadius:'50%', border:'1.5px solid rgba(80,50,10,0.08)', pointerEvents:'none' }}/>
         {[[8,15,18],[78,8,14],[55,72,20],[20,85,12]].map(([l,t,sz],i)=><div key={i} style={{ position:'absolute', left:`${l}%`, top:`${t}%`, width:`${sz}px`, height:`${sz}px`, background:'radial-gradient(circle, rgba(100,55,10,0.18) 0%, transparent 70%)', borderRadius:'50%', pointerEvents:'none' }}/>)}
         {[...Array(16)].map((_,i)=><div key={i} style={{ position:'absolute', left:'36px', right:'36px', top:`${72+i*30}px`, height:'1px', background:'rgba(80,40,10,0.12)' }}/>)}
         <div style={{ padding:'44px' }}>{children}</div>
@@ -294,26 +297,9 @@ function LetterContent({ fontFamily, ink, recipient, senderName, date, body, set
       <p style={{ fontFamily, fontSize:'18px', fontStyle:'italic', color:ink.secondary, marginBottom:'18px', lineHeight:1.8 }}>
         {recipient ? `Dear ${recipient},` : 'Dear Stranger,'}
       </p>
-      <textarea
-        ref={textareaRef}
-        value={body}
-        onChange={e=>setBody(e.target.value)}
-        placeholder="Begin your letter here..."
-        rows={9}
-        style={{
-          width:'100%',
-          background:'transparent',
-          border:'none',
-          outline:'none',
-          color:ink.main,
-          caretColor:ink.accent,
-          fontFamily,
-          fontSize:'16px',
-          lineHeight:2,
-          resize:'none',
-          letterSpacing:'0.01em'
-        }}
-      />
+      <textarea ref={textareaRef} value={body} onChange={e=>setBody(e.target.value)}
+        placeholder="Begin your letter here..." rows={9}
+        style={{ width:'100%', background:'transparent', border:'none', outline:'none', color:ink.main, caretColor:ink.accent, fontFamily, fontSize:'16px', lineHeight:2, resize:'none', letterSpacing:'0.01em' }}/>
       <p style={{ fontFamily, fontStyle:'italic', fontSize:'15px', color:ink.secondary, marginTop:'10px', lineHeight:1.9 }}>
         Yours across the distance,<br/>
         <span style={{ color:ink.accent }}>{senderName || 'A Stranger'}</span>
@@ -332,6 +318,7 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
   const [selectedFont, setSelectedFont] = useState(FONTS[0])
   const [selectedStamp, setSelectedStamp] = useState<string | undefined>()
   const [subject, setSubject] = useState('')
+  const [subjectError, setSubjectError] = useState(false)
   const [body, setBody] = useState('')
   const [sent, setSent] = useState(false)
   const [releasing, setReleasing] = useState(false)
@@ -339,18 +326,9 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const today = new Date().toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' })
-  const wordCount = body.trim() === '' ? 0 : body.trim().split(/\s+/).length
   const ink = PAPER_INK[selectedPaper.id] || PAPER_INK.ornate
   const fontFamily = selectedFont.family
   const envelopeColor = PAPER_ENVELOPE_COLOR[selectedPaper.id]
-
-  useEffect(() => {
-    const link = document.createElement('link')
-    link.rel = 'stylesheet'
-    link.href = 'https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;600&family=Pacifico&family=Courier+Prime&family=Special+Elite&family=Satisfy&family=Indie+Flower&family=Playfair+Display:ital,wght@0,400;1,400&family=Roboto&family=Lato&display=swap'
-    document.head.appendChild(link)
-    return () => { try { document.head.removeChild(link) } catch {} }
-  }, [])
 
   useEffect(() => {
     if (view === 'write') setTimeout(() => textareaRef.current?.focus(), 300)
@@ -358,12 +336,18 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
 
   async function handleRelease() {
     if (!body.trim()) return
+    if (!subject.trim()) {
+      setSubjectError(true)
+      setTimeout(() => setSubjectError(false), 3500)
+      return
+    }
+    setSubjectError(false)
     setView('envelope')
     setReleasing(true)
     await new Promise(r => setTimeout(r, 2200))
     setSent(true)
     setTimeout(() => {
-      onSend?.({ to:recipientName, body, paperId:selectedPaper.id, subject:subject||'A letter for you', fontId:selectedFont.id, stampId:selectedStamp })
+      onSend?.({ to: recipientName, body, paperId: selectedPaper.id, subject, fontId: selectedFont.id, stampId: selectedStamp })
       onClose?.()
     }, 2400)
   }
@@ -386,54 +370,21 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
   const stampCategories = [...new Set(STAMPS.map(s => s.category))]
 
   return (
-    <motion.div
-      initial={{ opacity:0 }}
-      animate={{ opacity:1 }}
-      exit={{ opacity:0 }}
-      transition={{ duration:0.4 }}
-      style={{
-        position:'fixed',
-        inset:0,
-        background:'rgba(0,0,5,0.97)',
-        backdropFilter:'blur(20px)',
-        display:'flex',
-        flexDirection:'column',
-        alignItems:'center',
-        justifyContent:'flex-start',
-        zIndex:70,
-        padding:'72px 20px 40px',
-        overflowY:'auto'
-      }}
-    >
+    <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }} transition={{ duration:0.4 }}
+      style={{ position:'fixed', inset:0, background:'rgba(0,0,5,0.97)', backdropFilter:'blur(20px)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'flex-start', zIndex:70, padding:'72px 20px 40px', overflowY:'auto' }}>
+
       <div style={{ position:'fixed', inset:0, pointerEvents:'none', background:'radial-gradient(ellipse 50% 40% at 20% 30%, rgba(30,15,70,0.2) 0%, transparent 65%)' }}/>
       <div style={{ position:'fixed', inset:0, pointerEvents:'none' }}>
-        {[...Array(20)].map((_,i)=><div key={i} style={{ position:'absolute', width:`${Math.random()*1.2+0.3}px`, height:`${Math.random()*1.2+0.3}px`, borderRadius:'50%', background:`rgba(255,255,255,${Math.random()*0.2+0.04})`, left:`${Math.random()*100}%`, top:`${Math.random()*100}%` }}/>)}
+        {SCRIBE_STARS.map((star, i) => (
+          <div key={i} style={{ position:'absolute', width:star.width, height:star.width, borderRadius:'50%', background:`rgba(255,255,255,${star.opacity})`, left:star.left, top:star.top }}/>
+        ))}
       </div>
 
-      <motion.button
-        initial={{ opacity:0 }}
-        animate={{ opacity:1 }}
-        transition={{ delay:0.3 }}
+      <motion.button initial={{ opacity:0 }} animate={{ opacity:1 }} transition={{ delay:0.3 }}
         onClick={view==='write'?onClose:()=>setView('write')}
-        style={{
-          position:'fixed',
-          top:'24px',
-          right:'24px',
-          background:'none',
-          border:'1px solid rgba(255,255,255,0.18)',
-          color:'rgba(255,255,255,0.78)',
-          fontFamily:"'Cinzel', serif",
-          fontSize:'9px',
-          letterSpacing:'0.3em',
-          padding:'8px 16px',
-          cursor:'pointer',
-          textTransform:'uppercase',
-          zIndex:80,
-          textShadow:'0 0 6px rgba(0,0,0,0.45)'
-        }}
+        style={{ position:'fixed', top:'24px', right:'24px', background:'none', border:'1px solid rgba(255,255,255,0.18)', color:'rgba(255,255,255,0.78)', fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.3em', padding:'8px 16px', cursor:'pointer', textTransform:'uppercase', zIndex:80 }}
         onMouseEnter={e=>{e.currentTarget.style.color='rgba(255,255,255,0.96)';e.currentTarget.style.borderColor='rgba(255,255,255,0.32)';e.currentTarget.style.background='rgba(255,255,255,0.04)'}}
-        onMouseLeave={e=>{e.currentTarget.style.color='rgba(255,255,255,0.78)';e.currentTarget.style.borderColor='rgba(255,255,255,0.18)';e.currentTarget.style.background='none'}}
-      >
+        onMouseLeave={e=>{e.currentTarget.style.color='rgba(255,255,255,0.78)';e.currentTarget.style.borderColor='rgba(255,255,255,0.18)';e.currentTarget.style.background='none'}}>
         {view==='write'?'← Return':'← Back'}
       </motion.button>
 
@@ -441,10 +392,9 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
         {view==='papers' && (
           <motion.div key="papers" initial={{ opacity:0, y:16 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0 }} style={{ width:'min(760px, 95vw)', zIndex:2 }}>
             <div style={{ textAlign:'center', marginBottom:'24px' }}>
-              <p style={{ fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.5em', color:'#e6c76e', textTransform:'uppercase', marginBottom:'5px', textShadow:'0 0 8px rgba(230,199,110,0.22)' }}>Choose Your Paper</p>
-              <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'13px', color:'rgba(255,255,255,0.8)', textShadow:'0 0 6px rgba(0,0,0,0.4)' }}>Each carries its own history</p>
+              <p style={{ fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.5em', color:'#e6c76e', textTransform:'uppercase', marginBottom:'5px' }}>Choose Your Paper</p>
+              <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'13px', color:'rgba(255,255,255,0.8)' }}>Each carries its own history</p>
             </div>
-
             <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(150px, 1fr))', gap:'12px', marginBottom:'24px' }}>
               {PAPERS.map(p => {
                 const unlocked = p.unlocksAt <= lettersSent
@@ -454,20 +404,16 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
                     <div style={{ height:'100px', background:p.swatch, borderRadius:'4px', border:isSelected?'2px solid #e6c76e':'1px solid rgba(255,255,255,0.12)', boxShadow:isSelected?'0 0 20px rgba(230,199,110,0.35)':'0 4px 16px rgba(0,0,0,0.5)', marginBottom:'8px', position:'relative' }}>
                       {isSelected&&<div style={{ position:'absolute', top:'8px', right:'8px', width:'20px', height:'20px', borderRadius:'50%', background:'#e6c76e', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'11px', color:'#000', fontWeight:'bold' }}>✓</div>}
                     </div>
-                    <p style={{ fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.18em', color:isSelected?'#e6c76e':'rgba(255,255,255,0.84)', textTransform:'uppercase', textAlign:'center', textShadow:'0 0 5px rgba(0,0,0,0.35)' }}>{p.label}</p>
-                    <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'10px', color:'rgba(255,255,255,0.72)', textAlign:'center', marginTop:'2px' }}>{unlocked?p.sublabel:`Unlocks at ${p.unlocksAt}`}</p>
+                    <p style={{ fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.18em', color:isSelected?'#e6c76e':'rgba(255,255,255,0.84)', textTransform:'uppercase', textAlign:'center' }}>{p.label}</p>
+                    <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'10px', color:'rgba(255,255,255,0.6)', textAlign:'center', marginTop:'2px' }}>{unlocked?p.sublabel:`Unlocks at ${p.unlocksAt}`}</p>
                   </motion.div>
                 )
               })}
             </div>
-
             <div style={{ textAlign:'center' }}>
-              <button
-                onClick={()=>setView('write')}
-                style={{ padding:'12px 32px', background:'transparent', border:'1px solid rgba(230,199,110,0.45)', color:'#e6c76e', fontFamily:"'Cinzel', serif", fontSize:'10px', letterSpacing:'0.3em', textTransform:'uppercase', cursor:'pointer', borderRadius:'2px', textShadow:'0 0 8px rgba(230,199,110,0.18)' }}
+              <button onClick={()=>setView('write')} style={{ padding:'12px 32px', background:'transparent', border:'1px solid rgba(230,199,110,0.45)', color:'#e6c76e', fontFamily:"'Cinzel', serif", fontSize:'10px', letterSpacing:'0.3em', textTransform:'uppercase', cursor:'pointer', borderRadius:'2px' }}
                 onMouseEnter={e=>e.currentTarget.style.background='rgba(230,199,110,0.08)'}
-                onMouseLeave={e=>e.currentTarget.style.background='transparent'}
-              >
+                onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
                 Write on {selectedPaper.label} ✦
               </button>
             </div>
@@ -477,34 +423,25 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
         {view==='fonts' && (
           <motion.div key="fonts" initial={{ opacity:0, y:16 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0 }} style={{ width:'min(560px, 95vw)', zIndex:2 }}>
             <div style={{ textAlign:'center', marginBottom:'24px' }}>
-              <p style={{ fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.5em', color:'#e6c76e', textTransform:'uppercase', marginBottom:'5px', textShadow:'0 0 8px rgba(230,199,110,0.22)' }}>Choose Your Script</p>
-              <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'13px', color:'rgba(255,255,255,0.8)', textShadow:'0 0 6px rgba(0,0,0,0.4)' }}>The hand your words are written in</p>
+              <p style={{ fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.5em', color:'#e6c76e', textTransform:'uppercase', marginBottom:'5px' }}>Choose Your Script</p>
+              <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'13px', color:'rgba(255,255,255,0.8)' }}>The hand your words are written in</p>
             </div>
-
             <div style={{ display:'flex', flexDirection:'column', gap:'6px', marginBottom:'24px' }}>
               {FONTS.map(f => {
                 const isSelected = selectedFont.id === f.id
                 return (
-                  <motion.div
-                    key={f.id}
-                    whileTap={{scale:0.99}}
-                    onClick={()=>setSelectedFont(f)}
-                    style={{ padding:'12px 18px', background:isSelected?'rgba(230,199,110,0.12)':'rgba(255,255,255,0.03)', border:isSelected?'1px solid rgba(230,199,110,0.45)':'1px solid rgba(255,255,255,0.08)', borderRadius:'4px', cursor:'pointer', display:'flex', justifyContent:'space-between', alignItems:'center', gap:'14px' }}
-                  >
+                  <motion.div key={f.id} whileTap={{scale:0.99}} onClick={()=>setSelectedFont(f)}
+                    style={{ padding:'12px 18px', background:isSelected?'rgba(230,199,110,0.12)':'rgba(255,255,255,0.03)', border:isSelected?'1px solid rgba(230,199,110,0.45)':'1px solid rgba(255,255,255,0.08)', borderRadius:'4px', cursor:'pointer', display:'flex', justifyContent:'space-between', alignItems:'center', gap:'14px' }}>
                     <span style={{ fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.2em', color:isSelected?'#e6c76e':'rgba(255,255,255,0.76)', textTransform:'uppercase', minWidth:'100px' }}>{f.label}</span>
                     <span style={{ fontFamily:f.family, fontSize:'17px', color:isSelected?'rgba(255,255,255,0.94)':'rgba(255,255,255,0.78)', flex:1, textAlign:'right' }}>{f.preview}</span>
                   </motion.div>
                 )
               })}
             </div>
-
             <div style={{ textAlign:'center' }}>
-              <button
-                onClick={()=>setView('write')}
-                style={{ padding:'12px 32px', background:'transparent', border:'1px solid rgba(230,199,110,0.45)', color:'#e6c76e', fontFamily:"'Cinzel', serif", fontSize:'10px', letterSpacing:'0.3em', textTransform:'uppercase', cursor:'pointer', borderRadius:'2px', textShadow:'0 0 8px rgba(230,199,110,0.18)' }}
+              <button onClick={()=>setView('write')} style={{ padding:'12px 32px', background:'transparent', border:'1px solid rgba(230,199,110,0.45)', color:'#e6c76e', fontFamily:"'Cinzel', serif", fontSize:'10px', letterSpacing:'0.3em', textTransform:'uppercase', cursor:'pointer', borderRadius:'2px' }}
                 onMouseEnter={e=>e.currentTarget.style.background='rgba(230,199,110,0.08)'}
-                onMouseLeave={e=>e.currentTarget.style.background='transparent'}
-              >
+                onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
                 Write in {selectedFont.label} ✦
               </button>
             </div>
@@ -514,10 +451,9 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
         {view==='stamps' && (
           <motion.div key="stamps" initial={{ opacity:0, y:16 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0 }} style={{ width:'min(680px, 95vw)', zIndex:2 }}>
             <div style={{ textAlign:'center', marginBottom:'24px' }}>
-              <p style={{ fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.5em', color:'#e6c76e', textTransform:'uppercase', marginBottom:'5px', textShadow:'0 0 8px rgba(230,199,110,0.22)' }}>Choose a Stamp</p>
-              <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'13px', color:'rgba(255,255,255,0.8)', textShadow:'0 0 6px rgba(0,0,0,0.4)' }}>Optional — appears on your sealed letter</p>
+              <p style={{ fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.5em', color:'#e6c76e', textTransform:'uppercase', marginBottom:'5px' }}>Choose a Stamp</p>
+              <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'13px', color:'rgba(255,255,255,0.8)' }}>Optional — appears on your sealed letter</p>
             </div>
-
             {stampCategories.map(cat => (
               <div key={cat} style={{ marginBottom:'24px' }}>
                 <p style={{ fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.3em', color:'rgba(255,255,255,0.76)', textTransform:'uppercase', marginBottom:'12px' }}>{cat}</p>
@@ -525,12 +461,8 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
                   {STAMPS.filter(s=>s.category===cat).map(stamp => {
                     const isSelected = selectedStamp === stamp.id
                     return (
-                      <motion.div
-                        key={stamp.id}
-                        whileTap={{scale:0.95}}
-                        onClick={()=>setSelectedStamp(isSelected?undefined:stamp.id)}
-                        style={{ cursor:'pointer', padding:'8px', background:isSelected?'rgba(230,199,110,0.12)':'rgba(255,255,255,0.03)', border:isSelected?'1px solid rgba(230,199,110,0.5)':'1px solid rgba(255,255,255,0.12)', borderRadius:'6px', display:'flex', flexDirection:'column', alignItems:'center', gap:'6px', boxShadow:isSelected?'0 0 16px rgba(230,199,110,0.2)':'none' }}
-                      >
+                      <motion.div key={stamp.id} whileTap={{scale:0.95}} onClick={()=>setSelectedStamp(isSelected?undefined:stamp.id)}
+                        style={{ cursor:'pointer', padding:'8px', background:isSelected?'rgba(230,199,110,0.12)':'rgba(255,255,255,0.03)', border:isSelected?'1px solid rgba(230,199,110,0.5)':'1px solid rgba(255,255,255,0.12)', borderRadius:'6px', display:'flex', flexDirection:'column', alignItems:'center', gap:'6px', boxShadow:isSelected?'0 0 16px rgba(230,199,110,0.2)':'none' }}>
                         <StampSVG id={stamp.id} size={56}/>
                         <p style={{ fontFamily:"'Cinzel', serif", fontSize:'7px', letterSpacing:'0.15em', color:isSelected?'#e6c76e':'rgba(255,255,255,0.76)', textTransform:'uppercase' }}>{stamp.label}</p>
                       </motion.div>
@@ -539,14 +471,10 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
                 </div>
               </div>
             ))}
-
             <div style={{ textAlign:'center', marginTop:'8px' }}>
-              <button
-                onClick={()=>setView('write')}
-                style={{ padding:'12px 32px', background:'transparent', border:'1px solid rgba(230,199,110,0.45)', color:'#e6c76e', fontFamily:"'Cinzel', serif", fontSize:'10px', letterSpacing:'0.3em', textTransform:'uppercase', cursor:'pointer', borderRadius:'2px', textShadow:'0 0 8px rgba(230,199,110,0.18)' }}
+              <button onClick={()=>setView('write')} style={{ padding:'12px 32px', background:'transparent', border:'1px solid rgba(230,199,110,0.45)', color:'#e6c76e', fontFamily:"'Cinzel', serif", fontSize:'10px', letterSpacing:'0.3em', textTransform:'uppercase', cursor:'pointer', borderRadius:'2px' }}
                 onMouseEnter={e=>e.currentTarget.style.background='rgba(230,199,110,0.08)'}
-                onMouseLeave={e=>e.currentTarget.style.background='transparent'}
-              >
+                onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
                 {selectedStamp?`Seal with ${STAMPS.find(s=>s.id===selectedStamp)?.label} ✦`:'Continue without stamp ✦'}
               </button>
             </div>
@@ -556,26 +484,30 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
         {view==='write' && !sent && (
           <motion.div key="write" initial={{ opacity:0, y:16 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0 }} style={{ width:'min(580px, 95vw)', zIndex:2 }}>
             <div style={{ textAlign:'center', marginBottom:'14px' }}>
-              <p style={{ fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.5em', color:'#e6c76e', textTransform:'uppercase', marginBottom:'4px', textShadow:'0 0 8px rgba(230,199,110,0.22)' }}>The Scribe</p>
-              <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'14px', color:'rgba(255,255,255,0.84)', textShadow:'0 0 6px rgba(0,0,0,0.4)' }}>
-                {recipientName?`a letter to · ${recipientName}`:'a letter into the universe'}
+              <p style={{ fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.5em', color:'#e6c76e', textTransform:'uppercase', marginBottom:'4px' }}>The Scribe</p>
+              <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'14px', color:'rgba(255,255,255,0.84)' }}>
+                {recipientName ? `a letter to · ${recipientName}` : 'a letter into the universe'}
               </p>
             </div>
 
+            {/* Subject — REQUIRED */}
             <div style={{ marginBottom:'10px' }}>
-              <input
-                value={subject}
-                onChange={e=>setSubject(e.target.value)}
-                placeholder="Subject (optional)"
-                style={{ width:'100%', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.16)', borderRadius:'4px', color:'rgba(255,255,255,0.92)', fontFamily:"'Cinzel', serif", fontSize:'11px', letterSpacing:'0.15em', padding:'10px 14px', outline:'none', caretColor:'#e6c76e' }}
-                onFocus={e=>e.target.style.borderColor='rgba(230,199,110,0.4)'}
-                onBlur={e=>e.target.style.borderColor='rgba(255,255,255,0.16)'}
-              />
+              <input value={subject}
+                onChange={e => { setSubject(e.target.value); if (e.target.value.trim()) setSubjectError(false) }}
+                placeholder="Subject — required"
+                style={{ width:'100%', background: subjectError ? 'rgba(220,60,60,0.06)' : 'rgba(255,255,255,0.06)', border:`1px solid ${subjectError ? 'rgba(220,80,80,0.75)' : 'rgba(255,255,255,0.16)'}`, borderRadius:'4px', color:'rgba(255,255,255,0.92)', fontFamily:"'Cinzel', serif", fontSize:'11px', letterSpacing:'0.15em', padding:'10px 14px', outline:'none', caretColor:'#e6c76e', transition:'border-color 0.2s, background 0.2s' }}
+                onFocus={e => { if (!subjectError) e.target.style.borderColor = 'rgba(230,199,110,0.4)' }}
+                onBlur={e => { if (!subjectError) e.target.style.borderColor = 'rgba(255,255,255,0.16)' }}/>
+              {subjectError && (
+                <p style={{ fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.2em', color:'rgba(220,80,80,0.85)', textTransform:'uppercase', marginTop:'5px' }}>
+                  A letter needs a subject before it can travel ✦
+                </p>
+              )}
             </div>
 
             {renderPaper()}
 
-            {selectedStamp&&(
+            {selectedStamp && (
               <div style={{ display:'flex', justifyContent:'flex-end', marginTop:'-8px', marginBottom:'4px' }}>
                 <div style={{ opacity:0.85 }}><StampSVG id={selectedStamp} size={48}/></div>
               </div>
@@ -583,34 +515,24 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
 
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:'12px', flexWrap:'wrap', gap:'8px' }}>
               <div style={{ display:'flex', alignItems:'center', gap:'6px', flexWrap:'wrap' }}>
-                <span style={{ fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.18em', color:'rgba(255,255,255,0.68)', textTransform:'uppercase' }}>{wordCount}w</span>
-
                 {[
                   { label:selectedPaper.label, action:()=>setView('papers'), icon:'📄' },
                   { label:selectedFont.label, action:()=>setView('fonts'), icon:'✒' },
                   { label:selectedStamp?STAMPS.find(s=>s.id===selectedStamp)?.label||'Stamp':'Stamp', action:()=>setView('stamps'), icon:'🔖' },
                 ].map((btn,i)=>(
-                  <button
-                    key={i}
-                    onClick={btn.action}
-                    style={{ background:'none', border:'1px solid rgba(255,255,255,0.18)', color:'rgba(255,255,255,0.8)', fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.15em', textTransform:'uppercase', padding:'5px 9px', cursor:'pointer', borderRadius:'2px', whiteSpace:'nowrap', textShadow:'0 0 5px rgba(0,0,0,0.35)' }}
+                  <button key={i} onClick={btn.action}
+                    style={{ background:'none', border:'1px solid rgba(255,255,255,0.18)', color:'rgba(255,255,255,0.8)', fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.15em', textTransform:'uppercase', padding:'5px 9px', cursor:'pointer', borderRadius:'2px', whiteSpace:'nowrap' }}
                     onMouseEnter={e=>{e.currentTarget.style.color='rgba(255,255,255,0.98)';e.currentTarget.style.borderColor='rgba(255,255,255,0.32)';e.currentTarget.style.background='rgba(255,255,255,0.04)'}}
-                    onMouseLeave={e=>{e.currentTarget.style.color='rgba(255,255,255,0.8)';e.currentTarget.style.borderColor='rgba(255,255,255,0.18)';e.currentTarget.style.background='none'}}
-                  >
+                    onMouseLeave={e=>{e.currentTarget.style.color='rgba(255,255,255,0.8)';e.currentTarget.style.borderColor='rgba(255,255,255,0.18)';e.currentTarget.style.background='none'}}>
                     {btn.icon} {btn.label}
                   </button>
                 ))}
               </div>
-
-              <motion.button
-                onClick={handleRelease}
-                disabled={!body.trim()||releasing}
-                whileTap={body.trim()?{scale:0.97}:{}}
-                style={{ padding:'11px 22px', background:'transparent', border:`1px solid ${body.trim()?'rgba(230,199,110,0.55)':'rgba(255,255,255,0.12)'}`, color:body.trim()?'#e6c76e':'rgba(255,255,255,0.42)', fontFamily:"'Cinzel', serif", fontSize:'10px', letterSpacing:'0.22em', textTransform:'uppercase', cursor:body.trim()?'pointer':'default', borderRadius:'2px', opacity:releasing?0.6:1, textShadow:body.trim()?'0 0 8px rgba(230,199,110,0.18)':'none' }}
+              <motion.button onClick={handleRelease} disabled={!body.trim()||releasing} whileTap={body.trim()?{scale:0.97}:{}}
+                style={{ padding:'11px 22px', background:'transparent', border:`1px solid ${body.trim()?'rgba(230,199,110,0.55)':'rgba(255,255,255,0.12)'}`, color:body.trim()?'#e6c76e':'rgba(255,255,255,0.42)', fontFamily:"'Cinzel', serif", fontSize:'10px', letterSpacing:'0.22em', textTransform:'uppercase', cursor:body.trim()?'pointer':'default', borderRadius:'2px', opacity:releasing?0.6:1 }}
                 onMouseEnter={e=>{if(!body.trim())return;e.currentTarget.style.background='rgba(230,199,110,0.08)';e.currentTarget.style.borderColor='#e6c76e'}}
-                onMouseLeave={e=>{e.currentTarget.style.background='transparent';e.currentTarget.style.borderColor=body.trim()?'rgba(230,199,110,0.55)':'rgba(255,255,255,0.12)'}}
-              >
-                {releasing?'Sealing ✦':recipientName?`Send to ${recipientName} ✦`:'Release into the Universe ✦'}
+                onMouseLeave={e=>{e.currentTarget.style.background='transparent';e.currentTarget.style.borderColor=body.trim()?'rgba(230,199,110,0.55)':'rgba(255,255,255,0.12)'}}>
+                {releasing ? 'Sealing ✦' : recipientName ? `Send to ${recipientName} ✦` : 'Release into the Universe ✦'}
               </motion.button>
             </div>
           </motion.div>
@@ -618,21 +540,13 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
 
         {view==='envelope' && !sent && (
           <motion.div key="envelope" initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }} style={{ textAlign:'center', zIndex:2 }}>
-            <motion.div
-              initial={{ y:0, rotate:0 }}
-              animate={{ y:[0,-20,80], rotate:[0,-3,2], opacity:[1,1,0] }}
-              transition={{ duration:2, ease:'easeInOut' }}
-              style={{ display:'inline-block', marginBottom:'24px', position:'relative' }}
-            >
+            <motion.div initial={{ y:0, rotate:0 }} animate={{ y:[0,-20,80], rotate:[0,-3,2], opacity:[1,1,0] }} transition={{ duration:2, ease:'easeInOut' }}
+              style={{ display:'inline-block', marginBottom:'24px', position:'relative' }}>
               <EnvelopeSVG color={envelopeColor}/>
               {selectedStamp&&<div style={{ position:'absolute', top:'8px', right:'8px', transform:'rotate(3deg)' }}><StampSVG id={selectedStamp} size={32}/></div>}
             </motion.div>
-            <motion.p
-              initial={{ opacity:0 }}
-              animate={{ opacity:1 }}
-              transition={{ delay:0.3 }}
-              style={{ fontFamily:"'Cinzel', serif", fontSize:'10px', letterSpacing:'0.4em', color:'#e6c76e', textTransform:'uppercase', textShadow:'0 0 8px rgba(230,199,110,0.2)' }}
-            >
+            <motion.p initial={{ opacity:0 }} animate={{ opacity:1 }} transition={{ delay:0.3 }}
+              style={{ fontFamily:"'Cinzel', serif", fontSize:'10px', letterSpacing:'0.4em', color:'#e6c76e', textTransform:'uppercase' }}>
               Sealing your letter...
             </motion.p>
           </motion.div>
@@ -640,28 +554,16 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
 
         {sent && (
           <motion.div key="sent" initial={{ opacity:0, scale:0.95 }} animate={{ opacity:1, scale:1 }} exit={{ opacity:0 }} transition={{ duration:0.6 }} style={{ textAlign:'center', zIndex:2 }}>
-            <motion.div
-              initial={{ scale:0, opacity:0.8 }}
-              animate={{ scale:5, opacity:0 }}
-              transition={{ duration:2.2, ease:'easeOut' }}
-              style={{ position:'absolute', top:'50%', left:'50%', transform:'translate(-50%,-50%)', width:'60px', height:'60px', borderRadius:'50%', border:'1px solid #e6c76e', pointerEvents:'none' }}
-            />
-            <motion.p initial={{ opacity:0, y:8 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.3 }} style={{ fontSize:'36px', marginBottom:'20px', color:'#e6c76e', textShadow:'0 0 10px rgba(230,199,110,0.25)' }}>✦</motion.p>
-            <motion.p
-              initial={{ opacity:0 }}
-              animate={{ opacity:1 }}
-              transition={{ delay:0.5 }}
-              style={{ fontFamily:"'Cinzel', serif", fontSize:'clamp(12px,2vw,16px)', letterSpacing:'0.3em', color:'#e6c76e', textTransform:'uppercase', marginBottom:'10px', textShadow:'0 0 8px rgba(230,199,110,0.2)' }}
-            >
-              {recipientName?`Sent to ${recipientName}`:'Released into the universe'}
+            <motion.div initial={{ scale:0, opacity:0.8 }} animate={{ scale:5, opacity:0 }} transition={{ duration:2.2, ease:'easeOut' }}
+              style={{ position:'absolute', top:'50%', left:'50%', transform:'translate(-50%,-50%)', width:'60px', height:'60px', borderRadius:'50%', border:'1px solid #e6c76e', pointerEvents:'none' }}/>
+            <motion.p initial={{ opacity:0, y:8 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.3 }} style={{ fontSize:'36px', marginBottom:'20px', color:'#e6c76e' }}>✦</motion.p>
+            <motion.p initial={{ opacity:0 }} animate={{ opacity:1 }} transition={{ delay:0.5 }}
+              style={{ fontFamily:"'Cinzel', serif", fontSize:'clamp(12px,2vw,16px)', letterSpacing:'0.3em', color:'#e6c76e', textTransform:'uppercase', marginBottom:'10px' }}>
+              {recipientName ? `Sent to ${recipientName}` : 'Released into the universe'}
             </motion.p>
-            <motion.p
-              initial={{ opacity:0 }}
-              animate={{ opacity:1 }}
-              transition={{ delay:0.8 }}
-              style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'14px', color:'rgba(255,255,255,0.82)', textShadow:'0 0 6px rgba(0,0,0,0.4)' }}
-            >
-              {recipientName?`traveling toward ${recipientName}...`:'finding its way to a stranger...'}
+            <motion.p initial={{ opacity:0 }} animate={{ opacity:1 }} transition={{ delay:0.8 }}
+              style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'14px', color:'rgba(255,255,255,0.82)' }}>
+              {recipientName ? `traveling toward ${recipientName}...` : 'finding its way to a stranger...'}
             </motion.p>
           </motion.div>
         )}
