@@ -22,6 +22,7 @@ export async function POST(req: Request) {
     const voiceInstruction = mirrorVoicePrompt || VOICE_PROMPTS[mirrorVoice] || VOICE_PROMPTS.friend
     const hasEnough = exchangeNumber >= minExchanges
     const mustClose = exchangeNumber >= maxExchanges
+    const isFirstTurn = exchangeNumber === 0
     const apiKey = process.env.GEMINI_API_KEY
 
     if (!apiKey) {
@@ -35,15 +36,29 @@ Your role: You are a Soul Mirror helping someone create their ${style || 'artist
 
 ${isReturning ? `IMPORTANT: This person is RETURNING after 90 days. Open with a warm returning greeting like "Hello, my old friend. It has been a while." in your voice style.` : ''}
 
+${isFirstTurn ? `
 Your FIRST question must:
 - Introduce yourself briefly in your voice style
-- Ask them to describe themselves in as much detail as possible — appearance, energy, the world they inhabit, how they carry themselves
+- Ask for one broad description only: how they look and how they carry themselves
 - Explicitly say something like "go into as much detail as you can — the more you share, the more the mirror can reflect back"
+- Contain exactly ONE question
+` : `
+You are continuing an existing conversation.
+- Do NOT reintroduce yourself.
+- Do NOT repeat your opening.
+- Ask only the single best next follow-up question.
+`}
 
 After that:
 - Ask targeted follow-up questions ONLY if you need more visual detail
 - Focus on: physical appearance, energy/vibe, colors or textures that feel like them, setting or world
 - Ask ONE thing at a time. Stay in your voice style throughout.
+- Every turn must contain exactly ONE question.
+- Never stack questions.
+- Never ask about appearance, vibe, colors, and setting in the same turn.
+- Use only one question mark total in the whole response.
+- Do not use decorative symbols, sparkle icons, bullet points, or markdown emphasis.
+- Keep the wording natural and conversational for the selected voice.
 
 ${hasEnough ? `
 ASSESSMENT: You now have ${exchangeNumber} exchanges. Do you have enough visual detail for a strong ${style} portrait?
@@ -82,20 +97,48 @@ Keep responses concise. Never use bullet points or numbered lists.
         : 'Continue.')
 
     // Gemini chat history must begin with a user turn, so we exclude the
-    // current user message from history and trim any leading AI-only opener.
+    // current user message from history and fold the initial AI opener into
+    // the first user turn once a reply exists.
     const historyForChat =
       rawHistory.length > 0 && rawHistory[rawHistory.length - 1]?.role === 'user'
         ? rawHistory.slice(0, -1)
         : rawHistory
 
-    while (historyForChat.length > 0 && historyForChat[0]?.role === 'ai') {
-      historyForChat.shift()
+    const normalizedHistory: { role: 'user' | 'model'; parts: { text: string }[] }[] = []
+    let foldedLatestUserMessage = latestUserMessage
+
+    if (historyForChat.length > 0 && historyForChat[0]?.role === 'ai') {
+      const openingPrompt = historyForChat[0].text
+      const openingReply =
+        historyForChat.length > 1 && historyForChat[1]?.role === 'user'
+          ? historyForChat[1].text
+          : null
+
+      if (openingReply) {
+        normalizedHistory.push({
+          role: 'user',
+          parts: [{
+            text: `The Soul Mirror asked: ${openingPrompt}\nMy answer: ${openingReply}`,
+          }],
+        })
+      } else if (foldedLatestUserMessage) {
+        foldedLatestUserMessage = `The Soul Mirror asked: ${openingPrompt}\nMy answer: ${foldedLatestUserMessage}`
+      }
     }
 
-    const conversationHistory = historyForChat.map((m: { role: string; text: string }) => ({
-      role: m.role === 'ai' ? 'model' : 'user',
-      parts: [{ text: m.text }],
-    }))
+    const remainingHistoryStart =
+      historyForChat.length > 1 && historyForChat[0]?.role === 'ai' && historyForChat[1]?.role === 'user'
+        ? 2
+        : historyForChat.length > 0 && historyForChat[0]?.role === 'ai'
+          ? 1
+          : 0
+
+    const conversationHistory = normalizedHistory.concat(
+      historyForChat.slice(remainingHistoryStart).map((m: { role: string; text: string }) => ({
+        role: m.role === 'ai' ? 'model' : 'user',
+        parts: [{ text: m.text }],
+      }))
+    )
 
     const chat = model.startChat({
       history: conversationHistory,
@@ -108,7 +151,7 @@ Keep responses concise. Never use bullet points or numbered lists.
     const result = await chat.sendMessage(
       conversationHistory.length === 0 && answers.length === 0
         ? 'Begin. Ask your opening question.'
-        : latestUserMessage
+        : foldedLatestUserMessage
     )
 
     const raw = result.response.text()

@@ -261,7 +261,7 @@ export default function SoulMirror({ isReturning = false, onComplete }: SoulMirr
                     <div style={{ maxWidth: '84%', padding: '12px 16px', borderRadius: msg.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px', background: msg.isClosing ? 'rgba(230,199,110,0.1)' : msg.role === 'user' ? 'rgba(230,199,110,0.13)' : 'rgba(255,255,255,0.06)', border: msg.isClosing ? '1px solid rgba(230,199,110,0.4)' : msg.role === 'user' ? '1px solid rgba(230,199,110,0.25)' : '1px solid rgba(255,255,255,0.09)' }}>
                       {msg.role === 'ai' && (
                         <p style={{ fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.2em', color: msg.isClosing ? '#e6c76e' : 'rgba(230,199,110,0.75)', textTransform: 'uppercase', marginBottom: '6px' }}>
-                          {msg.isClosing ? '✦ Mirror · I can see you now' : `✦ ${selectedVoice?.label || 'Mirror'}`}
+                          {msg.isClosing ? 'Mirror · I can see you now' : `${selectedVoice?.label || 'Mirror'}`}
                         </p>
                       )}
                       <p style={{ fontFamily: msg.role === 'ai' ? "'IM Fell English', serif" : "'Cormorant Garamond', serif", fontStyle: msg.role === 'ai' ? 'italic' : 'normal', fontSize: msg.role === 'ai' ? '16px' : '15px', color: 'rgba(255,255,255,0.9)', lineHeight: 1.65 }}>
