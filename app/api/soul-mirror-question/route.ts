@@ -38,9 +38,8 @@ ${isReturning ? `IMPORTANT: This person is RETURNING after 90 days. Open with a 
 
 ${isFirstTurn ? `
 Your FIRST question must:
-- Introduce yourself briefly in your voice style
-- Ask for one broad description only: how they look and how they carry themselves
-- Explicitly say something like "go into as much detail as you can — the more you share, the more the mirror can reflect back"
+- Be centered on this exact question: "In another world, how do you see yourself? Describe yourself in as much detail as you can."
+- You may add a brief lead-in in your voice style, but do not rewrite or replace that core question.
 - Contain exactly ONE question
 ` : `
 You are continuing an existing conversation.
