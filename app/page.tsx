@@ -127,6 +127,7 @@ export default function Home() {
     selectedStyle?: { id: string; label: string; desc: string },
     selectedHubStyle?: HubStyle,
     mirrorVoice?: { id: string; label: string },
+    backdrop?: { id: string; label: string; desc: string; icon: string; colors: string[] },
     userBio?: string,
     userHubName?: string,
   ) {

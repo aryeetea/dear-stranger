@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { signIn, signInWithGoogle } from '../lib/auth'
+import { signIn, signInWithGoogle, signOut } from '../lib/auth'
 
 type AuthView = 'login' | 'signup'
 
@@ -36,6 +36,7 @@ export function LoginScreen({
     if (!email.trim() || !password) { setError('Please fill in all fields.'); return }
     setLoading(true); setError('')
     try {
+      await signOut()
       await signIn(email.trim(), password)
       onSuccess()
     } catch (err: any) {
@@ -46,6 +47,7 @@ export function LoginScreen({
   async function handleGoogle() {
     setGoogleLoading(true); setError('')
     try {
+      await signOut()
       await signInWithGoogle()
       // Supabase redirects — onSuccess will be called after redirect back
     } catch (err: any) {
@@ -120,12 +122,10 @@ export function LoginScreen({
 export function SignupScreen({
   onSuccess,
   onGoToLogin,
-  pendingCredentials,
   setPendingCredentials,
 }: {
   onSuccess: () => void
   onGoToLogin: () => void
-  pendingCredentials: { email: string; password: string } | null
   setPendingCredentials: (creds: { email: string; password: string } | null) => void
 }) {
   const [email, setEmail] = useState('')
@@ -141,6 +141,7 @@ export function SignupScreen({
     if (password.length < 6) { setError('Password must be at least 6 characters.'); return }
     setLoading(true); setError('')
     try {
+      await signOut()
       // Store credentials so onboarding can use them to create the real account
       setPendingCredentials({ email: email.trim(), password })
       onSuccess()
@@ -152,6 +153,8 @@ export function SignupScreen({
   async function handleGoogle() {
     setGoogleLoading(true); setError('')
     try {
+      await signOut()
+      setPendingCredentials(null)
       await signInWithGoogle()
     } catch (err: any) {
       setError(err.message || 'Google sign-in failed.')
@@ -209,7 +212,7 @@ export function SignupScreen({
         style={{ width: '100%', padding: '14px', background: 'transparent', border: '1px solid rgba(201,168,76,0.5)', color: '#c9a84c', fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.3em', textTransform: 'uppercase', cursor: 'pointer', borderRadius: '4px', marginBottom: '20px', opacity: loading ? 0.6 : 1, transition: 'all 0.2s' }}
         onMouseEnter={e => { if (!loading) e.currentTarget.style.background = 'rgba(201,168,76,0.08)' }}
         onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
-        {loading ? 'Preparing...' : 'Create My Hub ✦'}
+        {loading ? 'Preparing...' : 'Continue to Soul Mirror ✦'}
       </button>
 
       <div style={{ textAlign: 'center' }}>
