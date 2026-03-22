@@ -96,7 +96,6 @@ export default function EntryScreen({
             transition={{ duration: 1, ease: 'easeOut' }}
             style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px', marginTop: '64px' }}
           >
-            {/* Enter the Universe — guest/new user */}
             <button
               onClick={onEnter}
               onMouseEnter={e => {
@@ -130,7 +129,6 @@ export default function EntryScreen({
               Enter the Universe
             </button>
 
-            {/* Create an Account */}
             <button
               onClick={onSignup}
               onMouseEnter={e => {
@@ -159,7 +157,6 @@ export default function EntryScreen({
               Create an Account
             </button>
 
-            {/* Sign In */}
             <button
               onClick={onLogin}
               onMouseEnter={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.55)' }}

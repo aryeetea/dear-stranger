@@ -31,6 +31,36 @@ export async function signInWithGoogle() {
   if (error) throw error
 }
 
+// ── CREATE HUB FOR EXISTING AUTH USER ──
+export async function createHubForCurrentUser(
+  hubName: string,
+  bio: string,
+  askAbout: string,
+) {
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+  if (userError) throw userError
+  if (!user) throw new Error('No authenticated user found')
+
+  const { data: existingHub, error: existingHubError } = await supabase
+    .from('hubs')
+    .select('id')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  if (existingHubError) throw existingHubError
+  if (existingHub) return existingHub
+
+  const email = user.email || null
+  const { data, error } = await supabase
+    .from('hubs')
+    .insert([{ id: user.id, hub_name: hubName, bio, ask_about: askAbout, email }])
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
 // ── ANONYMOUS SIGN IN ──
 export async function signInAndCreateHub(hubName: string, bio: string, askAbout: string) {
   const { data: authData, error: authError } = await supabase.auth.signInAnonymously()
@@ -113,7 +143,6 @@ export async function getUniverseLetters() {
       .from('letters')
       .select('id, body, subject, sender:sender_id(hub_name)')
       .eq('is_universe_letter', true)
-      .eq('status', 'arrived')
       .order('created_at', { ascending: false })
       .limit(50)
     if (error) return []
@@ -122,7 +151,7 @@ export async function getUniverseLetters() {
       senderName: l.sender?.hub_name || 'A Stranger',
       preview: l.body
         ? l.body.length > 120 ? `${l.body.slice(0, 120)}...` : l.body
-        : 'A letter drifts through the universe...',
+        : '',
       subject: l.subject || 'A letter for you',
     }))
   } catch { return [] }

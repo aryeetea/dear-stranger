@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=IM+Fell+English:ital@0;1&family=Dancing+Script:wght@400;600&family=Pacifico&family=Courier+Prime&family=Special+Elite&family=Satisfy&family=Indie+Flower&family=Playfair+Display:ital,wght@0,400;1,400&family=Roboto&family=Lato&display=swap');
 
 :root {
   --background: #04050f;
@@ -16,10 +15,44 @@ body {
   margin: 0;
   padding: 0;
   overflow: hidden;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 * {
   box-sizing: border-box;
+}
+
+h1, h2, h3, h4, h5, h6,
+p,
+span,
+label,
+a,
+button,
+input,
+textarea {
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.42);
+}
+
+h1, h2, h3, h4, h5, h6,
+p,
+span,
+label,
+a {
+  filter: brightness(1.14);
+}
+
+button,
+input,
+textarea {
+  filter: brightness(1.1);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: rgba(255, 255, 255, 0.68);
+  opacity: 1;
 }
 
 .scribe-textarea::placeholder {

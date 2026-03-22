@@ -11,7 +11,7 @@ import Profile from './components/Profile'
 import { LoginScreen, SignupScreen } from './components/AuthScreens'
 import {
   signInAndCreateHub, signUpAndCreateHub, signOut,
-  getSession, getMyHub, getAllHubs, sendLetter, updateHub,
+  createHubForCurrentUser, getSession, getMyHub, getAllHubs, sendLetter, updateHub,
 } from './lib/auth'
 
 type Screen = 'entry' | 'login' | 'signup' | 'onboarding' | 'universe' | 'loading' | 'generating'
@@ -65,7 +65,8 @@ export default function Home() {
             setScreen('universe')
             return
           }
-          await signOut()
+          setScreen('onboarding')
+          return
         }
         setScreen('entry')
       } catch (err) {
@@ -103,6 +104,8 @@ export default function Home() {
       if (pendingCredentials) {
         await signUpAndCreateHub(pendingCredentials.email, pendingCredentials.password, hubNameAnswer, chosenBio, fallbackAskAbout)
         setPendingCredentials(null)
+      } else if (await getSession()) {
+        await createHubForCurrentUser(hubNameAnswer, chosenBio, fallbackAskAbout)
       } else {
         await signInAndCreateHub(hubNameAnswer, chosenBio, fallbackAskAbout)
       }

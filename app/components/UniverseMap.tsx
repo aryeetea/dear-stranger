@@ -514,25 +514,36 @@ export default function UniverseMap({
   }
 
   useEffect(() => {
-  const universeLetters: { id: string; senderName: string; preview: string }[] = []
+    let cancelled = false
+    let universeLetters: { id: string; senderName: string; preview: string }[] = []
 
-  getUniverseLetters().then(letters => {
-    universeLetters.push(...letters)
-  })
+    async function refreshUniverseLetters() {
+      const letters = await getUniverseLetters()
+      if (!cancelled) {
+        universeLetters = letters.filter(letter => letter.preview.trim().length > 0)
+      }
+    }
 
-  function spawnRealStar() {
-    if (universeLetters.length > 0) {
+    function spawnRealStar() {
+      if (universeLetters.length === 0) return
       const letter = universeLetters[Math.floor(Math.random() * universeLetters.length)]
       spawnShootingStar(letter)
-    } else {
-      spawnShootingStar({ id: 'demo', senderName: 'A Stranger', preview: 'A letter drifts through the universe...' })
     }
-  }
 
-  const initial = setTimeout(spawnRealStar, 3000)
-  const interval = setInterval(spawnRealStar, 20000)
-  return () => { clearInterval(interval); clearTimeout(initial) }
-}, [])
+    const initial = setTimeout(() => {
+      void refreshUniverseLetters().then(spawnRealStar)
+    }, 3000)
+
+    const interval = setInterval(() => {
+      void refreshUniverseLetters().then(spawnRealStar)
+    }, 20000)
+
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+      clearTimeout(initial)
+    }
+  }, [])
 
   useEffect(() => {
     let resizeHandler: (() => void) | undefined

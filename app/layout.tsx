@@ -1,10 +1,27 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { Analytics } from "@vercel/analytics/next"
+import ServiceWorkerRegister from "./components/ServiceWorkerRegister";
 
 export const metadata: Metadata = {
   title: "Dear Stranger",
   description: "A universe of slow letters",
+  applicationName: "Dear Stranger",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Dear Stranger",
+  },
+  icons: {
+    icon: "/icon?size=512",
+    apple: "/apple-icon",
+  },
 };
+
+export const viewport: Viewport = {
+  themeColor: "#04050f",
+}
 
 export default function RootLayout({
   children,
@@ -20,6 +37,8 @@ export default function RootLayout({
       </head>
       <body>
         {children}
+        <ServiceWorkerRegister />
+        <Analytics />
       </body>
     </html>
   );
