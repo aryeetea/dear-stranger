@@ -69,7 +69,10 @@ Keep responses concise. Never use bullet points or numbered lists.
 `
 
     const genAI = new GoogleGenerativeAI(apiKey)
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-2.5-flash',
+      systemInstruction: systemPrompt,
+    })
 
     const conversationHistory = messages.map((m: { role: string; text: string }) => ({
       role: m.role === 'ai' ? 'model' : 'user',
@@ -82,7 +85,6 @@ Keep responses concise. Never use bullet points or numbered lists.
         maxOutputTokens: 400,
         temperature: mirrorVoice === 'genz' ? 1.1 : mirrorVoice === 'poetic' ? 0.95 : 0.85,
       },
-      systemInstruction: systemPrompt,
     })
 
     const result = await chat.sendMessage(
