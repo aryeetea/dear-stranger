@@ -1,338 +1,130 @@
-import { GoogleGenerativeAI } from '@google/generative-ai'
 import { NextResponse } from 'next/server'
+import OpenAI from 'openai'
 
-type RawMessage = {
-  role: 'user' | 'ai'
-  text: string
+export const maxDuration = 60
+
+function normalizeDetail(value: string) {
+  return value
+    .replace(/\s+/g, ' ')
+    .replace(/^[,.;:\s]+|[,.;:\s]+$/g, '')
+    .trim()
 }
 
-type RequestBody = {
-  messages?: RawMessage[]
-  answers?: string[]
-  exchangeNumber?: number
-  style?: string
-  styleDescription?: string
-  mirrorVoice?: string
-  mirrorVoicePrompt?: string
-  isReturning?: boolean
-  minExchanges?: number
-  maxExchanges?: number
+const STYLE_DIRECTIONS: Record<string, string> = {
+  fantasy: `High fantasy illustration. Flowing magical robes, ethereal fabrics, glowing runes or subtle magic. Rich jewel tones — deep purples, midnight blues, gold. Background: misty enchanted forest or ancient stone archway with soft magical light. Painterly and cinematic.`,
+  modern: `Contemporary fashion illustration. Clean stylish outfit — tailored jacket or elevated streetwear. Neutral and earth tones with one bold accent. Background: moody urban architecture at dusk, soft bokeh city lights. Editorial and sophisticated.`,
+  'fantasy-modern': `Fantasy-modern fusion. Magical elements woven into contemporary fashion — glowing accessories, iridescent fabrics. Background: neon-lit alley meets starlit sky. Cinematic and otherworldly.`,
+  celestial: `Celestial fine art illustration. Flowing cosmic robes adorned with stars and moon phases, silver and indigo palette, constellation details. Background: deep space nebula with soft aurora light. Ethereal and divine.`,
+  royal: `Regal portrait illustration. Elaborate noble attire — rich velvets, gold embroidery, a crown or ornate headpiece. Deep jewel tones. Background: grand candlelit hall or palace balcony at dusk. Majestic and commanding.`,
+  streetwear: `Urban fashion illustration. Stylish streetwear — oversized jacket, designer sneakers, bold graphic tee or cargo pants. Dark moody background: rain-slicked city street at night with warm neon reflections. Cool and atmospheric.`,
+  futuristic: `Sci-fi concept art illustration. Sleek futuristic outfit — form-fitting suit, glowing tech accessories, holographic details. Background: gleaming megacity skyline or neon-lit space station corridor. Sharp and cinematic.`,
+  nature: `Nature-inspired illustration. Flowing earthy garments woven with floral and botanical details, warm greens and terracottas. Background: misty ancient forest with dappled golden light filtering through tall trees. Organic and peaceful.`,
 }
 
-const VOICE_PROMPTS: Record<string, string> = {
-  friend:
-    'You are a warm, gentle, encouraging friend helping someone create their avatar. You speak naturally, with care and curiosity.',
-  poetic:
-    'You are poetic and mysterious, but still concise. Use soft imagery without becoming long winded.',
-  direct:
-    'You are direct and honest. Ask exactly what you mean with no filler.',
-  genz:
-    'You are casual and current. Keep it natural, short, and not cringe.',
-  elder:
-    'You are calm, wise, and grounded. Speak with warmth and clarity.',
-  playful:
-    'You are playful and curious. Keep things light, simple, and engaging.',
+function buildAvatarPrompt(answers: string[], style?: string, feedback?: string) {
+  const trimmedAnswers = answers
+    .map((a) => normalizeDetail(a))
+    .filter(Boolean)
+    .slice(0, 8)
+
+  const details = trimmedAnswers
+    .map((a, i) => `${i + 1}. ${a}`)
+    .join('\n')
+
+  const styleKey = (style || '').toLowerCase().replace(/\s+/g, '-')
+  const styleDirection = STYLE_DIRECTIONS[styleKey] || STYLE_DIRECTIONS.modern
+
+  const feedbackLine = feedback?.trim()
+    ? `Important revision note: ${normalizeDetail(feedback)}.`
+    : ''
+
+  return [
+    `Create a single full-body character portrait. ${styleDirection}`,
+    'The character must be clearly visible from head to toe with a clean readable silhouette.',
+    'Use a vertical portrait composition. Dramatic lighting. Rich detail. Cinematic quality.',
+    'Do not add text, watermarks, or logos.',
+    details ? `Character details based on their self-description:\n${details}` : '',
+    feedbackLine,
+  ]
+    .filter(Boolean)
+    .join('\n\n')
 }
 
-function clampNumber(value: unknown, fallback: number, min: number, max: number) {
-  if (typeof value !== 'number' || !Number.isFinite(value)) return fallback
-  return Math.min(Math.max(Math.floor(value), min), max)
+async function generateWithGptImage(openai: OpenAI, prompt: string, userId?: string) {
+  const response = await openai.images.generate({
+    model: 'gpt-image-1',
+    prompt,
+    size: '1024x1536',
+    quality: 'low',
+    output_format: 'jpeg',
+    user: userId || undefined,
+  } as any)
+
+  const image = response.data?.[0]
+  if (!image?.b64_json) throw new Error('gpt-image-1 returned no image data.')
+
+  return {
+    imageUrl: `data:image/jpeg;base64,${image.b64_json}`,
+    revisedPrompt: (image as any).revised_prompt || prompt,
+  }
 }
 
-function cleanText(value: unknown) {
-  return typeof value === 'string' ? value.trim() : ''
-}
-
-function uniqueChips(chips: string[]) {
-  const seen = new Set<string>()
-
-  return chips.filter((chip) => {
-    const normalized = chip.trim().toLowerCase()
-    if (!normalized || seen.has(normalized)) return false
-    seen.add(normalized)
-    return true
+async function generateWithDalle(openai: OpenAI, prompt: string, userId?: string) {
+  const response = await openai.images.generate({
+    model: 'dall-e-3',
+    prompt,
+    n: 1,
+    size: '1024x1792',
+    quality: 'standard',
+    style: 'natural',
+    response_format: 'b64_json',
+    user: userId || undefined,
   })
-}
 
-function fallbackChipsFromContext(question: string, style: string, styleDescription: string) {
-  const source = `${question} ${style} ${styleDescription}`.toLowerCase()
-
-  if (source.includes('hair')) {
-    return ['braids', 'curly hair', 'long hair', 'silver streaks']
+  const image = response.data?.[0]
+  if (image?.b64_json) {
+    return {
+      imageUrl: `data:image/png;base64,${image.b64_json}`,
+      revisedPrompt: image.revised_prompt || prompt,
+    }
   }
-
-  if (source.includes('eyes')) {
-    return ['blue eyes', 'gold eyes', 'sharp gaze', 'soft glow']
-  }
-
-  if (source.includes('outfit') || source.includes('wear')) {
-    return ['streetwear', 'baggy jeans', 'graphic tee', 'layered look']
-  }
-
-  if (source.includes('color')) {
-    return ['blue tones', 'black and silver', 'neon accents', 'soft gold']
-  }
-
-  if (source.includes('setting') || source.includes('background')) {
-    return ['city lights', 'moonlit street', 'futuristic skyline', 'floating lights']
-  }
-
-  return ['streetwear', 'blue eyes', 'dark skin', 'futuristic vibe']
+  throw new Error('dall-e-3 returned no image data.')
 }
 
 export async function POST(req: Request) {
   try {
-    const body: RequestBody = await req.json()
+    const { answers, feedback, userId, style } = await req.json()
 
-    const safeMessages: RawMessage[] = Array.isArray(body.messages)
-      ? body.messages.filter(
-          (m): m is RawMessage =>
-            !!m &&
-            (m.role === 'user' || m.role === 'ai') &&
-            typeof m.text === 'string' &&
-            m.text.trim().length > 0
-        )
-      : []
-
-    const safeAnswers: string[] = Array.isArray(body.answers)
-      ? body.answers
-          .filter((a): a is string => typeof a === 'string')
-          .map((a) => a.trim())
-          .filter(Boolean)
-      : []
-
-    const safeExchangeNumber =
-      typeof body.exchangeNumber === 'number' && Number.isFinite(body.exchangeNumber)
-        ? Math.max(0, Math.floor(body.exchangeNumber))
-        : 0
-
-    let safeMinExchanges = clampNumber(body.minExchanges, 5, 5, 10)
-    let safeMaxExchanges = clampNumber(body.maxExchanges, 10, 5, 10)
-
-    if (safeMinExchanges > safeMaxExchanges) {
-      ;[safeMinExchanges, safeMaxExchanges] = [safeMaxExchanges, safeMinExchanges]
+    const openaiKey = process.env.OPENAI_API_KEY
+    if (!openaiKey) {
+      return NextResponse.json({ error: 'Missing OPENAI_API_KEY' }, { status: 500 })
     }
 
-    const style = cleanText(body.style)
-    const styleDescription = cleanText(body.styleDescription)
-    const mirrorVoice = cleanText(body.mirrorVoice) || 'friend'
-    const mirrorVoicePrompt = cleanText(body.mirrorVoicePrompt)
-    const isReturning = Boolean(body.isReturning)
+    const orderedAnswers = Object.entries(answers || {})
+      .sort(([a], [b]) => Number(a) - Number(b))
+      .map(([, answer]) => normalizeDetail(String(answer)))
+      .filter(Boolean)
 
-    const voiceInstruction =
-      mirrorVoicePrompt ||
-      VOICE_PROMPTS[mirrorVoice] ||
-      VOICE_PROMPTS.friend
-
-    const hasEnough = safeExchangeNumber >= safeMinExchanges
-    const mustClose = safeExchangeNumber >= safeMaxExchanges
-    const isFirstTurn = safeExchangeNumber === 0
-
-    const apiKey = process.env.GEMINI_API_KEY
-
-    if (!apiKey) {
-      return NextResponse.json(
-        { error: 'Missing GEMINI_API_KEY' },
-        { status: 500 }
-      )
+    if (orderedAnswers.length === 0) {
+      return NextResponse.json({ error: 'No answers provided.' }, { status: 400 })
     }
 
-    const systemPrompt = `
-${voiceInstruction}
+    const imagePrompt = buildAvatarPrompt(orderedAnswers, style, feedback)
+    const openai = new OpenAI({ apiKey: openaiKey })
 
-Your role: You are a Soul Mirror helping someone create their ${style || 'artistic'} style avatar${styleDescription ? ` (${styleDescription})` : ''} for Dear Stranger.
-
-${isReturning ? 'IMPORTANT: This person is returning after 90 days. Greet them warmly, but keep it brief.' : ''}
-
-${isFirstTurn
-  ? `
-Your first message must center on this exact question:
-"In another world, how do you see yourself?"
-
-You may add a very short lead in, but do not replace that core question.
-Ask exactly one question.
-`
-  : `
-You are continuing an existing conversation.
-Do not reintroduce yourself.
-Ask only the single best next follow up question.
-`}
-
-Rules:
-- Ask ONLY ONE question per turn
-- Keep it short, ideally under 15 words
-- Sound natural and conversational
-- Do not overtalk
-- Do not give long explanations
-- Do not stack questions
-- Use only one question mark total in the whole response
-- No bullet points
-- No decorative symbols
-- No markdown emphasis
-- Make each question clearly respond to what the user just said
-- Focus only on the most useful missing visual detail
-- Prioritize appearance, outfit, vibe, colors, textures, and setting
-- If they already gave a lot, zoom in on one missing detail
-- Keep continuity across the conversation
-- Do not contradict earlier details
-
-${hasEnough
-  ? `
-ASSESSMENT:
-You now have ${safeExchangeNumber} exchanges.
-If you already have enough visual detail for a strong portrait, write ONE short closing sentence and end with exactly [DONE].
-If not, ask one more focused question.
-`
-  : ''}
-
-${mustClose
-  ? `
-You must close now.
-Write ONE short closing sentence and end with exactly [DONE].
-`
-  : ''}
-
-CRITICAL:
-After your question or closing, always add this on a new line:
-[CHIPS: chip1 | chip2 | chip3 | chip4]
-
-Chips rules:
-- Keep them short
-- Make them directly relevant to what you just asked
-- Make them sound like natural replies the user might actually say
-- Never reuse chips from previous turns
-
-Make sure the response is complete and not cut off.
-`
-
-    const genAI = new GoogleGenerativeAI(apiKey)
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash',
-      systemInstruction: systemPrompt,
-    })
-
-    const rawHistory = [...safeMessages]
-    const latestAnswer =
-      safeAnswers.length > 0 ? safeAnswers[safeAnswers.length - 1] : ''
-    const lastHistoryMessage =
-      rawHistory.length > 0 ? rawHistory[rawHistory.length - 1] : undefined
-
-    let latestUserMessage =
-      latestAnswer ||
-      (lastHistoryMessage?.role === 'user' ? lastHistoryMessage.text.trim() : '') ||
-      'Continue.'
-
-    const historyForChat =
-      lastHistoryMessage?.role === 'user' && !latestAnswer
-        ? rawHistory.slice(0, -1)
-        : rawHistory
-
-    const normalizedHistory: { role: 'user' | 'model'; parts: { text: string }[] }[] = []
-
-    if (historyForChat.length > 0 && historyForChat[0]?.role === 'ai') {
-      const openingPrompt = historyForChat[0].text.trim()
-      const openingReply =
-        historyForChat.length > 1 && historyForChat[1]?.role === 'user'
-          ? historyForChat[1].text.trim()
-          : ''
-
-      if (openingPrompt && openingReply) {
-        normalizedHistory.push({
-          role: 'user',
-          parts: [
-            {
-              text: `The Soul Mirror asked: ${openingPrompt}\nMy answer: ${openingReply}`,
-            },
-          ],
-        })
-      } else if (openingPrompt && latestUserMessage) {
-        latestUserMessage = `The Soul Mirror asked: ${openingPrompt}\nMy answer: ${latestUserMessage}`
-      }
+    try {
+      const result = await generateWithGptImage(openai, imagePrompt, userId)
+      return NextResponse.json({ imageUrl: result.imageUrl, prompt: result.revisedPrompt })
+    } catch (primaryError) {
+      console.warn('gpt-image-1 failed, falling back to dall-e-3:', primaryError)
+      const fallback = await generateWithDalle(openai, imagePrompt, userId)
+      return NextResponse.json({ imageUrl: fallback.imageUrl, prompt: fallback.revisedPrompt })
     }
-
-    const remainingHistoryStart =
-      historyForChat.length > 1 &&
-      historyForChat[0]?.role === 'ai' &&
-      historyForChat[1]?.role === 'user'
-        ? 2
-        : historyForChat.length > 0 && historyForChat[0]?.role === 'ai'
-          ? 1
-          : 0
-
-    const conversationHistory = normalizedHistory.concat(
-      historyForChat
-        .slice(remainingHistoryStart)
-        .map((m) => ({
-          role: m.role === 'ai' ? 'model' : 'user',
-          parts: [{ text: m.text.trim().slice(0, 700) }],
-        }))
-    )
-
-    const chat = model.startChat({
-      history: conversationHistory,
-      generationConfig: {
-        maxOutputTokens: 220,
-        temperature:
-          mirrorVoice === 'genz'
-            ? 0.85
-            : mirrorVoice === 'poetic'
-              ? 0.8
-              : 0.7,
-      },
-    })
-
-    const promptToSend =
-      conversationHistory.length === 0 && safeAnswers.length === 0
-        ? 'Begin. Ask your opening question.'
-        : latestUserMessage || 'Continue.'
-
-    const result = await chat.sendMessage(promptToSend)
-    const raw = result.response.text().trim()
-
-    const doneTagFound = /\[DONE\]/i.test(raw)
-
-    const chipsMatch = raw.match(/\[CHIPS:\s*([^\]]+)\]/i)
-
-    let chips: string[] = chipsMatch
-      ? chipsMatch[1]
-          .split('|')
-          .map((c) => c.trim())
-          .filter(Boolean)
-          .slice(0, 4)
-      : []
-
-    chips = uniqueChips(chips)
-
-    if (chips.length < 4) {
-      const fallbacks = fallbackChipsFromContext(raw, style, styleDescription)
-      for (const chip of fallbacks) {
-        if (chips.length >= 4) break
-        if (!chips.some((c) => c.toLowerCase() === chip.toLowerCase())) {
-          chips.push(chip)
-        }
-      }
-    }
-
-    const cleaned = raw
-      .replace(/\[DONE\]/gi, '')
-      .replace(/\[CHIPS:[\s\S]*?\]/gi, '')
-      .trim()
-
-    const finalQuestion =
-      cleaned || (mustClose ? 'Your avatar feels vivid now.' : 'What outfit would you wear?')
-
-    const isDone = mustClose || doneTagFound
-
-    return NextResponse.json({
-      question: finalQuestion,
-      done: isDone,
-      chips,
-    })
-  } catch (err) {
-    console.error('Soul mirror error:', err)
+  } catch (error) {
+    console.error('generate-avatar error:', error)
     return NextResponse.json(
-      { error: 'Mirror went quiet.' },
-      { status: 500 }
+      { error: error instanceof Error ? error.message : 'Failed to generate avatar.' },
+      { status: 500 },
     )
   }
 }
