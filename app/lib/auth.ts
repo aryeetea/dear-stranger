@@ -24,14 +24,16 @@ export async function isHubNameAvailable(hubName: string, excludeUserId?: string
     await assertHubNameAvailable(hubName, excludeUserId)
     return true
   } catch (error) {
-    if (error instanceof Error && error.message === 'That hub name is already taken. Choose another one.') {
+    if (
+      error instanceof Error &&
+      error.message === 'That hub name is already taken. Choose another one.'
+    ) {
       return false
     }
     throw error
   }
 }
 
-// ── EMAIL / PASSWORD SIGN UP ──
 export async function signUpAndCreateHub(
   email: string,
   password: string,
@@ -49,30 +51,26 @@ export async function signUpAndCreateHub(
   if (authError) throw authError
   if (!authData.user) throw new Error('No user returned after signup')
 
-  const { error: hubError } = await supabase
-    .from('hubs')
-    .insert([
-      {
-        id: authData.user.id,
-        hub_name: hubName,
-        bio,
-        ask_about: askAbout,
-        email,
-      },
-    ])
+  const { error: hubError } = await supabase.from('hubs').insert([
+    {
+      id: authData.user.id,
+      hub_name: hubName,
+      bio,
+      ask_about: askAbout,
+      email,
+    },
+  ])
 
   if (hubError) throw hubError
   return authData.user
 }
 
-// ── EMAIL / PASSWORD SIGN IN ──
 export async function signIn(email: string, password: string) {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password })
   if (error) throw error
   return data
 }
 
-// ── GOOGLE SIGN IN ──
 export async function signInWithGoogle() {
   const { error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
@@ -87,7 +85,6 @@ export async function signInWithGoogle() {
   if (error) throw error
 }
 
-// ── CREATE HUB FOR EXISTING AUTH USER ──
 export async function createHubForCurrentUser(
   hubName: string,
   bio: string,
@@ -134,7 +131,6 @@ export async function createHubForCurrentUser(
   return data
 }
 
-// ── ANONYMOUS SIGN IN ──
 export async function signInAndCreateHub(hubName: string, bio: string, askAbout: string) {
   await assertHubNameAvailable(hubName)
 
@@ -142,22 +138,19 @@ export async function signInAndCreateHub(hubName: string, bio: string, askAbout:
   if (authError) throw authError
   if (!authData.user) throw new Error('No user returned')
 
-  const { error: hubError } = await supabase
-    .from('hubs')
-    .insert([
-      {
-        id: authData.user.id,
-        hub_name: hubName,
-        bio,
-        ask_about: askAbout,
-      },
-    ])
+  const { error: hubError } = await supabase.from('hubs').insert([
+    {
+      id: authData.user.id,
+      hub_name: hubName,
+      bio,
+      ask_about: askAbout,
+    },
+  ])
 
   if (hubError) throw hubError
   return authData.user
 }
 
-// ── SIGN OUT ──
 export async function signOut() {
   try {
     await supabase.auth.signOut()
@@ -166,7 +159,6 @@ export async function signOut() {
   }
 }
 
-// ── DELETE ACCOUNT / HUB ──
 export async function deleteAccount(): Promise<{ success: boolean; error?: string }> {
   try {
     const {
@@ -179,33 +171,37 @@ export async function deleteAccount(): Promise<{ success: boolean; error?: strin
 
     const userId = user.id
 
-    const { error: lettersError } = await supabase
-      .from('letters')
-      .delete()
-      .or(`sender_id.eq.${userId},recipient_id.eq.${userId}`)
+    await Promise.race([
+      supabase
+        .from('letters')
+        .delete()
+        .or(`sender_id.eq.${userId},recipient_id.eq.${userId}`),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Letter deletion timeout')), 8000),
+      ),
+    ]).catch((err: unknown) => {
+      console.warn(
+        'Letters deletion skipped:',
+        err instanceof Error ? err.message : String(err),
+      )
+    })
 
-    if (lettersError) throw new Error(`Letters delete failed: ${lettersError.message}`)
-
-    const { error: hubError } = await supabase
-      .from('hubs')
-      .delete()
-      .eq('id', userId)
+    const { error: hubError } = await supabase.from('hubs').delete().eq('id', userId)
 
     if (hubError) throw new Error(`Hub delete failed: ${hubError.message}`)
 
     await supabase.auth.signOut()
 
     return { success: true }
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('deleteAccount failed:', err)
     return {
       success: false,
-      error: err?.message || 'Delete failed',
+      error: err instanceof Error ? err.message : 'Delete failed',
     }
   }
 }
 
-// ── EXPORT MY LETTERS ──
 export async function exportMyLetters(): Promise<string> {
   try {
     const {
@@ -268,7 +264,6 @@ export async function exportMyLetters(): Promise<string> {
   }
 }
 
-// ── GET UNIVERSE LETTERS ──
 export async function getUniverseLetters() {
   try {
     const { data, error } = await supabase
@@ -291,26 +286,31 @@ export async function getUniverseLetters() {
   }
 }
 
-// ── GET SESSION ──
 export async function getSession() {
   try {
     const { data, error } = await supabase.auth.getSession()
 
     if (error) {
-      if (error.message?.includes('Refresh Token') || error.message?.includes('refresh_token')) {
-        try { await supabase.auth.signOut() } catch {}
+      if (
+        error.message?.includes('Refresh Token') ||
+        error.message?.includes('refresh_token')
+      ) {
+        try {
+          await supabase.auth.signOut()
+        } catch {}
       }
       return null
     }
 
     return data.session
   } catch {
-    try { await supabase.auth.signOut() } catch {}
+    try {
+      await supabase.auth.signOut()
+    } catch {}
     return null
   }
 }
 
-// ── GET MY HUB ──
 export async function getMyHub() {
   try {
     const {
@@ -323,7 +323,9 @@ export async function getMyHub() {
         userError.message?.includes('Refresh Token') ||
         userError.message?.includes('refresh_token')
       ) {
-        try { await supabase.auth.signOut() } catch {}
+        try {
+          await supabase.auth.signOut()
+        } catch {}
       }
       return null
     }
@@ -342,26 +344,32 @@ export async function getMyHub() {
         error.message?.includes('Refresh Token') ||
         error.message?.includes('refresh_token')
       ) {
-        try { await supabase.auth.signOut() } catch {}
+        try {
+          await supabase.auth.signOut()
+        } catch {}
       }
       return null
     }
 
     return data || null
   } catch {
-    try { await supabase.auth.signOut() } catch {}
+    try {
+      await supabase.auth.signOut()
+    } catch {}
     return null
   }
 }
 
-// ── GET ALL HUBS ──
 export async function getAllHubs() {
   try {
     const {
       data: { user },
     } = await supabase.auth.getUser()
 
-    const { data, error } = await supabase.from('hubs').select('*').neq('id', user?.id || '')
+    const { data, error } = await supabase
+      .from('hubs')
+      .select('*')
+      .neq('id', user?.id || '')
 
     if (error) return []
     return data || []
@@ -370,7 +378,6 @@ export async function getAllHubs() {
   }
 }
 
-// ── UPDATE HUB ──
 export async function updateHub(updates: {
   hub_name?: string
   bio?: string
@@ -394,7 +401,7 @@ export async function updateHub(updates: {
   }
 
   const cleaned = Object.fromEntries(
-    Object.entries(updates).filter(([, v]) => v !== undefined)
+    Object.entries(updates).filter(([, value]) => value !== undefined),
   )
 
   const { data, error } = await supabase
@@ -408,7 +415,6 @@ export async function updateHub(updates: {
   return data
 }
 
-// ── SEND LETTER ──
 export async function sendLetter(
   recipientId: string | null,
   body: string,
@@ -453,7 +459,6 @@ export async function sendLetter(
   return data
 }
 
-// ── GET MY LETTERS ──
 export async function getMyLetters() {
   try {
     const {
@@ -491,10 +496,12 @@ export async function getMyLetters() {
   }
 }
 
-// ── CHECK IF USER IS ANONYMOUS (GUEST) ──
 export async function isGuestUser(): Promise<boolean> {
   try {
-    const { data: { user } } = await supabase.auth.getUser()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
     if (!user) return true
     return (user as any).is_anonymous === true
   } catch {
@@ -502,14 +509,15 @@ export async function isGuestUser(): Promise<boolean> {
   }
 }
 
-// ── UPGRADE GUEST TO EMAIL ACCOUNT ──
 export async function upgradeGuestAccount(email: string, password: string): Promise<void> {
   const { error } = await supabase.auth.updateUser({ email, password })
   if (error) throw error
 }
 
-// ── UPLOAD AVATAR TO STORAGE ──
-export async function uploadAvatarToStorage(base64DataUrl: string, userId: string): Promise<string> {
+export async function uploadAvatarToStorage(
+  base64DataUrl: string,
+  userId: string,
+): Promise<string> {
   const matches = base64DataUrl.match(/^data:(.+);base64,(.+)$/)
   if (!matches) throw new Error('Invalid base64 image format')
 
@@ -519,18 +527,17 @@ export async function uploadAvatarToStorage(base64DataUrl: string, userId: strin
 
   const byteCharacters = atob(base64Data)
   const byteArray = new Uint8Array(byteCharacters.length)
+
   for (let i = 0; i < byteCharacters.length; i++) {
     byteArray[i] = byteCharacters.charCodeAt(i)
   }
 
   const filePath = `avatars/${userId}.${ext}`
 
-  const { error } = await supabase.storage
-    .from('avatars')
-    .upload(filePath, byteArray, {
-      contentType: mimeType,
-      upsert: true,
-    })
+  const { error } = await supabase.storage.from('avatars').upload(filePath, byteArray, {
+    contentType: mimeType,
+    upsert: true,
+  })
 
   if (error) throw error
 
