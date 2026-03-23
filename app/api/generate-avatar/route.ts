@@ -3,6 +3,8 @@ import OpenAI from 'openai'
 
 export const maxDuration = 60
 
+type GenerationMode = 'create' | 'reimagine'
+
 function normalizeDetail(value: string) {
   return value
     .replace(/\s+/g, ' ')
@@ -91,12 +93,17 @@ function buildAvatarPrompt(answers: string[], style?: string, feedback?: string)
     .join('\n\n')
 }
 
-async function generateWithGptImage(openai: OpenAI, prompt: string, userId?: string) {
+async function generateWithGptImage(
+  openai: OpenAI,
+  prompt: string,
+  userId?: string,
+  mode: GenerationMode = 'create',
+) {
   const response = await openai.images.generate({
     model: 'gpt-image-1',
     prompt,
-    size: '1024x1536',
-    quality: 'high',
+    size: mode === 'reimagine' ? '1024x1024' : '1024x1536',
+    quality: mode === 'reimagine' ? 'medium' : 'high',
     output_format: 'jpeg',
     user: userId || undefined,
   } as any)
@@ -110,13 +117,18 @@ async function generateWithGptImage(openai: OpenAI, prompt: string, userId?: str
   }
 }
 
-async function generateWithDalle(openai: OpenAI, prompt: string, userId?: string) {
+async function generateWithDalle(
+  openai: OpenAI,
+  prompt: string,
+  userId?: string,
+  mode: GenerationMode = 'create',
+) {
   const response = await openai.images.generate({
     model: 'dall-e-3',
     prompt,
     n: 1,
-    size: '1024x1792',
-    quality: 'hd',
+    size: mode === 'reimagine' ? '1024x1024' : '1024x1792',
+    quality: mode === 'reimagine' ? 'standard' : 'hd',
     style: 'vivid',
     response_format: 'b64_json',
     user: userId || undefined,
@@ -135,7 +147,7 @@ async function generateWithDalle(openai: OpenAI, prompt: string, userId?: string
 
 export async function POST(req: Request) {
   try {
-    const { answers, feedback, userId, style } = await req.json()
+    const { answers, feedback, userId, style, mode } = await req.json()
 
     const openaiKey = process.env.OPENAI_API_KEY
     if (!openaiKey) {
@@ -153,16 +165,17 @@ export async function POST(req: Request) {
 
     const imagePrompt = buildAvatarPrompt(orderedAnswers, style, feedback)
     const openai = new OpenAI({ apiKey: openaiKey })
+    const generationMode: GenerationMode = mode === 'reimagine' ? 'reimagine' : 'create'
 
     try {
-      const result = await generateWithGptImage(openai, imagePrompt, userId)
+      const result = await generateWithGptImage(openai, imagePrompt, userId, generationMode)
       return NextResponse.json({
         imageUrl: result.imageUrl,
         prompt: result.revisedPrompt,
       })
     } catch (primaryError) {
       console.warn('gpt-image-1 failed, falling back to dall-e-3:', primaryError)
-      const fallback = await generateWithDalle(openai, imagePrompt, userId)
+      const fallback = await generateWithDalle(openai, imagePrompt, userId, generationMode)
       return NextResponse.json({
         imageUrl: fallback.imageUrl,
         prompt: fallback.revisedPrompt,

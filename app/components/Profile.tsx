@@ -123,7 +123,11 @@ export default function Profile({
     const res = await fetch('/api/generate-avatar', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ answers: { 0: bioState, 1: askState }, feedback: regenFeedback }),
+      body: JSON.stringify({
+        answers: { 0: bioState, 1: askState },
+        feedback: regenFeedback,
+        mode: 'reimagine',
+      }),
       signal: controller.signal,
     })
     const data = await res.json()
