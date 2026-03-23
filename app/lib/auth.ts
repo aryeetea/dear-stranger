@@ -126,9 +126,11 @@ export async function createHubForCurrentUser(
       },
     ])
     .select()
-    .single()
+    .maybeSingle()
 
   if (error) throw error
+  if (!data) throw new Error('Hub could not be created.')
+
   return data
 }
 
@@ -317,7 +319,10 @@ export async function getMyHub() {
     } = await supabase.auth.getUser()
 
     if (userError) {
-      if (userError.message?.includes('Refresh Token') || userError.message?.includes('refresh_token')) {
+      if (
+        userError.message?.includes('Refresh Token') ||
+        userError.message?.includes('refresh_token')
+      ) {
         try { await supabase.auth.signOut() } catch {}
       }
       return null
@@ -325,7 +330,11 @@ export async function getMyHub() {
 
     if (!user) return null
 
-    const { data, error } = await supabase.from('hubs').select('*').eq('id', user.id).single()
+    const { data, error } = await supabase
+      .from('hubs')
+      .select('*')
+      .eq('id', user.id)
+      .maybeSingle()
 
     if (error) {
       if (
@@ -338,7 +347,7 @@ export async function getMyHub() {
       return null
     }
 
-    return data
+    return data || null
   } catch {
     try { await supabase.auth.signOut() } catch {}
     return null
