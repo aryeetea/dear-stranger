@@ -237,147 +237,150 @@ export default function Home() {
   }, [])
 
   async function handleOnboardingComplete(
-    answers: Record<number, string>,
-    selectedStyle?: StyleOption,
-    selectedHubStyle?: HubStyle,
-    mirrorVoice?: MirrorVoice,
-    userBio?: string,
-    userHubName?: string,
-  ) {
-    setOnboardingError('')
+  answers: Record<number, string>,
+  selectedStyle?: StyleOption,
+  selectedHubStyle?: HubStyle,
+  mirrorVoice?: MirrorVoice,
+  userBio?: string,
+  userHubName?: string,
+  userAskAbout?: string,
+) {
+  setOnboardingError('')
 
-    const keys = Object.keys(answers)
-      .map(Number)
-      .sort((a, b) => a - b)
+  const keys = Object.keys(answers)
+    .map(Number)
+    .sort((a, b) => a - b)
 
-    const hubNameAnswer = (userHubName || answers[keys[keys.length - 1]] || 'Your Hub').trim()
+  const hubNameAnswer = (userHubName || answers[keys[keys.length - 1]] || 'Your Hub').trim()
 
-    const conversationAnswers: Record<number, string> = {}
-    for (let i = 0; i < keys.length - 1; i++) {
-      conversationAnswers[i] = answers[keys[i]]
-    }
+  const conversationAnswers: Record<number, string> = {}
+  for (let i = 0; i < keys.length - 1; i++) {
+    conversationAnswers[i] = answers[keys[i]]
+  }
 
-    const fallbackBio = 'A wanderer who arrived here quietly, carrying something unspoken.'
-    const fallbackAskAbout = 'Silence, slow mornings, and letters that take their time.'
-    const chosenHubStyle = selectedHubStyle || 'portal'
-    const chosenBio = userBio?.trim() || fallbackBio
+  const fallbackBio = 'A wanderer who arrived here quietly, carrying something unspoken.'
+  const fallbackAskAbout = 'Silence, slow mornings, and letters that take their time.'
+  const chosenHubStyle = selectedHubStyle || 'portal'
+  const chosenBio = userBio?.trim() || fallbackBio
+  const chosenAskAbout = userAskAbout?.trim() || fallbackAskAbout
 
-    const resumeState: SoulMirrorResumeState = {
-      phase: 'welcome',
-      selectedStyle,
-      selectedHubStyle: chosenHubStyle,
-      selectedVoice: mirrorVoice,
-      userAnswers: keys.slice(0, -1).map((key) => answers[key]),
-      hubName: hubNameAnswer,
-      bio: chosenBio,
-    }
+  const resumeState: SoulMirrorResumeState = {
+    phase: 'welcome',
+    selectedStyle,
+    selectedHubStyle: chosenHubStyle,
+    selectedVoice: mirrorVoice,
+    userAnswers: keys.slice(0, -1).map((key) => answers[key]),
+    hubName: hubNameAnswer,
+    bio: chosenBio,
+    askAbout: chosenAskAbout,
+  }
 
-    try {
-      onboardingInFlightRef.current = true
-      setScreen('generating')
-      setGeneratingStatus('Crafting your soul mirror...')
+  try {
+    onboardingInFlightRef.current = true
+    setScreen('generating')
+    setGeneratingStatus('Crafting your soul mirror...')
 
-      let session = await getSession()
-      const isAnonymousSession = Boolean(
-        (session?.user as { is_anonymous?: boolean } | undefined)?.is_anonymous,
+    let session = await getSession()
+    const isAnonymousSession = Boolean(
+      (session?.user as { is_anonymous?: boolean } | undefined)?.is_anonymous,
+    )
+
+    if (pendingCredentials) {
+      if (isAnonymousSession) {
+        await signOut()
+      }
+
+      await signUpAndCreateHub(
+        pendingCredentials.email,
+        pendingCredentials.password,
+        hubNameAnswer,
+        chosenBio,
+        chosenAskAbout,
       )
 
-      if (pendingCredentials) {
-        if (isAnonymousSession) {
-          await signOut()
-        }
+      session = await getSession()
 
-        await signUpAndCreateHub(
-          pendingCredentials.email,
-          pendingCredentials.password,
-          hubNameAnswer,
-          chosenBio,
-          fallbackAskAbout,
+      if (!session) {
+        await signIn(pendingCredentials.email, pendingCredentials.password)
+        session = await getSession()
+      }
+
+      setPendingCredentials(null)
+      setIsGuest(false)
+    } else if (session) {
+      await createHubForCurrentUser(hubNameAnswer, chosenBio, chosenAskAbout)
+
+      const guest = await isGuestUser()
+      setIsGuest(guest)
+    } else {
+      await signInAndCreateHub(hubNameAnswer, chosenBio, chosenAskAbout)
+      session = await getSession()
+      setIsGuest(true)
+    }
+
+    setHubName(hubNameAnswer)
+    setHubStyle(chosenHubStyle)
+    setHubBio(chosenBio)
+    setHubAskAbout(chosenAskAbout)
+
+    const userId = session?.user?.id
+
+    setGeneratingStatus('Placing your hub in the universe...')
+
+    await withTimeout(
+      updateHub({
+        bio: chosenBio,
+        ask_about: chosenAskAbout,
+        hub_style: chosenHubStyle,
+        backdrop_id: 'void',
+      }),
+      12000,
+      'Saving your hub took too long. Please try again.',
+    )
+
+    setHubAvatarUrl('')
+    setOnboardingResumeState(null)
+    setScreen('universe')
+
+    void (async () => {
+      try {
+        const avatarUrl = await requestAvatarImage(
+          conversationAnswers,
+          userId,
+          selectedStyle?.label,
         )
 
-        session = await getSession()
+        if (!avatarUrl || !userId) return
 
-        if (!session) {
-          await signIn(pendingCredentials.email, pendingCredentials.password)
-          session = await getSession()
-        }
-
-        setPendingCredentials(null)
-        setIsGuest(false)
-      } else if (session) {
-        await createHubForCurrentUser(hubNameAnswer, chosenBio, fallbackAskAbout)
-
-        const guest = await isGuestUser()
-        setIsGuest(guest)
-      } else {
-        await signInAndCreateHub(hubNameAnswer, chosenBio, fallbackAskAbout)
-        session = await getSession()
-        setIsGuest(true)
+        const permanentUrl = await uploadAvatarToStorage(avatarUrl, userId)
+        setHubAvatarUrl(permanentUrl)
+        await updateHub({ avatar_url: permanentUrl })
+      } catch (avatarError) {
+        console.error('Avatar generation failed after hub creation:', avatarError)
       }
+    })()
+  } catch (err) {
+    console.error('Error during onboarding:', err)
 
-      setHubName(hubNameAnswer)
-      setHubStyle(chosenHubStyle)
-      setHubBio(chosenBio)
-      setHubAskAbout(fallbackAskAbout)
-
-      const userId = session?.user?.id
-
-      setGeneratingStatus('Placing your hub in the universe...')
-
-      await withTimeout(
-        updateHub({
-          bio: chosenBio,
-          ask_about: fallbackAskAbout,
-          hub_style: chosenHubStyle,
-          backdrop_id: 'void',
-        }),
-        12000,
-        'Saving your hub took too long. Please try again.',
-      )
-
-      setHubAvatarUrl('')
-      setOnboardingResumeState(null)
-      setScreen('universe')
-
-      void (async () => {
-        try {
-          const avatarUrl = await requestAvatarImage(
-            conversationAnswers,
-            userId,
-            selectedStyle?.label,
-          )
-
-          if (!avatarUrl || !userId) return
-
-          const permanentUrl = await uploadAvatarToStorage(avatarUrl, userId)
-          setHubAvatarUrl(permanentUrl)
-          await updateHub({ avatar_url: permanentUrl })
-        } catch (avatarError) {
-          console.error('Avatar generation failed after hub creation:', avatarError)
-        }
-      })()
-    } catch (err) {
-      console.error('Error during onboarding:', err)
-
-      if (
-        err instanceof Error &&
-        err.message === 'That hub name is already taken. Choose another one.'
-      ) {
-        setOnboardingResumeState({ ...resumeState, phase: 'hubname' })
-      } else {
-        setOnboardingResumeState(resumeState)
-      }
-
-      setScreen('onboarding')
-      setOnboardingError(
-        err instanceof Error
-          ? err.message
-          : 'Your hub could not be created yet. Please try again.',
-      )
-    } finally {
-      onboardingInFlightRef.current = false
+    if (
+      err instanceof Error &&
+      err.message === 'That hub name is already taken. Choose another one.'
+    ) {
+      setOnboardingResumeState({ ...resumeState, phase: 'hubname' })
+    } else {
+      setOnboardingResumeState(resumeState)
     }
+
+    setScreen('onboarding')
+    setOnboardingError(
+      err instanceof Error
+        ? err.message
+        : 'Your hub could not be created yet. Please try again.',
+    )
+  } finally {
+    onboardingInFlightRef.current = false
   }
+}
 
   function GuestWall() {
     return (
@@ -761,6 +764,7 @@ export default function Home() {
       {screen === 'universe' && (
         <UniverseMap
           hubName={hubName}
+          hubBio={hubBio}
           hubAvatarUrl={hubAvatarUrl}
           hubStyle={hubStyle}
           onWriteLetter={(name) => {

@@ -484,10 +484,10 @@ function drawShootingStar(ctx: CanvasRenderingContext2D, star: ShootingStar) {
 }
 
 export default function UniverseMap({
-  hubName, hubAvatarUrl, hubStyle = 'portal',
+  hubName, hubBio, hubAvatarUrl, hubStyle = 'portal',
   onWriteLetter, onObservatory, onProfile,
 }: {
-  hubName?: string; hubAvatarUrl?: string; hubStyle?: HubStyle
+  hubName?: string; hubBio?: string; hubAvatarUrl?: string; hubStyle?: HubStyle
   onWriteLetter?: (recipientName?: string) => void
   onObservatory?: () => void; onProfile?: () => void
 }) {
@@ -604,12 +604,21 @@ export default function UniverseMap({
       }))
 
       hubsRef.current = [{
-        x: 0, y: 0, name: hubName || 'Your Hub',
-        bio: 'This is your place in the universe.',
-        avatarUrl: hubAvatarUrl || '', avatarImage: myAvatarImg,
-        online: true, pulse: 0, size: 1.1, isMe: true,
-        floatOffset: 0, floatSpeed: 0.5, colorVariant: 0, hubStyle,
-      }, ...otherHubs]
+  x: 0,
+  y: 0,
+  name: hubName || 'Your Hub',
+  bio: hubBio || 'A wanderer who arrived here quietly, carrying something unspoken.',
+  avatarUrl: hubAvatarUrl || '',
+  avatarImage: myAvatarImg,
+  online: true,
+  pulse: 0,
+  size: 1.1,
+  isMe: true,
+  floatOffset: 0,
+  floatSpeed: 0.5,
+  colorVariant: 0,
+  hubStyle,
+}, ...otherHubs]
 
       // Star field background
       const starCanvas = document.createElement('canvas')
@@ -661,7 +670,7 @@ export default function UniverseMap({
     }
     void init()
     return () => { cancelAnimationFrame(animFrameRef.current); if (resizeHandler) window.removeEventListener('resize', resizeHandler) }
-  }, [hubName, hubAvatarUrl, hubStyle])
+  }, [hubName, hubBio, hubAvatarUrl, hubStyle])
 
   const getHubAt = useCallback((mx: number, my: number): Hub | null => {
     const scale = scaleRef.current; const offset = offsetRef.current

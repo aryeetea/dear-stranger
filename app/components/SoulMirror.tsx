@@ -40,16 +40,17 @@ const RULES = [
 export interface StyleOption { id: string; label: string; desc: string }
 export interface MirrorVoice { id: string; label: string; desc: string; icon: string; prompt: string }
 export interface SoulMirrorResumeState {
-  phase?: 'hubname' | 'bio' | 'welcome'
+  phase?: 'hubname' | 'bio' | 'ask' | 'welcome'
   selectedStyle?: StyleOption
   selectedHubStyle?: HubStyle
   selectedVoice?: MirrorVoice
   userAnswers?: string[]
   hubName?: string
   bio?: string
+  askAbout?: string
 }
 
-type Phase = 'voice' | 'style' | 'hubstyle' | 'chat' | 'hubname' | 'bio' | 'welcome'
+type Phase = 'voice' | 'style' | 'hubstyle' | 'chat' | 'hubname' | 'bio' | 'ask' | 'welcome'
 
 interface SoulMirrorProps {
   isReturning?: boolean
@@ -62,6 +63,7 @@ interface SoulMirrorProps {
     mirrorVoice?: MirrorVoice,
     bio?: string,
     hubNameFromOnboarding?: string,
+    askAbout?: string,
   ) => void
 }
 
