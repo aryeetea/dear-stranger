@@ -111,7 +111,7 @@ export default function SoulMirror({
   const [askAbout, setAskAbout] = useState(resumeState?.askAbout || '')
   const bottomRef = useRef<HTMLDivElement>(null)
   const hasInitialized = useRef(false)
-  const { isMobile, isNarrow, isShort, height } = useViewport()
+  const { isMobile, isTablet, isNarrow, isShort, height } = useViewport()
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -217,6 +217,17 @@ export default function SoulMirror({
   const progressPct = Math.min(100, (userAnswers.length / MIN_EXCHANGES) * 100)
   const lastAiMsg = [...messages].reverse().find(m => m.role === 'ai' && !m.isClosing)
   const currentChips = lastAiMsg?.chips || []
+  const wideSelectionCardWidth = isMobile
+    ? '100%'
+    : isTablet
+      ? 'min(860px, calc(100vw - 48px))'
+      : 'min(1040px, calc(100vw - 120px))'
+  const selectionGridColumns = isNarrow
+    ? '1fr'
+    : 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))'
+  const selectionCardMaxHeight = isMobile || isShort
+    ? `min(820px, ${Math.max(height - 32, 420)}px)`
+    : 'min(820px, 92vh)'
 
   const cardStyle: React.CSSProperties = {
     background: 'rgba(10,12,30,0.9)',
@@ -261,7 +272,7 @@ export default function SoulMirror({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -16 }}
             transition={{ duration: 0.4 }}
-            style={{ ...cardStyle, width: 'min(720px, 95vw)', padding: 'clamp(28px,5vw,44px)' }}
+            style={{ ...cardStyle, width: wideSelectionCardWidth, maxHeight: selectionCardMaxHeight, overflowY: 'auto', padding: 'clamp(28px,5vw,44px)' }}
           >
             <GoldLines />
             <SectionHeader
@@ -269,7 +280,7 @@ export default function SoulMirror({
               title="How would you like to shape your avatar?"
               sub="Choose a guided question path or write your own vision directly. Either way, your avatar can be as imaginative, cinematic, soft, strange, elegant, celestial, or expressive as you want."
             />
-            <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: '14px' }}>
               <motion.button
                 whileHover={{ y: -2 }}
                 whileTap={{ scale: 0.98 }}
@@ -325,14 +336,14 @@ export default function SoulMirror({
 
         {phase === 'voice' && (
           <motion.div key="voice" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.4 }}
-            style={{ ...cardStyle, width: 'min(720px, 95vw)', padding: 'clamp(28px,5vw,44px)' }}>
+            style={{ ...cardStyle, width: wideSelectionCardWidth, maxHeight: selectionCardMaxHeight, overflowY: 'auto', padding: 'clamp(28px,5vw,44px)' }}>
             <GoldLines />
             <SectionHeader
               step="Soul Mirror · Step 1 of 4"
               title={isReturning ? 'Hello, my old friend. How shall I speak to you this time?' : 'How would you like your mirror to speak?'}
               sub="Choose the voice the mirror uses during your experience."
             />
-            <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : 'repeat(auto-fill, minmax(210px, 1fr))', gap: '12px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: selectionGridColumns, gap: '12px' }}>
               {MIRROR_VOICES.map(voice => (
                 <motion.button key={voice.id} whileHover={{ y: -2 }} whileTap={{ scale: 0.97 }}
                   onClick={() => { setSelectedVoice(voice); setPhase('style') }}
@@ -351,14 +362,14 @@ export default function SoulMirror({
 
         {phase === 'style' && (
           <motion.div key="style" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.4 }}
-            style={{ ...cardStyle, width: 'min(680px, 95vw)', padding: 'clamp(28px,5vw,44px)' }}>
+            style={{ ...cardStyle, width: wideSelectionCardWidth, maxHeight: selectionCardMaxHeight, overflowY: 'auto', padding: 'clamp(28px,5vw,44px)' }}>
             <GoldLines />
             <SectionHeader step="Soul Mirror · Step 2 of 4" title="Choose your avatar theme" sub="This gives the mirror a creative direction for your portrait: the mood, clothing language, lighting, and world around your look. Think of it as choosing the atmosphere your face will be imagined inside." />
-            <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : 'repeat(auto-fill, minmax(210px, 1fr))', gap: '12px', marginBottom: '24px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: selectionGridColumns, gap: '12px', marginBottom: '24px' }}>
               {STYLE_OPTIONS.map(style => (
                 <motion.button key={style.id} whileHover={{ y: -2 }} whileTap={{ scale: 0.97 }}
                   onClick={() => { setSelectedStyle(style); setPhase('hubstyle') }}
-                  style={{ textAlign: 'left', padding: '16px', borderRadius: '12px', border: '1px solid rgba(230,199,110,0.2)', background: 'rgba(255,255,255,0.04)', cursor: 'pointer', transition: 'all 0.2s' }}>
+                  style={{ textAlign: 'left', minHeight: isMobile ? undefined : '138px', padding: '16px', borderRadius: '12px', border: '1px solid rgba(230,199,110,0.2)', background: 'rgba(255,255,255,0.04)', cursor: 'pointer', transition: 'all 0.2s' }}>
                   <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.18em', color: '#e6c76e', textTransform: 'uppercase', marginBottom: '8px' }}>{style.label}</p>
                   <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '14px', color: 'rgba(255,255,255,0.62)', lineHeight: 1.5 }}>{style.desc}</p>
                 </motion.button>
@@ -370,10 +381,10 @@ export default function SoulMirror({
 
         {phase === 'hubstyle' && (
           <motion.div key="hubstyle" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.4 }}
-            style={{ ...cardStyle, width: 'min(720px, 95vw)', padding: 'clamp(28px,5vw,44px)' }}>
+            style={{ ...cardStyle, width: wideSelectionCardWidth, maxHeight: selectionCardMaxHeight, overflowY: 'auto', padding: 'clamp(28px,5vw,44px)' }}>
             <GoldLines />
             <SectionHeader step="Soul Mirror · Step 3 of 5" title="How does your hub appear in the universe?" sub="Choose a form that feels like a place someone would want to wander into." />
-            <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px', marginBottom: '28px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: selectionGridColumns, gap: '12px', marginBottom: '28px' }}>
               {HUB_STYLES.map(style => {
                 const isSelected = selectedHubStyle === style.id
                 return (
@@ -399,10 +410,10 @@ export default function SoulMirror({
 
         {phase === 'hubcolor' && (
           <motion.div key="hubcolor" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.4 }}
-            style={{ ...cardStyle, width: 'min(720px, 95vw)', padding: 'clamp(28px,5vw,44px)' }}>
+            style={{ ...cardStyle, width: wideSelectionCardWidth, maxHeight: selectionCardMaxHeight, overflowY: 'auto', padding: 'clamp(28px,5vw,44px)' }}>
             <GoldLines />
             <SectionHeader step="Soul Mirror · Step 4 of 5" title="What color world does your hub glow in?" sub="Pick a palette that feels beautiful to you. This becomes the atmosphere and light your hub carries into the map." />
-            <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : 'repeat(auto-fill, minmax(210px, 1fr))', gap: '12px', marginBottom: '28px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: selectionGridColumns, gap: '12px', marginBottom: '28px' }}>
               {HUB_PALETTES.map((palette) => {
                 const isSelected = selectedHubPalette === palette.id
                 return (
