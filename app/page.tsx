@@ -12,12 +12,28 @@ import Profile from './components/Profile'
 import { LoginScreen, SignupScreen } from './components/AuthScreens'
 import { supabase } from '../lib/supabase'
 import {
-  signInAndCreateHub, signUpAndCreateHub, signOut,
-  createHubForCurrentUser, getSession, getMyHub, getAllHubs, sendLetter, updateHub, signIn,
-  uploadAvatarToStorage, isGuestUser,
+  signInAndCreateHub,
+  signUpAndCreateHub,
+  signOut,
+  createHubForCurrentUser,
+  getSession,
+  getMyHub,
+  getAllHubs,
+  sendLetter,
+  updateHub,
+  signIn,
+  uploadAvatarToStorage,
+  isGuestUser,
 } from './lib/auth'
 
-type Screen = 'entry' | 'login' | 'signup' | 'onboarding' | 'universe' | 'loading' | 'generating'
+type Screen =
+  | 'entry'
+  | 'login'
+  | 'signup'
+  | 'onboarding'
+  | 'universe'
+  | 'loading'
+  | 'generating'
 
 const STARS = Array.from({ length: 30 }, (_, i) => ({
   left: `${((i * 37 + 11) % 100)}%`,
@@ -29,9 +45,30 @@ const STARS = Array.from({ length: 30 }, (_, i) => ({
 function AuthBackground() {
   return (
     <>
-      <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', background: 'radial-gradient(ellipse 60% 50% at 50% 50%, rgba(30,15,60,0.4) 0%, transparent 70%)' }} />
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          pointerEvents: 'none',
+          background:
+            'radial-gradient(ellipse 60% 50% at 50% 50%, rgba(30,15,60,0.4) 0%, transparent 70%)',
+        }}
+      />
       <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none' }}>
-        {STARS.map((s, i) => <div key={i} style={{ position: 'absolute', width: s.width, height: s.width, borderRadius: '50%', background: `rgba(255,255,255,${s.opacity})`, left: s.left, top: s.top }} />)}
+        {STARS.map((s, i) => (
+          <div
+            key={i}
+            style={{
+              position: 'absolute',
+              width: s.width,
+              height: s.width,
+              borderRadius: '50%',
+              background: `rgba(255,255,255,${s.opacity})`,
+              left: s.left,
+              top: s.top,
+            }}
+          />
+        ))}
       </div>
     </>
   )
@@ -95,9 +132,14 @@ export default function Home() {
   const [profileOpen, setProfileOpen] = useState(false)
   const [isGuest, setIsGuest] = useState(false)
   const [showGuestWall, setShowGuestWall] = useState(false)
-  const [pendingCredentials, setPendingCredentials] = useState<{ email: string; password: string } | null>(null)
+  const [pendingCredentials, setPendingCredentials] = useState<{
+    email: string
+    password: string
+  } | null>(null)
   const [onboardingError, setOnboardingError] = useState('')
-  const [onboardingResumeState, setOnboardingResumeState] = useState<SoulMirrorResumeState | null>(null)
+  const [onboardingResumeState, setOnboardingResumeState] =
+    useState<SoulMirrorResumeState | null>(null)
+
   const screenRef = useRef<Screen>('loading')
   const onboardingInFlightRef = useRef(false)
 
@@ -119,6 +161,7 @@ export default function Home() {
 
   async function routeFromSession() {
     const session = await getSession()
+
     if (!session) {
       clearHubState()
       setScreen('entry')
@@ -126,6 +169,7 @@ export default function Home() {
     }
 
     const hub = await getMyHub()
+
     if (hub) {
       setHubName(hub.hub_name || '')
       setHubBio(hub.bio || '')
@@ -136,7 +180,7 @@ export default function Home() {
       setHubRegenCount(hub.regen_count || 0)
       setOnboardingError('')
       setOnboardingResumeState(null)
-      // ── check if this is a guest (anonymous) user ──
+
       const guest = await isGuestUser()
       setIsGuest(guest)
       setScreen('universe')
@@ -153,7 +197,9 @@ export default function Home() {
         await routeFromSession()
       } catch (err) {
         console.error('checkSession failed:', err)
-        try { await signOut() } catch {}
+        try {
+          await signOut()
+        } catch {}
         clearHubState()
         setScreen('entry')
       }
@@ -170,8 +216,13 @@ export default function Home() {
         return
       }
 
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
+      if (
+        event === 'SIGNED_IN' ||
+        event === 'TOKEN_REFRESHED' ||
+        event === 'INITIAL_SESSION'
+      ) {
         if (onboardingInFlightRef.current || screenRef.current === 'generating') return
+
         try {
           await routeFromSession()
         } catch (err) {
@@ -180,7 +231,9 @@ export default function Home() {
       }
     })
 
-    return () => { authListener.subscription.unsubscribe() }
+    return () => {
+      authListener.subscription.unsubscribe()
+    }
   }, [])
 
   async function handleOnboardingComplete(
@@ -192,15 +245,23 @@ export default function Home() {
     userHubName?: string,
   ) {
     setOnboardingError('')
-    const keys = Object.keys(answers).map(Number).sort((a, b) => a - b)
+
+    const keys = Object.keys(answers)
+      .map(Number)
+      .sort((a, b) => a - b)
+
     const hubNameAnswer = (userHubName || answers[keys[keys.length - 1]] || 'Your Hub').trim()
+
     const conversationAnswers: Record<number, string> = {}
-    for (let i = 0; i < keys.length - 1; i++) conversationAnswers[i] = answers[keys[i]]
+    for (let i = 0; i < keys.length - 1; i++) {
+      conversationAnswers[i] = answers[keys[i]]
+    }
 
     const fallbackBio = 'A wanderer who arrived here quietly, carrying something unspoken.'
     const fallbackAskAbout = 'Silence, slow mornings, and letters that take their time.'
     const chosenHubStyle = selectedHubStyle || 'portal'
     const chosenBio = userBio?.trim() || fallbackBio
+
     const resumeState: SoulMirrorResumeState = {
       phase: 'welcome',
       selectedStyle,
@@ -216,46 +277,42 @@ export default function Home() {
       setScreen('generating')
       setGeneratingStatus('Crafting your soul mirror...')
 
-      let session = await withTimeout(getSession(), 10000, 'Connecting to your account took too long. Please try again.')
-      const isAnonymousSession = Boolean((session?.user as { is_anonymous?: boolean } | undefined)?.is_anonymous)
+      let session = await getSession()
+      const isAnonymousSession = Boolean(
+        (session?.user as { is_anonymous?: boolean } | undefined)?.is_anonymous,
+      )
 
       if (pendingCredentials) {
         if (isAnonymousSession) {
-          await withTimeout(signOut(), 8000, 'Resetting your session took too long. Please try again.')
-          session = null
+          await signOut()
         }
-        await withTimeout(
-          signUpAndCreateHub(pendingCredentials.email, pendingCredentials.password, hubNameAnswer, chosenBio, fallbackAskAbout),
-          20000,
-          'Creating your account took too long. Please try again.',
+
+        await signUpAndCreateHub(
+          pendingCredentials.email,
+          pendingCredentials.password,
+          hubNameAnswer,
+          chosenBio,
+          fallbackAskAbout,
         )
-        session = await withTimeout(getSession(), 10000, 'Connecting to your new account took too long. Please try again.')
+
+        session = await getSession()
+
         if (!session) {
-          await withTimeout(
-            signIn(pendingCredentials.email, pendingCredentials.password),
-            12000,
-            'Signing you in took too long. Please try again.',
-          )
-          session = await withTimeout(getSession(), 10000, 'Loading your session took too long. Please try again.')
+          await signIn(pendingCredentials.email, pendingCredentials.password)
+          session = await getSession()
         }
+
         setPendingCredentials(null)
         setIsGuest(false)
       } else if (session) {
-        await withTimeout(
-          createHubForCurrentUser(hubNameAnswer, chosenBio, fallbackAskAbout),
-          15000,
-          'Creating your hub took too long. Please try again.',
-        )
+        await createHubForCurrentUser(hubNameAnswer, chosenBio, fallbackAskAbout)
+
         const guest = await isGuestUser()
         setIsGuest(guest)
       } else {
-        await withTimeout(
-          signInAndCreateHub(hubNameAnswer, chosenBio, fallbackAskAbout),
-          15000,
-          'Opening your hub took too long. Please try again.',
-        )
-        session = await withTimeout(getSession(), 10000, 'Loading your session took too long. Please try again.')
-        setIsGuest(true) // anonymous path = guest
+        await signInAndCreateHub(hubNameAnswer, chosenBio, fallbackAskAbout)
+        session = await getSession()
+        setIsGuest(true)
       }
 
       setHubName(hubNameAnswer)
@@ -266,6 +323,7 @@ export default function Home() {
       const userId = session?.user?.id
 
       setGeneratingStatus('Placing your hub in the universe...')
+
       await withTimeout(
         updateHub({
           bio: chosenBio,
@@ -281,11 +339,16 @@ export default function Home() {
       setOnboardingResumeState(null)
       setScreen('universe')
 
-      // ── generate avatar in background, upload to Storage ──
       void (async () => {
         try {
-          const avatarUrl = await requestAvatarImage(conversationAnswers, userId, selectedStyle?.label)
+          const avatarUrl = await requestAvatarImage(
+            conversationAnswers,
+            userId,
+            selectedStyle?.label,
+          )
+
           if (!avatarUrl || !userId) return
+
           const permanentUrl = await uploadAvatarToStorage(avatarUrl, userId)
           setHubAvatarUrl(permanentUrl)
           await updateHub({ avatar_url: permanentUrl })
@@ -293,47 +356,180 @@ export default function Home() {
           console.error('Avatar generation failed after hub creation:', avatarError)
         }
       })()
-
     } catch (err) {
       console.error('Error during onboarding:', err)
-      if (err instanceof Error && err.message === 'That hub name is already taken. Choose another one.') {
+
+      if (
+        err instanceof Error &&
+        err.message === 'That hub name is already taken. Choose another one.'
+      ) {
         setOnboardingResumeState({ ...resumeState, phase: 'hubname' })
       } else {
         setOnboardingResumeState(resumeState)
       }
+
       setScreen('onboarding')
-      setOnboardingError(err instanceof Error ? err.message : 'Your hub could not be created yet. Please try again.')
+      setOnboardingError(
+        err instanceof Error
+          ? err.message
+          : 'Your hub could not be created yet. Please try again.',
+      )
     } finally {
       onboardingInFlightRef.current = false
     }
   }
 
-  // ── Guest signup wall — shown when guest tries to send a letter ──
   function GuestWall() {
     return (
-      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,5,0.92)', backdropFilter: 'blur(16px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 90, padding: '20px' }}>
-        <div style={{ width: 'min(440px, 95vw)', background: 'rgba(10,12,30,0.95)', border: '1px solid rgba(230,199,110,0.22)', borderRadius: '12px', padding: 'clamp(32px,5vw,48px)', position: 'relative' }}>
-          <div style={{ position: 'absolute', top: 0, left: '20%', right: '20%', height: '1px', background: 'linear-gradient(90deg, transparent, rgba(230,199,110,0.45), transparent)' }} />
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,5,0.92)',
+          backdropFilter: 'blur(16px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 90,
+          padding: '20px',
+        }}
+      >
+        <div
+          style={{
+            width: 'min(440px, 95vw)',
+            background: 'rgba(10,12,30,0.95)',
+            border: '1px solid rgba(230,199,110,0.22)',
+            borderRadius: '12px',
+            padding: 'clamp(32px,5vw,48px)',
+            position: 'relative',
+          }}
+        >
+          <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: '20%',
+              right: '20%',
+              height: '1px',
+              background:
+                'linear-gradient(90deg, transparent, rgba(230,199,110,0.45), transparent)',
+            }}
+          />
+
           <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-            <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.5em', color: 'rgba(201,168,76,0.6)', textTransform: 'uppercase', marginBottom: '10px' }}>Before you write</p>
-            <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: 'clamp(17px,2.5vw,22px)', color: 'rgba(255,255,255,0.9)', lineHeight: 1.6, marginBottom: '10px' }}>Letters need a home to return to.</p>
-            <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '15px', color: 'rgba(255,255,255,0.45)', lineHeight: 1.7 }}>Create a free account so your letters can travel — and find their way back to you.</p>
+            <p
+              style={{
+                fontFamily: "'Cinzel', serif",
+                fontSize: '9px',
+                letterSpacing: '0.5em',
+                color: 'rgba(201,168,76,0.6)',
+                textTransform: 'uppercase',
+                marginBottom: '10px',
+              }}
+            >
+              Before you write
+            </p>
+
+            <p
+              style={{
+                fontFamily: "'IM Fell English', serif",
+                fontStyle: 'italic',
+                fontSize: 'clamp(17px,2.5vw,22px)',
+                color: 'rgba(255,255,255,0.9)',
+                lineHeight: 1.6,
+                marginBottom: '10px',
+              }}
+            >
+              Letters need a home to return to.
+            </p>
+
+            <p
+              style={{
+                fontFamily: "'Cormorant Garamond', serif",
+                fontSize: '15px',
+                color: 'rgba(255,255,255,0.45)',
+                lineHeight: 1.7,
+              }}
+            >
+              Create a free account so your letters can travel — and find their way back
+              to you.
+            </p>
           </div>
+
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <button onClick={() => { setShowGuestWall(false); setScreen('signup') }}
-              style={{ width: '100%', padding: '14px', background: 'transparent', border: '1px solid rgba(201,168,76,0.5)', color: '#c9a84c', fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.3em', textTransform: 'uppercase', cursor: 'pointer', borderRadius: '4px' }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(201,168,76,0.08)' }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
+            <button
+              onClick={() => {
+                setShowGuestWall(false)
+                setScreen('signup')
+              }}
+              style={{
+                width: '100%',
+                padding: '14px',
+                background: 'transparent',
+                border: '1px solid rgba(201,168,76,0.5)',
+                color: '#c9a84c',
+                fontFamily: "'Cinzel', serif",
+                fontSize: '10px',
+                letterSpacing: '0.3em',
+                textTransform: 'uppercase',
+                cursor: 'pointer',
+                borderRadius: '4px',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(201,168,76,0.08)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent'
+              }}
+            >
               Create an Account ✦
             </button>
-            <button onClick={() => { setShowGuestWall(false); setScreen('login') }}
-              style={{ width: '100%', padding: '12px', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.5)', fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.25em', textTransform: 'uppercase', cursor: 'pointer', borderRadius: '4px' }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)'; e.currentTarget.style.color = 'rgba(255,255,255,0.75)' }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)'; e.currentTarget.style.color = 'rgba(255,255,255,0.5)' }}>
+
+            <button
+              onClick={() => {
+                setShowGuestWall(false)
+                setScreen('login')
+              }}
+              style={{
+                width: '100%',
+                padding: '12px',
+                background: 'transparent',
+                border: '1px solid rgba(255,255,255,0.12)',
+                color: 'rgba(255,255,255,0.5)',
+                fontFamily: "'Cinzel', serif",
+                fontSize: '9px',
+                letterSpacing: '0.25em',
+                textTransform: 'uppercase',
+                cursor: 'pointer',
+                borderRadius: '4px',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)'
+                e.currentTarget.style.color = 'rgba(255,255,255,0.75)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)'
+                e.currentTarget.style.color = 'rgba(255,255,255,0.5)'
+              }}
+            >
               Sign In Instead
             </button>
-            <button onClick={() => setShowGuestWall(false)}
-              style={{ width: '100%', padding: '10px', background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.25)', fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.2em', textTransform: 'uppercase', cursor: 'pointer' }}>
+
+            <button
+              onClick={() => setShowGuestWall(false)}
+              style={{
+                width: '100%',
+                padding: '10px',
+                background: 'transparent',
+                border: 'none',
+                color: 'rgba(255,255,255,0.25)',
+                fontFamily: "'Cinzel', serif",
+                fontSize: '8px',
+                letterSpacing: '0.2em',
+                textTransform: 'uppercase',
+                cursor: 'pointer',
+              }}
+            >
               Keep Exploring ←
             </button>
           </div>
@@ -344,27 +540,109 @@ export default function Home() {
 
   if (screen === 'loading') {
     return (
-      <div style={{ position: 'fixed', inset: 0, background: '#000005', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ fontFamily: "'Cinzel', serif", fontSize: '11px', letterSpacing: '0.4em', color: 'rgba(201,168,76,0.4)' }}>✦</div>
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: '#000005',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <div
+          style={{
+            fontFamily: "'Cinzel', serif",
+            fontSize: '11px',
+            letterSpacing: '0.4em',
+            color: 'rgba(201,168,76,0.4)',
+          }}
+        >
+          ✦
+        </div>
       </div>
     )
   }
 
   if (screen === 'generating') {
     return (
-      <div style={{ position: 'fixed', inset: 0, background: '#000005', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '24px' }}>
-        <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', background: 'radial-gradient(ellipse 60% 40% at 20% 30%, rgba(40,20,80,0.25) 0%, transparent 70%)' }} />
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: '#000005',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '24px',
+        }}
+      >
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            pointerEvents: 'none',
+            background:
+              'radial-gradient(ellipse 60% 40% at 20% 30%, rgba(40,20,80,0.25) 0%, transparent 70%)',
+          }}
+        />
+
         <div style={{ position: 'relative', zIndex: 2 }}>
-          <div style={{ width: '60px', height: '60px', borderRadius: '50%', border: '1px solid rgba(201,168,76,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', animation: 'pulse 2s ease-in-out infinite' }}>
-            <div style={{ width: '40px', height: '40px', borderRadius: '50%', border: '1px solid rgba(201,168,76,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div
+            style={{
+              width: '60px',
+              height: '60px',
+              borderRadius: '50%',
+              border: '1px solid rgba(201,168,76,0.2)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              animation: 'pulse 2s ease-in-out infinite',
+            }}
+          >
+            <div
+              style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '50%',
+                border: '1px solid rgba(201,168,76,0.4)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
               <span style={{ fontSize: '18px', color: '#c9a84c' }}>✦</span>
             </div>
           </div>
         </div>
+
         <div style={{ textAlign: 'center', position: 'relative', zIndex: 2 }}>
-          <p style={{ fontFamily: "'Cinzel', serif", fontSize: '11px', letterSpacing: '0.4em', color: 'rgba(201,168,76,0.7)', textTransform: 'uppercase', marginBottom: '10px' }}>Soul Mirror</p>
-          <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '15px', color: 'rgba(255,255,255,0.35)' }}>{generatingStatus}</p>
+          <p
+            style={{
+              fontFamily: "'Cinzel', serif",
+              fontSize: '11px',
+              letterSpacing: '0.4em',
+              color: 'rgba(201,168,76,0.7)',
+              textTransform: 'uppercase',
+              marginBottom: '10px',
+            }}
+          >
+            Soul Mirror
+          </p>
+
+          <p
+            style={{
+              fontFamily: "'IM Fell English', serif",
+              fontStyle: 'italic',
+              fontSize: '15px',
+              color: 'rgba(255,255,255,0.35)',
+            }}
+          >
+            {generatingStatus}
+          </p>
         </div>
+
         <style>{`@keyframes pulse { 0%, 100% { transform: scale(1); opacity: 0.6; } 50% { transform: scale(1.08); opacity: 1; } }`}</style>
       </div>
     )
@@ -372,13 +650,24 @@ export default function Home() {
 
   if (screen === 'login') {
     return (
-      <div style={{ position: 'fixed', inset: 0, background: '#000005', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: '#000005',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
         <AuthBackground />
         <LoginScreen
           onSuccess={async () => {
             setPendingCredentials(null)
             setOnboardingResumeState(null)
+
             const hub = await getMyHub()
+
             if (hub) {
               setHubName(hub.hub_name || '')
               setHubBio(hub.bio || '')
@@ -391,11 +680,20 @@ export default function Home() {
               setScreen('universe')
               return
             }
+
             setOnboardingError('')
             setScreen('onboarding')
           }}
-          onGoToSignup={() => { setOnboardingError(''); setPendingCredentials(null); setScreen('signup') }}
-          onGuestEnter={() => { setOnboardingError(''); setPendingCredentials(null); setScreen('onboarding') }}
+          onGoToSignup={() => {
+            setOnboardingError('')
+            setPendingCredentials(null)
+            setScreen('signup')
+          }}
+          onGuestEnter={() => {
+            setOnboardingError('')
+            setPendingCredentials(null)
+            setScreen('onboarding')
+          }}
         />
       </div>
     )
@@ -403,11 +701,27 @@ export default function Home() {
 
   if (screen === 'signup') {
     return (
-      <div style={{ position: 'fixed', inset: 0, background: '#000005', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: '#000005',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
         <AuthBackground />
         <SignupScreen
-          onSuccess={() => { setOnboardingError(''); setScreen('onboarding') }}
-          onGoToLogin={() => { setOnboardingError(''); setPendingCredentials(null); setScreen('login') }}
+          onSuccess={() => {
+            setOnboardingError('')
+            setScreen('onboarding')
+          }}
+          onGoToLogin={() => {
+            setOnboardingError('')
+            setPendingCredentials(null)
+            setScreen('login')
+          }}
           setPendingCredentials={setPendingCredentials}
         />
       </div>
@@ -418,9 +732,21 @@ export default function Home() {
     <>
       {screen === 'entry' && (
         <EntryScreen
-          onEnter={() => { setOnboardingError(''); setPendingCredentials(null); setScreen('onboarding') }}
-          onLogin={() => { setOnboardingError(''); setPendingCredentials(null); setScreen('login') }}
-          onSignup={() => { setOnboardingError(''); setPendingCredentials(null); setScreen('signup') }}
+          onEnter={() => {
+            setOnboardingError('')
+            setPendingCredentials(null)
+            setScreen('onboarding')
+          }}
+          onLogin={() => {
+            setOnboardingError('')
+            setPendingCredentials(null)
+            setScreen('login')
+          }}
+          onSignup={() => {
+            setOnboardingError('')
+            setPendingCredentials(null)
+            setScreen('signup')
+          }}
         />
       )}
 
@@ -438,16 +764,18 @@ export default function Home() {
           hubAvatarUrl={hubAvatarUrl}
           hubStyle={hubStyle}
           onWriteLetter={(name) => {
-            // ── block guests from writing letters ──
-            if (isGuest) { setShowGuestWall(true); return }
-            setScribeRecipient(name); setScribeOpen(true)
+            if (isGuest) {
+              setShowGuestWall(true)
+              return
+            }
+            setScribeRecipient(name)
+            setScribeOpen(true)
           }}
           onObservatory={() => setObservatoryOpen(true)}
           onProfile={() => setProfileOpen(true)}
         />
       )}
 
-      {/* Guest signup wall */}
       {showGuestWall && <GuestWall />}
 
       {scribeOpen && (
@@ -460,11 +788,25 @@ export default function Home() {
               const allHubs = await getAllHubs()
               const recipient = allHubs.find((hub) => hub.hub_name === letter.to)
               const isUniverseLetter = !letter.to
-              if (!isUniverseLetter && !recipient) throw new Error('Recipient not found')
-              await sendLetter(recipient?.id || null, letter.body, letter.paperId, isUniverseLetter, letter.subject, letter.fontId)
-              setLettersSent(prev => prev + 1)
+
+              if (!isUniverseLetter && !recipient) {
+                throw new Error('Recipient not found')
+              }
+
+              await sendLetter(
+                recipient?.id || null,
+                letter.body,
+                letter.paperId,
+                isUniverseLetter,
+                letter.subject,
+                letter.fontId,
+              )
+
+              setLettersSent((prev) => prev + 1)
               setScribeOpen(false)
-            } catch (err) { console.error('Failed to send letter:', err) }
+            } catch (err) {
+              console.error('Failed to send letter:', err)
+            }
           }}
         />
       )}
@@ -473,8 +815,14 @@ export default function Home() {
         <Observatory
           onClose={() => setObservatoryOpen(false)}
           onWriteLetter={(name) => {
-            if (isGuest) { setObservatoryOpen(false); setShowGuestWall(true); return }
-            setObservatoryOpen(false); setScribeRecipient(name); setScribeOpen(true)
+            if (isGuest) {
+              setObservatoryOpen(false)
+              setShowGuestWall(true)
+              return
+            }
+            setObservatoryOpen(false)
+            setScribeRecipient(name)
+            setScribeOpen(true)
           }}
         />
       )}

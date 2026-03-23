@@ -1,5 +1,32 @@
 import { supabase } from '../../lib/supabase'
 
+type HubRecord = {
+  id: string
+  hub_name: string | null
+  bio?: string | null
+  ask_about?: string | null
+  avatar_url?: string | null
+  hub_style?: string | null
+  backdrop_id?: string | null
+  regen_count?: number | null
+  letters_sent?: number | null
+  email?: string | null
+}
+
+type LetterRecord = {
+  id: string
+  sender_id: string
+  recipient_id: string | null
+  body: string | null
+  subject: string | null
+  created_at: string
+  status: string | null
+  arrives_at: string | null
+  is_universe_letter?: boolean | null
+  sender?: { hub_name?: string | null } | null
+  recipient?: { hub_name?: string | null } | null
+}
+
 function normalizeHubName(hubName: string) {
   return hubName.trim().toLowerCase()
 }
@@ -8,7 +35,12 @@ async function assertHubNameAvailable(hubName: string, excludeUserId?: string) {
   const normalized = normalizeHubName(hubName)
   if (!normalized) throw new Error('Hub name is required.')
 
-  const { data, error } = await supabase.from('hubs').select('id, hub_name')
+  const { data, error } = await supabase
+    .from('hubs')
+    .select('id, hub_name')
+    .ilike('hub_name', normalized)
+    .limit(10)
+
   if (error) throw error
 
   const existing = (data || []).find((hub: { id: string; hub_name: string | null }) => {
@@ -123,7 +155,7 @@ export async function createHubForCurrentUser(
       },
     ])
     .select()
-    .maybeSingle()
+    .single()
 
   if (error) throw error
   if (!data) throw new Error('Hub could not be created.')
@@ -218,7 +250,7 @@ export async function exportMyLetters(): Promise<string> {
 
     if (error) throw error
 
-    const letters = data || []
+    const letters = (data || []) as LetterRecord[]
 
     const lines: string[] = [
       'DEAR STRANGER — Letter Archive',
@@ -233,7 +265,7 @@ export async function exportMyLetters(): Promise<string> {
       '',
     ]
 
-    letters.forEach((l: any, i: number) => {
+    letters.forEach((l, i) => {
       const direction = l.sender_id === user.id ? 'SENT' : 'RECEIVED'
       const other =
         direction === 'SENT'
@@ -275,7 +307,7 @@ export async function getUniverseLetters() {
 
     if (error) return []
 
-    return (data || []).map((l: any) => ({
+    return ((data || []) as any[]).map((l) => ({
       id: l.id,
       senderName: l.sender?.hub_name || 'A Stranger',
       preview: l.body ? (l.body.length > 120 ? `${l.body.slice(0, 120)}...` : l.body) : '',
@@ -286,29 +318,36 @@ export async function getUniverseLetters() {
   }
 }
 
-export async function getSession() {
-  try {
-    const { data, error } = await supabase.auth.getSession()
+export async function getSession(maxWaitMs = 10000) {
+  const start = Date.now()
 
-    if (error) {
-      if (
-        error.message?.includes('Refresh Token') ||
-        error.message?.includes('refresh_token')
-      ) {
-        try {
-          await supabase.auth.signOut()
-        } catch {}
-      }
-      return null
-    }
-
-    return data.session
-  } catch {
+  while (Date.now() - start < maxWaitMs) {
     try {
-      await supabase.auth.signOut()
-    } catch {}
-    return null
+      const { data, error } = await supabase.auth.getSession()
+
+      if (error) {
+        if (
+          error.message?.includes('Refresh Token') ||
+          error.message?.includes('refresh_token')
+        ) {
+          try {
+            await supabase.auth.signOut()
+          } catch {}
+        }
+        return null
+      }
+
+      if (data.session) {
+        return data.session
+      }
+
+      await new Promise((r) => setTimeout(r, 400))
+    } catch {
+      await new Promise((r) => setTimeout(r, 400))
+    }
   }
+
+  return null
 }
 
 export async function getMyHub() {
@@ -360,7 +399,7 @@ export async function getMyHub() {
   }
 }
 
-export async function getAllHubs() {
+export async function getAllHubs(): Promise<HubRecord[]> {
   try {
     const {
       data: { user },
@@ -372,7 +411,7 @@ export async function getAllHubs() {
       .neq('id', user?.id || '')
 
     if (error) return []
-    return data || []
+    return (data || []) as HubRecord[]
   } catch {
     return []
   }
@@ -484,12 +523,12 @@ export async function getMyLetters() {
 
     if (error) return { transit: [], arrived: [], archive: [] }
 
-    const letters = data || []
+    const letters = (data || []) as LetterRecord[]
 
     return {
-      transit: letters.filter((l: any) => l.status === 'transit'),
-      arrived: letters.filter((l: any) => l.status === 'arrived'),
-      archive: letters.filter((l: any) => l.status === 'archive'),
+      transit: letters.filter((l) => l.status === 'transit'),
+      arrived: letters.filter((l) => l.status === 'arrived'),
+      archive: letters.filter((l) => l.status === 'archive'),
     }
   } catch {
     return { transit: [], arrived: [], archive: [] }
@@ -503,7 +542,7 @@ export async function isGuestUser(): Promise<boolean> {
     } = await supabase.auth.getUser()
 
     if (!user) return true
-    return (user as any).is_anonymous === true
+    return (user as { is_anonymous?: boolean }).is_anonymous === true
   } catch {
     return true
   }
