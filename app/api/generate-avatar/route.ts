@@ -11,14 +11,14 @@ function normalizeDetail(value: string) {
 }
 
 const STYLE_DIRECTIONS: Record<string, string> = {
-  fantasy: `High fantasy illustration. Flowing magical robes, ethereal fabrics, glowing runes or subtle magic. Rich jewel tones — deep purples, midnight blues, gold. Background: misty enchanted forest or ancient stone archway with soft magical light. Painterly and cinematic.`,
-  modern: `Contemporary fashion illustration. Clean stylish outfit — tailored jacket or elevated streetwear. Neutral and earth tones with one bold accent. Background: moody urban architecture at dusk, soft bokeh city lights. Editorial and sophisticated.`,
-  'fantasy-modern': `Fantasy-modern fusion. Magical elements woven into contemporary fashion — glowing accessories, iridescent fabrics. Background: neon-lit alley meets starlit sky. Cinematic and otherworldly.`,
-  celestial: `Celestial fine art illustration. Flowing cosmic robes adorned with stars and moon phases, silver and indigo palette, constellation details. Background: deep space nebula with soft aurora light. Ethereal and divine.`,
-  royal: `Regal portrait illustration. Elaborate noble attire — rich velvets, gold embroidery, a crown or ornate headpiece. Deep jewel tones. Background: grand candlelit hall or palace balcony at dusk. Majestic and commanding.`,
-  streetwear: `Urban fashion illustration. Stylish streetwear — oversized jacket, designer sneakers, bold graphic tee or cargo pants. Dark moody background: rain-slicked city street at night with warm neon reflections. Cool and atmospheric.`,
-  futuristic: `Sci-fi concept art illustration. Sleek futuristic outfit — form-fitting suit, glowing tech accessories, holographic details. Background: gleaming megacity skyline or neon-lit space station corridor. Sharp and cinematic.`,
-  nature: `Nature-inspired illustration. Flowing earthy garments woven with floral and botanical details, warm greens and terracottas. Background: misty ancient forest with dappled golden light filtering through tall trees. Organic and peaceful.`,
+  fantasy: `2D fantasy character illustration, digital art style, NOT photorealistic. Flowing magical robes, ethereal fabrics, glowing runes. Rich jewel tones — deep purples, midnight blues, gold. Background: misty enchanted forest or ancient stone archway. Flat stylized shading, concept art quality.`,
+  modern: `2D contemporary fashion illustration, digital art style, NOT photorealistic. Clean stylish outfit — tailored jacket or elevated casual wear. Neutral tones with one bold accent. Background: moody urban architecture at dusk. Editorial illustration quality.`,
+  'fantasy-modern': `2D fantasy-modern fusion illustration, digital art style, NOT photorealistic. Magical elements woven into contemporary fashion — glowing accessories, iridescent fabrics. Background: neon-lit city meets starlit sky. Stylized concept art quality.`,
+  celestial: `2D celestial character illustration, digital art style, NOT photorealistic. Flowing cosmic robes with stars and moon phases, silver and indigo palette. Background: deep space nebula with soft aurora. Stylized ethereal art quality.`,
+  royal: `2D regal portrait illustration, digital art style, NOT photorealistic. Elaborate noble attire — rich velvets, gold embroidery, ornate headpiece. Deep jewel tones. Background: candlelit palace hall. Stylized storybook art quality.`,
+  streetwear: `2D urban fashion illustration, digital art style, NOT photorealistic. Stylish streetwear — oversized jacket, bold graphic tee, cargo pants, designer sneakers. Background: rain-slicked city street at night with neon reflections. Stylized concept art quality.`,
+  futuristic: `2D sci-fi character illustration, digital art style, NOT photorealistic. Sleek futuristic outfit — form-fitting suit with glowing tech details. Background: neon megacity skyline. Stylized anime-influenced concept art quality.`,
+  nature: `2D nature-inspired character illustration, digital art style, NOT photorealistic. Flowing earthy garments with floral botanical details, warm greens and terracottas. Background: misty ancient forest with golden light. Stylized storybook art quality.`,
 }
 
 function buildAvatarPrompt(answers: string[], style?: string, feedback?: string) {
@@ -40,10 +40,10 @@ function buildAvatarPrompt(answers: string[], style?: string, feedback?: string)
 
   return [
     `Create a single full-body character portrait. ${styleDirection}`,
-    'The character must be clearly visible from head to toe with a clean readable silhouette.',
-    'Use a vertical portrait composition. Dramatic lighting. Rich detail. Cinematic quality.',
-    'Do not add text, watermarks, or logos.',
-    details ? `Character details based on their self-description:\n${details}` : '',
+    'Illustrated, stylized, NOT photorealistic. Think character design or concept art — clean lines, expressive, artistic.',
+    'Full body visible from head to toe. Vertical portrait composition. Clean readable silhouette against the background.',
+    'No text, no watermarks, no logos.',
+    details ? `Character details from their self-description:\n${details}` : '',
     feedbackLine,
   ]
     .filter(Boolean)
@@ -76,7 +76,7 @@ async function generateWithDalle(openai: OpenAI, prompt: string, userId?: string
     n: 1,
     size: '1024x1792',
     quality: 'standard',
-    style: 'natural',
+    style: 'vivid',
     response_format: 'b64_json',
     user: userId || undefined,
   })
