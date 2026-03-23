@@ -98,37 +98,46 @@ export default function Profile({
   }
 
   async function regenerateAvatar() {
-    if (regenCount >= MAX_REGEN_ATTEMPTS || regenLoading) return
-    setRegenError('')
-    try {
-      setRegenLoading(true); setShowRegenInput(false)
-      const res = await fetch('/api/generate-avatar', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ answers: { 0: bioState, 1: askState }, feedback: regenFeedback }),
-      })
-      const data = await res.json()
-      if (!res.ok || data.error) throw new Error(data.error || 'Failed')
-      if (!data.imageUrl) throw new Error('No avatar image came back from the mirror.')
+  if (regenCount >= MAX_REGEN_ATTEMPTS || regenLoading) return
+  setRegenError('')
+  
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 55000) // 55s timeout
+  
+  try {
+    setRegenLoading(true); setShowRegenInput(false)
+    const res = await fetch('/api/generate-avatar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ answers: { 0: bioState, 1: askState }, feedback: regenFeedback }),
+      signal: controller.signal,
+    })
+    const data = await res.json()
+    if (!res.ok || data.error) throw new Error(data.error || 'Failed')
+    if (!data.imageUrl) throw new Error('No avatar image came back from the mirror.')
 
-      // ── upload to Storage, get permanent URL ──
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('No user found')
-      const permanentUrl = await uploadAvatarToStorage(data.imageUrl, user.id)
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error('No user found')
+    const permanentUrl = await uploadAvatarToStorage(data.imageUrl, user.id)
 
-      // ── only increment AFTER full success ──
-      const newCount = regenCount + 1
-      setCurrentAvatarUrl(permanentUrl)
-      setRegenCount(newCount)
-      setRegenFeedback('')
-      await updateHub({ avatar_url: permanentUrl, regen_count: newCount })
-      onUpdateHub?.({ avatarUrl: permanentUrl })
-    } catch (err) {
+    const newCount = regenCount + 1
+    setCurrentAvatarUrl(permanentUrl)
+    setRegenCount(newCount)
+    setRegenFeedback('')
+    await updateHub({ avatar_url: permanentUrl, regen_count: newCount })
+    onUpdateHub?.({ avatarUrl: permanentUrl })
+  } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') {
+      setRegenError('The mirror took too long to respond. Your attempt was not used — try again.')
+    } else {
       console.error('Regen failed:', err)
       setRegenError('Something went wrong. Your attempt was not used — try again.')
-    } finally {
-      setRegenLoading(false)
     }
+  } finally {
+    clearTimeout(timeout)
+    setRegenLoading(false)
   }
+}
 
   async function saveHub() {
     try {
@@ -254,7 +263,7 @@ export default function Profile({
             {showRegenInput && attemptsLeft > 0 && (
               <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} style={{ marginTop: '12px' }}>
                 <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(255,255,255,0.5)', marginBottom: '8px' }}>Tell the mirror what to change — or leave blank to reimagine freely.</p>
-                <div style={{ display: 'flex', gap: '8px' }}>
+                < div style={{ display: 'flex', gap: '8px' }}>
                   <input value={regenFeedback} onChange={e => setRegenFeedback(e.target.value)} placeholder="e.g. more realistic, darker mood, different outfit..."
                     style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(201,168,76,0.2)', borderRadius: '6px', color: 'rgba(255,255,255,0.85)', fontFamily: "'Cormorant Garamond', serif", fontSize: '14px', padding: '8px 12px', outline: 'none', caretColor: '#c9a84c' }}
                     onKeyDown={e => { if (e.key === 'Enter') void regenerateAvatar() }} />

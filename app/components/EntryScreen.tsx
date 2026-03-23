@@ -94,26 +94,33 @@ export default function EntryScreen({
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 1, ease: 'easeOut' }}
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px', marginTop: '64px' }}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '14px',
+              marginTop: '64px',
+            }}
           >
             <button
               onClick={onEnter}
               onMouseEnter={e => {
                 e.currentTarget.style.background = 'rgba(230,199,110,0.12)'
                 e.currentTarget.style.borderColor = '#e6c76e'
-                e.currentTarget.style.boxShadow = '0 0 28px rgba(230,199,110,0.3), inset 0 0 20px rgba(230,199,110,0.08)'
+                e.currentTarget.style.boxShadow =
+                  '0 0 28px rgba(230,199,110,0.3), inset 0 0 20px rgba(230,199,110,0.08)'
                 e.currentTarget.style.color = '#f3df9a'
               }}
               onMouseLeave={e => {
                 e.currentTarget.style.background = 'transparent'
-                e.currentTarget.style.borderColor = 'rgba(230,199,110,0.5)'
+                e.currentTarget.style.borderColor = 'rgba(230,199,110,0.6)'
                 e.currentTarget.style.boxShadow = 'none'
                 e.currentTarget.style.color = '#e6c76e'
               }}
               style={{
                 padding: '14px 40px',
                 background: 'transparent',
-                border: '1px solid rgba(230,199,110,0.5)',
+                border: '1px solid rgba(230,199,110,0.6)',
                 color: '#e6c76e',
                 fontFamily: "'Cinzel', serif",
                 fontSize: '12px',
@@ -124,6 +131,7 @@ export default function EntryScreen({
                 backdropFilter: 'blur(8px)',
                 transition: 'all 0.3s ease',
                 textShadow: '0 0 8px rgba(230,199,110,0.18)',
+                minWidth: 'min(560px, 82vw)',
               }}
             >
               Enter the Universe
@@ -132,26 +140,30 @@ export default function EntryScreen({
             <button
               onClick={onSignup}
               onMouseEnter={e => {
-                e.currentTarget.style.background = 'rgba(230,199,110,0.07)'
-                e.currentTarget.style.borderColor = 'rgba(230,199,110,0.4)'
-                e.currentTarget.style.color = 'rgba(230,199,110,0.85)'
+                e.currentTarget.style.background = 'rgba(230,199,110,0.1)'
+                e.currentTarget.style.borderColor = 'rgba(230,199,110,0.55)'
+                e.currentTarget.style.color = '#f0d98c'
+                e.currentTarget.style.boxShadow = '0 0 20px rgba(230,199,110,0.18)'
               }}
               onMouseLeave={e => {
                 e.currentTarget.style.background = 'transparent'
-                e.currentTarget.style.borderColor = 'rgba(230,199,110,0.2)'
-                e.currentTarget.style.color = 'rgba(230,199,110,0.5)'
+                e.currentTarget.style.borderColor = 'rgba(230,199,110,0.38)'
+                e.currentTarget.style.color = 'rgba(230,199,110,0.88)'
+                e.currentTarget.style.boxShadow = 'none'
               }}
               style={{
                 padding: '10px 32px',
                 background: 'transparent',
-                border: '1px solid rgba(230,199,110,0.2)',
-                color: 'rgba(230,199,110,0.5)',
+                border: '1px solid rgba(230,199,110,0.38)',
+                color: 'rgba(230,199,110,0.88)',
                 fontFamily: "'Cinzel', serif",
                 fontSize: '10px',
                 letterSpacing: '0.3em',
                 textTransform: 'uppercase',
                 cursor: 'pointer',
                 transition: 'all 0.3s ease',
+                textShadow: '0 0 6px rgba(230,199,110,0.12)',
+                minWidth: 'min(455px, 74vw)',
               }}
             >
               Create an Account
@@ -159,19 +171,25 @@ export default function EntryScreen({
 
             <button
               onClick={onLogin}
-              onMouseEnter={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.55)' }}
-              onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.28)' }}
+              onMouseEnter={e => {
+                e.currentTarget.style.color = 'rgba(255,255,255,0.95)'
+                e.currentTarget.style.textShadow = '0 0 8px rgba(255,255,255,0.2)'
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.color = 'rgba(255,255,255,0.72)'
+                e.currentTarget.style.textShadow = 'none'
+              }}
               style={{
                 background: 'none',
                 border: 'none',
-                color: 'rgba(255,255,255,0.28)',
+                color: 'rgba(255,255,255,0.72)',
                 fontFamily: "'Cinzel', serif",
                 fontSize: '9px',
                 letterSpacing: '0.35em',
                 textTransform: 'uppercase',
                 cursor: 'pointer',
-                transition: 'color 0.3s ease',
-                padding: '4px 8px',
+                transition: 'all 0.3s ease',
+                padding: '6px 10px',
               }}
             >
               Sign In

@@ -11,21 +11,36 @@ function normalizeDetail(value: string) {
 }
 
 const STYLE_DIRECTIONS: Record<string, string> = {
-  fantasy: `2D fantasy character illustration, digital art style, NOT photorealistic. Flowing magical robes, ethereal fabrics, glowing runes. Rich jewel tones — deep purples, midnight blues, gold. Background: misty enchanted forest or ancient stone archway. Flat stylized shading, concept art quality.`,
-  modern: `2D contemporary fashion illustration, digital art style, NOT photorealistic. Clean stylish outfit — tailored jacket or elevated casual wear. Neutral tones with one bold accent. Background: moody urban architecture at dusk. Editorial illustration quality.`,
-  'fantasy-modern': `2D fantasy-modern fusion illustration, digital art style, NOT photorealistic. Magical elements woven into contemporary fashion — glowing accessories, iridescent fabrics. Background: neon-lit city meets starlit sky. Stylized concept art quality.`,
-  celestial: `2D celestial character illustration, digital art style, NOT photorealistic. Flowing cosmic robes with stars and moon phases, silver and indigo palette. Background: deep space nebula with soft aurora. Stylized ethereal art quality.`,
-  royal: `2D regal portrait illustration, digital art style, NOT photorealistic. Elaborate noble attire — rich velvets, gold embroidery, ornate headpiece. Deep jewel tones. Background: candlelit palace hall. Stylized storybook art quality.`,
-  streetwear: `2D urban fashion illustration, digital art style, NOT photorealistic. Stylish streetwear — oversized jacket, bold graphic tee, cargo pants, designer sneakers. Background: rain-slicked city street at night with neon reflections. Stylized concept art quality.`,
-  futuristic: `2D sci-fi character illustration, digital art style, NOT photorealistic. Sleek futuristic outfit — form-fitting suit with glowing tech details. Background: neon megacity skyline. Stylized anime-influenced concept art quality.`,
-  nature: `2D nature-inspired character illustration, digital art style, NOT photorealistic. Flowing earthy garments with floral botanical details, warm greens and terracottas. Background: misty ancient forest with golden light. Stylized storybook art quality.`,
+  fantasy:
+    `Stylized semi-realistic fantasy character portrait. Three-quarter view with strong cinematic lighting — deep directional key light casting defined shadows across the face and body, with a contrasting rim light creating separation and depth. Rich volumetric rendering: prominent cheekbones catching light, deep eye sockets with shadow, nose bridge with sharp highlight, defined jawline. Flowing magical garments with fabric folds that have visible light-to-shadow transitions. Luminous magical accents with glowing depth. Rich jewel tones: deep plum, midnight blue, emerald, gold. Background: enchanted forest, moonlit ruins, or mystical archway with atmospheric depth haze. Premium fantasy fashion concept art — NOT cartoon, NOT flat, NOT 2D illustration.`,
+
+  modern:
+    `Stylized semi-realistic contemporary fashion portrait. Strong studio or golden-hour lighting with a defined key light source — sharp highlights on the nose, cheekbone, and brow creating clear form and depth. Deep shadows in the eye sockets and under the chin. Volumetric skin rendering with subsurface warmth and pore detail. Clean editorial fashion — clothing with fabric fold depth, button and seam detail, material texture. Neutral palette with one strong accent color. Background: moody city architecture, luxury interior, or dusk street. Premium editorial fashion illustration — NOT flat, NOT cartoon, NOT 2D.`,
+
+  'fantasy-modern':
+    `Stylized semi-realistic fantasy-modern portrait. Dramatic three-quarter lighting — hard directional key light with deep shadows creating strong facial relief, rim light separating figure from background. Contemporary fashion pieces with subtle magical details: glowing jewelry, luminous trim, celestial motifs, ethereal texture overlays. Rich volumetric rendering — defined muscle form under fabric, hair with individual strand depth, skin with visible lighting transitions from highlight to shadow to ambient. Background: city lights merging with mystical atmospheric haze. Premium character concept art — NOT flat, NOT cartoon, NOT 2D.`,
+
+  celestial:
+    `Stylized semi-realistic celestial portrait. Divine directional lighting as if lit by moonlight and starlight — cool silver key light with deep indigo shadows, strong rim light creating a glowing halo effect around the silhouette. Volumetric face with prominent brow, deep-set luminous eyes, high cheekbones, defined nose bridge. Flowing fabrics with complex fold shadows. Cosmic details: moon motifs, star-scattered fabric, silver and indigo glowing accents with depth and particle glow. Background: nebula with atmospheric depth, celestial hall, or moonlit dreamscape. Ethereal and mature — NOT flat, NOT cartoon, NOT 2D.`,
+
+  royal:
+    `Stylized semi-realistic regal portrait. Candlelit palace lighting — warm golden key light from below or side, deep contrasting shadows, strong facial volume. Prominent cheekbones lit from the side, deep eye sockets, defined jaw. Rich velvet garments with depth: fabric pile catching light differently at different angles, embroidery with highlight and shadow, metallic accents with specular reflections. Deep jewel tones: crimson, navy, gold. Background: palace interior with depth and candlelight atmosphere. High-end fantasy editorial — NOT flat, NOT cartoon, NOT 2D.`,
+
+  streetwear:
+    `Stylized semi-realistic streetwear fashion portrait. Neon-urban lighting — strong colored key light (neon pink, blue, or amber) creating dramatic highlights and deep complementary shadows. Volumetric face: defined nose, cheekbones catching neon light, shadowed eye sockets, jawline with rim light. Premium streetwear: fabric weight and texture visible in folds, reflective material panels, layered depth. Background: wet pavement reflections, neon signs, nightlife urban glow with atmospheric depth. Premium character fashion art — NOT flat, NOT cartoon, NOT 2D.`,
+
+  futuristic:
+    `Stylized semi-realistic futuristic portrait. Sci-fi lighting — cool blue or cyan key light from the side with warm secondary fill, creating strong facial depth and shadow. Volumetric rendering: metal and synthetic fabric with specular highlights, glowing seam details with depth glow, reflective material surfaces showing environment. Defined facial structure with high-tech aesthetic. Background: neon city at night, sci-fi interior with depth haze, or glowing skyline. High-end sci-fi fashion concept art — NOT flat, NOT cartoon, NOT 2D.`,
+
+  nature:
+    `Stylized semi-realistic nature-inspired portrait. Dappled forest or greenhouse lighting — warm golden key light filtering through leaves, creating patterned highlights and deep natural shadows. Volumetric skin rendering with earthy warmth, defined facial structure. Botanical fashion: organic fabric textures with fold depth, floral appliqué with petal dimensionality, layered natural materials. Warm greens, terracotta, gold. Background: misty forest with atmospheric depth, sacred garden, or greenhouse. Mature fantasy fashion — NOT flat, NOT cartoon, NOT 2D.`,
 }
 
 function buildAvatarPrompt(answers: string[], style?: string, feedback?: string) {
   const trimmedAnswers = answers
     .map((a) => normalizeDetail(a))
     .filter(Boolean)
-    .slice(0, 8)
+    .slice(0, 10)
 
   const details = trimmedAnswers
     .map((a, i) => `${i + 1}. ${a}`)
@@ -35,15 +50,30 @@ function buildAvatarPrompt(answers: string[], style?: string, feedback?: string)
   const styleDirection = STYLE_DIRECTIONS[styleKey] || STYLE_DIRECTIONS.modern
 
   const feedbackLine = feedback?.trim()
-    ? `Important revision note: ${normalizeDetail(feedback)}.`
+    ? `Revision note to follow carefully: ${normalizeDetail(feedback)}.`
     : ''
 
   return [
-    `Create a single full-body character portrait. ${styleDirection}`,
-    'Illustrated, stylized, NOT photorealistic. Think character design or concept art — clean lines, expressive, artistic.',
-    'Full body visible from head to toe. Vertical portrait composition. Clean readable silhouette against the background.',
-    'No text, no watermarks, no logos.',
-    details ? `Character details from their self-description:\n${details}` : '',
+    `Create a single vertical full-body character portrait. ${styleDirection}`,
+
+    // Core 3D/volume instructions
+    `CRITICAL RENDERING REQUIREMENTS: The image must look three-dimensional, sculptural, and volumetric — NOT flat or illustrative. Achieve this through:
+- Strong single directional key light with clearly visible shadow falloff across the face and body
+- Deep eye socket shadows, nose shadow cast on upper lip, defined jaw shadow
+- Subsurface scattering on skin (ears, nose tip, lips appear slightly translucent with warmth)
+- Hair rendered with individual strand groups catching light at different angles
+- Fabric with fold highlights, fold shadows, and material-specific texture (silk sheen vs matte cotton vs leather specular)
+- Background with atmospheric perspective/depth haze to separate figure from scene`,
+
+    `The result must feel like premium 3D character concept art or high-end CGI fashion render. Avoid flat cel-shading, avoid uniform lighting, avoid 2D illustration look, avoid cartoon proportions, avoid anime-flat rendering.`,
+
+    `Face: beautiful, well-defined features with strong bone structure readable through lighting and shadow. Body: elegant believable proportions. Clothing: intentional, stylish, with material depth.`,
+
+    `Composition: character centered and fully visible head to toe, vertical portrait, strong readable silhouette with rim light separation from background.`,
+
+    `No text, no watermark, no logo, no extra characters.`,
+
+    details ? `Character details from the user's self-description:\n${details}` : '',
     feedbackLine,
   ]
     .filter(Boolean)
@@ -55,7 +85,7 @@ async function generateWithGptImage(openai: OpenAI, prompt: string, userId?: str
     model: 'gpt-image-1',
     prompt,
     size: '1024x1536',
-    quality: 'low',
+    quality: 'high',
     output_format: 'jpeg',
     user: userId || undefined,
   } as any)
@@ -75,7 +105,7 @@ async function generateWithDalle(openai: OpenAI, prompt: string, userId?: string
     prompt,
     n: 1,
     size: '1024x1792',
-    quality: 'standard',
+    quality: 'hd',
     style: 'vivid',
     response_format: 'b64_json',
     user: userId || undefined,
@@ -88,6 +118,7 @@ async function generateWithDalle(openai: OpenAI, prompt: string, userId?: string
       revisedPrompt: image.revised_prompt || prompt,
     }
   }
+
   throw new Error('dall-e-3 returned no image data.')
 }
 
@@ -114,11 +145,17 @@ export async function POST(req: Request) {
 
     try {
       const result = await generateWithGptImage(openai, imagePrompt, userId)
-      return NextResponse.json({ imageUrl: result.imageUrl, prompt: result.revisedPrompt })
+      return NextResponse.json({
+        imageUrl: result.imageUrl,
+        prompt: result.revisedPrompt,
+      })
     } catch (primaryError) {
       console.warn('gpt-image-1 failed, falling back to dall-e-3:', primaryError)
       const fallback = await generateWithDalle(openai, imagePrompt, userId)
-      return NextResponse.json({ imageUrl: fallback.imageUrl, prompt: fallback.revisedPrompt })
+      return NextResponse.json({
+        imageUrl: fallback.imageUrl,
+        prompt: fallback.revisedPrompt,
+      })
     }
   } catch (error) {
     console.error('generate-avatar error:', error)

@@ -66,6 +66,18 @@ export async function isHubNameAvailable(hubName: string, excludeUserId?: string
   }
 }
 
+export async function signUp(email: string, password: string) {
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+  })
+
+  if (error) throw error
+  if (!data.user) throw new Error('No user returned after signup')
+
+  return data.user
+}
+
 export async function signUpAndCreateHub(
   email: string,
   password: string,
