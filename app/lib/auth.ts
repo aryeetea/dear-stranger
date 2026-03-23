@@ -172,13 +172,8 @@ export async function deleteAccount(): Promise<{ success: boolean; error?: strin
       error: userError,
     } = await supabase.auth.getUser()
 
-    if (userError) {
-      throw userError
-    }
-
-    if (!user) {
-      throw new Error('No user found')
-    }
+    if (userError) throw userError
+    if (!user) throw new Error('No user found')
 
     const userId = user.id
 
@@ -187,18 +182,14 @@ export async function deleteAccount(): Promise<{ success: boolean; error?: strin
       .delete()
       .or(`sender_id.eq.${userId},recipient_id.eq.${userId}`)
 
-    if (lettersError) {
-      throw new Error(`Letters delete failed: ${lettersError.message}`)
-    }
+    if (lettersError) throw new Error(`Letters delete failed: ${lettersError.message}`)
 
     const { error: hubError } = await supabase
       .from('hubs')
       .delete()
       .eq('id', userId)
 
-    if (hubError) {
-      throw new Error(`Hub delete failed: ${hubError.message}`)
-    }
+    if (hubError) throw new Error(`Hub delete failed: ${hubError.message}`)
 
     await supabase.auth.signOut()
 
@@ -305,18 +296,14 @@ export async function getSession() {
 
     if (error) {
       if (error.message?.includes('Refresh Token') || error.message?.includes('refresh_token')) {
-        try {
-          await supabase.auth.signOut()
-        } catch {}
+        try { await supabase.auth.signOut() } catch {}
       }
       return null
     }
 
     return data.session
   } catch {
-    try {
-      await supabase.auth.signOut()
-    } catch {}
+    try { await supabase.auth.signOut() } catch {}
     return null
   }
 }
@@ -331,9 +318,7 @@ export async function getMyHub() {
 
     if (userError) {
       if (userError.message?.includes('Refresh Token') || userError.message?.includes('refresh_token')) {
-        try {
-          await supabase.auth.signOut()
-        } catch {}
+        try { await supabase.auth.signOut() } catch {}
       }
       return null
     }
@@ -348,18 +333,14 @@ export async function getMyHub() {
         error.message?.includes('Refresh Token') ||
         error.message?.includes('refresh_token')
       ) {
-        try {
-          await supabase.auth.signOut()
-        } catch {}
+        try { await supabase.auth.signOut() } catch {}
       }
       return null
     }
 
     return data
   } catch {
-    try {
-      await supabase.auth.signOut()
-    } catch {}
+    try { await supabase.auth.signOut() } catch {}
     return null
   }
 }
@@ -388,6 +369,7 @@ export async function updateHub(updates: {
   avatar_url?: string
   hub_style?: string
   backdrop_id?: string
+  regen_count?: number
   [key: string]: any
 }) {
   const {
@@ -498,4 +480,51 @@ export async function getMyLetters() {
   } catch {
     return { transit: [], arrived: [], archive: [] }
   }
+}
+
+// ── CHECK IF USER IS ANONYMOUS (GUEST) ──
+export async function isGuestUser(): Promise<boolean> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return true
+    return (user as any).is_anonymous === true
+  } catch {
+    return true
+  }
+}
+
+// ── UPGRADE GUEST TO EMAIL ACCOUNT ──
+export async function upgradeGuestAccount(email: string, password: string): Promise<void> {
+  const { error } = await supabase.auth.updateUser({ email, password })
+  if (error) throw error
+}
+
+// ── UPLOAD AVATAR TO STORAGE ──
+export async function uploadAvatarToStorage(base64DataUrl: string, userId: string): Promise<string> {
+  const matches = base64DataUrl.match(/^data:(.+);base64,(.+)$/)
+  if (!matches) throw new Error('Invalid base64 image format')
+
+  const mimeType = matches[1]
+  const base64Data = matches[2]
+  const ext = mimeType.includes('png') ? 'png' : 'jpg'
+
+  const byteCharacters = atob(base64Data)
+  const byteArray = new Uint8Array(byteCharacters.length)
+  for (let i = 0; i < byteCharacters.length; i++) {
+    byteArray[i] = byteCharacters.charCodeAt(i)
+  }
+
+  const filePath = `avatars/${userId}.${ext}`
+
+  const { error } = await supabase.storage
+    .from('avatars')
+    .upload(filePath, byteArray, {
+      contentType: mimeType,
+      upsert: true,
+    })
+
+  if (error) throw error
+
+  const { data } = supabase.storage.from('avatars').getPublicUrl(filePath)
+  return data.publicUrl
 }

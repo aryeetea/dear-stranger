@@ -2,17 +2,18 @@
 
 import { useEffect, useState, type CSSProperties } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { updateHub, signOut, deleteAccount, exportMyLetters } from '../lib/auth'
+import { updateHub, signOut, deleteAccount, exportMyLetters, uploadAvatarToStorage } from '../lib/auth'
+import { supabase } from '../../lib/supabase'
 
 const MAX_REGEN_ATTEMPTS = 3
 
 type DeleteStep = 'idle' | 'exporting' | 'exported' | 'deleting' | 'deleted'
 
 export default function Profile({
-  hubName, bio, askAbout, avatarUrl: initialAvatarUrl,
+  hubName, bio, askAbout, avatarUrl: initialAvatarUrl, regenCount: initialRegenCount,
   onClose, onUpdateHub,
 }: {
-  hubName?: string; bio?: string; askAbout?: string; avatarUrl?: string
+  hubName?: string; bio?: string; askAbout?: string; avatarUrl?: string; regenCount?: number
   onClose?: () => void
   onUpdateHub?: (updates: { hubName?: string; bio?: string; askAbout?: string; avatarUrl?: string }) => void
 }) {
@@ -20,10 +21,12 @@ export default function Profile({
   const [bioState, setBioState] = useState(bio || 'A wanderer who arrived here quietly, carrying something unspoken.')
   const [askState, setAskState] = useState(askAbout || 'Silence, slow mornings, and letters that take their time.')
   const [currentAvatarUrl, setCurrentAvatarUrl] = useState(initialAvatarUrl || '')
-  const [regenCount, setRegenCount] = useState(0)
+  // ── regen count loaded from DB, not reset on reload ──
+  const [regenCount, setRegenCount] = useState(initialRegenCount ?? 0)
   const [regenLoading, setRegenLoading] = useState(false)
   const [regenFeedback, setRegenFeedback] = useState('')
   const [showRegenInput, setShowRegenInput] = useState(false)
+  const [regenError, setRegenError] = useState('')
 
   const [editingHub, setEditingHub] = useState(false)
   const [editingBio, setEditingBio] = useState(false)
@@ -42,6 +45,19 @@ export default function Profile({
   useEffect(() => {
     setCurrentAvatarUrl(initialAvatarUrl || '')
   }, [initialAvatarUrl])
+
+  // ── load regen count from DB on mount ──
+  useEffect(() => {
+    async function loadRegenCount() {
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+        const { data } = await supabase.from('hubs').select('regen_count').eq('id', user.id).single()
+        if (data?.regen_count !== undefined) setRegenCount(data.regen_count)
+      } catch {}
+    }
+    loadRegenCount()
+  }, [])
 
   const attemptsLeft = MAX_REGEN_ATTEMPTS - regenCount
   const refreshProgress = 0
@@ -83,6 +99,7 @@ export default function Profile({
 
   async function regenerateAvatar() {
     if (regenCount >= MAX_REGEN_ATTEMPTS || regenLoading) return
+    setRegenError('')
     try {
       setRegenLoading(true); setShowRegenInput(false)
       const res = await fetch('/api/generate-avatar', {
@@ -92,11 +109,25 @@ export default function Profile({
       const data = await res.json()
       if (!res.ok || data.error) throw new Error(data.error || 'Failed')
       if (!data.imageUrl) throw new Error('No avatar image came back from the mirror.')
-      setCurrentAvatarUrl(data.imageUrl); setRegenCount(c => c + 1); setRegenFeedback('')
-      await updateHub({ avatar_url: data.imageUrl })
-      onUpdateHub?.({ avatarUrl: data.imageUrl })
-    } catch (err) { console.error('Regen failed:', err) }
-    finally { setRegenLoading(false) }
+
+      // ── upload to Storage, get permanent URL ──
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('No user found')
+      const permanentUrl = await uploadAvatarToStorage(data.imageUrl, user.id)
+
+      // ── only increment AFTER full success ──
+      const newCount = regenCount + 1
+      setCurrentAvatarUrl(permanentUrl)
+      setRegenCount(newCount)
+      setRegenFeedback('')
+      await updateHub({ avatar_url: permanentUrl, regen_count: newCount })
+      onUpdateHub?.({ avatarUrl: permanentUrl })
+    } catch (err) {
+      console.error('Regen failed:', err)
+      setRegenError('Something went wrong. Your attempt was not used — try again.')
+    } finally {
+      setRegenLoading(false)
+    }
   }
 
   async function saveHub() {
@@ -106,12 +137,12 @@ export default function Profile({
       setHubNameState(hubDraft)
       onUpdateHub?.({ hubName: hubDraft })
       setEditingHub(false)
-    }
-    catch (err) {
+    } catch (err) {
       console.error(err)
       setSaveError(err instanceof Error ? err.message : 'Could not save hub name.')
     } finally { setSaving(false) }
   }
+
   async function saveBio() {
     try {
       setSaving(true); setSaveError('')
@@ -119,9 +150,9 @@ export default function Profile({
       setBioState(bioDraft)
       onUpdateHub?.({ bio: bioDraft })
       setEditingBio(false)
-    }
-    catch (err) { console.error(err) } finally { setSaving(false) }
+    } catch (err) { console.error(err) } finally { setSaving(false) }
   }
+
   async function saveAsk() {
     try {
       setSaving(true); setSaveError('')
@@ -129,8 +160,7 @@ export default function Profile({
       setAskState(askDraft)
       onUpdateHub?.({ askAbout: askDraft })
       setEditingAsk(false)
-    }
-    catch (err) { console.error(err) } finally { setSaving(false) }
+    } catch (err) { console.error(err) } finally { setSaving(false) }
   }
 
   return (
@@ -172,7 +202,6 @@ export default function Profile({
         <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6, delay: 0.1 }}
           style={{ flex: 1, padding: 'clamp(60px,8vh,100px) clamp(28px,5vw,60px) 80px', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
 
-          {/* Hub Name */}
           <div style={{ marginBottom: '40px' }}>
             <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.5em', color: 'rgba(201,168,76,0.6)', textTransform: 'uppercase', marginBottom: '6px' }}>Soul Mirror</p>
             {editingHub ? (
@@ -196,7 +225,6 @@ export default function Profile({
               <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(235,140,140,0.9)', marginTop: '10px' }}>{saveError}</p>
             )}
 
-            {/* Soul Cycle + Reimagine */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '14px', flexWrap: 'wrap' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <div style={{ position: 'relative', width: '36px', height: '36px' }}>
@@ -235,13 +263,15 @@ export default function Profile({
                     Reimagine ✦
                   </button>
                 </div>
+                {regenError && (
+                  <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(220,100,100,0.85)', marginTop: '8px' }}>{regenError}</p>
+                )}
               </motion.div>
             )}
           </div>
 
           <div style={{ height: '1px', background: 'linear-gradient(90deg, rgba(201,168,76,0.3), transparent)', marginBottom: '32px' }} />
 
-          {/* Bio */}
           <div style={{ marginBottom: '28px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '10px' }}>
               <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.4em', color: 'rgba(201,168,76,0.65)', textTransform: 'uppercase' }}>Bio</p>
@@ -261,7 +291,6 @@ export default function Profile({
             )}
           </div>
 
-          {/* Ask About */}
           <div style={{ marginBottom: '36px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '10px' }}>
               <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.4em', color: 'rgba(201,168,76,0.65)', textTransform: 'uppercase' }}>Ask me about</p>
@@ -283,7 +312,6 @@ export default function Profile({
 
           <div style={{ height: '1px', background: 'linear-gradient(90deg, rgba(255,255,255,0.08), transparent)', marginBottom: '28px' }} />
 
-          {/* Settings */}
           <div style={{ marginBottom: '32px' }}>
             <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.4em', color: 'rgba(201,168,76,0.65)', textTransform: 'uppercase', marginBottom: '16px' }}>Settings</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -295,10 +323,7 @@ export default function Profile({
             </div>
           </div>
 
-          {/* ── LEAVE / DELETE ── */}
           <div style={{ paddingTop: '20px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-
-            {/* Delete Modal */}
             <AnimatePresence>
               {deleteStep !== 'idle' && (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -383,7 +408,6 @@ export default function Profile({
                   Leave the Universe
                 </button>
               )}
-
               {deleteStep === 'idle' && !leavingConfirm && (
                 <button onClick={() => void handleStartDelete()}
                   style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.25em', color: 'rgba(200,60,60,0.5)', padding: '8px 16px', border: '1px solid rgba(200,60,60,0.18)', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase' }}

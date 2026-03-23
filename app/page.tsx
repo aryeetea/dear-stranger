@@ -14,6 +14,7 @@ import { supabase } from '../lib/supabase'
 import {
   signInAndCreateHub, signUpAndCreateHub, signOut,
   createHubForCurrentUser, getSession, getMyHub, getAllHubs, sendLetter, updateHub, signIn,
+  uploadAvatarToStorage, isGuestUser,
 } from './lib/auth'
 
 type Screen = 'entry' | 'login' | 'signup' | 'onboarding' | 'universe' | 'loading' | 'generating'
@@ -85,12 +86,15 @@ export default function Home() {
   const [hubAskAbout, setHubAskAbout] = useState('')
   const [hubAvatarUrl, setHubAvatarUrl] = useState('')
   const [hubStyle, setHubStyle] = useState<HubStyle>('portal')
+  const [hubRegenCount, setHubRegenCount] = useState(0)
   const [lettersSent, setLettersSent] = useState(0)
   const [generatingStatus, setGeneratingStatus] = useState('')
   const [scribeOpen, setScribeOpen] = useState(false)
   const [scribeRecipient, setScribeRecipient] = useState<string | undefined>()
   const [observatoryOpen, setObservatoryOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
+  const [isGuest, setIsGuest] = useState(false)
+  const [showGuestWall, setShowGuestWall] = useState(false)
   const [pendingCredentials, setPendingCredentials] = useState<{ email: string; password: string } | null>(null)
   const [onboardingError, setOnboardingError] = useState('')
   const [onboardingResumeState, setOnboardingResumeState] = useState<SoulMirrorResumeState | null>(null)
@@ -104,6 +108,8 @@ export default function Home() {
     setHubAvatarUrl('')
     setHubStyle('portal')
     setLettersSent(0)
+    setHubRegenCount(0)
+    setIsGuest(false)
     if (resetResume) setOnboardingResumeState(null)
   }
 
@@ -127,8 +133,12 @@ export default function Home() {
       setHubAvatarUrl(hub.avatar_url || '')
       setHubStyle((hub.hub_style as HubStyle) || 'portal')
       setLettersSent(hub.letters_sent || 0)
+      setHubRegenCount(hub.regen_count || 0)
       setOnboardingError('')
       setOnboardingResumeState(null)
+      // ── check if this is a guest (anonymous) user ──
+      const guest = await isGuestUser()
+      setIsGuest(guest)
       setScreen('universe')
       return
     }
@@ -161,9 +171,7 @@ export default function Home() {
       }
 
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
-        if (onboardingInFlightRef.current || screenRef.current === 'generating') {
-          return
-        }
+        if (onboardingInFlightRef.current || screenRef.current === 'generating') return
         try {
           await routeFromSession()
         } catch (err) {
@@ -172,9 +180,7 @@ export default function Home() {
       }
     })
 
-    return () => {
-      authListener.subscription.unsubscribe()
-    }
+    return () => { authListener.subscription.unsubscribe() }
   }, [])
 
   async function handleOnboardingComplete(
@@ -233,12 +239,15 @@ export default function Home() {
           session = await withTimeout(getSession(), 10000, 'Loading your session took too long. Please try again.')
         }
         setPendingCredentials(null)
+        setIsGuest(false)
       } else if (session) {
         await withTimeout(
           createHubForCurrentUser(hubNameAnswer, chosenBio, fallbackAskAbout),
           15000,
           'Creating your hub took too long. Please try again.',
         )
+        const guest = await isGuestUser()
+        setIsGuest(guest)
       } else {
         await withTimeout(
           signInAndCreateHub(hubNameAnswer, chosenBio, fallbackAskAbout),
@@ -246,6 +255,7 @@ export default function Home() {
           'Opening your hub took too long. Please try again.',
         )
         session = await withTimeout(getSession(), 10000, 'Loading your session took too long. Please try again.')
+        setIsGuest(true) // anonymous path = guest
       }
 
       setHubName(hubNameAnswer)
@@ -271,12 +281,14 @@ export default function Home() {
       setOnboardingResumeState(null)
       setScreen('universe')
 
+      // ── generate avatar in background, upload to Storage ──
       void (async () => {
         try {
           const avatarUrl = await requestAvatarImage(conversationAnswers, userId, selectedStyle?.label)
-          if (!avatarUrl) return
-          setHubAvatarUrl(avatarUrl)
-          await updateHub({ avatar_url: avatarUrl })
+          if (!avatarUrl || !userId) return
+          const permanentUrl = await uploadAvatarToStorage(avatarUrl, userId)
+          setHubAvatarUrl(permanentUrl)
+          await updateHub({ avatar_url: permanentUrl })
         } catch (avatarError) {
           console.error('Avatar generation failed after hub creation:', avatarError)
         }
@@ -294,6 +306,40 @@ export default function Home() {
     } finally {
       onboardingInFlightRef.current = false
     }
+  }
+
+  // ── Guest signup wall — shown when guest tries to send a letter ──
+  function GuestWall() {
+    return (
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,5,0.92)', backdropFilter: 'blur(16px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 90, padding: '20px' }}>
+        <div style={{ width: 'min(440px, 95vw)', background: 'rgba(10,12,30,0.95)', border: '1px solid rgba(230,199,110,0.22)', borderRadius: '12px', padding: 'clamp(32px,5vw,48px)', position: 'relative' }}>
+          <div style={{ position: 'absolute', top: 0, left: '20%', right: '20%', height: '1px', background: 'linear-gradient(90deg, transparent, rgba(230,199,110,0.45), transparent)' }} />
+          <div style={{ textAlign: 'center', marginBottom: '28px' }}>
+            <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.5em', color: 'rgba(201,168,76,0.6)', textTransform: 'uppercase', marginBottom: '10px' }}>Before you write</p>
+            <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: 'clamp(17px,2.5vw,22px)', color: 'rgba(255,255,255,0.9)', lineHeight: 1.6, marginBottom: '10px' }}>Letters need a home to return to.</p>
+            <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '15px', color: 'rgba(255,255,255,0.45)', lineHeight: 1.7 }}>Create a free account so your letters can travel — and find their way back to you.</p>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <button onClick={() => { setShowGuestWall(false); setScreen('signup') }}
+              style={{ width: '100%', padding: '14px', background: 'transparent', border: '1px solid rgba(201,168,76,0.5)', color: '#c9a84c', fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.3em', textTransform: 'uppercase', cursor: 'pointer', borderRadius: '4px' }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(201,168,76,0.08)' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
+              Create an Account ✦
+            </button>
+            <button onClick={() => { setShowGuestWall(false); setScreen('login') }}
+              style={{ width: '100%', padding: '12px', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.5)', fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.25em', textTransform: 'uppercase', cursor: 'pointer', borderRadius: '4px' }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)'; e.currentTarget.style.color = 'rgba(255,255,255,0.75)' }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)'; e.currentTarget.style.color = 'rgba(255,255,255,0.5)' }}>
+              Sign In Instead
+            </button>
+            <button onClick={() => setShowGuestWall(false)}
+              style={{ width: '100%', padding: '10px', background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.25)', fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.2em', textTransform: 'uppercase', cursor: 'pointer' }}>
+              Keep Exploring ←
+            </button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   if (screen === 'loading') {
@@ -340,6 +386,8 @@ export default function Home() {
               setHubAvatarUrl(hub.avatar_url || '')
               setHubStyle((hub.hub_style as HubStyle) || 'portal')
               setLettersSent(hub.letters_sent || 0)
+              setHubRegenCount(hub.regen_count || 0)
+              setIsGuest(false)
               setScreen('universe')
               return
             }
@@ -389,11 +437,18 @@ export default function Home() {
           hubName={hubName}
           hubAvatarUrl={hubAvatarUrl}
           hubStyle={hubStyle}
-          onWriteLetter={(name) => { setScribeRecipient(name); setScribeOpen(true) }}
+          onWriteLetter={(name) => {
+            // ── block guests from writing letters ──
+            if (isGuest) { setShowGuestWall(true); return }
+            setScribeRecipient(name); setScribeOpen(true)
+          }}
           onObservatory={() => setObservatoryOpen(true)}
           onProfile={() => setProfileOpen(true)}
         />
       )}
+
+      {/* Guest signup wall */}
+      {showGuestWall && <GuestWall />}
 
       {scribeOpen && (
         <Scribe
@@ -417,7 +472,10 @@ export default function Home() {
       {observatoryOpen && (
         <Observatory
           onClose={() => setObservatoryOpen(false)}
-          onWriteLetter={(name) => { setObservatoryOpen(false); setScribeRecipient(name); setScribeOpen(true) }}
+          onWriteLetter={(name) => {
+            if (isGuest) { setObservatoryOpen(false); setShowGuestWall(true); return }
+            setObservatoryOpen(false); setScribeRecipient(name); setScribeOpen(true)
+          }}
         />
       )}
 
@@ -427,6 +485,7 @@ export default function Home() {
           bio={hubBio}
           askAbout={hubAskAbout}
           avatarUrl={hubAvatarUrl}
+          regenCount={hubRegenCount}
           onClose={() => setProfileOpen(false)}
           onUpdateHub={({ hubName: nextHubName, bio: nextBio, askAbout: nextAskAbout, avatarUrl: nextAvatarUrl }) => {
             if (typeof nextHubName === 'string') setHubName(nextHubName)
