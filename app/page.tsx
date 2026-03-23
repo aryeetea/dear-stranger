@@ -5,23 +5,27 @@ import EntryScreen from './components/EntryScreen'
 import SoulMirror from './components/SoulMirror'
 import type { MirrorVoice, SoulMirrorResumeState, StyleOption } from './components/SoulMirror'
 import UniverseMap from './components/UniverseMap'
-import type { HubStyle } from './components/UniverseMap'
+import { DEFAULT_HUB_PALETTE, isHubPaletteId, type HubPaletteId, type HubStyle } from './components/UniverseMap'
 import Scribe from './components/Scribe'
 import Observatory from './components/Observatory'
 import Profile from './components/Profile'
 import { LoginScreen, SignupScreen } from './components/AuthScreens'
 import { supabase } from '../lib/supabase'
+import { getLetterPreview } from './lib/letters'
+import { loadHubRelics, type HubRelicId } from './lib/worldbuilding'
 import {
+  getMyHubRelicsFromDb,
   signInAndCreateHub,
-  signUpAndCreateHub,
   signOut,
   createHubForCurrentUser,
+  ensureDraftHubForCurrentUser,
   getSession,
   getMyHub,
   getAllHubs,
   sendLetter,
   updateHub,
   signIn,
+  signUp,
   uploadAvatarToStorage,
   isGuestUser,
 } from './lib/auth'
@@ -123,22 +127,23 @@ export default function Home() {
   const [hubAskAbout, setHubAskAbout] = useState('')
   const [hubAvatarUrl, setHubAvatarUrl] = useState('')
   const [hubStyle, setHubStyle] = useState<HubStyle>('portal')
+  const [hubPaletteId, setHubPaletteId] = useState<HubPaletteId>(DEFAULT_HUB_PALETTE)
+  const [hubRelics, setHubRelics] = useState<HubRelicId[]>([])
   const [hubRegenCount, setHubRegenCount] = useState(0)
   const [lettersSent, setLettersSent] = useState(0)
   const [generatingStatus, setGeneratingStatus] = useState('')
   const [scribeOpen, setScribeOpen] = useState(false)
   const [scribeRecipient, setScribeRecipient] = useState<string | undefined>()
+  const [scribeInitialSubject, setScribeInitialSubject] = useState('')
+  const [scribeInitialBody, setScribeInitialBody] = useState('')
   const [observatoryOpen, setObservatoryOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const [isGuest, setIsGuest] = useState(false)
   const [showGuestWall, setShowGuestWall] = useState(false)
-  const [pendingCredentials, setPendingCredentials] = useState<{
-    email: string
-    password: string
-  } | null>(null)
   const [onboardingError, setOnboardingError] = useState('')
   const [onboardingResumeState, setOnboardingResumeState] =
     useState<SoulMirrorResumeState | null>(null)
+  const [storageScope, setStorageScope] = useState('')
 
   const screenRef = useRef<Screen>('loading')
   const onboardingInFlightRef = useRef(false)
@@ -149,15 +154,69 @@ export default function Home() {
     setHubAskAbout('')
     setHubAvatarUrl('')
     setHubStyle('portal')
+    setHubPaletteId(DEFAULT_HUB_PALETTE)
+    setHubRelics([])
     setLettersSent(0)
     setHubRegenCount(0)
     setIsGuest(false)
+    setStorageScope('')
+    setScribeRecipient(undefined)
+    setScribeInitialSubject('')
+    setScribeInitialBody('')
     if (resetResume) setOnboardingResumeState(null)
   }
 
   useEffect(() => {
     screenRef.current = screen
   }, [screen])
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadRelics() {
+      if (!storageScope) {
+        setHubRelics([])
+        return
+      }
+
+      const syncedRelics = await getMyHubRelicsFromDb()
+      if (cancelled) return
+
+      if (syncedRelics) {
+        setHubRelics(syncedRelics)
+        return
+      }
+
+      setHubRelics(loadHubRelics(storageScope))
+    }
+
+    void loadRelics()
+
+    return () => {
+      cancelled = true
+    }
+  }, [storageScope])
+
+  function openScribe({
+    recipient,
+    initialSubject = '',
+    initialBody = '',
+  }: {
+    recipient?: string
+    initialSubject?: string
+    initialBody?: string
+  } = {}) {
+    setScribeRecipient(recipient)
+    setScribeInitialSubject(initialSubject)
+    setScribeInitialBody(initialBody)
+    setScribeOpen(true)
+  }
+
+  function hasSavedHubIdentity(
+    hub: Awaited<ReturnType<typeof getMyHub>>,
+  ) {
+    return Boolean(hub?.hub_name?.trim())
+  }
 
   async function routeFromSession() {
     const session = await getSession()
@@ -168,14 +227,17 @@ export default function Home() {
       return
     }
 
+    setStorageScope(`hub:${session.user.id}`)
+
     const hub = await getMyHub()
 
-    if (hub) {
+    if (hasSavedHubIdentity(hub)) {
       setHubName(hub.hub_name || '')
       setHubBio(hub.bio || '')
       setHubAskAbout(hub.ask_about || '')
       setHubAvatarUrl(hub.avatar_url || '')
       setHubStyle((hub.hub_style as HubStyle) || 'portal')
+      setHubPaletteId(isHubPaletteId(hub.backdrop_id) ? hub.backdrop_id : DEFAULT_HUB_PALETTE)
       setLettersSent(hub.letters_sent || 0)
       setHubRegenCount(hub.regen_count || 0)
       setOnboardingError('')
@@ -185,6 +247,14 @@ export default function Home() {
       setIsGuest(guest)
       setScreen('universe')
       return
+    }
+
+    if (!hub) {
+      try {
+        await ensureDraftHubForCurrentUser()
+      } catch (draftError) {
+        console.warn('Failed to ensure draft hub:', draftError)
+      }
     }
 
     clearHubState(false)
@@ -210,7 +280,6 @@ export default function Home() {
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event) => {
       if (event === 'SIGNED_OUT') {
         clearHubState()
-        setPendingCredentials(null)
         setOnboardingError('')
         setScreen('entry')
         return
@@ -240,10 +309,13 @@ export default function Home() {
   answers: Record<number, string>,
   selectedStyle?: StyleOption,
   selectedHubStyle?: HubStyle,
+  selectedHubPalette?: HubPaletteId,
   mirrorVoice?: MirrorVoice,
   userBio?: string,
   userHubName?: string,
   userAskAbout?: string,
+  creationMode: 'guided' | 'direct' = 'guided',
+  directAvatarDescription = '',
 ) {
   setOnboardingError('')
 
@@ -261,18 +333,32 @@ export default function Home() {
   const fallbackBio = 'A wanderer who arrived here quietly, carrying something unspoken.'
   const fallbackAskAbout = 'Silence, slow mornings, and letters that take their time.'
   const chosenHubStyle = selectedHubStyle || 'portal'
+  const chosenHubPalette = selectedHubPalette || DEFAULT_HUB_PALETTE
   const chosenBio = userBio?.trim() || fallbackBio
   const chosenAskAbout = userAskAbout?.trim() || fallbackAskAbout
+  const trimmedDirectDescription = directAvatarDescription.trim()
+  const avatarAnswers: Record<number, string> = { ...conversationAnswers }
+
+  if (creationMode === 'direct' && trimmedDirectDescription) {
+    avatarAnswers[0] = trimmedDirectDescription
+    if (selectedStyle) {
+      avatarAnswers[1] = `Visual direction: ${selectedStyle.label}. ${selectedStyle.desc}.`
+    }
+    avatarAnswers[2] = `Hub atmosphere: ${chosenHubStyle} form with ${chosenHubPalette} light.`
+  }
 
   const resumeState: SoulMirrorResumeState = {
     phase: 'welcome',
     selectedStyle,
     selectedHubStyle: chosenHubStyle,
+    selectedHubPalette: chosenHubPalette,
     selectedVoice: mirrorVoice,
     userAnswers: keys.slice(0, -1).map((key) => answers[key]),
     hubName: hubNameAnswer,
     bio: chosenBio,
     askAbout: chosenAskAbout,
+    creationMode,
+    directAvatarDescription: trimmedDirectDescription,
   }
 
   try {
@@ -281,33 +367,8 @@ export default function Home() {
     setGeneratingStatus('Crafting your soul mirror...')
 
     let session = await getSession()
-    const isAnonymousSession = Boolean(
-      (session?.user as { is_anonymous?: boolean } | undefined)?.is_anonymous,
-    )
 
-    if (pendingCredentials) {
-      if (isAnonymousSession) {
-        await signOut()
-      }
-
-      await signUpAndCreateHub(
-        pendingCredentials.email,
-        pendingCredentials.password,
-        hubNameAnswer,
-        chosenBio,
-        chosenAskAbout,
-      )
-
-      session = await getSession()
-
-      if (!session) {
-        await signIn(pendingCredentials.email, pendingCredentials.password)
-        session = await getSession()
-      }
-
-      setPendingCredentials(null)
-      setIsGuest(false)
-    } else if (session) {
+    if (session) {
       await createHubForCurrentUser(hubNameAnswer, chosenBio, chosenAskAbout)
 
       const guest = await isGuestUser()
@@ -320,10 +381,12 @@ export default function Home() {
 
     setHubName(hubNameAnswer)
     setHubStyle(chosenHubStyle)
+    setHubPaletteId(chosenHubPalette)
     setHubBio(chosenBio)
     setHubAskAbout(chosenAskAbout)
 
     const userId = session?.user?.id
+    if (userId) setStorageScope(`hub:${userId}`)
 
     setGeneratingStatus('Placing your hub in the universe...')
 
@@ -332,7 +395,7 @@ export default function Home() {
         bio: chosenBio,
         ask_about: chosenAskAbout,
         hub_style: chosenHubStyle,
-        backdrop_id: 'void',
+        backdrop_id: chosenHubPalette,
       }),
       12000,
       'Saving your hub took too long. Please try again.',
@@ -345,9 +408,9 @@ export default function Home() {
     void (async () => {
       try {
         const avatarUrl = await requestAvatarImage(
-          conversationAnswers,
+          avatarAnswers,
           userId,
-          selectedStyle?.label,
+          selectedStyle?.id,
         )
 
         if (!avatarUrl || !userId) return
@@ -394,7 +457,8 @@ export default function Home() {
           alignItems: 'center',
           justifyContent: 'center',
           zIndex: 90,
-          padding: '20px',
+          padding: 'clamp(20px, 5vw, 32px)',
+          overflowY: 'auto',
         }}
       >
         <div
@@ -405,6 +469,7 @@ export default function Home() {
             borderRadius: '12px',
             padding: 'clamp(32px,5vw,48px)',
             position: 'relative',
+            margin: 'auto',
           }}
         >
           <div
@@ -579,6 +644,7 @@ export default function Home() {
           alignItems: 'center',
           justifyContent: 'center',
           gap: '24px',
+          padding: 'clamp(24px, 6vw, 40px)',
         }}
       >
         <div
@@ -661,40 +727,23 @@ export default function Home() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
+          padding: 'clamp(20px, 5vw, 32px)',
+          overflowY: 'auto',
         }}
       >
         <AuthBackground />
         <LoginScreen
           onSuccess={async () => {
-            setPendingCredentials(null)
             setOnboardingResumeState(null)
-
-            const hub = await getMyHub()
-
-            if (hub) {
-              setHubName(hub.hub_name || '')
-              setHubBio(hub.bio || '')
-              setHubAskAbout(hub.ask_about || '')
-              setHubAvatarUrl(hub.avatar_url || '')
-              setHubStyle((hub.hub_style as HubStyle) || 'portal')
-              setLettersSent(hub.letters_sent || 0)
-              setHubRegenCount(hub.regen_count || 0)
-              setIsGuest(false)
-              setScreen('universe')
-              return
-            }
-
             setOnboardingError('')
-            setScreen('onboarding')
+            await routeFromSession()
           }}
           onGoToSignup={() => {
             setOnboardingError('')
-            setPendingCredentials(null)
             setScreen('signup')
           }}
           onGuestEnter={() => {
             setOnboardingError('')
-            setPendingCredentials(null)
             setScreen('onboarding')
           }}
         />
@@ -712,6 +761,8 @@ export default function Home() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
+          padding: 'clamp(20px, 5vw, 32px)',
+          overflowY: 'auto',
         }}
       >
         <AuthBackground />
@@ -720,12 +771,16 @@ export default function Home() {
             setOnboardingError('')
             setScreen('onboarding')
           }}
+          onCreateAccount={async (email, password) => {
+            await signOut()
+            await signUp(email, password)
+            await signIn(email, password)
+            await ensureDraftHubForCurrentUser()
+          }}
           onGoToLogin={() => {
             setOnboardingError('')
-            setPendingCredentials(null)
             setScreen('login')
           }}
-          setPendingCredentials={setPendingCredentials}
         />
       </div>
     )
@@ -737,17 +792,14 @@ export default function Home() {
         <EntryScreen
           onEnter={() => {
             setOnboardingError('')
-            setPendingCredentials(null)
             setScreen('onboarding')
           }}
           onLogin={() => {
             setOnboardingError('')
-            setPendingCredentials(null)
             setScreen('login')
           }}
           onSignup={() => {
             setOnboardingError('')
-            setPendingCredentials(null)
             setScreen('signup')
           }}
         />
@@ -767,13 +819,25 @@ export default function Home() {
           hubBio={hubBio}
           hubAvatarUrl={hubAvatarUrl}
           hubStyle={hubStyle}
+          hubPaletteId={hubPaletteId}
+          hubRelics={hubRelics}
+          storageScope={storageScope}
           onWriteLetter={(name) => {
             if (isGuest) {
               setShowGuestWall(true)
               return
             }
-            setScribeRecipient(name)
-            setScribeOpen(true)
+            openScribe({ recipient: name })
+          }}
+          onUniversePrompt={(prompt) => {
+            if (isGuest) {
+              setShowGuestWall(true)
+              return
+            }
+            openScribe({
+              initialSubject: prompt.subject,
+              initialBody: prompt.bodyStarter,
+            })
           }}
           onObservatory={() => setObservatoryOpen(true)}
           onProfile={() => setProfileOpen(true)}
@@ -786,7 +850,14 @@ export default function Home() {
         <Scribe
           recipientName={scribeRecipient}
           lettersSent={lettersSent}
-          onClose={() => setScribeOpen(false)}
+          initialSubject={scribeInitialSubject}
+          initialBody={scribeInitialBody}
+          onClose={() => {
+            setScribeOpen(false)
+            setScribeRecipient(undefined)
+            setScribeInitialSubject('')
+            setScribeInitialBody('')
+          }}
           onSend={async (letter) => {
             try {
               const allHubs = await getAllHubs()
@@ -797,7 +868,7 @@ export default function Home() {
                 throw new Error('Recipient not found')
               }
 
-              await sendLetter(
+              const result = await sendLetter(
                 recipient?.id || null,
                 letter.body,
                 letter.paperId,
@@ -806,8 +877,25 @@ export default function Home() {
                 letter.fontId,
               )
 
+              if (isUniverseLetter && typeof window !== 'undefined') {
+                const insertedLetter = Array.isArray(result) ? result[0] : null
+
+                window.dispatchEvent(
+                  new CustomEvent('dear-stranger:universe-letter-sent', {
+                    detail: {
+                      id: insertedLetter?.id || `universe-${Date.now()}`,
+                      senderName: hubName || 'A Stranger',
+                      preview: getLetterPreview(letter.body, 120),
+                    },
+                  }),
+                )
+              }
+
               setLettersSent((prev) => prev + 1)
               setScribeOpen(false)
+              setScribeRecipient(undefined)
+              setScribeInitialSubject('')
+              setScribeInitialBody('')
             } catch (err) {
               console.error('Failed to send letter:', err)
             }
@@ -825,8 +913,7 @@ export default function Home() {
               return
             }
             setObservatoryOpen(false)
-            setScribeRecipient(name)
-            setScribeOpen(true)
+            openScribe({ recipient: name })
           }}
         />
       )}
@@ -837,13 +924,20 @@ export default function Home() {
           bio={hubBio}
           askAbout={hubAskAbout}
           avatarUrl={hubAvatarUrl}
+          hubStyle={hubStyle}
+          hubPaletteId={hubPaletteId}
+          hubRelics={hubRelics}
+          storageScope={storageScope}
           regenCount={hubRegenCount}
           onClose={() => setProfileOpen(false)}
-          onUpdateHub={({ hubName: nextHubName, bio: nextBio, askAbout: nextAskAbout, avatarUrl: nextAvatarUrl }) => {
+          onUpdateHub={({ hubName: nextHubName, bio: nextBio, askAbout: nextAskAbout, avatarUrl: nextAvatarUrl, hubStyle: nextHubStyle, hubPaletteId: nextHubPaletteId, hubRelics: nextHubRelics }) => {
             if (typeof nextHubName === 'string') setHubName(nextHubName)
             if (typeof nextBio === 'string') setHubBio(nextBio)
             if (typeof nextAskAbout === 'string') setHubAskAbout(nextAskAbout)
             if (typeof nextAvatarUrl === 'string') setHubAvatarUrl(nextAvatarUrl)
+            if (nextHubStyle) setHubStyle(nextHubStyle)
+            if (nextHubPaletteId) setHubPaletteId(nextHubPaletteId)
+            if (nextHubRelics) setHubRelics(nextHubRelics)
           }}
         />
       )}

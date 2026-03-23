@@ -1,10 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { signIn, signInWithGoogle, signOut } from '../lib/auth'
-
-type AuthView = 'login' | 'signup'
 
 function GoogleIcon() {
   return (
@@ -39,8 +37,9 @@ export function LoginScreen({
       await signOut()
       await signIn(email.trim(), password)
       onSuccess()
-    } catch (err: any) {
-      setError(err.message?.includes('Invalid login') ? 'Incorrect email or password.' : (err.message || 'Login failed.'))
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Login failed.'
+      setError(message.includes('Invalid login') ? 'Incorrect email or password.' : message)
     } finally { setLoading(false) }
   }
 
@@ -50,15 +49,24 @@ export function LoginScreen({
       await signOut()
       await signInWithGoogle()
       // Supabase redirects — onSuccess will be called after redirect back
-    } catch (err: any) {
-      setError(err.message || 'Google sign-in failed.')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Google sign-in failed.')
       setGoogleLoading(false)
     }
   }
 
   return (
     <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }}
-      style={{ width: 'min(420px, 92vw)', zIndex: 2 }}>
+      style={{
+        width: 'min(420px, 100%)',
+        zIndex: 2,
+        padding: 'clamp(24px, 6vw, 36px)',
+        borderRadius: '16px',
+        background: 'rgba(8,10,28,0.74)',
+        border: '1px solid rgba(255,255,255,0.08)',
+        backdropFilter: 'blur(20px)',
+        boxShadow: '0 18px 60px rgba(0,0,0,0.45)',
+      }}>
       <div style={{ textAlign: 'center', marginBottom: '36px' }}>
         <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.5em', color: 'rgba(201,168,76,0.6)', textTransform: 'uppercase', marginBottom: '8px' }}>Dear Stranger</p>
         <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '28px', color: 'rgba(255,255,255,0.88)', letterSpacing: '0.06em', marginBottom: '8px' }}>Welcome back</p>
@@ -121,12 +129,12 @@ export function LoginScreen({
 
 export function SignupScreen({
   onSuccess,
+  onCreateAccount,
   onGoToLogin,
-  setPendingCredentials,
 }: {
   onSuccess: () => void
+  onCreateAccount: (email: string, password: string) => Promise<void>
   onGoToLogin: () => void
-  setPendingCredentials: (creds: { email: string; password: string } | null) => void
 }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -141,12 +149,10 @@ export function SignupScreen({
     if (password.length < 6) { setError('Password must be at least 6 characters.'); return }
     setLoading(true); setError('')
     try {
-      await signOut()
-      // Store credentials so onboarding can use them to create the real account
-      setPendingCredentials({ email: email.trim(), password })
+      await onCreateAccount(email.trim(), password)
       onSuccess()
-    } catch (err: any) {
-      setError(err.message || 'Signup failed.')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Signup failed.')
     } finally { setLoading(false) }
   }
 
@@ -154,17 +160,25 @@ export function SignupScreen({
     setGoogleLoading(true); setError('')
     try {
       await signOut()
-      setPendingCredentials(null)
       await signInWithGoogle()
-    } catch (err: any) {
-      setError(err.message || 'Google sign-in failed.')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Google sign-in failed.')
       setGoogleLoading(false)
     }
   }
 
   return (
     <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }}
-      style={{ width: 'min(420px, 92vw)', zIndex: 2 }}>
+      style={{
+        width: 'min(420px, 100%)',
+        zIndex: 2,
+        padding: 'clamp(24px, 6vw, 36px)',
+        borderRadius: '16px',
+        background: 'rgba(8,10,28,0.74)',
+        border: '1px solid rgba(255,255,255,0.08)',
+        backdropFilter: 'blur(20px)',
+        boxShadow: '0 18px 60px rgba(0,0,0,0.45)',
+      }}>
       <div style={{ textAlign: 'center', marginBottom: '36px' }}>
         <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.5em', color: 'rgba(201,168,76,0.6)', textTransform: 'uppercase', marginBottom: '8px' }}>Dear Stranger</p>
         <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '28px', color: 'rgba(255,255,255,0.88)', letterSpacing: '0.06em', marginBottom: '8px' }}>Join the universe</p>

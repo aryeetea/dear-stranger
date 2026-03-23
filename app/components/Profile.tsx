@@ -2,21 +2,31 @@
 
 import { useEffect, useState, type CSSProperties } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { updateHub, signOut, deleteAccount, exportMyLetters, uploadAvatarToStorage } from '../lib/auth'
+import {
+  updateHub,
+  signOut,
+  deleteAccount,
+  saveMyHubRelicsToDb,
+  uploadAvatarToStorage,
+} from '../lib/auth'
 import { supabase } from '../../lib/supabase'
+import { useViewport } from '../lib/useViewport'
+import { DEFAULT_HUB_PALETTE, HUB_PALETTES, HUB_STYLES, type HubPaletteId, type HubStyle } from './UniverseMap'
+import { HUB_RELICS, saveHubRelics, type HubRelicId } from '../lib/worldbuilding'
 
 const MAX_REGEN_ATTEMPTS = 3
 
-type DeleteStep = 'idle' | 'exporting' | 'exported' | 'deleting' | 'deleted'
+type DeleteStep = 'idle' | 'confirming' | 'deleting' | 'deleted'
 
 export default function Profile({
-  hubName, bio, askAbout, avatarUrl: initialAvatarUrl, regenCount: initialRegenCount,
+  hubName, bio, askAbout, avatarUrl: initialAvatarUrl, hubStyle: initialHubStyle = 'portal', hubPaletteId: initialHubPaletteId = DEFAULT_HUB_PALETTE, hubRelics: initialHubRelics = [], storageScope = '', regenCount: initialRegenCount,
   onClose, onUpdateHub,
 }: {
-  hubName?: string; bio?: string; askAbout?: string; avatarUrl?: string; regenCount?: number
+  hubName?: string; bio?: string; askAbout?: string; avatarUrl?: string; hubStyle?: HubStyle; hubPaletteId?: HubPaletteId; hubRelics?: HubRelicId[]; storageScope?: string; regenCount?: number
   onClose?: () => void
-  onUpdateHub?: (updates: { hubName?: string; bio?: string; askAbout?: string; avatarUrl?: string }) => void
+  onUpdateHub?: (updates: { hubName?: string; bio?: string; askAbout?: string; avatarUrl?: string; hubStyle?: HubStyle; hubPaletteId?: HubPaletteId; hubRelics?: HubRelicId[] }) => void
 }) {
+  const { isMobile, isTablet, isNarrow } = useViewport()
   const [hubNameState, setHubNameState] = useState(hubName || 'Your Hub')
   const [bioState, setBioState] = useState(bio || 'A wanderer who arrived here quietly, carrying something unspoken.')
   const [askState, setAskState] = useState(askAbout || 'Silence, slow mornings, and letters that take their time.')
@@ -31,20 +41,38 @@ export default function Profile({
   const [editingHub, setEditingHub] = useState(false)
   const [editingBio, setEditingBio] = useState(false)
   const [editingAsk, setEditingAsk] = useState(false)
+  const [editingAppearance, setEditingAppearance] = useState(false)
+  const [editingRelics, setEditingRelics] = useState(false)
   const [saving, setSaving] = useState(false)
   const [hubDraft, setHubDraft] = useState(hubNameState)
   const [bioDraft, setBioDraft] = useState(bioState)
   const [askDraft, setAskDraft] = useState(askState)
+  const [hubStyleDraft, setHubStyleDraft] = useState<HubStyle>(initialHubStyle)
+  const [hubPaletteDraft, setHubPaletteDraft] = useState<HubPaletteId>(initialHubPaletteId)
+  const [hubRelicsState, setHubRelicsState] = useState<HubRelicId[]>(initialHubRelics)
+  const [hubRelicsDraft, setHubRelicsDraft] = useState<HubRelicId[]>(initialHubRelics)
   const [saveError, setSaveError] = useState('')
 
   const [leavingConfirm, setLeavingConfirm] = useState(false)
   const [deleteStep, setDeleteStep] = useState<DeleteStep>('idle')
-  const [exportedText, setExportedText] = useState('')
   const [deleteError, setDeleteError] = useState('')
 
   useEffect(() => {
     setCurrentAvatarUrl(initialAvatarUrl || '')
   }, [initialAvatarUrl])
+
+  useEffect(() => {
+    setHubStyleDraft(initialHubStyle)
+  }, [initialHubStyle])
+
+  useEffect(() => {
+    setHubPaletteDraft(initialHubPaletteId)
+  }, [initialHubPaletteId])
+
+  useEffect(() => {
+    setHubRelicsState(initialHubRelics)
+    setHubRelicsDraft(initialHubRelics)
+  }, [initialHubRelics])
 
   // ── load regen count from DB on mount ──
   useEffect(() => {
@@ -68,22 +96,8 @@ export default function Profile({
   }
 
   async function handleStartDelete() {
-    setDeleteStep('exporting'); setDeleteError('')
-    try {
-      const text = await exportMyLetters()
-      setExportedText(text); setDeleteStep('exported')
-    } catch {
-      setDeleteError('Export failed — you can still delete without exporting.')
-      setDeleteStep('exported')
-    }
-  }
-
-  function handleDownloadExport() {
-    const blob = new Blob([exportedText], { type: 'text/plain' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url; a.download = `dear-stranger-letters-${Date.now()}.txt`
-    a.click(); URL.revokeObjectURL(url)
+    setDeleteError('')
+    setDeleteStep('confirming')
   }
 
   async function handleConfirmDelete() {
@@ -93,7 +107,7 @@ export default function Profile({
       setDeleteStep('deleted')
       setTimeout(() => window.location.reload(), 2500)
     } else {
-      setDeleteError(result.error || 'Something went wrong.'); setDeleteStep('exported')
+      setDeleteError(result.error || 'Something went wrong.'); setDeleteStep('confirming')
     }
   }
 
@@ -172,23 +186,54 @@ export default function Profile({
     } catch (err) { console.error(err) } finally { setSaving(false) }
   }
 
+  async function saveAppearance() {
+    try {
+      setSaving(true); setSaveError('')
+      await updateHub({ hub_style: hubStyleDraft, backdrop_id: hubPaletteDraft })
+      onUpdateHub?.({ hubStyle: hubStyleDraft, hubPaletteId: hubPaletteDraft })
+      setEditingAppearance(false)
+    } catch (err) {
+      console.error(err)
+      setSaveError(err instanceof Error ? err.message : 'Could not save hub appearance.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function saveRelics() {
+    try {
+      setSaving(true)
+      setSaveError('')
+      saveHubRelics(storageScope, hubRelicsDraft)
+      void saveMyHubRelicsToDb(hubRelicsDraft)
+      setHubRelicsState(hubRelicsDraft)
+      onUpdateHub?.({ hubRelics: hubRelicsDraft })
+      setEditingRelics(false)
+    } catch (err) {
+      console.error(err)
+      setSaveError(err instanceof Error ? err.message : 'Could not save hub relics.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }}
       style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,5,0.97)', backdropFilter: 'blur(20px)', zIndex: 70, overflowY: 'auto' }}>
       <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', background: 'radial-gradient(ellipse 55% 40% at 15% 25%, rgba(40,15,80,0.3) 0%, transparent 65%), radial-gradient(ellipse 45% 55% at 85% 75%, rgba(10,20,70,0.25) 0%, transparent 65%)' }} />
 
       <motion.button initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} onClick={onClose}
-        style={{ position: 'fixed', top: '28px', right: '28px', background: 'none', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.55)', fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.3em', padding: '8px 16px', cursor: 'pointer', textTransform: 'uppercase', zIndex: 80 }}
+        style={{ position: 'fixed', top: isMobile ? 'max(16px, env(safe-area-inset-top))' : '28px', right: isMobile ? '16px' : '28px', background: 'none', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.55)', fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.3em', padding: '8px 16px', cursor: 'pointer', textTransform: 'uppercase', zIndex: 80 }}
         onMouseEnter={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.85)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.35)' }}
         onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.55)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)' }}>
         ← Universe
       </motion.button>
 
-      <div style={{ display: 'flex', minHeight: '100vh', position: 'relative', zIndex: 2 }}>
+      <div style={{ display: 'flex', flexDirection: isTablet ? 'column' : 'row', minHeight: '100svh', position: 'relative', zIndex: 2, paddingTop: isMobile ? '64px' : 0 }}>
         {/* LEFT — Avatar */}
         <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6 }}
-          style={{ width: '42%', flexShrink: 0, position: 'relative', overflow: 'hidden' }}>
-          <div style={{ position: 'absolute', inset: 0, zIndex: 3, pointerEvents: 'none', background: 'linear-gradient(to right, transparent 65%, rgba(0,0,5,0.97) 100%), linear-gradient(to bottom, rgba(0,0,5,0.3) 0%, transparent 15%, transparent 85%, rgba(0,0,5,0.6) 100%)' }} />
+          style={{ width: isTablet ? '100%' : '42%', minHeight: isTablet ? (isMobile ? '40vh' : '46vh') : undefined, flexShrink: 0, position: 'relative', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', inset: 0, zIndex: 3, pointerEvents: 'none', background: isTablet ? 'linear-gradient(to bottom, transparent 55%, rgba(0,0,5,0.92) 100%)' : 'linear-gradient(to right, transparent 65%, rgba(0,0,5,0.97) 100%), linear-gradient(to bottom, rgba(0,0,5,0.3) 0%, transparent 15%, transparent 85%, rgba(0,0,5,0.6) 100%)' }} />
           {regenLoading && (
             <div style={{ position: 'absolute', inset: 0, zIndex: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,5,0.7)', backdropFilter: 'blur(8px)' }}>
               <div style={{ textAlign: 'center' }}>
@@ -199,9 +244,9 @@ export default function Profile({
             </div>
           )}
           {currentAvatarUrl ? (
-            <img src={currentAvatarUrl} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center', display: 'block', minHeight: '100vh' }} />
+            <img src={currentAvatarUrl} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center', display: 'block', minHeight: isTablet ? (isMobile ? '40vh' : '46vh') : '100vh' }} />
           ) : (
-            <div style={{ width: '100%', height: '100%', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(180deg, rgba(20,25,60,0.8), rgba(5,8,20,0.9))' }}>
+            <div style={{ width: '100%', height: '100%', minHeight: isTablet ? (isMobile ? '40vh' : '46vh') : '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(180deg, rgba(20,25,60,0.8), rgba(5,8,20,0.9))' }}>
               <div style={{ width: '100px', height: '100px', borderRadius: '50%', border: '1px solid rgba(201,168,76,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '40px' }}>✦</div>
             </div>
           )}
@@ -209,7 +254,7 @@ export default function Profile({
 
         {/* RIGHT — Info */}
         <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6, delay: 0.1 }}
-          style={{ flex: 1, padding: 'clamp(60px,8vh,100px) clamp(28px,5vw,60px) 80px', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+          style={{ flex: 1, padding: isTablet ? 'clamp(28px, 5vw, 40px) clamp(20px, 5vw, 32px) max(28px, env(safe-area-inset-bottom))' : 'clamp(60px,8vh,100px) clamp(28px,5vw,60px) 80px', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
 
           <div style={{ marginBottom: '40px' }}>
             <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.5em', color: 'rgba(201,168,76,0.6)', textTransform: 'uppercase', marginBottom: '6px' }}>Soul Mirror</p>
@@ -224,7 +269,7 @@ export default function Profile({
                 </div>
               </div>
             ) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <div style={{ display: 'flex', alignItems: isNarrow ? 'flex-start' : 'center', flexDirection: isNarrow ? 'column' : 'row', gap: '16px' }}>
                 <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 'clamp(28px,4vw,48px)', letterSpacing: '0.06em', color: 'rgba(255,255,255,0.95)', lineHeight: 1.1 }}>{hubNameState}</p>
                 <button onClick={() => { setHubDraft(hubNameState); setEditingHub(true) }} style={editBtn}>Edit</button>
               </div>
@@ -263,7 +308,7 @@ export default function Profile({
             {showRegenInput && attemptsLeft > 0 && (
               <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} style={{ marginTop: '12px' }}>
                 <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(255,255,255,0.5)', marginBottom: '8px' }}>Tell the mirror what to change — or leave blank to reimagine freely.</p>
-                < div style={{ display: 'flex', gap: '8px' }}>
+                <div style={{ display: 'flex', gap: '8px', flexDirection: isNarrow ? 'column' : 'row' }}>
                   <input value={regenFeedback} onChange={e => setRegenFeedback(e.target.value)} placeholder="e.g. more realistic, darker mood, different outfit..."
                     style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(201,168,76,0.2)', borderRadius: '6px', color: 'rgba(255,255,255,0.85)', fontFamily: "'Cormorant Garamond', serif", fontSize: '14px', padding: '8px 12px', outline: 'none', caretColor: '#c9a84c' }}
                     onKeyDown={e => { if (e.key === 'Enter') void regenerateAvatar() }} />
@@ -319,6 +364,141 @@ export default function Profile({
             )}
           </div>
 
+          <div style={{ marginBottom: '36px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '10px' }}>
+              <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.4em', color: 'rgba(201,168,76,0.65)', textTransform: 'uppercase' }}>Hub Appearance</p>
+              {!editingAppearance && (
+                <button onClick={() => {
+                  setHubStyleDraft(initialHubStyle)
+                  setHubPaletteDraft(initialHubPaletteId)
+                  setEditingAppearance(true)
+                }} style={editBtn}>Edit</button>
+              )}
+            </div>
+            {editingAppearance ? (
+              <div>
+                <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(255,255,255,0.5)', marginBottom: '10px' }}>Choose a shape and a glow palette for how your place appears on the map.</p>
+                <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : 'repeat(auto-fill, minmax(170px, 1fr))', gap: '10px', marginBottom: '16px' }}>
+                  {HUB_STYLES.map((style) => {
+                    const isSelected = hubStyleDraft === style.id
+                    return (
+                      <button key={style.id} onClick={() => setHubStyleDraft(style.id)}
+                        style={{ textAlign: 'left', padding: '14px 12px', borderRadius: '10px', border: isSelected ? '1px solid rgba(230,199,110,0.6)' : '1px solid rgba(255,255,255,0.08)', background: isSelected ? 'rgba(230,199,110,0.1)' : 'rgba(255,255,255,0.03)', color: 'rgba(255,255,255,0.88)', cursor: 'pointer' }}>
+                        <p style={{ fontSize: '18px', marginBottom: '8px' }}>{style.icon}</p>
+                        <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.15em', textTransform: 'uppercase', color: isSelected ? '#e6c76e' : 'rgba(255,255,255,0.75)', marginBottom: '6px' }}>{style.label}</p>
+                        <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '13px', color: 'rgba(255,255,255,0.55)', lineHeight: 1.45 }}>{style.desc}</p>
+                      </button>
+                    )
+                  })}
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : 'repeat(auto-fill, minmax(150px, 1fr))', gap: '10px', marginBottom: '14px' }}>
+                  {HUB_PALETTES.map((palette) => {
+                    const isSelected = hubPaletteDraft === palette.id
+                    return (
+                      <button key={palette.id} onClick={() => setHubPaletteDraft(palette.id)}
+                        style={{ textAlign: 'left', padding: '12px', borderRadius: '10px', border: isSelected ? '1px solid rgba(230,199,110,0.6)' : '1px solid rgba(255,255,255,0.08)', background: isSelected ? 'rgba(230,199,110,0.1)' : 'rgba(255,255,255,0.03)', cursor: 'pointer' }}>
+                        <div style={{ width: '100%', height: '36px', borderRadius: '999px', background: palette.swatch, marginBottom: '10px', border: '1px solid rgba(255,255,255,0.12)' }} />
+                        <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.18em', textTransform: 'uppercase', color: isSelected ? '#e6c76e' : 'rgba(255,255,255,0.76)', marginBottom: '5px' }}>{palette.label}</p>
+                        <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '12px', color: 'rgba(255,255,255,0.52)', lineHeight: 1.45 }}>{palette.desc}</p>
+                      </button>
+                    )
+                  })}
+                </div>
+
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <button onClick={() => void saveAppearance()} style={saveBtn} disabled={saving}>Save</button>
+                  <button onClick={() => {
+                    setHubStyleDraft(initialHubStyle)
+                    setHubPaletteDraft(initialHubPaletteId)
+                    setEditingAppearance(false)
+                  }} style={cancelBtn}>Cancel</button>
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: 'clamp(15px,1.8vw,18px)', color: 'rgba(255,255,255,0.74)', lineHeight: 1.7 }}>
+                  {HUB_STYLES.find((style) => style.id === initialHubStyle)?.label || 'Portal Ring'} · {HUB_PALETTES.find((palette) => palette.id === initialHubPaletteId)?.label || 'Gilded'}
+                </p>
+                <div style={{ width: '84px', height: '18px', borderRadius: '999px', background: HUB_PALETTES.find((palette) => palette.id === initialHubPaletteId)?.swatch || HUB_PALETTES.find((palette) => palette.id === DEFAULT_HUB_PALETTE)!.swatch, border: '1px solid rgba(255,255,255,0.12)' }} />
+              </div>
+            )}
+          </div>
+
+          <div style={{ marginBottom: '36px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '10px' }}>
+              <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.4em', color: 'rgba(201,168,76,0.65)', textTransform: 'uppercase' }}>Hub Relics</p>
+              {!editingRelics && (
+                <button
+                  onClick={() => {
+                    setHubRelicsDraft(hubRelicsState)
+                    setEditingRelics(true)
+                  }}
+                  style={editBtn}
+                >
+                  Edit
+                </button>
+              )}
+            </div>
+            {editingRelics ? (
+              <div>
+                <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(255,255,255,0.5)', marginBottom: '10px' }}>
+                  Choose up to three objects that belong to your place in the universe.
+                </p>
+                <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px', marginBottom: '14px' }}>
+                  {HUB_RELICS.map((relic) => {
+                    const isSelected = hubRelicsDraft.includes(relic.id)
+                    return (
+                      <button
+                        key={relic.id}
+                        onClick={() => {
+                          setHubRelicsDraft((current) => {
+                            if (current.includes(relic.id)) {
+                              return current.filter((id) => id !== relic.id)
+                            }
+                            if (current.length >= 3) return current
+                            return [...current, relic.id]
+                          })
+                        }}
+                        style={{ textAlign: 'left', padding: '12px', borderRadius: '10px', border: isSelected ? '1px solid rgba(230,199,110,0.6)' : '1px solid rgba(255,255,255,0.08)', background: isSelected ? 'rgba(230,199,110,0.1)' : 'rgba(255,255,255,0.03)', color: 'rgba(255,255,255,0.88)', cursor: 'pointer' }}
+                      >
+                        <p style={{ fontSize: '18px', marginBottom: '8px' }}>{relic.icon}</p>
+                        <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.18em', textTransform: 'uppercase', color: isSelected ? '#e6c76e' : 'rgba(255,255,255,0.78)' }}>
+                          {relic.label}
+                        </p>
+                      </button>
+                    )
+                  })}
+                </div>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <button onClick={() => void saveRelics()} style={saveBtn} disabled={saving}>Save</button>
+                  <button onClick={() => {
+                    setHubRelicsDraft(hubRelicsState)
+                    setEditingRelics(false)
+                  }} style={cancelBtn}>Cancel</button>
+                </div>
+              </div>
+            ) : hubRelicsState.length > 0 ? (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {hubRelicsState.map((relicId) => {
+                  const relic = HUB_RELICS.find((item) => item.id === relicId)
+                  if (!relic) return null
+
+                  return (
+                    <div key={relic.id} style={{ padding: '8px 10px', borderRadius: '999px', border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.03)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '14px' }}>{relic.icon}</span>
+                      <span style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.18em', color: 'rgba(255,255,255,0.72)', textTransform: 'uppercase' }}>{relic.label}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '15px', color: 'rgba(255,255,255,0.56)', lineHeight: 1.7 }}>
+                No relics chosen yet.
+              </p>
+            )}
+          </div>
+
           <div style={{ height: '1px', background: 'linear-gradient(90deg, rgba(255,255,255,0.08), transparent)', marginBottom: '28px' }} />
 
           <div style={{ marginBottom: '32px' }}>
@@ -341,27 +521,14 @@ export default function Profile({
                     style={{ background: 'rgba(8,10,28,0.98)', border: '1px solid rgba(220,80,80,0.3)', borderRadius: '12px', width: 'min(520px,95vw)', padding: 'clamp(28px,5vw,44px)', position: 'relative' }}>
                     <div style={{ position: 'absolute', top: 0, left: '20%', right: '20%', height: '1px', background: 'linear-gradient(90deg, transparent, rgba(220,80,80,0.4), transparent)' }} />
 
-                    {deleteStep === 'exporting' && (
-                      <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                        <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
-                          style={{ width: '36px', height: '36px', borderRadius: '50%', border: '2px solid rgba(201,168,76,0.3)', borderTopColor: '#c9a84c', margin: '0 auto 16px' }} />
-                        <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.3em', color: 'rgba(201,168,76,0.7)', textTransform: 'uppercase' }}>Gathering your letters...</p>
-                      </div>
-                    )}
-
-                    {deleteStep === 'exported' && (
+                    {deleteStep === 'confirming' && (
                       <div>
                         <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.4em', color: 'rgba(220,80,80,0.8)', textTransform: 'uppercase', marginBottom: '12px' }}>Delete Your Hub</p>
-                        <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '18px', color: 'rgba(255,255,255,0.9)', lineHeight: 1.6, marginBottom: '14px' }}>Before you go — your letters are ready to download.</p>
-                        <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '14px', color: 'rgba(255,255,255,0.5)', lineHeight: 1.7, marginBottom: '22px' }}>This will permanently delete your hub, avatar, and all letters. This cannot be undone.</p>
+                        <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '18px', color: 'rgba(255,255,255,0.9)', lineHeight: 1.6, marginBottom: '14px' }}>Deleting your account removes your entire presence from the universe.</p>
+                        <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '14px', color: 'rgba(255,255,255,0.5)', lineHeight: 1.7, marginBottom: '14px' }}>This permanently deletes your hub, avatar, and every letter you have ever sent or received. Once deleted, those letters will not keep traveling, accumulating, or remain recoverable anywhere in the system.</p>
+                        <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '14px', color: 'rgba(220,120,120,0.78)', lineHeight: 1.7, marginBottom: '22px' }}>This action cannot be undone.</p>
                         {deleteError && <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(220,100,100,0.8)', marginBottom: '12px' }}>{deleteError}</p>}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                          <button onClick={handleDownloadExport}
-                            style={{ padding: '12px', background: 'rgba(201,168,76,0.08)', border: '1px solid rgba(201,168,76,0.4)', color: '#c9a84c', fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.25em', textTransform: 'uppercase', cursor: 'pointer', borderRadius: '4px' }}
-                            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(201,168,76,0.15)' }}
-                            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(201,168,76,0.08)' }}>
-                            ↓ Download My Letters
-                          </button>
                           <button onClick={() => void handleConfirmDelete()}
                             style={{ padding: '12px', background: 'rgba(220,60,60,0.1)', border: '1px solid rgba(220,60,60,0.4)', color: 'rgba(220,80,80,0.9)', fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.25em', textTransform: 'uppercase', cursor: 'pointer', borderRadius: '4px' }}
                             onMouseEnter={e => { e.currentTarget.style.background = 'rgba(220,60,60,0.2)' }}
@@ -439,8 +606,9 @@ const cancelBtn: CSSProperties = { fontFamily: "'Cinzel', serif", fontSize: '8px
 
 function SettingRow({ label, desc, enabled: init }: { label: string; desc: string; enabled: boolean }) {
   const [enabled, setEnabled] = useState(init)
+  const { isNarrow } = useViewport()
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '2px', gap: '16px' }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isNarrow ? 'flex-start' : 'center', flexDirection: isNarrow ? 'column' : 'row', padding: '12px 16px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '2px', gap: '16px' }}>
       <div>
         <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.15em', color: 'rgba(255,255,255,0.78)', textTransform: 'uppercase', marginBottom: '3px' }}>{label}</p>
         <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(255,255,255,0.45)' }}>{desc}</p>

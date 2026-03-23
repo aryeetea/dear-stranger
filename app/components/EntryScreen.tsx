@@ -35,6 +35,8 @@ export default function EntryScreen({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 50,
+        padding: 'clamp(24px, 6vw, 40px)',
+        overflowY: 'auto',
       }}
     >
       <StarField />
@@ -47,7 +49,7 @@ export default function EntryScreen({
           height: '1px',
           background: 'linear-gradient(90deg, transparent, #e6c76e, transparent)',
           boxShadow: '0 0 14px rgba(230,199,110,0.45)',
-          marginBottom: '48px',
+          marginBottom: 'clamp(28px, 6vh, 48px)',
         }}
       />
 
@@ -83,6 +85,7 @@ export default function EntryScreen({
           letterSpacing: '0.12em',
           marginTop: '14px',
           textShadow: '0 0 6px rgba(0,0,0,0.45)',
+          textAlign: 'center',
         }}
       >
         a universe of slow letters
@@ -99,7 +102,8 @@ export default function EntryScreen({
               flexDirection: 'column',
               alignItems: 'center',
               gap: '14px',
-              marginTop: '64px',
+              marginTop: 'clamp(32px, 8vh, 64px)',
+              width: 'min(560px, 100%)',
             }}
           >
             <button
@@ -131,7 +135,7 @@ export default function EntryScreen({
                 backdropFilter: 'blur(8px)',
                 transition: 'all 0.3s ease',
                 textShadow: '0 0 8px rgba(230,199,110,0.18)',
-                minWidth: 'min(560px, 82vw)',
+                width: 'min(560px, 100%)',
               }}
             >
               Enter the Universe
@@ -163,7 +167,7 @@ export default function EntryScreen({
                 cursor: 'pointer',
                 transition: 'all 0.3s ease',
                 textShadow: '0 0 6px rgba(230,199,110,0.12)',
-                minWidth: 'min(455px, 74vw)',
+                width: 'min(455px, 100%)',
               }}
             >
               Create an Account
@@ -206,8 +210,13 @@ function StarField() {
     const canvas = document.getElementById('entry-stars') as HTMLCanvasElement
     if (!canvas) return
     const ctx = canvas.getContext('2d')!
-    canvas.width = window.innerWidth
-    canvas.height = window.innerHeight
+
+    const resize = () => {
+      canvas.width = window.innerWidth
+      canvas.height = window.innerHeight
+    }
+
+    resize()
 
     const stars = Array.from({ length: 200 }, () => ({
       x: Math.random() * canvas.width,
@@ -232,7 +241,11 @@ function StarField() {
       frame = requestAnimationFrame(draw)
     }
     draw()
-    return () => cancelAnimationFrame(frame)
+    window.addEventListener('resize', resize)
+    return () => {
+      cancelAnimationFrame(frame)
+      window.removeEventListener('resize', resize)
+    }
   }, [])
 
   return (

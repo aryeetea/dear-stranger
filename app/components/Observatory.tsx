@@ -2,7 +2,27 @@
 
 import { useEffect, useState, type CSSProperties } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { getMyLetters } from '../lib/auth'
+import {
+  getMyLetters,
+  getMyLetterShelfAssignmentsFromDb,
+  getSession,
+  saveMyLetterShelfAssignmentToDb,
+} from '../lib/auth'
+import { useViewport } from '../lib/useViewport'
+import { LETTER_FONT_FAMILIES, getLetterPreview, getLetterPageCount, splitLetterPages } from '../lib/letters'
+import {
+  DEFAULT_LETTER_SHELVES,
+  LETTER_ENVELOPE_LININGS,
+  LETTER_RITUALS,
+  LETTER_WAX_SEALS,
+  loadLetterShelfAssignments,
+  parseLetterSubject,
+  saveLetterShelfAssignments,
+  type LetterEnvelopeLiningId,
+  type LetterRitualId,
+  type LetterShelfId,
+  type LetterWaxSealId,
+} from '../lib/worldbuilding'
 
 // ── Static stars — no Math.random in render ──
 const OBS_STARS = Array.from({ length: 30 }, (_, i) => ({
@@ -16,14 +36,20 @@ interface Letter {
   id: string
   from?: string
   to?: string
+  subject: string
   preview: string
   body: string
   paperId: string
+  fontId?: string
+  ritualId?: LetterRitualId
+  waxSealId?: LetterWaxSealId
+  liningId?: LetterEnvelopeLiningId
   sentAt: string
   arrivedAt?: string
   status: 'transit' | 'arrived' | 'archive'
   travelProgress?: number
   direction: 'sent' | 'received'
+  pageCount?: number
 }
 
 const PAPER_COLORS: Record<string, { accent: string; bg: string }> = {
@@ -35,6 +61,8 @@ const PAPER_COLORS: Record<string, { accent: string; bg: string }> = {
   postage:   { accent: '#a080c8', bg: 'rgba(140,100,180,0.1)' },
   sakura:    { accent: '#f0a0c0', bg: 'rgba(240,150,190,0.1)' },
   aged:      { accent: '#b89050', bg: 'rgba(180,130,60,0.1)' },
+  moonveil:  { accent: '#90a8dc', bg: 'rgba(110,130,210,0.1)' },
+  marbled:   { accent: '#6aa6a8', bg: 'rgba(80,150,150,0.1)' },
 }
 
 function clamp(value: number, min: number, max: number) {
@@ -48,6 +76,7 @@ export default function Observatory({
   onClose?: () => void
   onWriteLetter?: (name: string) => void
 }) {
+  const { isMobile, isNarrow } = useViewport()
   const [activeTab, setActiveTab] = useState<'transit' | 'arrived' | 'archive'>('arrived')
   const [openLetter, setOpenLetter] = useState<Letter | null>(null)
   const [letters, setLetters] = useState<{
@@ -56,6 +85,29 @@ export default function Observatory({
     archive: Letter[]
   }>({ transit: [], arrived: [], archive: [] })
   const [loading, setLoading] = useState(true)
+  const [storageScope, setStorageScope] = useState('')
+  const [shelfAssignments, setShelfAssignments] = useState<Partial<Record<string, LetterShelfId>>>({})
+  const [activeShelf, setActiveShelf] = useState<'all' | LetterShelfId>('all')
+
+  useEffect(() => {
+    async function loadStorageScope() {
+      const session = await getSession()
+      if (!session?.user?.id) return
+      const scope = `hub:${session.user.id}`
+      setStorageScope(scope)
+
+      const syncedAssignments = await getMyLetterShelfAssignmentsFromDb()
+      if (syncedAssignments) {
+        setShelfAssignments(syncedAssignments)
+        saveLetterShelfAssignments(scope, syncedAssignments)
+        return
+      }
+
+      setShelfAssignments(loadLetterShelfAssignments(scope))
+    }
+
+    void loadStorageScope()
+  }, [])
 
   useEffect(() => {
     async function loadLetters() {
@@ -64,6 +116,7 @@ export default function Observatory({
         const data = await getMyLetters()
 
         const mapSentLetter = (l: any): Letter => {
+          const parsedSubject = parseLetterSubject(l.subject || 'A letter for you')
           const createdMs = new Date(l.created_at).getTime()
           const arrivesMs = l.arrives_at ? new Date(l.arrives_at).getTime() : createdMs
           const nowMs = Date.now()
@@ -73,29 +126,45 @@ export default function Observatory({
             id: l.id,
             from: l.sender?.hub_name || 'You',
             to: l.recipient?.hub_name || (l.is_universe_letter ? 'The Universe' : 'Unknown Recipient'),
-            preview: l.body ? l.body.length > 90 ? `${l.body.slice(0, 90)}...` : l.body : '',
+            subject: parsedSubject.subject || 'A letter for you',
+            preview: getLetterPreview(l.body, 90),
             body: l.body || '',
             paperId: l.paper_id || 'ornate',
+            fontId: l.font_id || 'cormorant',
+            ritualId: parsedSubject.ritualId,
+            waxSealId: parsedSubject.waxSealId,
+            liningId: parsedSubject.liningId,
             sentAt: l.created_at,
             arrivedAt: l.arrives_at || undefined,
             status: l.status,
             direction: 'sent',
             travelProgress: l.status === 'transit' ? clamp(Math.floor(rawProgress), 0, 100) : undefined,
+            pageCount: getLetterPageCount(l.body),
           }
         }
 
-        const mapReceivedLetter = (l: any): Letter => ({
-          id: l.id,
-          from: l.sender?.hub_name || 'Unknown Sender',
-          to: l.recipient?.hub_name || 'You',
-          preview: l.body ? l.body.length > 90 ? `${l.body.slice(0, 90)}...` : l.body : '',
-          body: l.body || '',
-          paperId: l.paper_id || 'ornate',
-          sentAt: l.created_at,
-          arrivedAt: l.arrives_at || undefined,
-          status: l.status,
-          direction: 'received',
-        })
+        const mapReceivedLetter = (l: any): Letter => {
+          const parsedSubject = parseLetterSubject(l.subject || 'A letter for you')
+
+          return {
+            id: l.id,
+            from: l.sender?.hub_name || 'Unknown Sender',
+            to: l.recipient?.hub_name || 'You',
+            subject: parsedSubject.subject || 'A letter for you',
+            preview: getLetterPreview(l.body, 90),
+            body: l.body || '',
+            paperId: l.paper_id || 'ornate',
+            fontId: l.font_id || 'cormorant',
+            ritualId: parsedSubject.ritualId,
+            waxSealId: parsedSubject.waxSealId,
+            liningId: parsedSubject.liningId,
+            sentAt: l.created_at,
+            arrivedAt: l.arrives_at || undefined,
+            status: l.status,
+            direction: 'received',
+            pageCount: getLetterPageCount(l.body),
+          }
+        }
 
         setLetters({
           transit: (data.transit || []).map(mapSentLetter),
@@ -129,6 +198,36 @@ export default function Observatory({
   const currentLetters =
     activeTab === 'transit' ? transit : activeTab === 'arrived' ? arrived : archive
 
+  const filteredLetters =
+    activeTab === 'transit' || activeShelf === 'all'
+      ? currentLetters
+      : currentLetters.filter((letter) => shelfAssignments[letter.id] === activeShelf)
+
+  const shelfOptions: Array<{ id: 'all' | LetterShelfId; label: string }> = [
+    { id: 'all', label: 'All Letters' },
+    ...DEFAULT_LETTER_SHELVES,
+  ]
+
+  async function assignShelf(letterId: string, shelfId?: LetterShelfId) {
+    setShelfAssignments((current) => {
+      const next = { ...current }
+
+      if (shelfId) {
+        next[letterId] = shelfId
+      } else {
+        delete next[letterId]
+      }
+
+      if (storageScope) {
+        saveLetterShelfAssignments(storageScope, next)
+      }
+
+      return next
+    })
+
+    void saveMyLetterShelfAssignmentToDb(letterId, shelfId)
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -156,7 +255,7 @@ export default function Observatory({
       <motion.button
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
         onClick={onClose}
-        style={{ position: 'fixed', top: '28px', right: '28px', background: 'none', border: '1px solid rgba(255,255,255,0.22)', color: 'rgba(255,255,255,0.82)', fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.3em', padding: '8px 16px', cursor: 'pointer', textTransform: 'uppercase', zIndex: 80 }}
+        style={{ position: 'fixed', top: isMobile ? 'max(16px, env(safe-area-inset-top))' : '28px', right: isMobile ? '16px' : '28px', background: 'none', border: '1px solid rgba(255,255,255,0.22)', color: 'rgba(255,255,255,0.82)', fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.3em', padding: '8px 16px', cursor: 'pointer', textTransform: 'uppercase', zIndex: 80 }}
         onMouseEnter={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.98)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.4)'; e.currentTarget.style.background = 'rgba(255,255,255,0.04)' }}
         onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.82)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.22)'; e.currentTarget.style.background = 'none' }}
       >
@@ -175,10 +274,10 @@ export default function Observatory({
         </motion.div>
 
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}
-          style={{ display: 'flex', background: 'rgba(10,12,30,0.68)', border: '1px solid rgba(230,199,110,0.16)', borderRadius: '4px', overflow: 'hidden', marginBottom: '32px' }}>
+          style={{ display: 'flex', flexDirection: isNarrow ? 'column' : 'row', background: 'rgba(10,12,30,0.68)', border: '1px solid rgba(230,199,110,0.16)', borderRadius: '4px', overflow: 'hidden', marginBottom: '32px' }}>
           {tabs.map((tab, i) => (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-              style={{ flex: 1, padding: '14px 8px', background: activeTab === tab.id ? 'rgba(230,199,110,0.1)' : 'transparent', border: 'none', borderRight: i < 2 ? '1px solid rgba(255,255,255,0.08)' : 'none', cursor: 'pointer', transition: 'background 0.3s', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+              style={{ flex: 1, padding: '14px 8px', background: activeTab === tab.id ? 'rgba(230,199,110,0.1)' : 'transparent', border: 'none', borderRight: !isNarrow && i < 2 ? '1px solid rgba(255,255,255,0.08)' : 'none', borderBottom: isNarrow && i < 2 ? '1px solid rgba(255,255,255,0.08)' : 'none', cursor: 'pointer', transition: 'background 0.3s', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
               <span style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.25em', textTransform: 'uppercase', color: activeTab === tab.id ? '#e6c76e' : 'rgba(255,255,255,0.72)', transition: 'color 0.3s' }}>
                 {tab.label}
               </span>
@@ -189,24 +288,63 @@ export default function Observatory({
           ))}
         </motion.div>
 
+        {activeTab !== 'transit' && (
+          <div style={{ marginBottom: '24px' }}>
+            <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.3em', color: 'rgba(230,199,110,0.72)', textTransform: 'uppercase', marginBottom: '10px' }}>
+              Private Shelves
+            </p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              {shelfOptions.map((shelf) => {
+                const isSelected = activeShelf === shelf.id
+                const count =
+                  shelf.id === 'all'
+                    ? currentLetters.length
+                    : currentLetters.filter((letter) => shelfAssignments[letter.id] === shelf.id).length
+
+                return (
+                  <button
+                    key={shelf.id}
+                    onClick={() => setActiveShelf(shelf.id)}
+                    style={{
+                      padding: '8px 12px',
+                      borderRadius: '999px',
+                      border: isSelected ? '1px solid rgba(230,199,110,0.48)' : '1px solid rgba(255,255,255,0.1)',
+                      background: isSelected ? 'rgba(230,199,110,0.1)' : 'rgba(255,255,255,0.03)',
+                      color: isSelected ? '#e6c76e' : 'rgba(255,255,255,0.72)',
+                      fontFamily: "'Cinzel', serif",
+                      fontSize: '8px',
+                      letterSpacing: '0.18em',
+                      textTransform: 'uppercase',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {shelf.label} · {count}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
         <AnimatePresence mode="wait">
           <motion.div key={activeTab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.3 }}>
             {loading ? (
               <div style={{ textAlign: 'center', padding: '60px 0' }}>
                 <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '16px', color: 'rgba(255,255,255,0.75)' }}>loading letters...</p>
               </div>
-            ) : currentLetters.length === 0 ? (
+            ) : filteredLetters.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '60px 0' }}>
                 <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '16px', color: 'rgba(255,255,255,0.75)' }}>
                   {activeTab === 'transit' && 'No letters traveling at the moment.'}
-                  {activeTab === 'arrived' && 'No letters have arrived yet.'}
-                  {activeTab === 'archive' && 'Your archive is empty.'}
+                  {activeTab === 'arrived' && (activeShelf === 'all' ? 'No letters have arrived yet.' : 'Nothing on this shelf yet.')}
+                  {activeTab === 'archive' && (activeShelf === 'all' ? 'Your archive is empty.' : 'Nothing on this shelf yet.')}
                 </p>
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {currentLetters.map((letter, i) => (
+                {filteredLetters.map((letter, i) => (
                   <LetterEntry key={letter.id} letter={letter} index={i}
+                    shelfId={shelfAssignments[letter.id]}
                     onClick={() => letter.status !== 'transit' && setOpenLetter(letter)} />
                 ))}
               </div>
@@ -218,6 +356,8 @@ export default function Observatory({
       <AnimatePresence>
         {openLetter && (
           <LetterModal letter={openLetter} onClose={() => setOpenLetter(null)}
+            shelfId={shelfAssignments[openLetter.id]}
+            onAssignShelf={(shelfId) => assignShelf(openLetter.id, shelfId)}
             onReply={name => { setOpenLetter(null); onWriteLetter?.(name) }} />
         )}
       </AnimatePresence>
@@ -225,9 +365,14 @@ export default function Observatory({
   )
 }
 
-function LetterEntry({ letter, index, onClick }: { letter: Letter; index: number; onClick: () => void }) {
+function LetterEntry({ letter, index, shelfId, onClick }: { letter: Letter; index: number; shelfId?: LetterShelfId; onClick: () => void }) {
   const colors = PAPER_COLORS[letter.paperId] || PAPER_COLORS.ornate
   const isTransit = letter.status === 'transit'
+  const { isNarrow } = useViewport()
+  const ritual = letter.ritualId ? LETTER_RITUALS.find((item) => item.id === letter.ritualId) : null
+  const shelf = shelfId ? DEFAULT_LETTER_SHELVES.find((item) => item.id === shelfId) : null
+  const waxSeal = letter.waxSealId ? LETTER_WAX_SEALS.find((item) => item.id === letter.waxSealId) : null
+  const lining = letter.liningId ? LETTER_ENVELOPE_LININGS.find((item) => item.id === letter.liningId) : null
 
   return (
     <motion.div
@@ -241,7 +386,7 @@ function LetterEntry({ letter, index, onClick }: { letter: Letter; index: number
       </div>
 
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: '5px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexDirection: isNarrow ? 'column' : 'row', gap: '12px', marginBottom: '5px' }}>
           <p style={{ fontFamily: "'Cinzel', serif", fontSize: '11px', letterSpacing: '0.18em', color: colors.accent, textTransform: 'uppercase' }}>
             {letter.direction === 'received' ? `From · ${letter.from}` : `To · ${letter.to}`}
           </p>
@@ -253,6 +398,38 @@ function LetterEntry({ letter, index, onClick }: { letter: Letter; index: number
         <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(255,255,255,0.84)', lineHeight: 1.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {letter.preview}
         </p>
+
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '10px' }}>
+          <span style={{ fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.16em', color: colors.accent, textTransform: 'uppercase', padding: '4px 7px', borderRadius: '999px', border: `1px solid ${colors.accent}30`, background: 'rgba(255,255,255,0.03)' }}>
+            {letter.subject}
+          </span>
+          {ritual && (
+            <span style={{ fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.16em', color: 'rgba(230,199,110,0.82)', textTransform: 'uppercase', padding: '4px 7px', borderRadius: '999px', border: '1px solid rgba(230,199,110,0.22)', background: 'rgba(230,199,110,0.05)' }}>
+              {ritual.label}
+            </span>
+          )}
+          {waxSeal && !isTransit && (
+            <span style={{ fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.16em', color: waxSeal.highlight, textTransform: 'uppercase', padding: '4px 7px', borderRadius: '999px', border: `1px solid ${waxSeal.highlight}33`, background: 'rgba(255,255,255,0.03)' }}>
+              Wax · {waxSeal.label}
+            </span>
+          )}
+          {lining && !isTransit && (
+            <span style={{ fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.16em', color: 'rgba(255,255,255,0.66)', textTransform: 'uppercase', padding: '4px 7px', borderRadius: '999px', border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.03)' }}>
+              Lining · {lining.label}
+            </span>
+          )}
+          {shelf && !isTransit && (
+            <span style={{ fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.16em', color: 'rgba(255,255,255,0.62)', textTransform: 'uppercase', padding: '4px 7px', borderRadius: '999px', border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.03)' }}>
+              Shelf · {shelf.label}
+            </span>
+          )}
+        </div>
+
+        {(letter.pageCount || 1) > 1 && (
+          <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.18em', color: 'rgba(255,255,255,0.42)', textTransform: 'uppercase', marginTop: '8px' }}>
+            {letter.pageCount} pages
+          </p>
+        )}
 
         {isTransit && (
           <div style={{ marginTop: '12px' }}>
@@ -272,8 +449,26 @@ function LetterEntry({ letter, index, onClick }: { letter: Letter; index: number
   )
 }
 
-function LetterModal({ letter, onClose, onReply }: { letter: Letter; onClose: () => void; onReply?: (name: string) => void }) {
+function LetterModal({
+  letter,
+  shelfId,
+  onClose,
+  onAssignShelf,
+  onReply,
+}: {
+  letter: Letter
+  shelfId?: LetterShelfId
+  onClose: () => void
+  onAssignShelf?: (shelfId?: LetterShelfId) => void
+  onReply?: (name: string) => void
+}) {
   const colors = PAPER_COLORS[letter.paperId] || PAPER_COLORS.ornate
+  const { isMobile } = useViewport()
+  const pages = splitLetterPages(letter.body)
+  const letterFontFamily = LETTER_FONT_FAMILIES[letter.fontId || 'cormorant'] || LETTER_FONT_FAMILIES.cormorant
+  const ritual = letter.ritualId ? LETTER_RITUALS.find((item) => item.id === letter.ritualId) : null
+  const waxSeal = letter.waxSealId ? LETTER_WAX_SEALS.find((item) => item.id === letter.waxSealId) : null
+  const lining = letter.liningId ? LETTER_ENVELOPE_LININGS.find((item) => item.id === letter.liningId) : null
 
   const paperStyles: Record<string, CSSProperties> = {
     ornate:    { background: 'linear-gradient(160deg, #fdf6e0, #f8efcc)', color: '#140c04' },
@@ -284,6 +479,8 @@ function LetterModal({ letter, onClose, onReply }: { letter: Letter; onClose: ()
     postage:   { background: 'linear-gradient(160deg, #f5f0ec, #ede8e0)', color: '#100c18' },
     sakura:    { background: 'linear-gradient(160deg, #fff8fc, #fce8f0)', color: '#18080e' },
     aged:      { background: 'linear-gradient(155deg, #c8a870, #b89050)', color: '#160c04' },
+    moonveil:  { background: 'linear-gradient(160deg, #f4f7ff, #e5ebff)', color: '#0d1330' },
+    marbled:   { background: 'linear-gradient(160deg, #eef8f8, #ddeeed)', color: '#102424' },
   }
 
   const ps = paperStyles[letter.paperId] || paperStyles.ornate
@@ -297,7 +494,7 @@ function LetterModal({ letter, onClose, onReply }: { letter: Letter; onClose: ()
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 8 }} transition={{ duration: 0.35 }}
         onClick={e => e.stopPropagation()}
-        style={{ ...ps, width: 'min(600px, 92vw)', maxHeight: '80vh', overflowY: 'auto', borderRadius: '3px', padding: 'clamp(32px,5vw,56px) clamp(28px,6vw,60px)', boxShadow: `0 16px 60px rgba(0,0,0,0.9), 0 0 40px ${colors.accent}20`, position: 'relative' }}
+        style={{ ...ps, width: 'min(600px, 92vw)', maxHeight: isMobile ? 'calc(100svh - 32px)' : '80vh', overflowY: 'auto', borderRadius: '3px', padding: 'clamp(32px,5vw,56px) clamp(28px,6vw,60px)', boxShadow: `0 16px 60px rgba(0,0,0,0.9), 0 0 40px ${colors.accent}20`, position: 'relative' }}
       >
         <div style={{ position: 'absolute', top: 0, left: '15%', right: '15%', height: '1px', background: `linear-gradient(90deg, transparent, ${colors.accent}60, transparent)` }} />
 
@@ -305,22 +502,81 @@ function LetterModal({ letter, onClose, onReply }: { letter: Letter; onClose: ()
           {letter.direction === 'received' ? `From · ${letter.from}` : `To · ${letter.to}`}
         </p>
 
+        <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '22px', letterSpacing: '0.04em', marginBottom: '12px', opacity: 0.92 }}>
+          {letter.subject}
+        </p>
+
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
+          {ritual && (
+            <span style={{ fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.18em', color: colors.accent, textTransform: 'uppercase', padding: '5px 8px', borderRadius: '999px', border: `1px solid ${colors.accent}38`, background: 'rgba(255,255,255,0.04)' }}>
+              Passage · {ritual.label}
+            </span>
+          )}
+          {waxSeal && (
+            <span style={{ fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.18em', color: waxSeal.highlight, textTransform: 'uppercase', padding: '5px 8px', borderRadius: '999px', border: `1px solid ${waxSeal.highlight}38`, background: 'rgba(255,255,255,0.04)' }}>
+              Wax · {waxSeal.label}
+            </span>
+          )}
+          {lining && (
+            <span style={{ fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.18em', color: 'rgba(255,255,255,0.72)', textTransform: 'uppercase', padding: '5px 8px', borderRadius: '999px', border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.03)' }}>
+              Lining · {lining.label}
+            </span>
+          )}
+          {shelfId && (
+            <span style={{ fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.18em', color: 'rgba(255,255,255,0.66)', textTransform: 'uppercase', padding: '5px 8px', borderRadius: '999px', border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.03)' }}>
+              Shelf · {DEFAULT_LETTER_SHELVES.find((item) => item.id === shelfId)?.label || shelfId}
+            </span>
+          )}
+        </div>
+
         <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '11px', opacity: 0.76, marginBottom: '20px' }}>
           {new Date(letter.arrivedAt || letter.sentAt).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
         </p>
 
-        <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '17px', fontStyle: 'italic', opacity: 0.9, marginBottom: '16px', lineHeight: 1.8 }}>
+        <p style={{ fontFamily: letterFontFamily, fontSize: '17px', fontStyle: 'italic', opacity: 0.9, marginBottom: '16px', lineHeight: 1.8 }}>
           {letter.direction === 'received' ? 'Dear Stranger,' : `Dear ${letter.to},`}
         </p>
 
-        <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 'clamp(15px,2vw,18px)', lineHeight: 2, letterSpacing: '0.02em', opacity: 0.98 }}>
-          {letter.body}
-        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {pages.map((page, index) => (
+            <div key={index}>
+              {pages.length > 1 && (
+                <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.25em', color: colors.accent, textTransform: 'uppercase', opacity: 0.7, marginBottom: '10px' }}>
+                  Page {index + 1}
+                </p>
+              )}
+              <p style={{ fontFamily: letterFontFamily, fontSize: 'clamp(15px,2vw,18px)', lineHeight: 2, letterSpacing: '0.02em', opacity: 0.98, whiteSpace: 'pre-wrap' }}>
+                {page}
+              </p>
+            </div>
+          ))}
+        </div>
 
-        <p style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', fontSize: '15px', opacity: 0.86, marginTop: '24px', lineHeight: 1.9 }}>
+        <p style={{ fontFamily: letterFontFamily, fontStyle: 'italic', fontSize: '15px', opacity: 0.86, marginTop: '24px', lineHeight: 1.9 }}>
           With presence,<br />
           <span style={{ color: colors.accent, opacity: 0.95 }}>A Stranger</span>
         </p>
+
+        <div style={{ marginTop: '28px', paddingTop: '18px', borderTop: `1px solid ${colors.accent}24` }}>
+          <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.22em', color: colors.accent, textTransform: 'uppercase', marginBottom: '10px' }}>
+            Private Shelf
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+            <button onClick={() => onAssignShelf?.()}
+              style={{ fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.18em', color: !shelfId ? colors.accent : 'rgba(255,255,255,0.6)', padding: '7px 10px', border: `1px solid ${!shelfId ? `${colors.accent}70` : 'rgba(255,255,255,0.12)'}`, borderRadius: '999px', background: !shelfId ? `${colors.accent}12` : 'transparent', cursor: 'pointer', textTransform: 'uppercase' }}>
+              Unshelved
+            </button>
+            {DEFAULT_LETTER_SHELVES.map((shelf) => {
+              const isSelected = shelfId === shelf.id
+              return (
+                <button key={shelf.id} onClick={() => onAssignShelf?.(shelf.id)}
+                  style={{ fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.18em', color: isSelected ? colors.accent : 'rgba(255,255,255,0.6)', padding: '7px 10px', border: `1px solid ${isSelected ? `${colors.accent}70` : 'rgba(255,255,255,0.12)'}`, borderRadius: '999px', background: isSelected ? `${colors.accent}12` : 'transparent', cursor: 'pointer', textTransform: 'uppercase' }}>
+                  {shelf.label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
 
         {letter.direction === 'received' && (
           <div style={{ marginTop: '32px', paddingTop: '20px', borderTop: `1px solid ${colors.accent}38` }}>

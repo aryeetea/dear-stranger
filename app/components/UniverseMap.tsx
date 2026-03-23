@@ -2,9 +2,46 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { getAllHubs, getUniverseLetters } from '../lib/auth'
+import {
+  addConstellationHubToDb,
+  getAllHubs,
+  getMyConstellationHubsFromDb,
+  getMyLetters,
+  getUniverseLetters,
+  removeConstellationHubFromDb,
+} from '../lib/auth'
+import { useViewport } from '../lib/useViewport'
+import {
+  HUB_RELICS,
+  UNIVERSE_PROMPTS,
+  getSeasonalUniverseMood,
+  loadConstellationHubs,
+  saveConstellationHubs,
+  type ConstellationHub,
+  type HubRelicId,
+} from '../lib/worldbuilding'
 // ── HUB STYLE TYPES ──
-export type HubStyle = 'portal' | 'lantern' | 'ruin' | 'hourglass' | 'telescope' | 'greenhouse'
+export type HubStyle =
+  | 'portal'
+  | 'lantern'
+  | 'ruin'
+  | 'hourglass'
+  | 'telescope'
+  | 'greenhouse'
+  | 'cathedral'
+  | 'lotus'
+
+export type HubPaletteId =
+  | 'gilded'
+  | 'rose'
+  | 'tide'
+  | 'violet'
+  | 'ember'
+  | 'jade'
+  | 'pearl'
+  | 'midnight'
+
+export const DEFAULT_HUB_PALETTE: HubPaletteId = 'gilded'
 
 export const HUB_STYLES: { id: HubStyle; label: string; desc: string; icon: string }[] = [
   { id: 'portal', label: 'Portal Ring', desc: 'A spinning cosmic gateway', icon: '◎' },
@@ -13,9 +50,11 @@ export const HUB_STYLES: { id: HubStyle; label: string; desc: string; icon: stri
   { id: 'hourglass', label: 'Prism Bloom', desc: 'A faceted crystal flower suspended in light', icon: '◇' },
   { id: 'telescope', label: 'Starwatch Shrine', desc: 'A celestial shrine with a lens of focused light', icon: '✧' },
   { id: 'greenhouse', label: 'Greenhouse Bubble', desc: 'A glass dome brimming with quiet life', icon: '✦' },
+  { id: 'cathedral', label: 'Stained Cathedral', desc: 'A luminous windowed sanctuary floating in the dark', icon: '⟡' },
+  { id: 'lotus', label: 'Lotus Sanctuary', desc: 'A blooming cosmic flower with soft radiant petals', icon: '❀' },
 ]
 
-const PORTAL_COLORS = [
+const LEGACY_PORTAL_COLORS = [
   { ring: '#8b6fc0', glow: '130,80,200', inner: '#4a2a7a' },
   { ring: '#6faa88', glow: '80,160,120', inner: '#2a5a40' },
   { ring: '#aa6f6f', glow: '180,80,80', inner: '#6a2a2a' },
@@ -26,15 +65,84 @@ const PORTAL_COLORS = [
   { ring: '#aa8f6f', glow: '180,140,80', inner: '#6a5a30' },
 ]
 
-const MY_PORTAL = { ring: '#c9a84c', glow: '201,168,76', inner: '#6a4a10' }
+export const HUB_PALETTES: {
+  id: HubPaletteId
+  label: string
+  desc: string
+  swatch: string
+  colors: { ring: string; glow: string; inner: string }
+}[] = [
+  {
+    id: 'gilded',
+    label: 'Gilded',
+    desc: 'Warm gold and amber light',
+    swatch: 'linear-gradient(135deg, #f2d37e, #8f6320)',
+    colors: { ring: '#dcb45a', glow: '220,180,90', inner: '#6e4510' },
+  },
+  {
+    id: 'rose',
+    label: 'Roseglass',
+    desc: 'Dusty blush and deep plum',
+    swatch: 'linear-gradient(135deg, #f0a7c0, #7a315a)',
+    colors: { ring: '#d97ea8', glow: '215,105,150', inner: '#541a38' },
+  },
+  {
+    id: 'tide',
+    label: 'Tide',
+    desc: 'Sea-glass teal and moonlit blue',
+    swatch: 'linear-gradient(135deg, #86dfd5, #27507a)',
+    colors: { ring: '#69c9c2', glow: '90,200,190', inner: '#173d58' },
+  },
+  {
+    id: 'violet',
+    label: 'Violet',
+    desc: 'Lavender haze and royal dusk',
+    swatch: 'linear-gradient(135deg, #c7a7ff, #4e2b8b)',
+    colors: { ring: '#b08df3', glow: '165,120,240', inner: '#351d63' },
+  },
+  {
+    id: 'ember',
+    label: 'Ember',
+    desc: 'Crimson embers and molten copper',
+    swatch: 'linear-gradient(135deg, #ff996f, #6b2318)',
+    colors: { ring: '#e17a5f', glow: '225,110,85', inner: '#5b1c14' },
+  },
+  {
+    id: 'jade',
+    label: 'Jade',
+    desc: 'Verdant green with glassy glow',
+    swatch: 'linear-gradient(135deg, #8fe0a3, #1d5f44)',
+    colors: { ring: '#74c88f', glow: '90,190,120', inner: '#184832' },
+  },
+  {
+    id: 'pearl',
+    label: 'Pearl',
+    desc: 'Silver mist and pale moonlight',
+    swatch: 'linear-gradient(135deg, #f4f2ff, #6a7197)',
+    colors: { ring: '#cfd5ef', glow: '205,215,245', inner: '#49506a' },
+  },
+  {
+    id: 'midnight',
+    label: 'Midnight',
+    desc: 'Blue-black velvet with starfire edges',
+    swatch: 'linear-gradient(135deg, #6f7ff0, #161d45)',
+    colors: { ring: '#7c8bf0', glow: '95,110,240', inner: '#141a3f' },
+  },
+]
+
+const DEFAULT_HUB_COLORS = HUB_PALETTES.find((palette) => palette.id === DEFAULT_HUB_PALETTE)!.colors
+type HubColorSet = typeof DEFAULT_HUB_COLORS
 
 interface Hub {
+  id: string
   x: number; y: number
   name: string; bio: string; askAbout?: string
   avatarUrl?: string; avatarImage?: HTMLImageElement
   online: boolean; pulse: number; size: number
   isMe?: boolean; floatOffset: number; floatSpeed: number
-  colorVariant: number; hubStyle: HubStyle
+  colorVariant: number; hubStyle: HubStyle; paletteId?: string | null
+  relics?: HubRelicId[]
+  isConstellated?: boolean
 }
 
 interface ShootingStar {
@@ -45,8 +153,10 @@ interface ShootingStar {
   age: number; maxAge: number; clicked: boolean
 }
 
-interface TooltipState { hub: Hub; sx: number; sy: number }
+interface TooltipState { hub: Hub; sx: number; sy: number; scale: number }
 interface ProfileState { hub: Hub; screenX: number; screenY: number; telescopeMode: boolean }
+type ReturnPathMap = Record<string, number>
+type UniverseLetterStarEventDetail = { id: string; senderName: string; preview: string }
 
 const imageCache = new Map<string, HTMLImageElement>()
 function loadImage(url: string): Promise<HTMLImageElement> {
@@ -60,13 +170,23 @@ function loadImage(url: string): Promise<HTMLImageElement> {
   })
 }
 
-function getColor(colorVariant: number, isMe?: boolean) {
-  return isMe ? MY_PORTAL : PORTAL_COLORS[colorVariant % PORTAL_COLORS.length]
+export function isHubPaletteId(value?: string | null): value is HubPaletteId {
+  return HUB_PALETTES.some((palette) => palette.id === value)
+}
+
+function getPaletteColors(paletteId?: string | null, colorVariant = 0, isMe?: boolean) {
+  if (paletteId && isHubPaletteId(paletteId)) {
+    return HUB_PALETTES.find((palette) => palette.id === paletteId)!.colors
+  }
+
+  if (isMe) return DEFAULT_HUB_COLORS
+
+  return LEGACY_PORTAL_COLORS[colorVariant % LEGACY_PORTAL_COLORS.length]
 }
 
 // ── DRAW FUNCTIONS PER STYLE ──
 
-function drawPortal(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: number, colors: typeof MY_PORTAL, t: number, online: boolean, isMe: boolean, avatarImage?: HTMLImageElement) {
+function drawPortal(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: number, colors: HubColorSet, t: number, online: boolean, isMe: boolean, avatarImage?: HTMLImageElement) {
   const r = 28 * s
   const pulse = 0.85 + 0.15 * Math.sin(t * (isMe ? 1.2 : 0.8))
   const auraR = r * 2.2 * pulse
@@ -115,7 +235,7 @@ function drawPortal(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: nu
   }
 }
 
-function drawLantern(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: number, colors: typeof MY_PORTAL, t: number, online: boolean, isMe: boolean, avatarImage?: HTMLImageElement) {
+function drawLantern(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: number, colors: HubColorSet, t: number, online: boolean, isMe: boolean, avatarImage?: HTMLImageElement) {
   const r = 26 * s
   const breathe = 0.92 + 0.08 * Math.sin(t * 0.9)
   // Outer glow halo
@@ -159,7 +279,7 @@ function drawLantern(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: n
   }
 }
 
-function drawRuin(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: number, colors: typeof MY_PORTAL, t: number, online: boolean, isMe: boolean, avatarImage?: HTMLImageElement) {
+function drawRuin(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: number, colors: HubColorSet, t: number, online: boolean, isMe: boolean, avatarImage?: HTMLImageElement) {
   const r = 28 * s
   const sway = Math.sin(t * 0.3) * 1.5
   // Misty ground glow
@@ -227,7 +347,7 @@ function drawRuin(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: numb
   }
 }
 
-function drawHourglass(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: number, colors: typeof MY_PORTAL, t: number, online: boolean, isMe: boolean, avatarImage?: HTMLImageElement) {
+function drawHourglass(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: number, colors: HubColorSet, t: number, online: boolean, isMe: boolean, avatarImage?: HTMLImageElement) {
   const r = 30 * s
   const pulse = 0.92 + 0.08 * Math.sin(t * 0.8)
   const bloomR = r * pulse
@@ -315,7 +435,7 @@ function drawHourglass(ctx: CanvasRenderingContext2D, cx: number, cy: number, s:
   }
 }
 
-function drawTelescope(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: number, colors: typeof MY_PORTAL, t: number, online: boolean, isMe: boolean, avatarImage?: HTMLImageElement) {
+function drawTelescope(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: number, colors: HubColorSet, t: number, online: boolean, isMe: boolean, avatarImage?: HTMLImageElement) {
   const r = 28 * s
   const bob = Math.sin(t * 0.6) * 2 * s
   // Dome base shadow
@@ -381,7 +501,7 @@ function drawTelescope(ctx: CanvasRenderingContext2D, cx: number, cy: number, s:
   }
 }
 
-function drawGreenhouse(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: number, colors: typeof MY_PORTAL, t: number, online: boolean, isMe: boolean, avatarImage?: HTMLImageElement) {
+function drawGreenhouse(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: number, colors: HubColorSet, t: number, online: boolean, isMe: boolean, avatarImage?: HTMLImageElement) {
   const r = 26 * s
   const breathe = 0.96 + 0.04 * Math.sin(t * 0.7)
   // Outer mist
@@ -437,15 +557,176 @@ function drawGreenhouse(ctx: CanvasRenderingContext2D, cx: number, cy: number, s
   }
 }
 
+function drawCathedral(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: number, colors: HubColorSet, t: number, online: boolean, isMe: boolean, avatarImage?: HTMLImageElement) {
+  const r = 28 * s
+  const shimmer = 0.9 + 0.1 * Math.sin(t * 0.9)
+  const aura = ctx.createRadialGradient(cx, cy - r * 0.2, r * 0.1, cx, cy, r * 2.4)
+  aura.addColorStop(0, `rgba(${colors.glow},0.16)`)
+  aura.addColorStop(1, `rgba(${colors.glow},0)`)
+  ctx.beginPath(); ctx.arc(cx, cy, r * 2.3, 0, Math.PI * 2)
+  ctx.fillStyle = aura; ctx.fill()
+
+  ctx.beginPath()
+  ctx.moveTo(cx, cy - r * 1.2)
+  ctx.lineTo(cx + r * 0.72, cy - r * 0.3)
+  ctx.lineTo(cx + r * 0.72, cy + r * 0.95)
+  ctx.lineTo(cx - r * 0.72, cy + r * 0.95)
+  ctx.lineTo(cx - r * 0.72, cy - r * 0.3)
+  ctx.closePath()
+  const glass = ctx.createLinearGradient(cx, cy - r * 1.2, cx, cy + r)
+  glass.addColorStop(0, `rgba(235,240,255,0.28)`)
+  glass.addColorStop(0.35, `rgba(${colors.glow},0.22)`)
+  glass.addColorStop(1, `${colors.inner}d9`)
+  ctx.fillStyle = glass
+  ctx.fill()
+  ctx.strokeStyle = `rgba(${colors.glow},0.52)`
+  ctx.lineWidth = 1.6 * s
+  ctx.stroke()
+
+  const columns = [-0.42, 0, 0.42]
+  columns.forEach((column) => {
+    ctx.beginPath()
+    ctx.moveTo(cx + r * column, cy - r * 0.45)
+    ctx.lineTo(cx + r * column, cy + r * 0.95)
+    ctx.strokeStyle = `rgba(245,248,255,0.18)`
+    ctx.lineWidth = 1 * s
+    ctx.stroke()
+  })
+
+  ctx.beginPath()
+  ctx.arc(cx, cy - r * 0.25, r * 0.4, Math.PI, 0, false)
+  ctx.strokeStyle = `rgba(245,248,255,0.25)`
+  ctx.lineWidth = 1.2 * s
+  ctx.stroke()
+
+  if (avatarImage?.complete && avatarImage.naturalWidth > 0) {
+    ctx.save()
+    ctx.beginPath()
+    ctx.moveTo(cx, cy - r * 0.92)
+    ctx.lineTo(cx + r * 0.48, cy - r * 0.18)
+    ctx.lineTo(cx + r * 0.48, cy + r * 0.62)
+    ctx.lineTo(cx - r * 0.48, cy + r * 0.62)
+    ctx.lineTo(cx - r * 0.48, cy - r * 0.18)
+    ctx.closePath()
+    ctx.clip()
+    ctx.globalAlpha = 0.6
+    ctx.drawImage(avatarImage, cx - r * 0.52, cy - r * 0.72, r * 1.04, r * 1.25)
+    ctx.restore()
+  }
+
+  for (let i = 0; i < 6; i++) {
+    const angle = (i / 6) * Math.PI * 2 + t * 0.28
+    const px = cx + Math.cos(angle) * r * 1.08
+    const py = cy + Math.sin(angle) * r * 0.9
+    ctx.beginPath()
+    ctx.arc(px, py, 1.6 * s * shimmer, 0, Math.PI * 2)
+    ctx.fillStyle = `rgba(${colors.glow},${0.25 + 0.18 * Math.sin(t * 1.5 + i)})`
+    ctx.fill()
+  }
+
+  if (!isMe) {
+    ctx.beginPath(); ctx.arc(cx + r * 0.82, cy - r * 0.65, 3 * s, 0, Math.PI * 2)
+    ctx.fillStyle = online ? '#7ecf7e' : 'rgba(255,255,255,0.2)'; ctx.fill()
+  }
+}
+
+function drawLotus(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: number, colors: HubColorSet, t: number, online: boolean, isMe: boolean, avatarImage?: HTMLImageElement) {
+  const r = 28 * s
+  const bloom = 0.94 + 0.06 * Math.sin(t * 0.8)
+  const aura = ctx.createRadialGradient(cx, cy, r * 0.3, cx, cy, r * 2.5)
+  aura.addColorStop(0, `rgba(${colors.glow},0.2)`)
+  aura.addColorStop(1, `rgba(${colors.glow},0)`)
+  ctx.beginPath(); ctx.arc(cx, cy, r * 2.4, 0, Math.PI * 2)
+  ctx.fillStyle = aura; ctx.fill()
+
+  for (let layer = 0; layer < 2; layer++) {
+    for (let i = 0; i < 6; i++) {
+      const angle = (i / 6) * Math.PI * 2 + (layer === 0 ? 0 : Math.PI / 6) + Math.sin(t * 0.3 + i) * 0.04
+      const petalLength = r * (layer === 0 ? 1.05 : 0.78) * bloom
+      const petalWidth = r * (layer === 0 ? 0.34 : 0.24)
+      ctx.save()
+      ctx.translate(cx, cy + r * 0.18)
+      ctx.rotate(angle)
+      const petal = ctx.createLinearGradient(0, 0, 0, -petalLength)
+      petal.addColorStop(0, `${colors.inner}ee`)
+      petal.addColorStop(0.45, `rgba(${colors.glow},0.35)`)
+      petal.addColorStop(1, 'rgba(250,250,255,0.55)')
+      ctx.beginPath()
+      ctx.moveTo(0, 0)
+      ctx.quadraticCurveTo(petalWidth, -petalLength * 0.35, 0, -petalLength)
+      ctx.quadraticCurveTo(-petalWidth, -petalLength * 0.35, 0, 0)
+      ctx.closePath()
+      ctx.fillStyle = petal
+      ctx.fill()
+      ctx.strokeStyle = `rgba(${colors.glow},0.28)`
+      ctx.lineWidth = 0.9 * s
+      ctx.stroke()
+      ctx.restore()
+    }
+  }
+
+  if (avatarImage?.complete && avatarImage.naturalWidth > 0) {
+    ctx.save()
+    ctx.beginPath(); ctx.arc(cx, cy - r * 0.06, r * 0.52, 0, Math.PI * 2); ctx.clip()
+    ctx.globalAlpha = 0.72
+    ctx.drawImage(avatarImage, cx - r * 0.52, cy - r * 0.58, r * 1.04, r * 1.04)
+    ctx.restore()
+  }
+
+  const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * 0.58)
+  core.addColorStop(0, `rgba(250,245,255,0.46)`)
+  core.addColorStop(0.5, `rgba(${colors.glow},0.28)`)
+  core.addColorStop(1, `${colors.inner}00`)
+  ctx.beginPath(); ctx.arc(cx, cy, r * 0.58, 0, Math.PI * 2)
+  ctx.fillStyle = core; ctx.fill()
+
+  for (let i = 0; i < 7; i++) {
+    const angle = (i / 7) * Math.PI * 2 + t * 0.5
+    const px = cx + Math.cos(angle) * r * 1.2
+    const py = cy + Math.sin(angle) * r * 0.62
+    ctx.beginPath()
+    ctx.arc(px, py, 1.5 * s, 0, Math.PI * 2)
+    ctx.fillStyle = `rgba(${colors.glow},${0.22 + 0.2 * Math.sin(t * 1.7 + i)})`
+    ctx.fill()
+  }
+
+  if (!isMe) {
+    ctx.beginPath(); ctx.arc(cx + r * 0.82, cy - r * 0.66, 3 * s, 0, Math.PI * 2)
+    ctx.fillStyle = online ? '#7ecf7e' : 'rgba(255,255,255,0.2)'; ctx.fill()
+  }
+}
+
 function drawHub(ctx: CanvasRenderingContext2D, hub: Hub, sx: number, sy: number, s: number, t: number) {
-  const colors = getColor(hub.colorVariant, hub.isMe)
+  const colors = getPaletteColors(hub.paletteId, hub.colorVariant, hub.isMe)
   ctx.save()
+  if (hub.isConstellated) {
+    const ringRadius = 36 * s
+    ctx.beginPath()
+    ctx.arc(sx, sy, ringRadius, 0, Math.PI * 2)
+    ctx.strokeStyle = `rgba(${colors.glow},0.28)`
+    ctx.lineWidth = 1.2 * s
+    ctx.setLineDash([4, 7])
+    ctx.stroke()
+    ctx.setLineDash([])
+
+    for (let i = 0; i < 4; i++) {
+      const angle = (i / 4) * Math.PI * 2 + t * 0.28
+      const px = sx + Math.cos(angle) * ringRadius
+      const py = sy + Math.sin(angle) * ringRadius
+      ctx.beginPath()
+      ctx.arc(px, py, 1.7 * s, 0, Math.PI * 2)
+      ctx.fillStyle = `rgba(255,235,170,${0.35 + 0.2 * Math.sin(t * 1.4 + i)})`
+      ctx.fill()
+    }
+  }
   switch (hub.hubStyle) {
     case 'lantern': drawLantern(ctx, sx, sy, s, colors, t, hub.online, !!hub.isMe, hub.avatarImage); break
     case 'ruin': drawRuin(ctx, sx, sy, s, colors, t, hub.online, !!hub.isMe, hub.avatarImage); break
     case 'hourglass': drawHourglass(ctx, sx, sy, s, colors, t, hub.online, !!hub.isMe, hub.avatarImage); break
     case 'telescope': drawTelescope(ctx, sx, sy, s, colors, t, hub.online, !!hub.isMe, hub.avatarImage); break
     case 'greenhouse': drawGreenhouse(ctx, sx, sy, s, colors, t, hub.online, !!hub.isMe, hub.avatarImage); break
+    case 'cathedral': drawCathedral(ctx, sx, sy, s, colors, t, hub.online, !!hub.isMe, hub.avatarImage); break
+    case 'lotus': drawLotus(ctx, sx, sy, s, colors, t, hub.online, !!hub.isMe, hub.avatarImage); break
     default: drawPortal(ctx, sx, sy, s, colors, t, hub.online, !!hub.isMe, hub.avatarImage)
   }
   // Hub name label
@@ -483,14 +764,67 @@ function drawShootingStar(ctx: CanvasRenderingContext2D, star: ShootingStar) {
   ctx.fillStyle = `rgba(255,255,220,${alpha})`; ctx.fill()
 }
 
+function drawReturnPath(
+  ctx: CanvasRenderingContext2D,
+  fromX: number,
+  fromY: number,
+  toX: number,
+  toY: number,
+  exchangeCount: number,
+  t: number,
+) {
+  const strength = Math.min(1, 0.45 + exchangeCount * 0.12)
+  const drift = Math.sin(t * 0.8 + exchangeCount) * 10
+  const controlX = (fromX + toX) / 2 + drift
+  const controlY = Math.min(fromY, toY) - 36 - exchangeCount * 4
+
+  ctx.save()
+  ctx.beginPath()
+  ctx.moveTo(fromX, fromY)
+  ctx.quadraticCurveTo(controlX, controlY, toX, toY)
+  ctx.strokeStyle = `rgba(230,199,110,${0.12 * strength})`
+  ctx.lineWidth = 1.2
+  ctx.stroke()
+
+  ctx.beginPath()
+  ctx.moveTo(fromX, fromY)
+  ctx.quadraticCurveTo(controlX, controlY, toX, toY)
+  ctx.strokeStyle = `rgba(255,238,190,${0.05 * strength})`
+  ctx.lineWidth = 4
+  ctx.stroke()
+
+  const pulse = (Math.sin(t * 1.4 + exchangeCount) + 1) / 2
+  const sparkleT = 0.15 + pulse * 0.7
+  const sparkleX =
+    (1 - sparkleT) * (1 - sparkleT) * fromX +
+    2 * (1 - sparkleT) * sparkleT * controlX +
+    sparkleT * sparkleT * toX
+  const sparkleY =
+    (1 - sparkleT) * (1 - sparkleT) * fromY +
+    2 * (1 - sparkleT) * sparkleT * controlY +
+    sparkleT * sparkleT * toY
+
+  const glow = ctx.createRadialGradient(sparkleX, sparkleY, 0, sparkleX, sparkleY, 10)
+  glow.addColorStop(0, `rgba(255,248,220,${0.7 * strength})`)
+  glow.addColorStop(0.4, `rgba(230,199,110,${0.4 * strength})`)
+  glow.addColorStop(1, 'rgba(230,199,110,0)')
+  ctx.beginPath()
+  ctx.arc(sparkleX, sparkleY, 10, 0, Math.PI * 2)
+  ctx.fillStyle = glow
+  ctx.fill()
+  ctx.restore()
+}
+
 export default function UniverseMap({
-  hubName, hubBio, hubAvatarUrl, hubStyle = 'portal',
-  onWriteLetter, onObservatory, onProfile,
+  hubName, hubBio, hubAvatarUrl, hubStyle = 'portal', hubPaletteId = DEFAULT_HUB_PALETTE, hubRelics = [], storageScope = '',
+  onWriteLetter, onUniversePrompt, onObservatory, onProfile,
 }: {
-  hubName?: string; hubBio?: string; hubAvatarUrl?: string; hubStyle?: HubStyle
+  hubName?: string; hubBio?: string; hubAvatarUrl?: string; hubStyle?: HubStyle; hubPaletteId?: HubPaletteId; hubRelics?: HubRelicId[]; storageScope?: string
   onWriteLetter?: (recipientName?: string) => void
+  onUniversePrompt?: (prompt: { subject: string; bodyStarter: string }) => void
   onObservatory?: () => void; onProfile?: () => void
 }) {
+  const { isMobile, isTablet, isNarrow } = useViewport()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const hubsRef = useRef<Hub[]>([])
   const offsetRef = useRef({ x: 0, y: 0 })
@@ -498,30 +832,98 @@ export default function UniverseMap({
   const isDraggingRef = useRef(false)
   const hasDraggedRef = useRef(false)
   const dragStartRef = useRef({ x: 0, y: 0 })
+  const touchPointRef = useRef({ x: 0, y: 0 })
   const animFrameRef = useRef<number>(0)
   const shootingStarsRef = useRef<ShootingStar[]>([])
   const starIdRef = useRef(0)
+  const constellationIdsRef = useRef<Set<string>>(new Set())
+  const returnPathsRef = useRef<ReturnPathMap>({})
 
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
   const [profile, setProfile] = useState<ProfileState | null>(null)
   const [starPreview, setStarPreview] = useState<ShootingStar | null>(null)
   const [activeNav, setActiveNav] = useState(0)
   const [hoveredNav, setHoveredNav] = useState<number | null>(null)
+  const [constellationOpen, setConstellationOpen] = useState(false)
+  const [constellationHubs, setConstellationHubs] = useState<ConstellationHub[]>([])
+  const [returnPaths, setReturnPaths] = useState<ReturnPathMap>({})
+  const [promptIndex, setPromptIndex] = useState(0)
+  const seasonalMood = getSeasonalUniverseMood()
+  const currentPrompt = UNIVERSE_PROMPTS[promptIndex % UNIVERSE_PROMPTS.length]
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadConstellations() {
+      if (!storageScope) {
+        setConstellationHubs([])
+        constellationIdsRef.current = new Set()
+        return
+      }
+
+      const syncedConstellations = await getMyConstellationHubsFromDb()
+      if (cancelled) return
+
+      if (syncedConstellations) {
+        setConstellationHubs(syncedConstellations)
+        saveConstellationHubs(storageScope, syncedConstellations)
+        return
+      }
+
+      setConstellationHubs(loadConstellationHubs(storageScope))
+    }
+
+    void loadConstellations()
+
+    return () => {
+      cancelled = true
+    }
+  }, [storageScope])
+
+  useEffect(() => {
+    const constellationIds = new Set(constellationHubs.map((hub) => hub.id))
+    constellationIdsRef.current = constellationIds
+
+    hubsRef.current = hubsRef.current.map((hub) => ({
+      ...hub,
+      isConstellated: constellationIds.has(hub.id),
+    }))
+  }, [constellationHubs])
+
+  useEffect(() => {
+    returnPathsRef.current = returnPaths
+  }, [returnPaths])
 
   // Spawn a shooting star from a universe letter
-  function spawnShootingStar(letter?: { id: string; senderName: string; preview: string }) {
+  function spawnShootingStar(
+    letter?: { id: string; senderName: string; preview: string },
+    origin: 'edge' | 'hub' = 'edge',
+  ) {
     const canvas = canvasRef.current
     if (!canvas) return
-    const edge = Math.floor(Math.random() * 4)
     let x = 0; let y = 0
-    if (edge === 0) { x = Math.random() * canvas.width; y = -20 }
-    else if (edge === 1) { x = canvas.width + 20; y = Math.random() * canvas.height }
-    else if (edge === 2) { x = Math.random() * canvas.width; y = canvas.height + 20 }
-    else { x = -20; y = Math.random() * canvas.height }
-    const targetX = canvas.width * 0.2 + Math.random() * canvas.width * 0.6
-    const targetY = canvas.height * 0.2 + Math.random() * canvas.height * 0.6
+    let targetX = 0
+    let targetY = 0
+
+    if (origin === 'hub') {
+      x = offsetRef.current.x
+      y = offsetRef.current.y
+      const angle = Math.random() * Math.PI * 2
+      const distance = Math.max(canvas.width, canvas.height) * (0.6 + Math.random() * 0.35)
+      targetX = x + Math.cos(angle) * distance
+      targetY = y + Math.sin(angle) * distance
+    } else {
+      const edge = Math.floor(Math.random() * 4)
+      if (edge === 0) { x = Math.random() * canvas.width; y = -20 }
+      else if (edge === 1) { x = canvas.width + 20; y = Math.random() * canvas.height }
+      else if (edge === 2) { x = Math.random() * canvas.width; y = canvas.height + 20 }
+      else { x = -20; y = Math.random() * canvas.height }
+      targetX = canvas.width * 0.2 + Math.random() * canvas.width * 0.6
+      targetY = canvas.height * 0.2 + Math.random() * canvas.height * 0.6
+    }
+
     const dist = Math.sqrt((targetX - x) ** 2 + (targetY - y) ** 2)
-    const speed = 0.3 + Math.random() * 0.2 // slow — 0.3-0.5 px per frame
+    const speed = origin === 'hub' ? 0.9 + Math.random() * 0.35 : 0.3 + Math.random() * 0.2
     const star: ShootingStar = {
       id: starIdRef.current++,
       x, y,
@@ -569,6 +971,61 @@ export default function UniverseMap({
   }, [])
 
   useEffect(() => {
+    function handleUniverseLetterSent(event: Event) {
+      const detail = (event as CustomEvent<UniverseLetterStarEventDetail>).detail
+      if (!detail?.preview?.trim()) return
+      spawnShootingStar(detail, 'hub')
+    }
+
+    window.addEventListener(
+      'dear-stranger:universe-letter-sent',
+      handleUniverseLetterSent as EventListener,
+    )
+
+    return () => {
+      window.removeEventListener(
+        'dear-stranger:universe-letter-sent',
+        handleUniverseLetterSent as EventListener,
+      )
+    }
+  }, [])
+
+  const focusHub = useCallback((hubId: string) => {
+    const canvas = canvasRef.current
+    const hub = hubsRef.current.find((candidate) => candidate.id === hubId)
+    if (!canvas || !hub) return
+
+    offsetRef.current = {
+      x: canvas.width / 2 - hub.x * scaleRef.current,
+      y: canvas.height / 2 - hub.y * scaleRef.current,
+    }
+
+    setProfile({
+      hub,
+      screenX: canvas.width / 2,
+      screenY: canvas.height / 2,
+      telescopeMode: hub.hubStyle === 'telescope',
+    })
+    setConstellationOpen(false)
+    setTooltip(null)
+  }, [])
+
+  const toggleConstellationHub = useCallback((hub: Hub) => {
+    if (!storageScope || hub.isMe) return
+
+    setConstellationHubs((current) => {
+      const exists = current.some((item) => item.id === hub.id)
+      const next = exists
+        ? current.filter((item) => item.id !== hub.id)
+        : [{ id: hub.id, name: hub.name }, ...current.filter((item) => item.id !== hub.id)].slice(0, 12)
+
+      saveConstellationHubs(storageScope, next)
+      void (exists ? removeConstellationHubFromDb(hub.id) : addConstellationHubToDb(hub.id))
+      return next
+    })
+  }, [storageScope])
+
+  useEffect(() => {
     let resizeHandler: (() => void) | undefined
     async function init() {
       const canvas = canvasRef.current
@@ -582,15 +1039,47 @@ export default function UniverseMap({
       resizeHandler()
       window.addEventListener('resize', resizeHandler)
 
-      const realHubs = await getAllHubs()
+      const [realHubs, myLetters] = await Promise.all([getAllHubs(), getMyLetters()])
       const myAvatarImg = hubAvatarUrl ? await loadImage(hubAvatarUrl) : undefined
+
+      const sentCounts = new Map<string, number>()
+      const receivedCounts = new Map<string, number>()
+      const allLetters = [...myLetters.transit, ...myLetters.arrived, ...myLetters.archive] as Array<{
+        sender_id?: string | null
+        recipient_id?: string | null
+      }>
+
+      allLetters.forEach((letter) => {
+        if (letter.recipient_id) {
+          sentCounts.set(letter.recipient_id, (sentCounts.get(letter.recipient_id) || 0) + 1)
+        }
+
+        if (letter.sender_id) {
+          receivedCounts.set(letter.sender_id, (receivedCounts.get(letter.sender_id) || 0) + 1)
+        }
+      })
+
+      const reciprocalPaths = realHubs.reduce<ReturnPathMap>((acc, hub: any) => {
+        const sent = sentCounts.get(hub.id) || 0
+        const received = receivedCounts.get(hub.id) || 0
+
+        if (sent > 0 && received > 0) {
+          acc[hub.id] = sent + received
+        }
+
+        return acc
+      }, {})
+
+      returnPathsRef.current = reciprocalPaths
+      setReturnPaths(reciprocalPaths)
 
       const otherHubs = await Promise.all(realHubs.map(async (hub: any, i: number) => {
         const angle = (i / Math.max(realHubs.length, 1)) * Math.PI * 2 + 0.3
         const dist = 180 + (i * 73) % 320
         const avatarImg = hub.avatar_url ? await loadImage(hub.avatar_url) : undefined
-        const styles: HubStyle[] = ['portal', 'lantern', 'ruin', 'hourglass', 'telescope', 'greenhouse']
+        const styles: HubStyle[] = ['portal', 'lantern', 'ruin', 'hourglass', 'telescope', 'greenhouse', 'cathedral', 'lotus']
         return {
+          id: hub.id,
           x: Math.cos(angle) * dist, y: Math.sin(angle) * dist,
           name: hub.hub_name, bio: hub.bio || '', askAbout: hub.ask_about || '',
           avatarUrl: hub.avatar_url || '', avatarImage: avatarImg,
@@ -598,12 +1087,15 @@ export default function UniverseMap({
           size: 0.9 + (i * 17 % 10) / 30,
           floatOffset: (i * 137) % (Math.PI * 2),
           floatSpeed: 0.4 + (i * 23 % 10) / 30,
-          colorVariant: i % PORTAL_COLORS.length,
+          colorVariant: i % LEGACY_PORTAL_COLORS.length,
           hubStyle: (hub.hub_style as HubStyle) || styles[i % styles.length],
+          paletteId: hub.backdrop_id || null,
+          isConstellated: constellationIdsRef.current.has(hub.id),
         } as Hub
       }))
 
       hubsRef.current = [{
+  id: 'me',
   x: 0,
   y: 0,
   name: hubName || 'Your Hub',
@@ -618,6 +1110,9 @@ export default function UniverseMap({
   floatSpeed: 0.5,
   colorVariant: 0,
   hubStyle,
+  paletteId: hubPaletteId,
+  relics: hubRelics,
+  isConstellated: false,
 }, ...otherHubs]
 
       // Star field background
@@ -636,6 +1131,23 @@ export default function UniverseMap({
         ctx.drawImage(starCanvas, 0, 0)
         const t = Date.now() * 0.001
         const offset = offsetRef.current; const scale = scaleRef.current
+
+        hubsRef.current
+          .filter((hub) => !hub.isMe && returnPathsRef.current[hub.id])
+          .forEach((hub) => {
+            const sx = offset.x + hub.x * scale
+            const sy = offset.y + hub.y * scale + Math.sin(t * hub.floatSpeed + hub.floatOffset) * 4
+            if (sx < -220 || sx > canvas.width + 220 || sy < -220 || sy > canvas.height + 220) return
+            drawReturnPath(
+              ctx,
+              offset.x,
+              offset.y,
+              sx,
+              sy,
+              returnPathsRef.current[hub.id],
+              t,
+            )
+          })
 
         // Draw hubs
         hubsRef.current.forEach(hub => {
@@ -670,7 +1182,7 @@ export default function UniverseMap({
     }
     void init()
     return () => { cancelAnimationFrame(animFrameRef.current); if (resizeHandler) window.removeEventListener('resize', resizeHandler) }
-  }, [hubName, hubBio, hubAvatarUrl, hubStyle])
+  }, [hubName, hubBio, hubAvatarUrl, hubStyle, hubPaletteId, hubRelics])
 
   const getHubAt = useCallback((mx: number, my: number): Hub | null => {
     const scale = scaleRef.current; const offset = offsetRef.current
@@ -705,7 +1217,7 @@ export default function UniverseMap({
     if (!isDraggingRef.current) {
       const hub = getHubAt(e.clientX, e.clientY)
       if (hub) {
-        setTooltip({ hub, sx: offsetRef.current.x + hub.x * scaleRef.current, sy: offsetRef.current.y + hub.y * scaleRef.current })
+        setTooltip({ hub, sx: offsetRef.current.x + hub.x * scaleRef.current, sy: offsetRef.current.y + hub.y * scaleRef.current, scale: scaleRef.current })
       } else setTooltip(null)
     }
   }
@@ -730,28 +1242,153 @@ export default function UniverseMap({
     scaleRef.current = Math.min(3.5, Math.max(0.25, scaleRef.current * (e.deltaY > 0 ? 0.88 : 1.12)))
   }
 
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const touch = e.touches[0]
+    if (!touch) return
+    isDraggingRef.current = true
+    hasDraggedRef.current = false
+    dragStartRef.current = { x: touch.clientX - offsetRef.current.x, y: touch.clientY - offsetRef.current.y }
+    touchPointRef.current = { x: touch.clientX, y: touch.clientY }
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    const touch = e.touches[0]
+    if (!touch) return
+
+    const dx = Math.abs(touch.clientX - touchPointRef.current.x)
+    const dy = Math.abs(touch.clientY - touchPointRef.current.y)
+
+    if (isDraggingRef.current && (dx > 4 || dy > 4)) {
+      hasDraggedRef.current = true
+      offsetRef.current = {
+        x: touch.clientX - dragStartRef.current.x,
+        y: touch.clientY - dragStartRef.current.y,
+      }
+      touchPointRef.current = { x: touch.clientX, y: touch.clientY }
+      setTooltip(null)
+    }
+  }
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const touch = e.changedTouches[0]
+    if (!touch) return
+
+    if (!hasDraggedRef.current) {
+      const star = getStarAt(touch.clientX, touch.clientY)
+      if (star) {
+        setStarPreview(star)
+        isDraggingRef.current = false
+        return
+      }
+
+      const hub = getHubAt(touch.clientX, touch.clientY)
+      if (hub) {
+        setProfile({
+          hub,
+          screenX: touch.clientX,
+          screenY: touch.clientY,
+          telescopeMode: hub.hubStyle === 'telescope',
+        })
+      } else {
+        setProfile(null)
+      }
+    }
+
+    isDraggingRef.current = false
+  }
+
   const navItems = [
     { label: 'Starmap', icon: '✦' },
     { label: 'Scribe', icon: '✒' },
     { label: 'Observatory', icon: '⟡' },
     { label: 'Profile', icon: '◎' },
   ]
+  const profileIsConstellated = profile ? constellationHubs.some((hub) => hub.id === profile.hub.id) : false
+  const profileReturnPathCount = profile ? returnPaths[profile.hub.id] || 0 : 0
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: '#04050f' }}>
       <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', background: 'radial-gradient(ellipse 60% 40% at 15% 25%, rgba(50,20,100,0.28) 0%, transparent 65%), radial-gradient(ellipse 50% 55% at 82% 72%, rgba(15,28,90,0.22) 0%, transparent 65%)' }} />
+      <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', background: seasonalMood.tint }} />
 
       <canvas ref={canvasRef}
-        style={{ position: 'absolute', inset: 0, cursor: tooltip?.hub?.hubStyle === 'telescope' ? 'zoom-in' : 'grab' }}
+        style={{ position: 'absolute', inset: 0, cursor: isMobile ? 'default' : tooltip?.hub?.hubStyle === 'telescope' ? 'zoom-in' : 'grab', touchAction: 'none' }}
         onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp}
         onMouseLeave={() => { isDraggingRef.current = false; setTooltip(null) }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={() => { isDraggingRef.current = false }}
         onWheel={handleWheel} />
+
+      <div style={{ position: 'fixed', top: isMobile ? 'max(60px, calc(env(safe-area-inset-top) + 44px))' : '76px', left: isMobile ? '12px' : '20px', zIndex: 55, width: isMobile ? 'min(calc(100vw - 24px), 320px)' : '320px', pointerEvents: 'auto' }}>
+        <div style={{ marginBottom: '10px', padding: '12px 14px', background: 'rgba(8,10,28,0.82)', border: '1px solid rgba(230,199,110,0.14)', borderRadius: '14px', backdropFilter: 'blur(18px)', boxShadow: '0 10px 34px rgba(0,0,0,0.26)' }}>
+          <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.28em', color: '#e6c76e', textTransform: 'uppercase', marginBottom: '4px' }}>{seasonalMood.label}</p>
+          <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(255,255,255,0.68)', lineHeight: 1.45 }}>{seasonalMood.atmosphere}</p>
+        </div>
+
+        <button
+          onClick={() => setConstellationOpen((current) => !current)}
+          style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '12px 14px', background: 'rgba(8,10,28,0.88)', border: '1px solid rgba(230,199,110,0.18)', borderRadius: constellationOpen ? '14px 14px 0 0' : '14px', color: 'rgba(255,255,255,0.86)', backdropFilter: 'blur(18px)', cursor: 'pointer', boxShadow: '0 10px 34px rgba(0,0,0,0.35)' }}
+        >
+          <div style={{ textAlign: 'left' }}>
+            <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.28em', color: '#e6c76e', textTransform: 'uppercase', marginBottom: '4px' }}>Constellations</p>
+            <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(255,255,255,0.7)' }}>
+              {constellationHubs.length === 0 ? 'No saved hubs yet.' : `${constellationHubs.length} saved ${constellationHubs.length === 1 ? 'hub' : 'hubs'}`}
+            </p>
+          </div>
+          <span style={{ fontFamily: "'Cinzel', serif", fontSize: '18px', color: '#e6c76e', lineHeight: 1 }}>{constellationOpen ? '−' : '+'}</span>
+        </button>
+
+        <AnimatePresence>
+          {constellationOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+              style={{ background: 'rgba(8,10,28,0.92)', border: '1px solid rgba(230,199,110,0.14)', borderTop: 'none', borderRadius: '0 0 14px 14px', padding: '12px', backdropFilter: 'blur(18px)' }}
+            >
+              {constellationHubs.length === 0 ? (
+                <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(255,255,255,0.58)', lineHeight: 1.5 }}>
+                  Save a few favorite hubs and they’ll gather here as your private constellation.
+                </p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {constellationHubs.map((hub) => (
+                    <div key={hub.id} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <button
+                        onClick={() => focusHub(hub.id)}
+                        style={{ flex: 1, textAlign: 'left', padding: '10px 12px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)', color: 'rgba(255,255,255,0.82)', cursor: 'pointer' }}
+                      >
+                        <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.18em', color: '#e6c76e', textTransform: 'uppercase', marginBottom: '4px' }}>✦ Saved Hub</p>
+                        <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(255,255,255,0.82)' }}>{hub.name}</p>
+                      </button>
+                      <button
+                        onClick={() => {
+                          const next = constellationHubs.filter((item) => item.id !== hub.id)
+                          setConstellationHubs(next)
+                          if (storageScope) saveConstellationHubs(storageScope, next)
+                          void removeConstellationHubFromDb(hub.id)
+                        }}
+                        style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)', background: 'transparent', color: 'rgba(255,255,255,0.55)', cursor: 'pointer', fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.18em', textTransform: 'uppercase' }}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
 
       {/* Tooltip */}
       <AnimatePresence>
-        {tooltip && !profile && (
+        {tooltip && !profile && !isMobile && (
           <motion.div key="tip" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}
-            style={{ position: 'fixed', left: tooltip.sx, top: tooltip.sy - tooltip.hub.size * scaleRef.current * 48, transform: 'translateX(-50%)', pointerEvents: 'none', zIndex: 60 }}>
+            style={{ position: 'fixed', left: tooltip.sx, top: tooltip.sy - tooltip.hub.size * tooltip.scale * 48, transform: 'translateX(-50%)', pointerEvents: 'none', zIndex: 60 }}>
             <div style={{ background: 'rgba(8,10,28,0.92)', border: `1px solid ${tooltip.hub.isMe ? 'rgba(230,199,110,0.55)' : 'rgba(255,255,255,0.2)'}`, borderRadius: '20px', padding: '6px 16px', backdropFilter: 'blur(12px)' }}>
               <p style={{ fontFamily: "'Cinzel', serif", fontSize: '11px', letterSpacing: '0.18em', color: tooltip.hub.isMe ? '#e6c76e' : 'rgba(255,255,255,0.9)', whiteSpace: 'nowrap' }}>
                 {tooltip.hub.name}
@@ -762,21 +1399,45 @@ export default function UniverseMap({
         )}
       </AnimatePresence>
 
+      <div style={{ position: 'fixed', top: isMobile ? 'max(190px, calc(env(safe-area-inset-top) + 172px))' : '76px', right: isMobile ? '12px' : '20px', zIndex: 55, width: isMobile ? 'min(calc(100vw - 24px), 320px)' : '320px', pointerEvents: 'auto' }}>
+        <div style={{ padding: '14px', background: 'rgba(8,10,28,0.86)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '14px', backdropFilter: 'blur(18px)', boxShadow: '0 10px 34px rgba(0,0,0,0.32)' }}>
+          <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.28em', color: '#e6c76e', textTransform: 'uppercase', marginBottom: '4px' }}>From the Universe</p>
+          <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.18em', color: 'rgba(255,255,255,0.82)', textTransform: 'uppercase', marginBottom: '8px' }}>{currentPrompt.title}</p>
+          <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(255,255,255,0.72)', lineHeight: 1.6, marginBottom: '14px' }}>
+            {currentPrompt.prompt}
+          </p>
+          <div style={{ display: 'flex', gap: '8px', flexDirection: isNarrow ? 'column' : 'row' }}>
+            <button
+              onClick={() => setPromptIndex((current) => current + 1)}
+              style={{ flex: 1, padding: '9px 10px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.14)', background: 'transparent', color: 'rgba(255,255,255,0.68)', fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.18em', textTransform: 'uppercase', cursor: 'pointer' }}
+            >
+              Another Signal
+            </button>
+            <button
+              onClick={() => onUniversePrompt?.({ subject: currentPrompt.subject, bodyStarter: currentPrompt.bodyStarter })}
+              style={{ flex: 1, padding: '9px 10px', borderRadius: '10px', border: '1px solid rgba(230,199,110,0.32)', background: 'rgba(230,199,110,0.08)', color: '#e6c76e', fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.18em', textTransform: 'uppercase', cursor: 'pointer' }}
+            >
+              Write From This
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Shooting Star Preview */}
       <AnimatePresence>
         {starPreview && (
           <motion.div key="star-preview" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
             onClick={() => setStarPreview(null)}
-            style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 80, background: 'rgba(0,0,5,0.7)', backdropFilter: 'blur(6px)' }}>
+            style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 80, background: 'rgba(0,0,5,0.7)', backdropFilter: 'blur(6px)', padding: isMobile ? '16px' : 0 }}>
             <motion.div onClick={e => e.stopPropagation()}
-              style={{ background: 'rgba(8,10,28,0.95)', border: '1px solid rgba(201,168,76,0.4)', borderRadius: '12px', padding: '36px 40px', width: 'min(480px, 90vw)', boxShadow: '0 0 60px rgba(201,168,76,0.15)', position: 'relative' }}>
+              style={{ background: 'rgba(8,10,28,0.95)', border: '1px solid rgba(201,168,76,0.4)', borderRadius: '12px', padding: isMobile ? '28px 22px' : '36px 40px', width: 'min(480px, 100%)', boxShadow: '0 0 60px rgba(201,168,76,0.15)', position: 'relative' }}>
               <div style={{ position: 'absolute', top: 0, left: '20%', right: '20%', height: '1px', background: 'linear-gradient(90deg, transparent, rgba(201,168,76,0.5), transparent)' }} />
               <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.4em', color: 'rgba(201,168,76,0.6)', textTransform: 'uppercase', marginBottom: '8px' }}>✦ Universe Letter</p>
               <p style={{ fontFamily: "'Cinzel', serif", fontSize: '11px', letterSpacing: '0.2em', color: 'rgba(255,255,255,0.7)', marginBottom: '20px' }}>From · {starPreview.senderName}</p>
               <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '18px', color: 'rgba(255,255,255,0.88)', lineHeight: 1.7, marginBottom: '28px' }}>
-                "{starPreview.preview}"
+                &ldquo;{starPreview.preview}&rdquo;
               </p>
-              <div style={{ display: 'flex', gap: '10px' }}>
+              <div style={{ display: 'flex', gap: '10px', flexDirection: isNarrow ? 'column' : 'row' }}>
                 <button onClick={() => setStarPreview(null)}
                   style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.25em', color: 'rgba(255,255,255,0.5)', padding: '10px 18px', border: '1px solid rgba(255,255,255,0.15)', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase', borderRadius: '4px' }}>
                   Let it pass
@@ -799,12 +1460,12 @@ export default function UniverseMap({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: profile.telescopeMode ? 0.3 : 0.95 }}
             transition={{ duration: profile.telescopeMode ? 0.5 : 0.3, ease: profile.telescopeMode ? [0.16, 1, 0.3, 1] : 'easeOut' }}
-            style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60, padding: '20px', background: 'rgba(0,0,5,0.6)', backdropFilter: 'blur(4px)' }}
+            style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60, padding: isMobile ? '16px' : '20px', background: 'rgba(0,0,5,0.6)', backdropFilter: 'blur(4px)' }}
             onClick={() => setProfile(null)}>
             <motion.div onClick={e => e.stopPropagation()}
-              style={{ background: 'rgba(8,10,28,0.95)', border: '1px solid rgba(230,199,110,0.22)', borderRadius: '16px', width: 'min(780px, 95vw)', minHeight: '380px', display: 'flex', overflow: 'hidden', boxShadow: '0 0 80px rgba(0,0,0,0.9)', backdropFilter: 'blur(20px)', position: 'relative' }}>
+              style={{ background: 'rgba(8,10,28,0.95)', border: '1px solid rgba(230,199,110,0.22)', borderRadius: '16px', width: 'min(780px, 100%)', maxHeight: isMobile ? 'calc(100svh - 32px)' : '90vh', minHeight: isMobile ? undefined : '380px', display: 'flex', flexDirection: isTablet ? 'column' : 'row', overflow: 'hidden', boxShadow: '0 0 80px rgba(0,0,0,0.9)', backdropFilter: 'blur(20px)', position: 'relative' }}>
               {/* Avatar panel */}
-              <div style={{ width: '42%', minHeight: '380px', background: 'linear-gradient(135deg, rgba(20,25,60,0.9), rgba(10,15,40,0.95))', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden', flexShrink: 0 }}>
+              <div style={{ width: isTablet ? '100%' : '42%', minHeight: isTablet ? '260px' : '380px', background: 'linear-gradient(135deg, rgba(20,25,60,0.9), rgba(10,15,40,0.95))', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden', flexShrink: 0 }}>
                 {profile.hub.avatarUrl ? (
                   <img src={profile.hub.avatarUrl} alt="Avatar"
                     style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center', position: 'absolute', inset: 0 }} />
@@ -820,7 +1481,7 @@ export default function UniverseMap({
                 )}
               </div>
               {/* Info panel */}
-              <div style={{ flex: 1, padding: 'clamp(24px,4vw,40px)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+              <div style={{ flex: 1, padding: 'clamp(24px,4vw,40px)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', overflowY: 'auto' }}>
                 <div>
                   <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.4em', color: 'rgba(201,168,76,0.5)', textTransform: 'uppercase', marginBottom: '6px' }}>
                     {HUB_STYLES.find(s => s.id === profile.hub.hubStyle)?.label || 'Hub'}
@@ -834,11 +1495,47 @@ export default function UniverseMap({
                   </div>
                   <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.3em', color: '#e6c76e', textTransform: 'uppercase', marginBottom: '8px' }}>Bio</p>
                   <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: 'clamp(13px,1.8vw,15px)', color: 'rgba(255,255,255,0.85)', lineHeight: 1.7, marginBottom: '20px' }}>{profile.hub.bio}</p>
+                  {profile.hub.isMe && profile.hub.relics && profile.hub.relics.length > 0 && (
+                    <>
+                      <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.3em', color: '#e6c76e', textTransform: 'uppercase', marginBottom: '8px' }}>Hub Relics</p>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
+                        {profile.hub.relics.map((relicId) => {
+                          const relic = HUB_RELICS.find((item) => item.id === relicId)
+                          if (!relic) return null
+
+                          return (
+                            <div key={relic.id} style={{ padding: '6px 9px', borderRadius: '999px', border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.03)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <span style={{ fontSize: '13px' }}>{relic.icon}</span>
+                              <span style={{ fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.16em', color: 'rgba(255,255,255,0.72)', textTransform: 'uppercase' }}>{relic.label}</span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </>
+                  )}
                   {!profile.hub.isMe && profile.hub.askAbout && (
                     <>
                       <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.3em', color: '#e6c76e', textTransform: 'uppercase', marginBottom: '8px' }}>Ask me about</p>
                       <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: 'clamp(13px,1.8vw,15px)', color: 'rgba(255,255,255,0.72)', lineHeight: 1.6 }}>{profile.hub.askAbout}</p>
                     </>
+                  )}
+                  {!profile.hub.isMe && profileReturnPathCount > 0 && (
+                    <div style={{ marginTop: '20px', padding: '10px 12px', border: '1px solid rgba(230,199,110,0.12)', borderRadius: '10px', background: 'rgba(230,199,110,0.05)' }}>
+                      <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.22em', color: '#e6c76e', textTransform: 'uppercase', marginBottom: '6px' }}>Return Path</p>
+                      <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(255,255,255,0.7)' }}>
+                        A path already glows between your hubs through {profileReturnPathCount} exchanged {profileReturnPathCount === 1 ? 'letter' : 'letters'}.
+                      </p>
+                    </div>
+                  )}
+                  {!profile.hub.isMe && (
+                    <div style={{ marginTop: '20px', padding: '10px 12px', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', background: 'rgba(255,255,255,0.03)' }}>
+                      <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.22em', color: '#e6c76e', textTransform: 'uppercase', marginBottom: '6px' }}>Constellation</p>
+                      <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(255,255,255,0.68)' }}>
+                        {profileIsConstellated
+                          ? 'This hub already glows in your private constellation.'
+                          : 'Save this hub so you can find your way back to it later.'}
+                      </p>
+                    </div>
                   )}
                 </div>
                 <div style={{ display: 'flex', gap: '10px', marginTop: '24px', flexWrap: 'wrap' }}>
@@ -846,6 +1543,12 @@ export default function UniverseMap({
                     style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.25em', color: 'rgba(255,255,255,0.65)', padding: '10px 18px', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '4px', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase' }}>
                     Dismiss
                   </button>
+                  {!profile.hub.isMe && (
+                    <button onClick={() => toggleConstellationHub(profile.hub)}
+                      style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.25em', color: profileIsConstellated ? 'rgba(255,255,255,0.82)' : '#e6c76e', padding: '10px 18px', border: profileIsConstellated ? '1px solid rgba(255,255,255,0.18)' : '1px solid rgba(230,199,110,0.34)', borderRadius: '4px', background: profileIsConstellated ? 'rgba(255,255,255,0.04)' : 'rgba(230,199,110,0.08)', cursor: 'pointer', textTransform: 'uppercase' }}>
+                      {profileIsConstellated ? 'Remove from Constellation' : 'Save to Constellation ✦'}
+                    </button>
+                  )}
                   {!profile.hub.isMe && (
                     <button onClick={() => { setProfile(null); onWriteLetter?.(profile.hub.name) }}
                       style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.25em', color: '#e6c76e', padding: '10px 18px', border: '1px solid rgba(230,199,110,0.4)', borderRadius: '4px', background: 'rgba(230,199,110,0.08)', cursor: 'pointer', textTransform: 'uppercase' }}>
@@ -862,21 +1565,38 @@ export default function UniverseMap({
 
       {/* Nav */}
       <motion.nav initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5, duration: 0.6 }}
-        style={{ position: 'fixed', bottom: '32px', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: '4px', background: 'rgba(8,10,28,0.86)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', backdropFilter: 'blur(20px)', padding: '8px 12px', boxShadow: '0 4px 40px rgba(0,0,0,0.6)', zIndex: 50 }}>
+        style={{ position: 'fixed', bottom: isMobile ? 'max(12px, env(safe-area-inset-bottom))' : '32px', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: isMobile ? '2px' : '4px', background: 'rgba(8,10,28,0.86)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', backdropFilter: 'blur(20px)', padding: isMobile ? '8px 6px' : '8px 12px', boxShadow: '0 4px 40px rgba(0,0,0,0.6)', zIndex: 50, width: 'fit-content', maxWidth: 'min(calc(100vw - 20px), 460px)' }}>
         {navItems.map((item, i) => (
           <button key={item.label}
             onClick={() => { setActiveNav(i); if (i === 1) onWriteLetter?.(); if (i === 2) onObservatory?.(); if (i === 3) onProfile?.() }}
             onMouseEnter={() => setHoveredNav(i)} onMouseLeave={() => setHoveredNav(null)}
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px', padding: '10px 18px', background: activeNav === i ? 'rgba(230,199,110,0.1)' : hoveredNav === i ? 'rgba(255,255,255,0.06)' : 'transparent', border: 'none', borderRadius: '10px', cursor: 'pointer', minWidth: '64px' }}>
-            <span style={{ fontSize: '18px', lineHeight: 1, color: activeNav === i ? '#e6c76e' : 'rgba(255,255,255,0.75)', filter: activeNav === i ? 'drop-shadow(0 0 6px rgba(230,199,110,0.5))' : 'none' }}>{item.icon}</span>
-            <span style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.18em', textTransform: 'uppercase', color: activeNav === i ? '#e6c76e' : 'rgba(255,255,255,0.6)', whiteSpace: 'nowrap' }}>{item.label}</span>
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px', padding: isMobile ? '10px 10px' : '10px 18px', background: activeNav === i ? 'rgba(230,199,110,0.1)' : hoveredNav === i ? 'rgba(255,255,255,0.06)' : 'transparent', border: 'none', borderRadius: '10px', cursor: 'pointer', minWidth: isMobile ? '64px' : '64px' }}>
+            <span style={{ fontSize: isMobile ? '16px' : '18px', lineHeight: 1, color: activeNav === i ? '#e6c76e' : 'rgba(255,255,255,0.75)', filter: activeNav === i ? 'drop-shadow(0 0 6px rgba(230,199,110,0.5))' : 'none' }}>{item.icon}</span>
+            <span style={{ fontFamily: "'Cinzel', serif", fontSize: isMobile ? '7px' : '8px', letterSpacing: '0.18em', textTransform: 'uppercase', color: activeNav === i ? '#e6c76e' : 'rgba(255,255,255,0.6)', whiteSpace: 'nowrap' }}>{item.label}</span>
           </button>
         ))}
       </motion.nav>
 
+      {isMobile && (
+        <div style={{ position: 'fixed', right: '12px', bottom: 'calc(max(12px, env(safe-area-inset-bottom)) + 78px)', display: 'flex', flexDirection: 'column', gap: '8px', zIndex: 50 }}>
+          {['+', '-'].map((label) => (
+            <button
+              key={label}
+              onClick={() => {
+                const multiplier = label === '+' ? 1.18 : 0.84
+                scaleRef.current = Math.min(3.5, Math.max(0.25, scaleRef.current * multiplier))
+              }}
+              style={{ width: '42px', height: '42px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.14)', background: 'rgba(8,10,28,0.9)', color: '#e6c76e', fontFamily: "'Cinzel', serif", fontSize: '20px', lineHeight: 1, cursor: 'pointer', backdropFilter: 'blur(16px)' }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+
       <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.4, duration: 0.8 }}
-        style={{ position: 'fixed', top: '28px', left: '50%', transform: 'translateX(-50%)', fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '12px', color: 'rgba(255,255,255,0.5)', letterSpacing: '0.08em', pointerEvents: 'none', whiteSpace: 'nowrap', zIndex: 50 }}>
-        drag to explore · scroll to zoom · catch shooting stars
+        style={{ position: 'fixed', top: isMobile ? 'max(16px, env(safe-area-inset-top))' : '28px', left: '50%', transform: 'translateX(-50%)', fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '12px', color: 'rgba(255,255,255,0.5)', letterSpacing: '0.08em', pointerEvents: 'none', whiteSpace: isMobile ? 'normal' : 'nowrap', textAlign: 'center', width: isMobile ? 'calc(100vw - 96px)' : 'auto', zIndex: 50 }}>
+        {isMobile ? 'drag to explore · tap hubs · use +/- to zoom' : 'drag to explore · scroll to zoom · catch shooting stars'}
       </motion.p>
     </div>
   )

@@ -6,15 +6,27 @@
   --gold: #c9a84c;
   --gold-light: #e6c76e;
   --void: #000005;
+  --page-safe-top: max(16px, env(safe-area-inset-top));
+  --page-safe-right: max(16px, env(safe-area-inset-right));
+  --page-safe-bottom: max(16px, env(safe-area-inset-bottom));
+  --page-safe-left: max(16px, env(safe-area-inset-left));
+}
+
+html {
+  height: 100%;
+  overflow-x: hidden;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: 'Cormorant Garamond', Georgia, serif;
+  min-height: 100vh;
+  min-height: 100svh;
   margin: 0;
   padding: 0;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -22,6 +34,19 @@ body {
 
 * {
   box-sizing: border-box;
+}
+
+body,
+textarea,
+input,
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+img,
+canvas,
+svg {
+  max-width: 100%;
 }
 
 h1, h2, h3, h4, h5, h6,

@@ -2,6 +2,17 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useViewport } from '../lib/useViewport'
+import { LETTER_FONTS, type LetterFont, joinLetterPages } from '../lib/letters'
+import {
+  LETTER_ENVELOPE_LININGS,
+  LETTER_RITUALS,
+  LETTER_WAX_SEALS,
+  encodeLetterSubject,
+  type LetterEnvelopeLiningId,
+  type LetterRitualId,
+  type LetterWaxSealId,
+} from '../lib/worldbuilding'
 
 const SCRIBE_STARS = Array.from({ length: 20 }, (_, i) => ({
   width: `${(i % 3) * 0.45 + 0.3}px`,
@@ -18,6 +29,8 @@ const PAPERS = [
   { id: 'ribbon', label: 'Ribbon Letter', sublabel: 'Red ribbon bow border', unlocksAt: 5, swatch: 'linear-gradient(135deg, #f8f0ec, #f0e0d8)' },
   { id: 'postage', label: 'Postage Letter', sublabel: 'Stamp corners, postmark', unlocksAt: 8, swatch: 'linear-gradient(135deg, #f0ece8, #e4dcd4)' },
   { id: 'sakura', label: 'Cherry Blossom', sublabel: 'Soft pink floral border', unlocksAt: 10, swatch: 'linear-gradient(135deg, #fce8f0, #f0c8d8)' },
+  { id: 'moonveil', label: 'Moonveil Vellum', sublabel: 'Silver moons on cool vellum', unlocksAt: 12, swatch: 'linear-gradient(135deg, #eff4ff, #d8e2ff)' },
+  { id: 'marbled', label: 'Marbled Tide', sublabel: 'Sea-glass marbling with tide lines', unlocksAt: 16, swatch: 'linear-gradient(135deg, #e6f4f2, #cde7e1)' },
   { id: 'aged', label: 'Aged & Distressed', sublabel: 'Time-worn parchment', unlocksAt: 25, swatch: 'linear-gradient(135deg, #c8a870, #b89050)' },
 ]
 
@@ -38,21 +51,6 @@ const STAMPS = [
   { id: 'spiral', category: 'Abstract', label: 'Spiral' },
   { id: 'diamond', category: 'Abstract', label: 'Diamond' },
   { id: 'wave', category: 'Abstract', label: 'Wave' },
-]
-
-const FONTS = [
-  { id: 'cormorant', label: 'Cormorant', family: "'Cormorant Garamond', serif", preview: 'A letter across the stars' },
-  { id: 'im-fell', label: 'IM Fell', family: "'IM Fell English', serif", preview: 'A letter across the stars' },
-  { id: 'playfair', label: 'Playfair', family: "'Playfair Display', serif", preview: 'A letter across the stars' },
-  { id: 'dancing', label: 'Dancing Script', family: "'Dancing Script', cursive", preview: 'A letter across the stars' },
-  { id: 'satisfy', label: 'Satisfy', family: "'Satisfy', cursive", preview: 'A letter across the stars' },
-  { id: 'pacifico', label: 'Pacifico', family: "'Pacifico', cursive", preview: 'A letter across the stars' },
-  { id: 'special-elite', label: 'Special Elite', family: "'Special Elite', cursive", preview: 'A letter across the stars' },
-  { id: 'courier', label: 'Courier Prime', family: "'Courier Prime', monospace", preview: 'A letter across the stars' },
-  { id: 'indie', label: 'Indie Flower', family: "'Indie Flower', cursive", preview: 'A letter across the stars' },
-  { id: 'cinzel', label: 'Cinzel', family: "'Cinzel', serif", preview: 'A LETTER ACROSS THE STARS' },
-  { id: 'roboto', label: 'Roboto', family: "'Roboto', sans-serif", preview: 'A letter across the stars' },
-  { id: 'lato', label: 'Lato', family: "'Lato', sans-serif", preview: 'A letter across the stars' },
 ]
 
 function StampSVG({ id, size = 60 }: { id: string; size?: number }) {
@@ -76,14 +74,69 @@ function StampSVG({ id, size = 60 }: { id: string; size?: number }) {
   return <svg width={s} height={s} viewBox="0 0 60 60"><circle cx="30" cy="30" r="25" fill="none" stroke="rgba(200,168,76,0.4)" strokeWidth="1.5"/><text x="30" y="34" textAnchor="middle" fontSize="14" fill="rgba(200,168,76,0.6)">✦</text></svg>
 }
 
-function EnvelopeSVG({ color = '#c8a050' }: { color?: string }) {
+function getEnvelopeLiningPalette(liningId?: LetterEnvelopeLiningId) {
+  switch (liningId) {
+    case 'starlace':
+      return { base: '#1e2550', accent: '#e5c777', accentSoft: '#5a689f' }
+    case 'roseglass':
+      return { base: '#f0bfd0', accent: '#c16688', accentSoft: '#fff0f6' }
+    case 'tidepool':
+      return { base: '#6cb8b0', accent: '#ccefed', accentSoft: '#387a7a' }
+    case 'vellum':
+      return { base: '#efe4cf', accent: '#a98a59', accentSoft: '#fff9ee' }
+    case 'emberfoil':
+      return { base: '#b66d3b', accent: '#ffd8ad', accentSoft: '#7b3d1f' }
+    default:
+      return { base: '#eadbbf', accent: '#c7ac74', accentSoft: '#fff4dd' }
+  }
+}
+
+function WaxSealSVG({ waxSealId = 'crimson', size = 36 }: { waxSealId?: LetterWaxSealId; size?: number }) {
+  const wax = LETTER_WAX_SEALS.find((item) => item.id === waxSealId) || LETTER_WAX_SEALS[0]
+  const s = size
+  const inner = s / 2
+  const center = s / 2
+
+  return (
+    <svg width={s} height={s} viewBox={`0 0 ${s} ${s}`}>
+      <circle cx={center} cy={center} r={inner - 2} fill={wax.color} />
+      <circle cx={center} cy={center} r={inner - 5} fill={wax.color} stroke={wax.highlight} strokeOpacity="0.4" strokeWidth="1.5" />
+      <ellipse cx={center - 5} cy={center - 7} rx={inner / 3.2} ry={inner / 5} fill={wax.highlight} fillOpacity="0.35" transform={`rotate(-18 ${center - 5} ${center - 7})`} />
+      <text x={center} y={center + 4} textAnchor="middle" fontSize={s / 3.5} fill={wax.accent} style={{ fontFamily: 'serif' }}>✦</text>
+    </svg>
+  )
+}
+
+function EnvelopeSVG({
+  color = '#c8a050',
+  liningId,
+  waxSealId,
+}: {
+  color?: string
+  liningId?: LetterEnvelopeLiningId
+  waxSealId?: LetterWaxSealId
+}) {
+  const lining = getEnvelopeLiningPalette(liningId)
+
   return (
     <svg width="120" height="80" viewBox="0 0 120 80">
       <rect x="2" y="20" width="116" height="58" rx="3" fill={color} stroke="rgba(0,0,0,0.2)" strokeWidth="1"/>
+      <path d="M10 22 L60 48 L110 22" fill="none" stroke={lining.base} strokeWidth="18" strokeLinecap="round" opacity="0.95"/>
+      <path d="M18 25 L60 44 L102 25" fill="none" stroke={lining.accentSoft} strokeWidth="2" strokeDasharray="4 5" opacity="0.75"/>
+      <circle cx="24" cy="30" r="2" fill={lining.accent} opacity="0.65"/>
+      <circle cx="96" cy="29" r="2" fill={lining.accent} opacity="0.65"/>
+      <circle cx="60" cy="38" r="2.5" fill={lining.accent} opacity="0.6"/>
       <path d="M2 20 L60 56 L118 20 Z" fill={color} stroke="rgba(0,0,0,0.15)" strokeWidth="1"/>
       <path d="M2 78 L60 46 L118 78" fill="none" stroke="rgba(0,0,0,0.12)" strokeWidth="1"/>
       <line x1="2" y1="20" x2="60" y2="46" stroke="rgba(0,0,0,0.1)" strokeWidth="0.8"/>
       <line x1="118" y1="20" x2="60" y2="46" stroke="rgba(0,0,0,0.1)" strokeWidth="0.8"/>
+      {waxSealId && (
+        <foreignObject x="44" y="32" width="32" height="32">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <WaxSealSVG waxSealId={waxSealId} size={30} />
+          </div>
+        </foreignObject>
+      )}
     </svg>
   )
 }
@@ -268,6 +321,51 @@ function AgedDistressed({ children }: { children: React.ReactNode }) {
   )
 }
 
+function MoonveilVellum({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ position:'relative', background:'linear-gradient(160deg, rgba(244,247,255,0.96) 0%, rgba(228,235,255,0.98) 100%)', boxShadow:'0 20px 80px rgba(0,0,0,0.6)', overflow:'hidden', backdropFilter:'blur(3px)' }}>
+      <div style={{ position:'absolute', inset:0, pointerEvents:'none', zIndex:1 }}>
+        {[26,72,118,164,210].map((x, i) => (
+          <div key={i} style={{ position:'absolute', top:'18px', left:`${x}px`, width:'26px', height:'26px', borderRadius:'50%', border:'1px solid rgba(120,140,210,0.28)', opacity:0.7 }}>
+            <div style={{ position:'absolute', inset:'3px', borderRadius:'50%', border:'1px solid rgba(255,255,255,0.42)' }} />
+          </div>
+        ))}
+        <svg width="100%" height="100%" style={{ position:'absolute', inset:0 }}>
+          <path d="M0 62 Q90 30 170 52 Q250 74 360 36 Q470 0 620 32" fill="none" stroke="rgba(110,130,210,0.18)" strokeWidth="2"/>
+          <path d="M0 350 Q120 310 220 336 Q320 362 420 322 Q520 282 620 314" fill="none" stroke="rgba(110,130,210,0.15)" strokeWidth="2"/>
+        </svg>
+      </div>
+      <div style={{ position:'absolute', inset:'14px', border:'1px solid rgba(130,150,220,0.25)', pointerEvents:'none', zIndex:2 }}/>
+      {[...Array(20)].map((_,i)=><div key={i} style={{ position:'absolute', left:'40px', right:'40px', top:`${86+i*28}px`, height:'1px', background:'rgba(130,150,220,0.12)' }}/>)}
+      <div style={{ padding:'46px 44px 44px', position:'relative', zIndex:3 }}>{children}</div>
+    </div>
+  )
+}
+
+function MarbledTide({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ position:'relative', background:'linear-gradient(160deg, #eff9f7 0%, #ddeeed 100%)', boxShadow:'0 20px 80px rgba(0,0,0,0.6)', overflow:'hidden' }}>
+      <div style={{ position:'absolute', inset:0, pointerEvents:'none', zIndex:1, opacity:0.85 }}>
+        <svg width="100%" height="100%" style={{ position:'absolute', inset:0 }}>
+          {[36,88,140,192,244,296,348].map((y, i) => (
+            <path
+              key={i}
+              d={`M-20 ${y} C 60 ${y - 26}, 120 ${y + 20}, 220 ${y - 10} S 360 ${y + 18}, 520 ${y - 14} S 680 ${y + 18}, 760 ${y - 10}`}
+              fill="none"
+              stroke={i % 2 === 0 ? 'rgba(70,140,150,0.18)' : 'rgba(180,210,205,0.6)'}
+              strokeWidth={i % 2 === 0 ? '2.4' : '1.2'}
+              strokeLinecap="round"
+            />
+          ))}
+        </svg>
+      </div>
+      <div style={{ position:'absolute', inset:'12px', border:'1px solid rgba(70,140,150,0.2)', pointerEvents:'none', zIndex:2 }}/>
+      {[...Array(19)].map((_,i)=><div key={i} style={{ position:'absolute', left:'38px', right:'38px', top:`${78+i*29}px`, height:'1px', background:'rgba(70,140,150,0.1)' }}/>)}
+      <div style={{ padding:'40px 42px 42px', position:'relative', zIndex:3 }}>{children}</div>
+    </div>
+  )
+}
+
 const PAPER_INK: Record<string, { main: string; secondary: string; accent: string }> = {
   ornate: { main: '#140c04', secondary: 'rgba(35,20,6,0.72)', accent: '#8b6010' },
   floral: { main: '#140810', secondary: 'rgba(35,12,22,0.72)', accent: '#8b2050' },
@@ -276,13 +374,15 @@ const PAPER_INK: Record<string, { main: string; secondary: string; accent: strin
   ribbon: { main: '#140408', secondary: 'rgba(35,8,12,0.72)', accent: '#8b1020' },
   postage: { main: '#100c18', secondary: 'rgba(25,18,40,0.72)', accent: '#6040a0' },
   sakura: { main: '#18080e', secondary: 'rgba(40,15,20,0.72)', accent: '#8b2050' },
+  moonveil: { main: '#101838', secondary: 'rgba(24,32,72,0.72)', accent: '#5874c0' },
+  marbled: { main: '#102424', secondary: 'rgba(18,52,52,0.72)', accent: '#3f8f90' },
   aged: { main: '#160c04', secondary: 'rgba(30,14,4,0.74)', accent: '#7a4010' },
 }
 
 const PAPER_ENVELOPE_COLOR: Record<string, string> = {
   ornate: '#e0c870', floral: '#f0b8cc', notepad: '#b0c8e0',
   scrapbook: '#c0a868', ribbon: '#e8a0a0', postage: '#c8c0b0',
-  sakura: '#f0b8cc', aged: '#b89050',
+  sakura: '#f0b8cc', moonveil: '#c4d0ee', marbled: '#b4d7d2', aged: '#b89050',
 }
 
 function LetterContent({ fontFamily, ink, recipient, senderName, date, body, setBody, textareaRef }: {
@@ -308,34 +408,79 @@ function LetterContent({ fontFamily, ink, recipient, senderName, date, body, set
   )
 }
 
-export default function Scribe({ recipientName, senderName, lettersSent = 0, onClose, onSend }: {
-  recipientName?: string; senderName?: string; lettersSent?: number
+export default function Scribe({ recipientName, senderName, lettersSent = 0, initialSubject = '', initialBody = '', onClose, onSend }: {
+  recipientName?: string; senderName?: string; lettersSent?: number; initialSubject?: string; initialBody?: string
   onClose?: () => void
   onSend?: (letter: { to?: string; body: string; paperId: string; subject: string; fontId: string; stampId?: string }) => void
 }) {
+  const { isMobile, isNarrow } = useViewport()
   const unlockedPapers = PAPERS.filter(p => p.unlocksAt <= lettersSent)
   const [selectedPaper, setSelectedPaper] = useState(unlockedPapers[0])
-  const [selectedFont, setSelectedFont] = useState(FONTS[0])
+  const [selectedFont, setSelectedFont] = useState<LetterFont>(LETTER_FONTS[0])
   const [selectedStamp, setSelectedStamp] = useState<string | undefined>()
-  const [subject, setSubject] = useState('')
+  const [selectedRitual, setSelectedRitual] = useState<LetterRitualId | undefined>()
+  const [selectedWaxSeal, setSelectedWaxSeal] = useState<LetterWaxSealId>('crimson')
+  const [selectedEnvelopeLining, setSelectedEnvelopeLining] = useState<LetterEnvelopeLiningId>('starlace')
+  const [subject, setSubject] = useState(initialSubject)
   const [subjectError, setSubjectError] = useState(false)
-  const [body, setBody] = useState('')
+  const [pages, setPages] = useState<string[]>([initialBody])
+  const [activePage, setActivePage] = useState(0)
   const [sent, setSent] = useState(false)
   const [releasing, setReleasing] = useState(false)
-  const [view, setView] = useState<'write'|'papers'|'fonts'|'stamps'|'envelope'>('write')
+  const [view, setView] = useState<'write'|'papers'|'fonts'|'stamps'|'rituals'|'envelope-style'|'envelope'>('write')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const today = new Date().toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' })
   const ink = PAPER_INK[selectedPaper.id] || PAPER_INK.ornate
   const fontFamily = selectedFont.family
   const envelopeColor = PAPER_ENVELOPE_COLOR[selectedPaper.id]
+  const safeActivePage = Math.min(activePage, Math.max(0, pages.length - 1))
+  const currentBody = pages[safeActivePage] || ''
+  const combinedBody = joinLetterPages(pages)
+  const hasLetterContent = pages.some((page) => page.trim())
+  const selectedRitualRecord = LETTER_RITUALS.find((ritual) => ritual.id === selectedRitual)
+  const selectedWaxSealRecord = LETTER_WAX_SEALS.find((wax) => wax.id === selectedWaxSeal) || LETTER_WAX_SEALS[0]
+  const selectedEnvelopeLiningRecord =
+    LETTER_ENVELOPE_LININGS.find((lining) => lining.id === selectedEnvelopeLining) ||
+    LETTER_ENVELOPE_LININGS[0]
 
   useEffect(() => {
     if (view === 'write') setTimeout(() => textareaRef.current?.focus(), 300)
   }, [view, selectedPaper])
 
+  useEffect(() => {
+    setSubject(initialSubject)
+    setPages([initialBody])
+    setActivePage(0)
+    setView('write')
+    setSent(false)
+    setReleasing(false)
+  }, [initialSubject, initialBody, recipientName])
+
+  function updateCurrentPage(nextPage: string) {
+    setPages((currentPages) =>
+      currentPages.map((page, index) => (index === safeActivePage ? nextPage : page)),
+    )
+  }
+
+  function addPage() {
+    const nextIndex = pages.length
+    setPages((currentPages) => [...currentPages, ''])
+    setActivePage(nextIndex)
+  }
+
+  function removeCurrentPage() {
+    if (pages.length === 1) {
+      updateCurrentPage('')
+      return
+    }
+
+    setPages((currentPages) => currentPages.filter((_, index) => index !== activePage))
+    setActivePage(Math.max(0, activePage - 1))
+  }
+
   async function handleRelease() {
-    if (!body.trim()) return
+    if (!hasLetterContent) return
     if (!subject.trim()) {
       setSubjectError(true)
       setTimeout(() => setSubjectError(false), 3500)
@@ -347,13 +492,24 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
     await new Promise(r => setTimeout(r, 2200))
     setSent(true)
     setTimeout(() => {
-      onSend?.({ to: recipientName, body, paperId: selectedPaper.id, subject, fontId: selectedFont.id, stampId: selectedStamp })
+      onSend?.({
+        to: recipientName,
+        body: combinedBody,
+        paperId: selectedPaper.id,
+        subject: encodeLetterSubject(subject, {
+          ritualId: selectedRitual,
+          waxSealId: selectedWaxSeal,
+          liningId: selectedEnvelopeLining,
+        }),
+        fontId: selectedFont.id,
+        stampId: selectedStamp,
+      })
       onClose?.()
     }, 2400)
   }
 
   const renderPaper = () => {
-    const content = <LetterContent fontFamily={fontFamily} ink={ink} recipient={recipientName} senderName={senderName} date={today} body={body} setBody={setBody} textareaRef={textareaRef}/>
+    const content = <LetterContent fontFamily={fontFamily} ink={ink} recipient={recipientName} senderName={senderName} date={today} body={currentBody} setBody={updateCurrentPage} textareaRef={textareaRef}/>
     switch (selectedPaper.id) {
       case 'ornate': return <OrnateStationery>{content}</OrnateStationery>
       case 'floral': return <FloralLetter>{content}</FloralLetter>
@@ -362,6 +518,8 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
       case 'ribbon': return <RibbonLetter>{content}</RibbonLetter>
       case 'postage': return <PostageLetter>{content}</PostageLetter>
       case 'sakura': return <CherryBlossom>{content}</CherryBlossom>
+      case 'moonveil': return <MoonveilVellum>{content}</MoonveilVellum>
+      case 'marbled': return <MarbledTide>{content}</MarbledTide>
       case 'aged': return <AgedDistressed>{content}</AgedDistressed>
       default: return <OrnateStationery>{content}</OrnateStationery>
     }
@@ -371,7 +529,7 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
 
   return (
     <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }} transition={{ duration:0.4 }}
-      style={{ position:'fixed', inset:0, background:'rgba(0,0,5,0.97)', backdropFilter:'blur(20px)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'flex-start', zIndex:70, padding:'72px 20px 40px', overflowY:'auto' }}>
+      style={{ position:'fixed', inset:0, background:'rgba(0,0,5,0.97)', backdropFilter:'blur(20px)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'flex-start', zIndex:70, padding:'72px 20px 40px', paddingBottom:'max(40px, env(safe-area-inset-bottom))', overflowY:'auto' }}>
 
       <div style={{ position:'fixed', inset:0, pointerEvents:'none', background:'radial-gradient(ellipse 50% 40% at 20% 30%, rgba(30,15,70,0.2) 0%, transparent 65%)' }}/>
       <div style={{ position:'fixed', inset:0, pointerEvents:'none' }}>
@@ -382,7 +540,7 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
 
       <motion.button initial={{ opacity:0 }} animate={{ opacity:1 }} transition={{ delay:0.3 }}
         onClick={view==='write'?onClose:()=>setView('write')}
-        style={{ position:'fixed', top:'24px', right:'24px', background:'none', border:'1px solid rgba(255,255,255,0.18)', color:'rgba(255,255,255,0.78)', fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.3em', padding:'8px 16px', cursor:'pointer', textTransform:'uppercase', zIndex:80 }}
+        style={{ position:'fixed', top:isMobile ? 'max(16px, env(safe-area-inset-top))' : '24px', right:isMobile ? '16px' : '24px', background:'none', border:'1px solid rgba(255,255,255,0.18)', color:'rgba(255,255,255,0.78)', fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.3em', padding:'8px 16px', cursor:'pointer', textTransform:'uppercase', zIndex:80 }}
         onMouseEnter={e=>{e.currentTarget.style.color='rgba(255,255,255,0.96)';e.currentTarget.style.borderColor='rgba(255,255,255,0.32)';e.currentTarget.style.background='rgba(255,255,255,0.04)'}}
         onMouseLeave={e=>{e.currentTarget.style.color='rgba(255,255,255,0.78)';e.currentTarget.style.borderColor='rgba(255,255,255,0.18)';e.currentTarget.style.background='none'}}>
         {view==='write'?'← Return':'← Back'}
@@ -395,7 +553,7 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
               <p style={{ fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.5em', color:'#e6c76e', textTransform:'uppercase', marginBottom:'5px' }}>Choose Your Paper</p>
               <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'13px', color:'rgba(255,255,255,0.8)' }}>Each carries its own history</p>
             </div>
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(150px, 1fr))', gap:'12px', marginBottom:'24px' }}>
+            <div style={{ display:'grid', gridTemplateColumns:isNarrow ? '1fr 1fr' : 'repeat(auto-fill, minmax(150px, 1fr))', gap:'12px', marginBottom:'24px' }}>
               {PAPERS.map(p => {
                 const unlocked = p.unlocksAt <= lettersSent
                 const isSelected = selectedPaper.id === p.id
@@ -427,7 +585,7 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
               <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'13px', color:'rgba(255,255,255,0.8)' }}>The hand your words are written in</p>
             </div>
             <div style={{ display:'flex', flexDirection:'column', gap:'6px', marginBottom:'24px' }}>
-              {FONTS.map(f => {
+              {LETTER_FONTS.map(f => {
                 const isSelected = selectedFont.id === f.id
                 return (
                   <motion.div key={f.id} whileTap={{scale:0.99}} onClick={()=>setSelectedFont(f)}
@@ -481,6 +639,132 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
           </motion.div>
         )}
 
+        {view==='rituals' && (
+          <motion.div key="rituals" initial={{ opacity:0, y:16 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0 }} style={{ width:'min(640px, 95vw)', zIndex:2 }}>
+            <div style={{ textAlign:'center', marginBottom:'24px' }}>
+              <p style={{ fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.5em', color:'#e6c76e', textTransform:'uppercase', marginBottom:'5px' }}>Choose a Passage</p>
+              <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'13px', color:'rgba(255,255,255,0.8)' }}>Choose how your letter moves through the distance</p>
+            </div>
+            <div style={{ display:'flex', flexDirection:'column', gap:'10px', marginBottom:'24px' }}>
+              <motion.div whileTap={{ scale:0.99 }} onClick={() => setSelectedRitual(undefined)}
+                style={{ padding:'14px 18px', background:!selectedRitual?'rgba(230,199,110,0.12)':'rgba(255,255,255,0.03)', border:!selectedRitual?'1px solid rgba(230,199,110,0.45)':'1px solid rgba(255,255,255,0.08)', borderRadius:'6px', cursor:'pointer' }}>
+                <p style={{ fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.2em', color:!selectedRitual?'#e6c76e':'rgba(255,255,255,0.78)', textTransform:'uppercase', marginBottom:'6px' }}>No Passage</p>
+                <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'13px', color:'rgba(255,255,255,0.58)' }}>Let the letter travel plainly, with no extra ceremony.</p>
+              </motion.div>
+              {LETTER_RITUALS.map((ritual) => {
+                const isSelected = selectedRitual === ritual.id
+                return (
+                  <motion.div key={ritual.id} whileTap={{scale:0.99}} onClick={() => setSelectedRitual(ritual.id)}
+                    style={{ padding:'14px 18px', background:isSelected?'rgba(230,199,110,0.12)':'rgba(255,255,255,0.03)', border:isSelected?'1px solid rgba(230,199,110,0.45)':'1px solid rgba(255,255,255,0.08)', borderRadius:'6px', cursor:'pointer' }}>
+                    <p style={{ fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.2em', color:isSelected?'#e6c76e':'rgba(255,255,255,0.78)', textTransform:'uppercase', marginBottom:'6px' }}>{ritual.label}</p>
+                    <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'13px', color:'rgba(255,255,255,0.58)' }}>{ritual.desc}</p>
+                  </motion.div>
+                )
+              })}
+            </div>
+            <div style={{ textAlign:'center', marginTop:'8px' }}>
+              <button onClick={()=>setView('write')} style={{ padding:'12px 32px', background:'transparent', border:'1px solid rgba(230,199,110,0.45)', color:'#e6c76e', fontFamily:"'Cinzel', serif", fontSize:'10px', letterSpacing:'0.3em', textTransform:'uppercase', cursor:'pointer', borderRadius:'2px' }}
+                onMouseEnter={e=>e.currentTarget.style.background='rgba(230,199,110,0.08)'}
+                onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                {selectedRitualRecord ? `Choose ${selectedRitualRecord.label} ✦` : 'Continue without passage ✦'}
+              </button>
+            </div>
+          </motion.div>
+        )}
+
+        {view==='envelope-style' && (
+          <motion.div key="envelope-style" initial={{ opacity:0, y:16 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0 }} style={{ width:'min(760px, 95vw)', zIndex:2 }}>
+            <div style={{ textAlign:'center', marginBottom:'24px' }}>
+              <p style={{ fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.5em', color:'#e6c76e', textTransform:'uppercase', marginBottom:'5px' }}>Envelope Finery</p>
+              <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'13px', color:'rgba(255,255,255,0.8)' }}>Choose the lining and wax that carry your letter outward</p>
+            </div>
+
+            <div style={{ display:'grid', gridTemplateColumns:isNarrow ? '1fr' : 'minmax(0, 1.1fr) minmax(280px, 0.9fr)', gap:'18px', alignItems:'start' }}>
+              <div style={{ display:'flex', flexDirection:'column', gap:'18px' }}>
+                <div>
+                  <p style={{ fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.3em', color:'rgba(255,255,255,0.76)', textTransform:'uppercase', marginBottom:'10px' }}>Envelope Lining</p>
+                  <div style={{ display:'grid', gridTemplateColumns:isNarrow ? '1fr' : '1fr 1fr', gap:'10px' }}>
+                    {LETTER_ENVELOPE_LININGS.map((lining) => {
+                      const isSelected = selectedEnvelopeLining === lining.id
+
+                      return (
+                        <motion.button
+                          key={lining.id}
+                          whileTap={{ scale:0.99 }}
+                          onClick={() => setSelectedEnvelopeLining(lining.id)}
+                          style={{ textAlign:'left', padding:'14px 14px 12px', background:isSelected?'rgba(230,199,110,0.12)':'rgba(255,255,255,0.03)', border:isSelected?'1px solid rgba(230,199,110,0.45)':'1px solid rgba(255,255,255,0.08)', borderRadius:'8px', cursor:'pointer' }}
+                        >
+                          <div style={{ height:'44px', borderRadius:'6px', marginBottom:'10px', background:
+                            lining.id === 'starlace'
+                              ? 'radial-gradient(circle at 20% 30%, rgba(229,199,119,0.9) 0 2px, transparent 3px), radial-gradient(circle at 75% 35%, rgba(229,199,119,0.8) 0 2px, transparent 3px), linear-gradient(135deg, #1b2250, #34437d)'
+                              : lining.id === 'roseglass'
+                                ? 'linear-gradient(135deg, #f4ccd9, #c96a8d)'
+                                : lining.id === 'tidepool'
+                                  ? 'repeating-linear-gradient(135deg, #ccefed 0 7px, #72bcb5 7px 14px)'
+                                  : lining.id === 'vellum'
+                                    ? 'linear-gradient(135deg, #faf1de, #dcbf8a)'
+                                    : 'linear-gradient(135deg, #f6c792, #a6582b)'
+                          }} />
+                          <p style={{ fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.18em', color:isSelected?'#e6c76e':'rgba(255,255,255,0.82)', textTransform:'uppercase', marginBottom:'5px' }}>{lining.label}</p>
+                          <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'12px', color:'rgba(255,255,255,0.6)', lineHeight:1.5 }}>{lining.desc}</p>
+                        </motion.button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <p style={{ fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.3em', color:'rgba(255,255,255,0.76)', textTransform:'uppercase', marginBottom:'10px' }}>Wax Seal</p>
+                  <div style={{ display:'flex', flexWrap:'wrap', gap:'10px' }}>
+                    {LETTER_WAX_SEALS.map((wax) => {
+                      const isSelected = selectedWaxSeal === wax.id
+
+                      return (
+                        <motion.button
+                          key={wax.id}
+                          whileTap={{ scale:0.97 }}
+                          onClick={() => setSelectedWaxSeal(wax.id)}
+                          style={{ display:'flex', alignItems:'center', gap:'10px', padding:'10px 12px', background:isSelected?'rgba(230,199,110,0.12)':'rgba(255,255,255,0.03)', border:isSelected?'1px solid rgba(230,199,110,0.45)':'1px solid rgba(255,255,255,0.08)', borderRadius:'999px', cursor:'pointer' }}
+                        >
+                          <WaxSealSVG waxSealId={wax.id} size={26} />
+                          <span style={{ fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.18em', color:isSelected?'#e6c76e':'rgba(255,255,255,0.82)', textTransform:'uppercase' }}>{wax.label}</span>
+                        </motion.button>
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'12px', padding:'18px', boxShadow:'0 12px 34px rgba(0,0,0,0.35)' }}>
+                <p style={{ fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.28em', color:'#e6c76e', textTransform:'uppercase', marginBottom:'12px', textAlign:'center' }}>Preview</p>
+                <div style={{ display:'flex', justifyContent:'center', marginBottom:'14px' }}>
+                  <div style={{ transform:'scale(1.45)', transformOrigin:'center' }}>
+                    <EnvelopeSVG color={envelopeColor} liningId={selectedEnvelopeLining} waxSealId={selectedWaxSeal} />
+                  </div>
+                </div>
+                <div style={{ display:'flex', flexDirection:'column', gap:'8px' }}>
+                  <div style={{ padding:'9px 10px', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'8px', background:'rgba(255,255,255,0.02)' }}>
+                    <p style={{ fontFamily:"'Cinzel', serif", fontSize:'7px', letterSpacing:'0.18em', color:'rgba(255,255,255,0.52)', textTransform:'uppercase', marginBottom:'4px' }}>Lining</p>
+                    <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'13px', color:'rgba(255,255,255,0.8)' }}>{selectedEnvelopeLiningRecord.label}</p>
+                  </div>
+                  <div style={{ padding:'9px 10px', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'8px', background:'rgba(255,255,255,0.02)' }}>
+                    <p style={{ fontFamily:"'Cinzel', serif", fontSize:'7px', letterSpacing:'0.18em', color:'rgba(255,255,255,0.52)', textTransform:'uppercase', marginBottom:'4px' }}>Wax</p>
+                    <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'13px', color:'rgba(255,255,255,0.8)' }}>{selectedWaxSealRecord.label}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ textAlign:'center', marginTop:'24px' }}>
+              <button onClick={()=>setView('write')} style={{ padding:'12px 32px', background:'transparent', border:'1px solid rgba(230,199,110,0.45)', color:'#e6c76e', fontFamily:"'Cinzel', serif", fontSize:'10px', letterSpacing:'0.3em', textTransform:'uppercase', cursor:'pointer', borderRadius:'2px' }}
+                onMouseEnter={e=>e.currentTarget.style.background='rgba(230,199,110,0.08)'}
+                onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                Dress the envelope ✦
+              </button>
+            </div>
+          </motion.div>
+        )}
+
         {view==='write' && !sent && (
           <motion.div key="write" initial={{ opacity:0, y:16 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0 }} style={{ width:'min(580px, 95vw)', zIndex:2 }}>
             <div style={{ textAlign:'center', marginBottom:'14px' }}>
@@ -505,6 +789,68 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
               )}
             </div>
 
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:isNarrow ? 'flex-start' : 'center', flexDirection:isNarrow ? 'column' : 'row', gap:'10px', marginBottom:'12px' }}>
+              <div style={{ display:'flex', alignItems:'center', gap:'8px', flexWrap:'wrap' }}>
+                {pages.map((page, index) => {
+                  const isActive = index === safeActivePage
+                  return (
+                    <button
+                      key={index}
+                      onClick={() => setActivePage(index)}
+                      style={{ padding:'6px 10px', borderRadius:'999px', border:isActive ? '1px solid rgba(230,199,110,0.55)' : '1px solid rgba(255,255,255,0.12)', background:isActive ? 'rgba(230,199,110,0.12)' : 'rgba(255,255,255,0.03)', color:isActive ? '#e6c76e' : 'rgba(255,255,255,0.7)', fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.18em', textTransform:'uppercase', cursor:'pointer' }}
+                    >
+                      Page {index + 1}{page.trim() ? '' : ' · blank'}
+                    </button>
+                  )
+                })}
+              </div>
+              <div style={{ display:'flex', gap:'8px', flexWrap:'wrap' }}>
+                <button
+                  onClick={addPage}
+                  style={{ padding:'7px 12px', border:'1px solid rgba(230,199,110,0.35)', background:'rgba(230,199,110,0.06)', color:'#e6c76e', fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.18em', textTransform:'uppercase', cursor:'pointer', borderRadius:'999px' }}
+                >
+                  + Add Page
+                </button>
+                {pages.length > 1 && (
+                  <button
+                    onClick={removeCurrentPage}
+                    style={{ padding:'7px 12px', border:'1px solid rgba(255,255,255,0.14)', background:'transparent', color:'rgba(255,255,255,0.58)', fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.18em', textTransform:'uppercase', cursor:'pointer', borderRadius:'999px' }}
+                  >
+                    Remove Page
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'12px', color:'rgba(255,255,255,0.55)', marginBottom:'12px' }}>
+              Your letter can unfold across multiple pages if it needs more room.
+            </p>
+
+            {selectedRitualRecord && (
+              <div style={{ marginBottom:'12px', padding:'10px 12px', border:'1px solid rgba(230,199,110,0.18)', background:'rgba(230,199,110,0.05)', borderRadius:'8px' }}>
+                <p style={{ fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.2em', color:'#e6c76e', textTransform:'uppercase', marginBottom:'6px' }}>
+                  Passage · {selectedRitualRecord.label}
+                </p>
+                <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'12px', color:'rgba(255,255,255,0.62)' }}>
+                  {selectedRitualRecord.desc}
+                </p>
+              </div>
+            )}
+
+            <div style={{ marginBottom:'12px', padding:'10px 12px', border:'1px solid rgba(255,255,255,0.1)', background:'rgba(255,255,255,0.03)', borderRadius:'8px', display:'flex', justifyContent:'space-between', gap:'10px', flexDirection:isNarrow ? 'column' : 'row' }}>
+              <div>
+                <p style={{ fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.2em', color:'rgba(230,199,110,0.82)', textTransform:'uppercase', marginBottom:'6px' }}>
+                  Envelope Finery
+                </p>
+                <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'12px', color:'rgba(255,255,255,0.62)' }}>
+                  {selectedEnvelopeLiningRecord.label} lining · {selectedWaxSealRecord.label} wax
+                </p>
+              </div>
+              <div style={{ display:'flex', justifyContent:isNarrow ? 'flex-start' : 'flex-end' }}>
+                <EnvelopeSVG color={envelopeColor} liningId={selectedEnvelopeLining} waxSealId={selectedWaxSeal} />
+              </div>
+            </div>
+
             {renderPaper()}
 
             {selectedStamp && (
@@ -513,11 +859,14 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
               </div>
             )}
 
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:'12px', flexWrap:'wrap', gap:'8px' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', flexDirection:isNarrow ? 'column' : 'row', marginTop:'12px', flexWrap:'wrap', gap:'8px' }}>
               <div style={{ display:'flex', alignItems:'center', gap:'6px', flexWrap:'wrap' }}>
                 {[
                   { label:selectedPaper.label, action:()=>setView('papers'), icon:'📄' },
                   { label:selectedFont.label, action:()=>setView('fonts'), icon:'✒' },
+                  { label:selectedRitualRecord?.label || 'Passage', action:()=>setView('rituals'), icon:'☾' },
+                  { label:'Envelope', action:()=>setView('envelope-style'), icon:'✉' },
+                  { label:`${pages.length} page${pages.length === 1 ? '' : 's'}`, action:addPage, icon:'➕' },
                   { label:selectedStamp?STAMPS.find(s=>s.id===selectedStamp)?.label||'Stamp':'Stamp', action:()=>setView('stamps'), icon:'🔖' },
                 ].map((btn,i)=>(
                   <button key={i} onClick={btn.action}
@@ -528,10 +877,10 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
                   </button>
                 ))}
               </div>
-              <motion.button onClick={handleRelease} disabled={!body.trim()||releasing} whileTap={body.trim()?{scale:0.97}:{}}
-                style={{ padding:'11px 22px', background:'transparent', border:`1px solid ${body.trim()?'rgba(230,199,110,0.55)':'rgba(255,255,255,0.12)'}`, color:body.trim()?'#e6c76e':'rgba(255,255,255,0.42)', fontFamily:"'Cinzel', serif", fontSize:'10px', letterSpacing:'0.22em', textTransform:'uppercase', cursor:body.trim()?'pointer':'default', borderRadius:'2px', opacity:releasing?0.6:1 }}
-                onMouseEnter={e=>{if(!body.trim())return;e.currentTarget.style.background='rgba(230,199,110,0.08)';e.currentTarget.style.borderColor='#e6c76e'}}
-                onMouseLeave={e=>{e.currentTarget.style.background='transparent';e.currentTarget.style.borderColor=body.trim()?'rgba(230,199,110,0.55)':'rgba(255,255,255,0.12)'}}>
+              <motion.button onClick={handleRelease} disabled={!hasLetterContent||releasing} whileTap={hasLetterContent?{scale:0.97}:{}}
+                style={{ padding:'11px 22px', background:'transparent', border:`1px solid ${hasLetterContent?'rgba(230,199,110,0.55)':'rgba(255,255,255,0.12)'}`, color:hasLetterContent?'#e6c76e':'rgba(255,255,255,0.42)', fontFamily:"'Cinzel', serif", fontSize:'10px', letterSpacing:'0.22em', textTransform:'uppercase', cursor:hasLetterContent?'pointer':'default', borderRadius:'2px', opacity:releasing?0.6:1 }}
+                onMouseEnter={e=>{if(!hasLetterContent)return;e.currentTarget.style.background='rgba(230,199,110,0.08)';e.currentTarget.style.borderColor='#e6c76e'}}
+                onMouseLeave={e=>{e.currentTarget.style.background='transparent';e.currentTarget.style.borderColor=hasLetterContent?'rgba(230,199,110,0.55)':'rgba(255,255,255,0.12)'}}>
                 {releasing ? 'Sealing ✦' : recipientName ? `Send to ${recipientName} ✦` : 'Release into the Universe ✦'}
               </motion.button>
             </div>
@@ -542,7 +891,7 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
           <motion.div key="envelope" initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }} style={{ textAlign:'center', zIndex:2 }}>
             <motion.div initial={{ y:0, rotate:0 }} animate={{ y:[0,-20,80], rotate:[0,-3,2], opacity:[1,1,0] }} transition={{ duration:2, ease:'easeInOut' }}
               style={{ display:'inline-block', marginBottom:'24px', position:'relative' }}>
-              <EnvelopeSVG color={envelopeColor}/>
+              <EnvelopeSVG color={envelopeColor} liningId={selectedEnvelopeLining} waxSealId={selectedWaxSeal}/>
               {selectedStamp&&<div style={{ position:'absolute', top:'8px', right:'8px', transform:'rotate(3deg)' }}><StampSVG id={selectedStamp} size={32}/></div>}
             </motion.div>
             <motion.p initial={{ opacity:0 }} animate={{ opacity:1 }} transition={{ delay:0.3 }}
@@ -563,7 +912,11 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
             </motion.p>
             <motion.p initial={{ opacity:0 }} animate={{ opacity:1 }} transition={{ delay:0.8 }}
               style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'14px', color:'rgba(255,255,255,0.82)' }}>
-              {recipientName ? `traveling toward ${recipientName}...` : 'finding its way to a stranger...'}
+              {selectedRitualRecord
+                ? `${selectedRitualRecord.label.toLowerCase()} is carrying it ${recipientName ? `toward ${recipientName}` : 'through the universe'}...`
+                : recipientName
+                  ? `traveling toward ${recipientName}...`
+                  : 'finding its way to a stranger...'}
             </motion.p>
           </motion.div>
         )}

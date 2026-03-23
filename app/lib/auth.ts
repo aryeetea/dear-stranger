@@ -1,4 +1,14 @@
 import { supabase } from '../../lib/supabase'
+import { getLetterPreview, splitLetterPages } from './letters'
+import {
+  parseLetterSubject,
+  sanitizeConstellationHubs,
+  sanitizeHubRelics,
+  sanitizeLetterShelfAssignments,
+  type ConstellationHub,
+  type HubRelicId,
+  type LetterShelfId,
+} from './worldbuilding'
 
 type HubRecord = {
   id: string
@@ -19,6 +29,8 @@ type LetterRecord = {
   recipient_id: string | null
   body: string | null
   subject: string | null
+  paper_id?: string | null
+  font_id?: string | null
   created_at: string
   status: string | null
   arrives_at: string | null
@@ -29,6 +41,16 @@ type LetterRecord = {
 
 function normalizeHubName(hubName: string) {
   return hubName.trim().toLowerCase()
+}
+
+async function getCurrentUserId() {
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser()
+
+  if (error) throw error
+  return user?.id || null
 }
 
 async function assertHubNameAvailable(hubName: string, excludeUserId?: string) {
@@ -76,6 +98,50 @@ export async function signUp(email: string, password: string) {
   if (!data.user) throw new Error('No user returned after signup')
 
   return data.user
+}
+
+export async function ensureDraftHubForCurrentUser() {
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser()
+
+  if (userError) throw userError
+  if (!user) throw new Error('No authenticated user found')
+
+  const draftPayload = {
+    id: user.id,
+    email: user.email || null,
+  }
+
+  const { data: existingHub, error: existingHubError } = await supabase
+    .from('hubs')
+    .select('id, email')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  if (existingHubError) throw existingHubError
+
+  if (existingHub) {
+    const { data, error } = await supabase
+      .from('hubs')
+      .update({ email: draftPayload.email })
+      .eq('id', user.id)
+      .select()
+      .single()
+
+    if (error) throw error
+    return data
+  }
+
+  const { data, error } = await supabase
+    .from('hubs')
+    .insert([draftPayload])
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
 }
 
 export async function signUpAndCreateHub(
@@ -149,21 +215,37 @@ export async function createHubForCurrentUser(
     .maybeSingle()
 
   if (existingHubError) throw existingHubError
-  if (existingHub) return existingHub
 
   await assertHubNameAvailable(hubName, user.id)
 
   const email = user.email || null
+
+  const hubPayload = {
+    hub_name: hubName,
+    bio,
+    ask_about: askAbout,
+    email,
+  }
+
+  if (existingHub) {
+    const { data, error } = await supabase
+      .from('hubs')
+      .update(hubPayload)
+      .eq('id', user.id)
+      .select()
+      .single()
+
+    if (error) throw error
+    if (!data) throw new Error('Hub could not be updated.')
+    return data
+  }
 
   const { data, error } = await supabase
     .from('hubs')
     .insert([
       {
         id: user.id,
-        hub_name: hubName,
-        bio,
-        ask_about: askAbout,
-        email,
+        ...hubPayload,
       },
     ])
     .select()
@@ -206,35 +288,27 @@ export async function signOut() {
 export async function deleteAccount(): Promise<{ success: boolean; error?: string }> {
   try {
     const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser()
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession()
 
-    if (userError) throw userError
-    if (!user) throw new Error('No user found')
+    if (sessionError) throw sessionError
+    if (!session?.access_token) throw new Error('No active session found')
 
-    const userId = user.id
-
-    await Promise.race([
-      supabase
-        .from('letters')
-        .delete()
-        .or(`sender_id.eq.${userId},recipient_id.eq.${userId}`),
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Letter deletion timeout')), 8000),
-      ),
-    ]).catch((err: unknown) => {
-      console.warn(
-        'Letters deletion skipped:',
-        err instanceof Error ? err.message : String(err),
-      )
+    const response = await fetch('/api/delete-account', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+      },
     })
 
-    const { error: hubError } = await supabase.from('hubs').delete().eq('id', userId)
+    const result = (await response.json().catch(() => ({}))) as { error?: string }
 
-    if (hubError) throw new Error(`Hub delete failed: ${hubError.message}`)
+    if (!response.ok) {
+      throw new Error(result.error || 'Account deletion failed.')
+    }
 
-    await supabase.auth.signOut()
+    await supabase.auth.signOut().catch(() => undefined)
 
     return { success: true }
   } catch (err: unknown) {
@@ -293,9 +367,19 @@ export async function exportMyLetters(): Promise<string> {
       lines.push(`Letter ${i + 1} · ${direction}`)
       lines.push(`${direction === 'SENT' ? 'To' : 'From'}: ${other}`)
       lines.push(`Date: ${date}`)
-      if (l.subject && l.subject !== 'A letter for you') lines.push(`Subject: ${l.subject}`)
+      const parsedSubject = parseLetterSubject(l.subject)
+      if (parsedSubject.subject && parsedSubject.subject !== 'A letter for you') {
+        lines.push(`Subject: ${parsedSubject.subject}`)
+      }
       lines.push('')
-      lines.push(l.body || '')
+      splitLetterPages(l.body).forEach((page, pageIndex) => {
+        if (pageIndex > 0) {
+          lines.push(`[Page ${pageIndex + 1}]`)
+          lines.push('')
+        }
+        lines.push(page)
+        lines.push('')
+      })
       lines.push('')
       lines.push('─'.repeat(40))
       lines.push('')
@@ -319,12 +403,16 @@ export async function getUniverseLetters() {
 
     if (error) return []
 
-    return ((data || []) as any[]).map((l) => ({
-      id: l.id,
-      senderName: l.sender?.hub_name || 'A Stranger',
-      preview: l.body ? (l.body.length > 120 ? `${l.body.slice(0, 120)}...` : l.body) : '',
-      subject: l.subject || 'A letter for you',
-    }))
+    return ((data || []) as Array<{ id: string; body?: string | null; subject?: string | null; sender?: { hub_name?: string | null } | null }>).map((l) => {
+      const parsedSubject = parseLetterSubject(l.subject)
+
+      return {
+        id: l.id,
+        senderName: l.sender?.hub_name || 'A Stranger',
+        preview: getLetterPreview(l.body, 120),
+        subject: parsedSubject.subject || 'A letter for you',
+      }
+    })
   } catch {
     return []
   }
@@ -426,6 +514,183 @@ export async function getAllHubs(): Promise<HubRecord[]> {
     return (data || []) as HubRecord[]
   } catch {
     return []
+  }
+}
+
+export async function getMyHubRelicsFromDb(): Promise<HubRelicId[] | null> {
+  try {
+    const userId = await getCurrentUserId()
+    if (!userId) return null
+
+    const { data, error } = await supabase
+      .from('hub_relics')
+      .select('relic_id')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: true })
+
+    if (error) return null
+
+    return sanitizeHubRelics((data || []).map((row: { relic_id?: string | null }) => row.relic_id || ''))
+  } catch {
+    return null
+  }
+}
+
+export async function saveMyHubRelicsToDb(relicIds: HubRelicId[]): Promise<boolean> {
+  try {
+    const userId = await getCurrentUserId()
+    if (!userId) return false
+
+    const cleaned = sanitizeHubRelics(relicIds)
+
+    const { error: deleteError } = await supabase
+      .from('hub_relics')
+      .delete()
+      .eq('user_id', userId)
+
+    if (deleteError) return false
+
+    if (cleaned.length === 0) return true
+
+    const { error: insertError } = await supabase
+      .from('hub_relics')
+      .insert(cleaned.map((relicId) => ({ user_id: userId, relic_id: relicId })))
+
+    return !insertError
+  } catch {
+    return false
+  }
+}
+
+export async function getMyLetterShelfAssignmentsFromDb(): Promise<Partial<Record<string, LetterShelfId>> | null> {
+  try {
+    const userId = await getCurrentUserId()
+    if (!userId) return null
+
+    const { data, error } = await supabase
+      .from('letter_shelf_assignments')
+      .select('letter_id, shelf_id')
+      .eq('user_id', userId)
+
+    if (error) return null
+
+    const mapped = Object.fromEntries(
+      (data || []).map((row: { letter_id?: string | null; shelf_id?: string | null }) => [
+        row.letter_id || '',
+        row.shelf_id || undefined,
+      ]),
+    )
+
+    return sanitizeLetterShelfAssignments(mapped)
+  } catch {
+    return null
+  }
+}
+
+export async function saveMyLetterShelfAssignmentToDb(
+  letterId: string,
+  shelfId?: LetterShelfId,
+): Promise<boolean> {
+  try {
+    const userId = await getCurrentUserId()
+    if (!userId) return false
+
+    if (!shelfId) {
+      const { error } = await supabase
+        .from('letter_shelf_assignments')
+        .delete()
+        .eq('user_id', userId)
+        .eq('letter_id', letterId)
+
+      return !error
+    }
+
+    const { error } = await supabase
+      .from('letter_shelf_assignments')
+      .upsert(
+        [{ user_id: userId, letter_id: letterId, shelf_id: shelfId }],
+        { onConflict: 'user_id,letter_id' },
+      )
+
+    return !error
+  } catch {
+    return false
+  }
+}
+
+export async function getMyConstellationHubsFromDb(): Promise<ConstellationHub[] | null> {
+  try {
+    const userId = await getCurrentUserId()
+    if (!userId) return null
+
+    const { data, error } = await supabase
+      .from('constellation_hubs')
+      .select('hub_id, created_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+
+    if (error) return null
+
+    const hubIds = (data || [])
+      .map((row: { hub_id?: string | null }) => row.hub_id || '')
+      .filter(Boolean)
+
+    if (hubIds.length === 0) return []
+
+    const { data: hubs, error: hubsError } = await supabase
+      .from('hubs')
+      .select('id, hub_name')
+      .in('id', hubIds)
+
+    if (hubsError) return null
+
+    const nameMap = new Map(
+      ((hubs || []) as Array<{ id: string; hub_name?: string | null }>).map((hub) => [
+        hub.id,
+        hub.hub_name || 'Unknown Hub',
+      ]),
+    )
+
+    return sanitizeConstellationHubs(
+      hubIds.map((hubId) => ({
+        id: hubId,
+        name: nameMap.get(hubId) || 'Unknown Hub',
+      })),
+    )
+  } catch {
+    return null
+  }
+}
+
+export async function addConstellationHubToDb(hubId: string): Promise<boolean> {
+  try {
+    const userId = await getCurrentUserId()
+    if (!userId) return false
+
+    const { error } = await supabase
+      .from('constellation_hubs')
+      .upsert([{ user_id: userId, hub_id: hubId }], { onConflict: 'user_id,hub_id' })
+
+    return !error
+  } catch {
+    return false
+  }
+}
+
+export async function removeConstellationHubFromDb(hubId: string): Promise<boolean> {
+  try {
+    const userId = await getCurrentUserId()
+    if (!userId) return false
+
+    const { error } = await supabase
+      .from('constellation_hubs')
+      .delete()
+      .eq('user_id', userId)
+      .eq('hub_id', hubId)
+
+    return !error
+  } catch {
+    return false
   }
 }
 
