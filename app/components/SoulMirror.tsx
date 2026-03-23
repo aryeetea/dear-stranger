@@ -18,17 +18,17 @@ const MIRROR_VOICES = [
 ]
 
 const STYLE_OPTIONS = [
-  { id: 'fantasy', label: 'Fantasy', desc: 'Enchanted, mythic, and luminous, like you stepped out of an old story.' },
-  { id: 'earthbound', label: 'Earthbound', desc: 'Grounded and intimate, with softness, elegance, and real human warmth.' },
-  { id: 'mythic-modern', label: 'Mythic Modern', desc: 'Contemporary style touched by symbolism, magic, and quiet drama.' },
-  { id: 'celestial', label: 'Celestial', desc: 'Moonlit, cosmic, and radiant, with a divine or star-born feeling.' },
-  { id: 'regal', label: 'Regal', desc: 'Ornate, noble, and commanding, like someone meant to be remembered.' },
-  { id: 'nocturne', label: 'Nocturne', desc: 'Moody and cinematic, shaped by midnight light, velvet shadows, and allure.' },
-  { id: 'luminous-future', label: 'Luminous Future', desc: 'Sleek and visionary, with glowing details and a dreamlike future aura.' },
-  { id: 'garden', label: 'Garden', desc: 'Soft, floral, and sacred, like beauty growing quietly back into the world.' },
-  { id: 'sanctuary', label: 'Sanctuary', desc: 'Candlelit, peaceful, and devotional, like a hidden chapel, library, or shrine.' },
-  { id: 'velvet-gothic', label: 'Velvet Gothic', desc: 'Dark romance, old-world glamour, and elegant danger wrapped in shadow.' },
-  { id: 'tideborn', label: 'Tideborn', desc: 'Sea-glass light, drifting fabrics, and oceanic calm pulled by the moon.' },
+  { id: 'fantasy', label: 'Fantasy', desc: 'Magical, storybook, and glowing.' },
+  { id: 'earthbound', label: 'Earthbound', desc: 'Soft, grounded, and very human.' },
+  { id: 'mythic-modern', label: 'Mythic Modern', desc: 'Modern style with a little magic and symbolism.' },
+  { id: 'celestial', label: 'Celestial', desc: 'Moonlit, starry, and a little divine.' },
+  { id: 'regal', label: 'Regal', desc: 'Rich, elegant, and powerful.' },
+  { id: 'nocturne', label: 'Nocturne', desc: 'Dark, moody, and cinematic.' },
+  { id: 'luminous-future', label: 'Luminous Future', desc: 'Clean, futuristic, and softly glowing.' },
+  { id: 'garden', label: 'Garden', desc: 'Natural, floral, and gentle.' },
+  { id: 'sanctuary', label: 'Sanctuary', desc: 'Calm, candlelit, and peaceful.' },
+  { id: 'velvet-gothic', label: 'Velvet Gothic', desc: 'Romantic, dramatic, and shadowy.' },
+  { id: 'tideborn', label: 'Tideborn', desc: 'Oceanic, dreamy, and cool-toned.' },
 ]
 
 const DIRECT_DESCRIPTION_SUGGESTIONS = [
@@ -311,7 +311,8 @@ export default function SoulMirror({
                 whileTap={{ scale: 0.98 }}
                 onClick={() => {
                   setCreationMode('direct')
-                  setPhase('voice')
+                  setSelectedVoice(null)
+                  setPhase('style')
                 }}
                 style={{
                   textAlign: 'left',
@@ -364,7 +365,11 @@ export default function SoulMirror({
           <motion.div key="style" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.4 }}
             style={{ ...cardStyle, width: wideSelectionCardWidth, maxHeight: selectionCardMaxHeight, overflowY: 'auto', padding: 'clamp(28px,5vw,44px)' }}>
             <GoldLines />
-            <SectionHeader step="Soul Mirror · Step 2 of 4" title="Choose your avatar theme" sub="This gives the mirror a creative direction for your portrait: the mood, clothing language, lighting, and world around your look. Think of it as choosing the atmosphere your face will be imagined inside." />
+            <SectionHeader
+              step={creationMode === 'direct' ? 'Soul Mirror · Step 1 of 4' : 'Soul Mirror · Step 2 of 4'}
+              title="Choose your avatar theme"
+              sub="Pick the overall vibe for your portrait: magical, modern, moonlit, dark, soft, regal, or something in between."
+            />
             <div style={{ display: 'grid', gridTemplateColumns: selectionGridColumns, gap: '12px', marginBottom: '24px' }}>
               {STYLE_OPTIONS.map(style => (
                 <motion.button key={style.id} whileHover={{ y: -2 }} whileTap={{ scale: 0.97 }}
@@ -375,7 +380,7 @@ export default function SoulMirror({
                 </motion.button>
               ))}
             </div>
-            <button onClick={() => setPhase('voice')} style={backBtn}>← Back</button>
+            <button onClick={() => setPhase(creationMode === 'direct' ? 'mode' : 'voice')} style={backBtn}>← Back</button>
           </motion.div>
         )}
 
@@ -383,7 +388,11 @@ export default function SoulMirror({
           <motion.div key="hubstyle" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.4 }}
             style={{ ...cardStyle, width: wideSelectionCardWidth, maxHeight: selectionCardMaxHeight, overflowY: 'auto', padding: 'clamp(28px,5vw,44px)' }}>
             <GoldLines />
-            <SectionHeader step="Soul Mirror · Step 3 of 5" title="How does your hub appear in the universe?" sub="Choose a form that feels like a place someone would want to wander into." />
+            <SectionHeader
+              step={creationMode === 'direct' ? 'Soul Mirror · Step 2 of 4' : 'Soul Mirror · Step 3 of 5'}
+              title="How does your hub appear in the universe?"
+              sub="Choose a form that feels like a place someone would want to wander into."
+            />
             <div style={{ display: 'grid', gridTemplateColumns: selectionGridColumns, gap: '12px', marginBottom: '28px' }}>
               {HUB_STYLES.map(style => {
                 const isSelected = selectedHubStyle === style.id
@@ -412,7 +421,11 @@ export default function SoulMirror({
           <motion.div key="hubcolor" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.4 }}
             style={{ ...cardStyle, width: wideSelectionCardWidth, maxHeight: selectionCardMaxHeight, overflowY: 'auto', padding: 'clamp(28px,5vw,44px)' }}>
             <GoldLines />
-            <SectionHeader step="Soul Mirror · Step 4 of 5" title="What color world does your hub glow in?" sub="Pick a palette that feels beautiful to you. This becomes the atmosphere and light your hub carries into the map." />
+            <SectionHeader
+              step={creationMode === 'direct' ? 'Soul Mirror · Step 3 of 4' : 'Soul Mirror · Step 4 of 5'}
+              title="What color world does your hub glow in?"
+              sub="Pick a palette that feels beautiful to you. This becomes the atmosphere and light your hub carries into the map."
+            />
             <div style={{ display: 'grid', gridTemplateColumns: selectionGridColumns, gap: '12px', marginBottom: '28px' }}>
               {HUB_PALETTES.map((palette) => {
                 const isSelected = selectedHubPalette === palette.id
@@ -544,7 +557,7 @@ export default function SoulMirror({
           >
             <GoldLines />
             <SectionHeader
-              step="Soul Mirror · Step 5 of 5"
+              step="Soul Mirror · Step 4 of 4"
               title="Describe your avatar in your own words"
               sub="Write as much detail as you want. Think otherworldly realism: grounded enough to feel alive, imaginative enough to feel like you stepped out of a dream."
             />
