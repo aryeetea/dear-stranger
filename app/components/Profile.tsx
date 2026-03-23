@@ -116,7 +116,7 @@ export default function Profile({
   setRegenError('')
   
   const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 55000) // 55s timeout
+  const timeout = setTimeout(() => controller.abort(), 30000) // 30s timeout
   
   try {
     setRegenLoading(true); setShowRegenInput(false)
@@ -149,7 +149,11 @@ export default function Profile({
       setRegenError('The mirror took too long to respond. Your attempt was not used — try again.')
     } else {
       console.error('Regen failed:', err)
-      setRegenError('Something went wrong. Your attempt was not used — try again.')
+      setRegenError(
+        err instanceof Error && err.message
+          ? err.message
+          : 'Something went wrong. Your attempt was not used — try again.',
+      )
     }
   } finally {
     clearTimeout(timeout)

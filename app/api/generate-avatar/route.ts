@@ -174,6 +174,11 @@ export async function POST(req: Request) {
         prompt: result.revisedPrompt,
       })
     } catch (primaryError) {
+      if (generationMode === 'reimagine') {
+        console.warn('gpt-image-1 failed during reimagine:', primaryError)
+        throw primaryError
+      }
+
       console.warn('gpt-image-1 failed, falling back to dall-e-3:', primaryError)
       const fallback = await generateWithDalle(openai, imagePrompt, userId, generationMode)
       return NextResponse.json({
