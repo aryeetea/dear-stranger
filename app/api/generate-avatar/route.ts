@@ -12,7 +12,7 @@ function normalizeDetail(value: string) {
     .trim()
 }
 
-// ⏱ timeout wrapper (prevents infinite loading)
+// ⏱ timeout wrapper
 async function withTimeout<T>(promise: Promise<T>, ms = 30000): Promise<T> {
   const timeout = new Promise<never>((_, reject) =>
     setTimeout(() => reject(new Error('Request timed out')), ms)
@@ -20,25 +20,64 @@ async function withTimeout<T>(promise: Promise<T>, ms = 30000): Promise<T> {
   return Promise.race([promise, timeout])
 }
 
-// 🎯 shortened but still high-quality prompt
+// 🎨 ALL STYLES (OPTIMIZED)
+const STYLE_DIRECTIONS: Record<string, string> = {
+  fantasy:
+    `Stylized semi-realistic fantasy portrait. Cinematic lighting, deep shadows, glowing magical accents, rich jewel tones, mystical environment.`,
+
+  earthbound:
+    `Stylized semi-realistic grounded portrait. Natural lighting, soft shadows, warm tones, intimate and elegant styling.`,
+
+  'mythic-modern':
+    `Stylized semi-realistic mythic-modern portrait. Dramatic lighting, modern fashion with subtle magical elements, strong depth and contrast.`,
+
+  celestial:
+    `Stylized semi-realistic celestial portrait. Moonlit lighting, cool tones, glowing highlights, ethereal cosmic atmosphere.`,
+
+  regal:
+    `Stylized semi-realistic regal portrait. Warm golden lighting, rich fabrics, royal elegance, strong facial structure.`,
+
+  nocturne:
+    `Stylized semi-realistic nocturne portrait. Night lighting, deep shadows, colored highlights, cinematic mood.`,
+
+  'luminous-future':
+    `Stylized semi-realistic futuristic portrait. Soft glowing light, reflective materials, elegant sci-fi aesthetic.`,
+
+  garden:
+    `Stylized semi-realistic nature portrait. Dappled sunlight, warm greens, organic textures, soft atmospheric depth.`,
+
+  sanctuary:
+    `Stylized semi-realistic sacred portrait. Candlelit glow, soft shadows, calm and spiritual atmosphere.`,
+
+  'velvet-gothic':
+    `Stylized semi-realistic gothic portrait. Dark tones, velvet textures, dramatic lighting, romantic mood.`,
+
+  tideborn:
+    `Stylized semi-realistic oceanic portrait. Cool blue lighting, flowing fabrics, reflective watery atmosphere.`,
+}
+
+// 🎯 BALANCED PROMPT BUILDER
 function buildAvatarPrompt(answers: string[], style?: string, feedback?: string) {
   const details = answers
     .map((a, i) => `${i + 1}. ${normalizeDetail(a)}`)
     .join('\n')
 
+  const styleKey = (style || '').toLowerCase().replace(/\s+/g, '-')
+  const styleDirection = STYLE_DIRECTIONS[styleKey] || STYLE_DIRECTIONS['earthbound']
+
   return `
 Create a vertical full-body stylized semi-realistic character portrait.
 
-Style: mythic-modern, cinematic lighting, strong shadows and highlights, volumetric rendering, elegant anatomy, refined fashion, glowing accents.
+${styleDirection}
 
 Requirements:
-- Strong directional lighting with shadow depth
+- Strong directional lighting with visible shadow depth
 - Sculpted face (cheekbones, jawline, nose highlights)
-- Realistic fabric folds and material textures
-- Subtle atmospheric background (not distracting)
+- Realistic fabric folds and textures
 - Character centered, full body visible
 - Clean silhouette, cinematic pose
-- Premium character concept art quality (not cartoon, not flat)
+- Subtle atmospheric background
+- High-end character concept art (NOT cartoon, NOT flat)
 
 Character details:
 ${details}
@@ -47,7 +86,7 @@ ${feedback ? `Revision note: ${normalizeDetail(feedback)}` : ''}
 `
 }
 
-// 🧠 primary generator (FIXED)
+// 🧠 PRIMARY GENERATOR
 async function generateWithGptImage(
   openai: OpenAI,
   prompt: string,
@@ -73,7 +112,7 @@ async function generateWithGptImage(
   }
 }
 
-// 🔁 fallback (FIXED)
+// 🔁 FALLBACK
 async function generateWithDalle(
   openai: OpenAI,
   prompt: string,
@@ -98,7 +137,7 @@ async function generateWithDalle(
   throw new Error('dall-e-3 returned no image')
 }
 
-// 🚀 API route
+// 🚀 API ROUTE
 export async function POST(req: Request) {
   try {
     const { answers, feedback, style, mode } = await req.json()
@@ -122,7 +161,6 @@ export async function POST(req: Request) {
     const generationMode: GenerationMode = mode === 'reimagine' ? 'reimagine' : 'create'
 
     try {
-      // 🟢 PRIMARY (with timeout)
       const result = await withTimeout(
         generateWithGptImage(openai, prompt, generationMode),
         30000
@@ -136,7 +174,6 @@ export async function POST(req: Request) {
       console.error('PRIMARY FAILED:', primaryError)
 
       try {
-        // 🔁 FALLBACK (with timeout)
         const fallback = await withTimeout(
           generateWithDalle(openai, prompt, generationMode),
           30000
