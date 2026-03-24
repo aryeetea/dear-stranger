@@ -967,29 +967,41 @@ export default function UniverseMap({
 
     const viewportWidth = window.innerWidth
     const viewportHeight = window.innerHeight
-    const alignOptions: Array<'left' | 'center' | 'right'> = isMobile
-      ? ['left']
-      : ['left', 'center', 'right']
-    const align = alignOptions[Math.floor(Math.random() * alignOptions.length)]
-    const horizontalPadding = isMobile ? 24 : 56
-    const maxWidth = Math.min(isMobile ? viewportWidth - 48 : viewportWidth * 0.34, 420)
-    const left =
-      align === 'left'
-        ? horizontalPadding + Math.random() * Math.max(40, viewportWidth * 0.28)
-        : align === 'right'
-          ? viewportWidth - horizontalPadding - Math.random() * Math.max(40, viewportWidth * 0.18)
-          : viewportWidth * (0.38 + Math.random() * 0.24)
-    const top = isMobile
-      ? viewportHeight * (0.12 + Math.random() * 0.24)
-      : viewportHeight * (0.14 + Math.random() * 0.28)
+    const maxWidth = Math.min(isMobile ? viewportWidth - 64 : viewportWidth * 0.24, isMobile ? 280 : 300)
+
+    const horizontalZones = isMobile
+      ? [{ min: 24, max: Math.max(48, viewportWidth - maxWidth - 24), align: 'left' as const }]
+      : [
+          { min: viewportWidth * 0.08, max: viewportWidth * 0.24, align: 'left' as const },
+          { min: viewportWidth * 0.37, max: viewportWidth * 0.63, align: 'center' as const },
+          { min: viewportWidth * 0.76, max: viewportWidth * 0.92, align: 'right' as const },
+        ]
+    const verticalZones = isMobile
+      ? [
+          { min: viewportHeight * 0.12, max: viewportHeight * 0.22 },
+          { min: viewportHeight * 0.3, max: viewportHeight * 0.42 },
+          { min: viewportHeight * 0.5, max: viewportHeight * 0.62 },
+        ]
+      : [
+          { min: viewportHeight * 0.12, max: viewportHeight * 0.24 },
+          { min: viewportHeight * 0.3, max: viewportHeight * 0.46 },
+          { min: viewportHeight * 0.52, max: viewportHeight * 0.68 },
+        ]
+
+    const horizontalZone =
+      horizontalZones[Math.floor(Math.random() * horizontalZones.length)]
+    const verticalZone = verticalZones[Math.floor(Math.random() * verticalZones.length)]
+    const align = horizontalZone.align
+    const left = horizontalZone.min + Math.random() * Math.max(12, horizontalZone.max - horizontalZone.min)
+    const top = verticalZone.min + Math.random() * Math.max(12, verticalZone.max - verticalZone.min)
 
     setFloatingPrompt({
       ...nextPrompt,
       instanceId: universePromptInstanceRef.current++,
       left,
       top,
-      driftX: (Math.random() - 0.5) * (isMobile ? 18 : 38),
-      driftY: (Math.random() - 0.5) * (isMobile ? 24 : 42),
+      driftX: (Math.random() - 0.5) * (isMobile ? 26 : 54),
+      driftY: (Math.random() - 0.5) * (isMobile ? 32 : 60),
       maxWidth,
       align,
     })
@@ -1327,11 +1339,11 @@ export default function UniverseMap({
         {floatingPrompt && !profile && !starPreview && (
           <motion.button
             key={`floating-prompt-${floatingPrompt.instanceId}`}
-            initial={{ opacity: 0, x: 0, y: 8 }}
+            initial={{ opacity: 0, x: 0, y: 10 }}
             animate={{
               opacity: [0, 0.7, 0.7, 0],
-              x: floatingPrompt.driftX,
-              y: floatingPrompt.driftY,
+              x: [0, floatingPrompt.driftX * 0.45, floatingPrompt.driftX],
+              y: [10, floatingPrompt.driftY * 0.55, floatingPrompt.driftY],
             }}
             exit={{ opacity: 0 }}
             transition={{ duration: 13.5, ease: 'easeInOut' }}
@@ -1364,11 +1376,11 @@ export default function UniverseMap({
             <p
               style={{
                 fontFamily: "'Cinzel', serif",
-                fontSize: isMobile ? '8px' : '9px',
-                letterSpacing: '0.28em',
-                color: 'rgba(201,168,76,0.48)',
+                fontSize: isMobile ? '7px' : '8px',
+                letterSpacing: '0.24em',
+                color: 'rgba(201,168,76,0.42)',
                 textTransform: 'uppercase',
-                marginBottom: '10px',
+                marginBottom: '8px',
               }}
             >
               {floatingPrompt.title}
@@ -1377,10 +1389,10 @@ export default function UniverseMap({
               style={{
                 fontFamily: "'IM Fell English', serif",
                 fontStyle: 'italic',
-                fontSize: isMobile ? '22px' : 'clamp(24px, 2.1vw, 34px)',
-                lineHeight: 1.45,
-                color: 'rgba(255,255,255,0.72)',
-                textShadow: '0 0 18px rgba(0,0,0,0.28)',
+                fontSize: isMobile ? '17px' : 'clamp(18px, 1.45vw, 24px)',
+                lineHeight: 1.42,
+                color: 'rgba(255,255,255,0.64)',
+                textShadow: '0 0 14px rgba(0,0,0,0.24)',
               }}
             >
               {floatingPrompt.prompt}

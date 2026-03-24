@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import OpenAI from 'openai'
 
-export const maxDuration = 35
+export const maxDuration = 45
 
 type GenerationMode = 'create' | 'reimagine'
 
@@ -67,6 +67,10 @@ function buildAvatarPrompt(answers: string[], style?: string, feedback?: string)
   return [
     `Create a single vertical full-body character portrait. ${styleDirection}`,
 
+    `STYLE TARGET: polished stylized character design art with the finish quality of premium fantasy game splash art or high-end character concept art. Smooth painterly rendering, elegant anatomy, clean readable silhouette, luminous skin and eyes, graceful hands, beautifully designed clothing, tasteful ornament, and refined facial features. Stylized and beautiful, not photoreal, not flat, not cartoonish.`,
+
+    `The character should feel like the clear hero image: centered, striking, fashion-forward, magical or symbolic when appropriate, with a strong sense of personality. The image should feel curated and intentional, like a finished character illustration rather than a random scene.`,
+
     // Core 3D/volume instructions
     `CRITICAL RENDERING REQUIREMENTS: The image must look three-dimensional, sculptural, and volumetric — NOT flat or illustrative. Achieve this through:
 - Strong single directional key light with clearly visible shadow falloff across the face and body
@@ -82,7 +86,11 @@ function buildAvatarPrompt(answers: string[], style?: string, feedback?: string)
 
     `Face: beautiful, well-defined features with strong bone structure readable through lighting and shadow. Body: elegant believable proportions with anatomical volume. Clothing: intentional, stylish, with material depth and layered silhouettes. The overall presence should feel hauntingly beautiful, mythic, and emotionally charged rather than ordinary.`,
 
-    `Composition: character centered and fully visible head to toe, vertical portrait, strong readable silhouette with rim light separation from background. Pose should feel grounded and cinematic, not stiff or front-flat.`,
+    `Composition: character centered and fully visible head to toe, vertical portrait, strong readable silhouette with rim light separation from background. Pose should feel grounded and cinematic, not stiff or front-flat. Show the full outfit clearly from head to toe with enough breathing room around the figure.`,
+
+    `Background treatment: keep the environment secondary to the character. It may be a soft atmospheric fantasy world, a celestial haze, a magical landscape, or a very minimal clean backdrop depending on the concept, but it must never distract from the figure. Avoid busy clutter.`,
+
+    `Do not include extra companions, creatures, or secondary characters unless the user's description explicitly asks for them.`,
 
     `No text, no watermark, no logo, no extra characters.`,
 
@@ -103,7 +111,7 @@ async function generateWithGptImage(
     model: 'gpt-image-1',
     prompt,
     size: mode === 'reimagine' ? '1024x1024' : '1024x1536',
-    quality: 'medium',
+    quality: mode === 'reimagine' ? 'medium' : 'high',
     output_format: 'jpeg',
     user: userId || undefined,
   } as any)
@@ -174,12 +182,12 @@ export async function POST(req: Request) {
         prompt: result.revisedPrompt,
       })
     } catch (primaryError) {
-      if (generationMode === 'reimagine') {
-        console.warn('gpt-image-1 failed during reimagine:', primaryError)
-        throw primaryError
-      }
-
-      console.warn('gpt-image-1 failed, falling back to dall-e-3:', primaryError)
+      console.warn(
+        generationMode === 'reimagine'
+          ? 'gpt-image-1 failed during reimagine, falling back to dall-e-3:'
+          : 'gpt-image-1 failed, falling back to dall-e-3:',
+        primaryError,
+      )
       const fallback = await generateWithDalle(openai, imagePrompt, userId, generationMode)
       return NextResponse.json({
         imageUrl: fallback.imageUrl,

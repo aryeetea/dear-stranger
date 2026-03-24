@@ -4,23 +4,16 @@ import { useEffect, useState, type CSSProperties } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   getMyLetters,
-  getMyLetterShelfAssignmentsFromDb,
-  getSession,
-  saveMyLetterShelfAssignmentToDb,
 } from '../lib/auth'
 import { useViewport } from '../lib/useViewport'
 import { LETTER_FONT_FAMILIES, getLetterPreview, getLetterPageCount, splitLetterPages } from '../lib/letters'
 import {
-  DEFAULT_LETTER_SHELVES,
   LETTER_ENVELOPE_LININGS,
   LETTER_RITUALS,
   LETTER_WAX_SEALS,
-  loadLetterShelfAssignments,
   parseLetterSubject,
-  saveLetterShelfAssignments,
   type LetterEnvelopeLiningId,
   type LetterRitualId,
-  type LetterShelfId,
   type LetterWaxSealId,
 } from '../lib/worldbuilding'
 
@@ -85,29 +78,6 @@ export default function Observatory({
     archive: Letter[]
   }>({ transit: [], arrived: [], archive: [] })
   const [loading, setLoading] = useState(true)
-  const [storageScope, setStorageScope] = useState('')
-  const [shelfAssignments, setShelfAssignments] = useState<Partial<Record<string, LetterShelfId>>>({})
-  const [activeShelf, setActiveShelf] = useState<'all' | LetterShelfId>('all')
-
-  useEffect(() => {
-    async function loadStorageScope() {
-      const session = await getSession()
-      if (!session?.user?.id) return
-      const scope = `hub:${session.user.id}`
-      setStorageScope(scope)
-
-      const syncedAssignments = await getMyLetterShelfAssignmentsFromDb()
-      if (syncedAssignments) {
-        setShelfAssignments(syncedAssignments)
-        saveLetterShelfAssignments(scope, syncedAssignments)
-        return
-      }
-
-      setShelfAssignments(loadLetterShelfAssignments(scope))
-    }
-
-    void loadStorageScope()
-  }, [])
 
   useEffect(() => {
     async function loadLetters() {
@@ -198,36 +168,6 @@ export default function Observatory({
   const currentLetters =
     activeTab === 'transit' ? transit : activeTab === 'arrived' ? arrived : archive
 
-  const filteredLetters =
-    activeTab === 'transit' || activeShelf === 'all'
-      ? currentLetters
-      : currentLetters.filter((letter) => shelfAssignments[letter.id] === activeShelf)
-
-  const shelfOptions: Array<{ id: 'all' | LetterShelfId; label: string }> = [
-    { id: 'all', label: 'All Letters' },
-    ...DEFAULT_LETTER_SHELVES,
-  ]
-
-  async function assignShelf(letterId: string, shelfId?: LetterShelfId) {
-    setShelfAssignments((current) => {
-      const next = { ...current }
-
-      if (shelfId) {
-        next[letterId] = shelfId
-      } else {
-        delete next[letterId]
-      }
-
-      if (storageScope) {
-        saveLetterShelfAssignments(storageScope, next)
-      }
-
-      return next
-    })
-
-    void saveMyLetterShelfAssignmentToDb(letterId, shelfId)
-  }
-
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -288,63 +228,24 @@ export default function Observatory({
           ))}
         </motion.div>
 
-        {activeTab !== 'transit' && (
-          <div style={{ marginBottom: '24px' }}>
-            <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.3em', color: 'rgba(230,199,110,0.72)', textTransform: 'uppercase', marginBottom: '10px' }}>
-              Private Shelves
-            </p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-              {shelfOptions.map((shelf) => {
-                const isSelected = activeShelf === shelf.id
-                const count =
-                  shelf.id === 'all'
-                    ? currentLetters.length
-                    : currentLetters.filter((letter) => shelfAssignments[letter.id] === shelf.id).length
-
-                return (
-                  <button
-                    key={shelf.id}
-                    onClick={() => setActiveShelf(shelf.id)}
-                    style={{
-                      padding: '8px 12px',
-                      borderRadius: '999px',
-                      border: isSelected ? '1px solid rgba(230,199,110,0.48)' : '1px solid rgba(255,255,255,0.1)',
-                      background: isSelected ? 'rgba(230,199,110,0.1)' : 'rgba(255,255,255,0.03)',
-                      color: isSelected ? '#e6c76e' : 'rgba(255,255,255,0.72)',
-                      fontFamily: "'Cinzel', serif",
-                      fontSize: '8px',
-                      letterSpacing: '0.18em',
-                      textTransform: 'uppercase',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    {shelf.label} · {count}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
         <AnimatePresence mode="wait">
           <motion.div key={activeTab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.3 }}>
             {loading ? (
               <div style={{ textAlign: 'center', padding: '60px 0' }}>
                 <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '16px', color: 'rgba(255,255,255,0.75)' }}>loading letters...</p>
               </div>
-            ) : filteredLetters.length === 0 ? (
+            ) : currentLetters.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '60px 0' }}>
                 <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '16px', color: 'rgba(255,255,255,0.75)' }}>
                   {activeTab === 'transit' && 'No letters traveling at the moment.'}
-                  {activeTab === 'arrived' && (activeShelf === 'all' ? 'No letters have arrived yet.' : 'Nothing on this shelf yet.')}
-                  {activeTab === 'archive' && (activeShelf === 'all' ? 'Your archive is empty.' : 'Nothing on this shelf yet.')}
+                  {activeTab === 'arrived' && 'No letters have arrived yet.'}
+                  {activeTab === 'archive' && 'Your archive is empty.'}
                 </p>
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {filteredLetters.map((letter, i) => (
+                {currentLetters.map((letter, i) => (
                   <LetterEntry key={letter.id} letter={letter} index={i}
-                    shelfId={shelfAssignments[letter.id]}
                     onClick={() => letter.status !== 'transit' && setOpenLetter(letter)} />
                 ))}
               </div>
@@ -356,8 +257,6 @@ export default function Observatory({
       <AnimatePresence>
         {openLetter && (
           <LetterModal letter={openLetter} onClose={() => setOpenLetter(null)}
-            shelfId={shelfAssignments[openLetter.id]}
-            onAssignShelf={(shelfId) => assignShelf(openLetter.id, shelfId)}
             onReply={name => { setOpenLetter(null); onWriteLetter?.(name) }} />
         )}
       </AnimatePresence>
@@ -365,12 +264,11 @@ export default function Observatory({
   )
 }
 
-function LetterEntry({ letter, index, shelfId, onClick }: { letter: Letter; index: number; shelfId?: LetterShelfId; onClick: () => void }) {
+function LetterEntry({ letter, index, onClick }: { letter: Letter; index: number; onClick: () => void }) {
   const colors = PAPER_COLORS[letter.paperId] || PAPER_COLORS.ornate
   const isTransit = letter.status === 'transit'
   const { isNarrow } = useViewport()
   const ritual = letter.ritualId ? LETTER_RITUALS.find((item) => item.id === letter.ritualId) : null
-  const shelf = shelfId ? DEFAULT_LETTER_SHELVES.find((item) => item.id === shelfId) : null
   const waxSeal = letter.waxSealId ? LETTER_WAX_SEALS.find((item) => item.id === letter.waxSealId) : null
   const lining = letter.liningId ? LETTER_ENVELOPE_LININGS.find((item) => item.id === letter.liningId) : null
 
@@ -418,11 +316,6 @@ function LetterEntry({ letter, index, shelfId, onClick }: { letter: Letter; inde
               Lining · {lining.label}
             </span>
           )}
-          {shelf && !isTransit && (
-            <span style={{ fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.16em', color: 'rgba(255,255,255,0.62)', textTransform: 'uppercase', padding: '4px 7px', borderRadius: '999px', border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.03)' }}>
-              Shelf · {shelf.label}
-            </span>
-          )}
         </div>
 
         {(letter.pageCount || 1) > 1 && (
@@ -451,15 +344,11 @@ function LetterEntry({ letter, index, shelfId, onClick }: { letter: Letter; inde
 
 function LetterModal({
   letter,
-  shelfId,
   onClose,
-  onAssignShelf,
   onReply,
 }: {
   letter: Letter
-  shelfId?: LetterShelfId
   onClose: () => void
-  onAssignShelf?: (shelfId?: LetterShelfId) => void
   onReply?: (name: string) => void
 }) {
   const colors = PAPER_COLORS[letter.paperId] || PAPER_COLORS.ornate
@@ -522,11 +411,6 @@ function LetterModal({
               Lining · {lining.label}
             </span>
           )}
-          {shelfId && (
-            <span style={{ fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.18em', color: 'rgba(255,255,255,0.66)', textTransform: 'uppercase', padding: '5px 8px', borderRadius: '999px', border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.03)' }}>
-              Shelf · {DEFAULT_LETTER_SHELVES.find((item) => item.id === shelfId)?.label || shelfId}
-            </span>
-          )}
         </div>
 
         <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '11px', opacity: 0.76, marginBottom: '20px' }}>
@@ -556,27 +440,6 @@ function LetterModal({
           With presence,<br />
           <span style={{ color: colors.accent, opacity: 0.95 }}>A Stranger</span>
         </p>
-
-        <div style={{ marginTop: '28px', paddingTop: '18px', borderTop: `1px solid ${colors.accent}24` }}>
-          <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.22em', color: colors.accent, textTransform: 'uppercase', marginBottom: '10px' }}>
-            Private Shelf
-          </p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-            <button onClick={() => onAssignShelf?.()}
-              style={{ fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.18em', color: !shelfId ? colors.accent : 'rgba(255,255,255,0.6)', padding: '7px 10px', border: `1px solid ${!shelfId ? `${colors.accent}70` : 'rgba(255,255,255,0.12)'}`, borderRadius: '999px', background: !shelfId ? `${colors.accent}12` : 'transparent', cursor: 'pointer', textTransform: 'uppercase' }}>
-              Unshelved
-            </button>
-            {DEFAULT_LETTER_SHELVES.map((shelf) => {
-              const isSelected = shelfId === shelf.id
-              return (
-                <button key={shelf.id} onClick={() => onAssignShelf?.(shelf.id)}
-                  style={{ fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.18em', color: isSelected ? colors.accent : 'rgba(255,255,255,0.6)', padding: '7px 10px', border: `1px solid ${isSelected ? `${colors.accent}70` : 'rgba(255,255,255,0.12)'}`, borderRadius: '999px', background: isSelected ? `${colors.accent}12` : 'transparent', cursor: 'pointer', textTransform: 'uppercase' }}>
-                  {shelf.label}
-                </button>
-              )
-            })}
-          </div>
-        </div>
 
         {letter.direction === 'received' && (
           <div style={{ marginTop: '32px', paddingTop: '20px', borderTop: `1px solid ${colors.accent}38` }}>
