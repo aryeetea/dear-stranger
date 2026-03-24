@@ -7,7 +7,6 @@ import {
   signOut,
   deleteAccount,
   uploadAvatarToStorage,
-  saveMyHubRelicsToDb,
 } from '../lib/auth'
 import { supabase } from '../../lib/supabase'
 import { useViewport } from '../lib/useViewport'
@@ -18,7 +17,6 @@ import {
   type HubPaletteId,
   type HubStyle,
 } from './UniverseMap'
-import { HUB_RELICS, type HubRelicId } from '../lib/worldbuilding'
 
 const MAX_REGEN_ATTEMPTS = 3
 
@@ -31,7 +29,6 @@ export default function Profile({
   avatarUrl: initialAvatarUrl,
   hubStyle: initialHubStyle = 'portal',
   hubPaletteId: initialHubPaletteId = DEFAULT_HUB_PALETTE,
-  hubRelics: initialHubRelics = [],
   regenCount: initialRegenCount,
   onClose,
   onUpdateHub,
@@ -42,7 +39,6 @@ export default function Profile({
   avatarUrl?: string
   hubStyle?: HubStyle
   hubPaletteId?: HubPaletteId
-  hubRelics?: HubRelicId[]
   regenCount?: number
   onClose?: () => void
   onUpdateHub?: (updates: {
@@ -52,7 +48,6 @@ export default function Profile({
     avatarUrl?: string
     hubStyle?: HubStyle
     hubPaletteId?: HubPaletteId
-    hubRelics?: HubRelicId[]
   }) => void
 }) {
   const { isMobile, isTablet, isNarrow } = useViewport()
@@ -79,7 +74,6 @@ export default function Profile({
   const [editingBio, setEditingBio] = useState(false)
   const [editingAsk, setEditingAsk] = useState(false)
   const [editingAppearance, setEditingAppearance] = useState(false)
-  const [editingRelics, setEditingRelics] = useState(false)
   const [saving, setSaving] = useState(false)
 
   const [hubDraft, setHubDraft] = useState(hubName || 'Your Hub')
@@ -91,8 +85,6 @@ export default function Profile({
   )
   const [hubStyleDraft, setHubStyleDraft] = useState<HubStyle>(initialHubStyle)
   const [hubPaletteDraft, setHubPaletteDraft] = useState<HubPaletteId>(initialHubPaletteId)
-  const [hubRelicsState, setHubRelicsState] = useState<HubRelicId[]>(initialHubRelics)
-  const [hubRelicsDraft, setHubRelicsDraft] = useState<HubRelicId[]>(initialHubRelics)
   const [saveError, setSaveError] = useState('')
 
   const [leavingConfirm, setLeavingConfirm] = useState(false)
@@ -127,11 +119,6 @@ export default function Profile({
     setCurrentHubPaletteId(initialHubPaletteId)
     setHubPaletteDraft(initialHubPaletteId)
   }, [initialHubPaletteId])
-
-  useEffect(() => {
-    setHubRelicsState(initialHubRelics)
-    setHubRelicsDraft(initialHubRelics)
-  }, [initialHubRelics])
 
   useEffect(() => {
     async function loadRegenCount() {
@@ -332,28 +319,6 @@ export default function Profile({
     } catch (err) {
       console.error(err)
       setSaveError(err instanceof Error ? err.message : 'Could not save hub appearance.')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  async function saveRelics() {
-    try {
-      setSaving(true)
-      setSaveError('')
-
-      const dbSaved = await saveMyHubRelicsToDb(hubRelicsDraft)
-
-      if (!dbSaved) {
-        throw new Error('Could not save hub relics.')
-      }
-
-      setHubRelicsState(hubRelicsDraft)
-      onUpdateHub?.({ hubRelics: hubRelicsDraft })
-      setEditingRelics(false)
-    } catch (err) {
-      console.error(err)
-      setSaveError(err instanceof Error ? err.message : 'Could not save hub relics.')
     } finally {
       setSaving(false)
     }
@@ -1183,172 +1148,6 @@ export default function Profile({
               </div>
             )}
           </div>
-
-          <div style={{ marginBottom: '36px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '10px' }}>
-              <p
-                style={{
-                  fontFamily: "'Cinzel', serif",
-                  fontSize: '9px',
-                  letterSpacing: '0.4em',
-                  color: 'rgba(201,168,76,0.65)',
-                  textTransform: 'uppercase',
-                }}
-              >
-                Hub Relics
-              </p>
-              {!editingRelics && (
-                <button
-                  onClick={() => {
-                    setHubRelicsDraft(hubRelicsState)
-                    setEditingRelics(true)
-                  }}
-                  style={editBtn}
-                >
-                  Edit
-                </button>
-              )}
-            </div>
-
-            {editingRelics ? (
-              <div>
-                <p
-                  style={{
-                    fontFamily: "'IM Fell English', serif",
-                    fontStyle: 'italic',
-                    fontSize: '13px',
-                    color: 'rgba(255,255,255,0.5)',
-                    marginBottom: '10px',
-                  }}
-                >
-                  Choose up to three objects that belong to your place in the universe.
-                </p>
-
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: isNarrow ? '1fr' : 'repeat(auto-fill, minmax(160px, 1fr))',
-                    gap: '10px',
-                    marginBottom: '14px',
-                  }}
-                >
-                  {HUB_RELICS.map((relic) => {
-                    const isSelected = hubRelicsDraft.includes(relic.id)
-                    return (
-                      <button
-                        key={relic.id}
-                        onClick={() => {
-                          setHubRelicsDraft((current) => {
-                            if (current.includes(relic.id)) {
-                              return current.filter((id) => id !== relic.id)
-                            }
-                            if (current.length >= 3) return current
-                            return [...current, relic.id]
-                          })
-                        }}
-                        style={{
-                          textAlign: 'left',
-                          padding: '12px',
-                          borderRadius: '10px',
-                          border: isSelected
-                            ? '1px solid rgba(230,199,110,0.6)'
-                            : '1px solid rgba(255,255,255,0.08)',
-                          background: isSelected
-                            ? 'rgba(230,199,110,0.1)'
-                            : 'rgba(255,255,255,0.03)',
-                          color: 'rgba(255,255,255,0.88)',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        <p style={{ fontSize: '18px', marginBottom: '8px' }}>{relic.icon}</p>
-                        <p
-                          style={{
-                            fontFamily: "'Cinzel', serif",
-                            fontSize: '8px',
-                            letterSpacing: '0.18em',
-                            textTransform: 'uppercase',
-                            color: isSelected ? '#e6c76e' : 'rgba(255,255,255,0.78)',
-                          }}
-                        >
-                          {relic.label}
-                        </p>
-                      </button>
-                    )
-                  })}
-                </div>
-
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  <button onClick={() => void saveRelics()} style={saveBtn} disabled={saving}>
-                    Save
-                  </button>
-                  <button
-                    onClick={() => {
-                      setHubRelicsDraft(hubRelicsState)
-                      setEditingRelics(false)
-                    }}
-                    style={cancelBtn}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            ) : hubRelicsState.length > 0 ? (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                {hubRelicsState.map((relicId) => {
-                  const relic = HUB_RELICS.find((item) => item.id === relicId)
-                  if (!relic) return null
-
-                  return (
-                    <div
-                      key={relic.id}
-                      style={{
-                        padding: '8px 10px',
-                        borderRadius: '999px',
-                        border: '1px solid rgba(255,255,255,0.12)',
-                        background: 'rgba(255,255,255,0.03)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                      }}
-                    >
-                      <span style={{ fontSize: '14px' }}>{relic.icon}</span>
-                      <span
-                        style={{
-                          fontFamily: "'Cinzel', serif",
-                          fontSize: '8px',
-                          letterSpacing: '0.18em',
-                          color: 'rgba(255,255,255,0.72)',
-                          textTransform: 'uppercase',
-                        }}
-                      >
-                        {relic.label}
-                      </span>
-                    </div>
-                  )
-                })}
-              </div>
-            ) : (
-              <p
-                style={{
-                  fontFamily: "'IM Fell English', serif",
-                  fontStyle: 'italic',
-                  fontSize: '15px',
-                  color: 'rgba(255,255,255,0.56)',
-                  lineHeight: 1.7,
-                }}
-              >
-                No relics chosen yet.
-              </p>
-            )}
-          </div>
-
-          <div
-            style={{
-              height: '1px',
-              background: 'linear-gradient(90deg, rgba(255,255,255,0.08), transparent)',
-              marginBottom: '28px',
-            }}
-          />
 
           <div style={{ marginBottom: '32px' }}>
             <p

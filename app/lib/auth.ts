@@ -1,39 +1,218 @@
 import { supabase } from '../../lib/supabase'
 
-export async function signInAndCreateHub(
+export type HubRecord = {
+  id: string
+  hub_name: string | null
+  bio?: string | null
+  ask_about?: string | null
+  avatar_url?: string | null
+  online?: boolean | null
+  hub_style?: string | null
+  backdrop_id?: string | null
+  regen_count?: number | null
+  letters_sent?: number | null
+  email?: string | null
+}
+
+type HubNameRow = {
+  id: string
+  hub_name: string | null
+}
+
+type ExportLetterRow = {
+  id: string
+  sender_id: string
+  recipient_id: string | null
+  body: string | null
+  subject: string | null
+  created_at: string
+  status?: string | null
+  arrives_at?: string | null
+  paper_id?: string | null
+  font_id?: string | null
+  is_universe_letter?: boolean | null
+  sender?: { hub_name?: string | null } | null
+  recipient?: { hub_name?: string | null } | null
+}
+
+type UniverseLetterRow = {
+  id: string
+  body?: string | null
+  subject?: string | null
+  sender?: { hub_name?: string | null } | null
+}
+
+type GuestUserShape = {
+  is_anonymous?: boolean
+}
+
+function normalizeHubName(hubName: string) {
+  return hubName.trim().toLowerCase()
+}
+
+async function assertHubNameAvailable(hubName: string, excludeUserId?: string) {
+  const normalized = normalizeHubName(hubName)
+  if (!normalized) throw new Error('Hub name is required.')
+
+  const { data, error } = await supabase.from('hubs').select('id, hub_name')
+  if (error) throw error
+
+  const existing = (data || []).find((hub: HubNameRow) => {
+    if (excludeUserId && hub.id === excludeUserId) return false
+    return normalizeHubName(hub.hub_name || '') === normalized
+  })
+
+  if (existing) throw new Error('That hub name is already taken. Choose another one.')
+}
+
+export async function isHubNameAvailable(hubName: string, excludeUserId?: string) {
+  try {
+    await assertHubNameAvailable(hubName, excludeUserId)
+    return true
+  } catch (error) {
+    if (error instanceof Error && error.message === 'That hub name is already taken. Choose another one.') {
+      return false
+    }
+    throw error
+  }
+}
+
+export async function signUp(email: string, password: string) {
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+  })
+
+  if (error) throw error
+  if (!data.user) throw new Error('No user returned after signup')
+
+  return data.user
+}
+
+export async function signUpAndCreateHub(
+  email: string,
+  password: string,
   hubName: string,
   bio: string,
   askAbout: string,
 ) {
-  const { data: authData, error: authError } =
-    await supabase.auth.signInAnonymously()
+  await assertHubNameAvailable(hubName)
 
-  if (authError) {
-    console.error('Auth error code:', authError.code)
-    console.error('Auth error message:', authError.message)
-    throw authError
-  }
+  const { data: authData, error: authError } = await supabase.auth.signUp({
+    email,
+    password,
+  })
 
-  if (!authData.user) {
-    throw new Error('No user returned after anonymous sign-in')
-  }
+  if (authError) throw authError
+  if (!authData.user) throw new Error('No user returned after signup')
 
-  const userId = authData.user.id
-
-  const { data: hubData, error: hubError } = await supabase
+  const { error: hubError } = await supabase
     .from('hubs')
-    .insert([{ id: userId, hub_name: hubName, bio, ask_about: askAbout }])
-    .select()
+    .insert([
+      {
+        id: authData.user.id,
+        hub_name: hubName,
+        bio,
+        ask_about: askAbout,
+        email,
+      },
+    ])
 
-  if (hubError) {
-    console.error('Hub insert error code:', hubError.code)
-    console.error('Hub insert error message:', hubError.message)
-    throw hubError
-  }
-
+  if (hubError) throw hubError
   return authData.user
 }
 
+// ── EMAIL / PASSWORD SIGN IN ──
+export async function signIn(email: string, password: string) {
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+  if (error) throw error
+  return data
+}
+
+// ── GOOGLE SIGN IN ──
+export async function signInWithGoogle() {
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined,
+      queryParams: {
+        prompt: 'select_account',
+      },
+    },
+  })
+
+  if (error) throw error
+}
+
+// ── CREATE HUB FOR EXISTING AUTH USER ──
+export async function createHubForCurrentUser(
+  hubName: string,
+  bio: string,
+  askAbout: string,
+) {
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser()
+
+  if (userError) throw userError
+  if (!user) throw new Error('No authenticated user found')
+
+  const { data: existingHub, error: existingHubError } = await supabase
+    .from('hubs')
+    .select('id')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  if (existingHubError) throw existingHubError
+  if (existingHub) return existingHub
+
+  await assertHubNameAvailable(hubName, user.id)
+
+  const email = user.email || null
+
+  const { data, error } = await supabase
+    .from('hubs')
+    .insert([
+      {
+        id: user.id,
+        hub_name: hubName,
+        bio,
+        ask_about: askAbout,
+        email,
+      },
+    ])
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+// ── ANONYMOUS SIGN IN ──
+export async function signInAndCreateHub(hubName: string, bio: string, askAbout: string) {
+  await assertHubNameAvailable(hubName)
+
+  const { data: authData, error: authError } = await supabase.auth.signInAnonymously()
+  if (authError) throw authError
+  if (!authData.user) throw new Error('No user returned')
+
+  const { error: hubError } = await supabase
+    .from('hubs')
+    .insert([
+      {
+        id: authData.user.id,
+        hub_name: hubName,
+        bio,
+        ask_about: askAbout,
+      },
+    ])
+
+  if (hubError) throw hubError
+  return authData.user
+}
+
+// ── SIGN OUT ──
 export async function signOut() {
   try {
     await supabase.auth.signOut()
@@ -42,37 +221,174 @@ export async function signOut() {
   }
 }
 
-export async function getSession() {
+// ── DELETE ACCOUNT / HUB ──
+export async function deleteAccount(): Promise<{ success: boolean; error?: string }> {
   try {
-    const { data, error } = await supabase.auth.getSession()
-    if (error) {
-      if (
-        error.message?.includes('Refresh Token Not Found') ||
-        error.message?.includes('Invalid Refresh Token') ||
-        error.message?.includes('refresh_token')
-      ) {
-        try { await supabase.auth.signOut() } catch {}
-      }
-      return null
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser()
+
+    if (userError) throw userError
+    if (!user) throw new Error('No user found')
+
+    const userId = user.id
+
+    const { error: lettersError } = await supabase
+      .from('letters')
+      .delete()
+      .or(`sender_id.eq.${userId},recipient_id.eq.${userId}`)
+
+    if (lettersError) throw new Error(`Letters delete failed: ${lettersError.message}`)
+
+    const { error: hubError } = await supabase
+      .from('hubs')
+      .delete()
+      .eq('id', userId)
+
+    if (hubError) throw new Error(`Hub delete failed: ${hubError.message}`)
+
+    await supabase.auth.signOut()
+
+    return { success: true }
+  } catch (err: unknown) {
+    console.error('deleteAccount failed:', err)
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'Delete failed',
     }
-    return data.session
-  } catch (err) {
-    console.error('getSession failed:', err)
-    try { await supabase.auth.signOut() } catch {}
-    return null
   }
 }
 
+// ── EXPORT MY LETTERS ──
+export async function exportMyLetters(): Promise<string> {
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) throw new Error('No user')
+
+    const { data, error } = await supabase
+      .from('letters')
+      .select('*, sender:sender_id(hub_name), recipient:recipient_id(hub_name)')
+      .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
+      .order('created_at', { ascending: true })
+
+    if (error) throw error
+
+    const letters = (data || []) as ExportLetterRow[]
+
+    const lines: string[] = [
+      'DEAR STRANGER — Letter Archive',
+      `Exported: ${new Date().toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      })}`,
+      `Total letters: ${letters.length}`,
+      '',
+      '═'.repeat(60),
+      '',
+    ]
+
+    letters.forEach((l, i: number) => {
+      const direction = l.sender_id === user.id ? 'SENT' : 'RECEIVED'
+      const other =
+        direction === 'SENT'
+          ? l.recipient?.hub_name || (l.is_universe_letter ? 'The Universe' : 'Unknown')
+          : l.sender?.hub_name || 'Unknown'
+
+      const date = new Date(l.created_at).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      })
+
+      lines.push(`Letter ${i + 1} · ${direction}`)
+      lines.push(`${direction === 'SENT' ? 'To' : 'From'}: ${other}`)
+      lines.push(`Date: ${date}`)
+      if (l.subject && l.subject !== 'A letter for you') lines.push(`Subject: ${l.subject}`)
+      lines.push('')
+      lines.push(l.body || '')
+      lines.push('')
+      lines.push('─'.repeat(40))
+      lines.push('')
+    })
+
+    return lines.join('\n')
+  } catch (err) {
+    console.error('exportMyLetters failed:', err)
+    return 'Export failed.'
+  }
+}
+
+// ── GET UNIVERSE LETTERS ──
+export async function getUniverseLetters() {
+  try {
+    const { data, error } = await supabase
+      .from('letters')
+      .select('id, body, subject, sender:sender_id(hub_name)')
+      .eq('is_universe_letter', true)
+      .order('created_at', { ascending: false })
+      .limit(50)
+
+    if (error) return []
+
+    return ((data || []) as UniverseLetterRow[]).map((l) => ({
+      id: l.id,
+      senderName: l.sender?.hub_name || 'A Stranger',
+      preview: l.body ? (l.body.length > 120 ? `${l.body.slice(0, 120)}...` : l.body) : '',
+      subject: l.subject || 'A letter for you',
+    }))
+  } catch {
+    return []
+  }
+}
+
+// ── GET SESSION ──
+export async function getSession(maxWaitMs = 0) {
+  const start = Date.now()
+
+  while (true) {
+    try {
+      const { data, error } = await supabase.auth.getSession()
+
+      if (error) {
+        if (
+          error.message?.includes('Refresh Token') ||
+          error.message?.includes('refresh_token')
+        ) {
+          try {
+            await supabase.auth.signOut()
+          } catch {}
+        }
+        return null
+      }
+
+      if (data.session) {
+        return data.session
+      }
+    } catch {}
+
+    if (Date.now() - start >= maxWaitMs) {
+      return null
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 250))
+  }
+}
+
+// ── GET MY HUB ──
 export async function getMyHub() {
   try {
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser()
 
     if (userError) {
-      if (
-        userError.message?.includes('Refresh Token Not Found') ||
-        userError.message?.includes('Invalid Refresh Token') ||
-        userError.message?.includes('refresh_token')
-      ) {
+      if (userError.message?.includes('Refresh Token') || userError.message?.includes('refresh_token')) {
         try { await supabase.auth.signOut() } catch {}
       }
       return null
@@ -80,15 +396,13 @@ export async function getMyHub() {
 
     if (!user) return null
 
-    const { data, error } = await supabase
-      .from('hubs').select('*').eq('id', user.id).single()
+    const { data, error } = await supabase.from('hubs').select('*').eq('id', user.id).single()
 
     if (error) {
       if (
-        error.code === 'PGRST116' ||
         error.message?.includes('JWT') ||
-        error.message?.includes('refresh_token') ||
-        error.message?.includes('not found')
+        error.message?.includes('Refresh Token') ||
+        error.message?.includes('refresh_token')
       ) {
         try { await supabase.auth.signOut() } catch {}
       }
@@ -96,60 +410,83 @@ export async function getMyHub() {
     }
 
     return data
-  } catch (err) {
-    console.error('getMyHub failed:', err)
+  } catch {
     try { await supabase.auth.signOut() } catch {}
     return null
   }
 }
 
+// ── GET ALL HUBS ──
 export async function getAllHubs() {
   try {
-    const { data: { user } } = await supabase.auth.getUser()
-    const { data, error } = await supabase
-      .from('hubs').select('*').neq('id', user?.id || '')
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    const { data, error } = await supabase.from('hubs').select('*').neq('id', user?.id || '')
+
     if (error) return []
     return data || []
-  } catch (err) {
+  } catch {
     return []
   }
 }
 
+// ── UPDATE HUB ──
 export async function updateHub(updates: {
   hub_name?: string
   bio?: string
   ask_about?: string
   avatar_url?: string
+  hub_style?: string
+  backdrop_id?: string
+  regen_count?: number
+  [key: string]: unknown
 }) {
-  const { data: { user }, error: userError } = await supabase.auth.getUser()
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser()
+
   if (userError) throw userError
   if (!user) throw new Error('No user found')
 
-  const cleanedUpdates = Object.fromEntries(
-    Object.entries(updates).filter(([, value]) => value !== undefined)
+  if (updates.hub_name && normalizeHubName(updates.hub_name)) {
+    await assertHubNameAvailable(updates.hub_name, user.id)
+  }
+
+  const cleaned = Object.fromEntries(
+    Object.entries(updates).filter(([, v]) => v !== undefined)
   )
 
   const { data, error } = await supabase
-    .from('hubs').update(cleanedUpdates).eq('id', user.id).select().single()
+    .from('hubs')
+    .update(cleaned)
+    .eq('id', user.id)
+    .select()
+    .single()
 
-  if (error) {
-    console.error('updateHub error:', error.message)
-    throw error
-  }
-
+  if (error) throw error
   return data
 }
 
+// ── SEND LETTER ──
 export async function sendLetter(
   recipientId: string | null,
   body: string,
   paperId: string,
-  isUniverseLetter: boolean = false,
+  isUniverseLetter = false,
+  subject = 'A letter for you',
+  fontId = 'cormorant',
 ) {
-  const { data: { user }, error: userError } = await supabase.auth.getUser()
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser()
+
   if (userError) throw userError
   if (!user) throw new Error('No user found')
-  if (!isUniverseLetter && !recipientId) throw new Error('Recipient is required')
+  if (!isUniverseLetter && !recipientId) throw new Error('Recipient required')
 
   const trimmedBody = body.trim()
   if (!trimmedBody) throw new Error('Letter body cannot be empty')
@@ -160,50 +497,105 @@ export async function sendLetter(
 
   const { data, error } = await supabase
     .from('letters')
-    .insert([{
-      sender_id: user.id,
-      recipient_id: recipientId,
-      body: trimmedBody,
-      paper_id: paperId,
-      is_universe_letter: isUniverseLetter,
-      arrives_at: arrivesAt.toISOString(),
-    }])
+    .insert([
+      {
+        sender_id: user.id,
+        recipient_id: recipientId,
+        body: trimmedBody,
+        paper_id: paperId,
+        is_universe_letter: isUniverseLetter,
+        arrives_at: arrivesAt.toISOString(),
+        subject,
+        font_id: fontId,
+      },
+    ])
     .select()
 
-  if (error) {
-    console.error('sendLetter error:', error.message)
-    throw error
-  }
-
+  if (error) throw error
   return data
 }
 
+// ── GET MY LETTERS ──
 export async function getMyLetters() {
   try {
-    const { data: { user } } = await supabase.auth.getUser()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
     if (!user) return { transit: [], arrived: [], archive: [] }
 
     const now = new Date().toISOString()
 
     await supabase
-      .from('letters').update({ status: 'arrived' })
-      .eq('recipient_id', user.id).eq('status', 'transit').lt('arrives_at', now)
+      .from('letters')
+      .update({ status: 'arrived' })
+      .eq('recipient_id', user.id)
+      .eq('status', 'transit')
+      .lt('arrives_at', now)
 
     const { data, error } = await supabase
       .from('letters')
-      .select(`*, sender:sender_id(hub_name), recipient:recipient_id(hub_name)`)
+      .select('*, sender:sender_id(hub_name), recipient:recipient_id(hub_name)')
       .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
       .order('created_at', { ascending: false })
 
     if (error) return { transit: [], arrived: [], archive: [] }
 
-    const letters = data || []
+    const letters = (data || []) as ExportLetterRow[]
+
     return {
-      transit: letters.filter((l: any) => l.status === 'transit'),
-      arrived: letters.filter((l: any) => l.status === 'arrived'),
-      archive: letters.filter((l: any) => l.status === 'archive'),
+      transit: letters.filter((l) => l.status === 'transit'),
+      arrived: letters.filter((l) => l.status === 'arrived'),
+      archive: letters.filter((l) => l.status === 'archive'),
     }
-  } catch (err) {
+  } catch {
     return { transit: [], arrived: [], archive: [] }
   }
+}
+
+// ── CHECK IF USER IS ANONYMOUS (GUEST) ──
+export async function isGuestUser(): Promise<boolean> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return true
+    return (user as GuestUserShape).is_anonymous === true
+  } catch {
+    return true
+  }
+}
+
+// ── UPGRADE GUEST TO EMAIL ACCOUNT ──
+export async function upgradeGuestAccount(email: string, password: string): Promise<void> {
+  const { error } = await supabase.auth.updateUser({ email, password })
+  if (error) throw error
+}
+
+// ── UPLOAD AVATAR TO STORAGE ──
+export async function uploadAvatarToStorage(base64DataUrl: string, userId: string): Promise<string> {
+  const matches = base64DataUrl.match(/^data:(.+);base64,(.+)$/)
+  if (!matches) throw new Error('Invalid base64 image format')
+
+  const mimeType = matches[1]
+  const base64Data = matches[2]
+  const ext = mimeType.includes('png') ? 'png' : 'jpg'
+
+  const byteCharacters = atob(base64Data)
+  const byteArray = new Uint8Array(byteCharacters.length)
+  for (let i = 0; i < byteCharacters.length; i++) {
+    byteArray[i] = byteCharacters.charCodeAt(i)
+  }
+
+  const filePath = `avatars/${userId}.${ext}`
+
+  const { error } = await supabase.storage
+    .from('avatars')
+    .upload(filePath, byteArray, {
+      contentType: mimeType,
+      upsert: true,
+    })
+
+  if (error) throw error
+
+  const { data } = supabase.storage.from('avatars').getPublicUrl(filePath)
+  return data.publicUrl
 }

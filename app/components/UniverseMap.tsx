@@ -11,8 +11,6 @@ import {
 import { playUiSound } from '../lib/sound'
 import { useViewport } from '../lib/useViewport'
 import {
-  HUB_RELICS,
-  type HubRelicId,
   UNIVERSE_PROMPTS,
   type UniversePrompt,
 } from '../lib/worldbuilding'
@@ -137,7 +135,6 @@ interface Hub {
   online: boolean; pulse: number; size: number
   isMe?: boolean; floatOffset: number; floatSpeed: number
   colorVariant: number; hubStyle: HubStyle; paletteId?: string | null
-  relics?: HubRelicId[]
   isConstellated?: boolean
 }
 
@@ -821,10 +818,10 @@ function drawReturnPath(
 }
 
 export default function UniverseMap({
-  hubName, hubBio, hubAvatarUrl, hubStyle = 'portal', hubPaletteId = DEFAULT_HUB_PALETTE, hubRelics = [],
+  hubName, hubBio, hubAvatarUrl, hubStyle = 'portal', hubPaletteId = DEFAULT_HUB_PALETTE,
   onWriteLetter, onUniversePrompt, onObservatory, onProfile,
 }: {
-  hubName?: string; hubBio?: string; hubAvatarUrl?: string; hubStyle?: HubStyle; hubPaletteId?: HubPaletteId; hubRelics?: HubRelicId[]
+  hubName?: string; hubBio?: string; hubAvatarUrl?: string; hubStyle?: HubStyle; hubPaletteId?: HubPaletteId
   onWriteLetter?: (recipientName?: string) => void
   onUniversePrompt?: (prompt: { subject: string; bodyStarter: string }) => void
   onObservatory?: () => void; onProfile?: () => void
@@ -1102,7 +1099,6 @@ export default function UniverseMap({
   colorVariant: 0,
   hubStyle,
   paletteId: hubPaletteId,
-  relics: hubRelics,
   isConstellated: false,
 }, ...otherHubs]
 
@@ -1173,7 +1169,7 @@ export default function UniverseMap({
     }
     void init()
     return () => { cancelAnimationFrame(animFrameRef.current); if (resizeHandler) window.removeEventListener('resize', resizeHandler) }
-  }, [hubName, hubBio, hubAvatarUrl, hubStyle, hubPaletteId, hubRelics])
+  }, [hubName, hubBio, hubAvatarUrl, hubStyle, hubPaletteId])
 
   const getHubAt = useCallback((mx: number, my: number): Hub | null => {
     const scale = scaleRef.current; const offset = offsetRef.current
@@ -1463,24 +1459,6 @@ export default function UniverseMap({
                   </div>
                   <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.3em', color: '#e6c76e', textTransform: 'uppercase', marginBottom: '8px' }}>Bio</p>
                   <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: 'clamp(13px,1.8vw,15px)', color: 'rgba(255,255,255,0.85)', lineHeight: 1.7, marginBottom: '20px' }}>{profile.hub.bio}</p>
-                  {profile.hub.isMe && profile.hub.relics && profile.hub.relics.length > 0 && (
-                    <>
-                      <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.3em', color: '#e6c76e', textTransform: 'uppercase', marginBottom: '8px' }}>Hub Relics</p>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
-                        {profile.hub.relics.map((relicId) => {
-                          const relic = HUB_RELICS.find((item) => item.id === relicId)
-                          if (!relic) return null
-
-                          return (
-                            <div key={relic.id} style={{ padding: '6px 9px', borderRadius: '999px', border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.03)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <span style={{ fontSize: '13px' }}>{relic.icon}</span>
-                              <span style={{ fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.16em', color: 'rgba(255,255,255,0.72)', textTransform: 'uppercase' }}>{relic.label}</span>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </>
-                  )}
                   {!profile.hub.isMe && profile.hub.askAbout && (
                     <>
                       <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.3em', color: '#e6c76e', textTransform: 'uppercase', marginBottom: '8px' }}>Ask me about</p>

@@ -53,23 +53,6 @@ export const LETTER_ENVELOPE_LININGS = [
 
 export type LetterEnvelopeLiningId = (typeof LETTER_ENVELOPE_LININGS)[number]['id']
 
-export const HUB_RELICS = [
-  { id: 'silver-key', label: 'Silver Key', icon: '🗝' },
-  { id: 'pressed-flower', label: 'Pressed Flower', icon: '❀' },
-  { id: 'moon-lantern', label: 'Moon Lantern', icon: '🏮' },
-  { id: 'pearl-shell', label: 'Pearl Shell', icon: '◌' },
-  { id: 'glass-vial', label: 'Glass Vial', icon: '⚗' },
-  { id: 'star-map', label: 'Star Map', icon: '✦' },
-  { id: 'old-watch', label: 'Old Watch', icon: '◷' },
-  { id: 'velvet-ribbon', label: 'Velvet Ribbon', icon: '➰' },
-  { id: 'feather-quill', label: 'Feather Quill', icon: '✒' },
-  { id: 'sea-stone', label: 'Sea Stone', icon: '◍' },
-  { id: 'tiny-bell', label: 'Tiny Bell', icon: '🔔' },
-  { id: 'mirror-shard', label: 'Mirror Shard', icon: '◇' },
-] as const
-
-export type HubRelicId = (typeof HUB_RELICS)[number]['id']
-
 export type ConstellationHub = {
   id: string
   name: string
@@ -136,17 +119,10 @@ export const UNIVERSE_PROMPTS: UniversePrompt[] = [
   },
 ]
 
-const HUB_RELICS_STORAGE_PREFIX = 'dear-stranger:hub-relics:'
 const CONSTELLATION_HUBS_STORAGE_PREFIX = 'dear-stranger:constellations:'
 
 function canUseStorage() {
   return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined'
-}
-
-export function sanitizeHubRelics(relicIds: readonly string[]) {
-  return relicIds
-    .filter((id): id is HubRelicId => HUB_RELICS.some((relic) => relic.id === id))
-    .slice(0, 3)
 }
 
 export function sanitizeConstellationHubs(hubs: Array<{ id?: string; name?: string }>) {
@@ -215,33 +191,6 @@ export function parseLetterSubject(subject?: string | null) {
     liningId,
     subject: remainingSubject.trim() || 'A letter for you',
   }
-}
-
-export function loadHubRelics(storageScope?: string) {
-  if (!storageScope || !canUseStorage()) return [] as HubRelicId[]
-
-  try {
-    const raw = window.localStorage.getItem(`${HUB_RELICS_STORAGE_PREFIX}${storageScope}`)
-    if (!raw) return []
-
-    const parsed = JSON.parse(raw) as string[]
-    return parsed
-      .filter((id): id is HubRelicId => HUB_RELICS.some((relic) => relic.id === id))
-      .slice(0, 3)
-  } catch {
-    return []
-  }
-}
-
-export function saveHubRelics(storageScope: string, relicIds: HubRelicId[]) {
-  if (!storageScope || !canUseStorage()) return
-
-  const cleaned = sanitizeHubRelics(relicIds)
-
-  window.localStorage.setItem(
-    `${HUB_RELICS_STORAGE_PREFIX}${storageScope}`,
-    JSON.stringify(cleaned),
-  )
 }
 
 export function loadConstellationHubs(storageScope?: string) {

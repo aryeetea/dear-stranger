@@ -21,14 +21,12 @@ import Profile from './components/Profile'
 import { LoginScreen, SignupScreen } from './components/AuthScreens'
 import { supabase } from '../lib/supabase'
 import { getLetterPreview } from './lib/letters'
-import { type HubRelicId } from './lib/worldbuilding'
 import {
   signInAndCreateHub,
   signOut,
   createHubForCurrentUser,
   getSession,
   getMyHub,
-  getMyHubRelicsFromDb,
   getAllHubs,
   sendLetter,
   updateHub,
@@ -137,7 +135,6 @@ export default function Home() {
   const [hubAvatarUrl, setHubAvatarUrl] = useState('')
   const [hubStyle, setHubStyle] = useState<HubStyle>('portal')
   const [hubPaletteId, setHubPaletteId] = useState<HubPaletteId>(DEFAULT_HUB_PALETTE)
-  const [hubRelics, setHubRelics] = useState<HubRelicId[]>([])
   const [hubRegenCount, setHubRegenCount] = useState(0)
   const [lettersSent, setLettersSent] = useState(0)
   const [generatingStatus, setGeneratingStatus] = useState('')
@@ -152,7 +149,6 @@ export default function Home() {
   const [onboardingError, setOnboardingError] = useState('')
   const [onboardingResumeState, setOnboardingResumeState] =
     useState<SoulMirrorResumeState | null>(null)
-  const [storageScope, setStorageScope] = useState('')
 
   const screenRef = useRef<Screen>('loading')
   const onboardingInFlightRef = useRef(false)
@@ -164,11 +160,9 @@ export default function Home() {
     setHubAvatarUrl('')
     setHubStyle('portal')
     setHubPaletteId(DEFAULT_HUB_PALETTE)
-    setHubRelics([])
     setLettersSent(0)
     setHubRegenCount(0)
     setIsGuest(false)
-    setStorageScope('')
     setScribeRecipient(undefined)
     setScribeInitialSubject('')
     setScribeInitialBody('')
@@ -178,28 +172,6 @@ export default function Home() {
   useEffect(() => {
     screenRef.current = screen
   }, [screen])
-
-  useEffect(() => {
-    let cancelled = false
-
-    async function loadRelics() {
-      if (!storageScope) {
-        setHubRelics([])
-        return
-      }
-
-      const relics = await getMyHubRelicsFromDb()
-      if (!cancelled) {
-        setHubRelics(relics || [])
-      }
-    }
-
-    void loadRelics()
-
-    return () => {
-      cancelled = true
-    }
-  }, [storageScope])
 
   function openScribe({
     recipient,
@@ -228,8 +200,6 @@ export default function Home() {
       setScreen('entry')
       return
     }
-
-    setStorageScope(`hub:${session.user.id}`)
 
     const hub = await getMyHub()
 
@@ -394,7 +364,6 @@ export default function Home() {
       setHubAskAbout(chosenAskAbout)
 
       const userId = session?.user?.id
-      if (userId) setStorageScope(`hub:${userId}`)
 
       setGeneratingStatus('Placing your hub in the universe...')
 
@@ -828,7 +797,6 @@ export default function Home() {
           hubAvatarUrl={hubAvatarUrl}
           hubStyle={hubStyle}
           hubPaletteId={hubPaletteId}
-          hubRelics={hubRelics}
           onWriteLetter={(name) => {
             if (isGuest) {
               setShowGuestWall(true)
@@ -934,7 +902,6 @@ export default function Home() {
           avatarUrl={hubAvatarUrl}
           hubStyle={hubStyle}
           hubPaletteId={hubPaletteId}
-          hubRelics={hubRelics}
           regenCount={hubRegenCount}
           onClose={() => setProfileOpen(false)}
           onUpdateHub={({
@@ -944,7 +911,6 @@ export default function Home() {
             avatarUrl: nextAvatarUrl,
             hubStyle: nextHubStyle,
             hubPaletteId: nextHubPaletteId,
-            hubRelics: nextHubRelics,
           }) => {
             if (typeof nextHubName === 'string') setHubName(nextHubName)
             if (typeof nextBio === 'string') setHubBio(nextBio)
@@ -952,7 +918,6 @@ export default function Home() {
             if (typeof nextAvatarUrl === 'string') setHubAvatarUrl(nextAvatarUrl)
             if (nextHubStyle) setHubStyle(nextHubStyle)
             if (nextHubPaletteId) setHubPaletteId(nextHubPaletteId)
-            if (nextHubRelics) setHubRelics(nextHubRelics)
           }}
         />
       )}
