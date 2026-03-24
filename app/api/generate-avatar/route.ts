@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server'
 import OpenAI from 'openai'
 
-export const maxDuration = 10
+export const maxDuration = 30
+
+const OPENAI_IMAGE_TIMEOUT_MS = 25000
 
 type GenerationMode = 'create' | 'reimagine'
 
@@ -12,7 +14,10 @@ function normalizeDetail(value: string) {
     .trim()
 }
 
-async function withTimeout<T>(promise: Promise<T>, ms = 9000): Promise<T> {
+async function withTimeout<T>(
+  promise: Promise<T>,
+  ms = OPENAI_IMAGE_TIMEOUT_MS,
+): Promise<T> {
   const timeout = new Promise<never>((_, reject) =>
     setTimeout(() => reject(new Error('Request timed out')), ms),
   )
@@ -88,6 +93,14 @@ async function generateWithDalle(
   userId: string | undefined,
   mode: GenerationMode,
 ) {
+  console.log('[generate-avatar] Starting OpenAI image generation', {
+    model: 'dall-e-3',
+    mode,
+    size: mode === 'reimagine' ? '1024x1024' : '1024x1792',
+    userId: userId || null,
+    timeoutMs: OPENAI_IMAGE_TIMEOUT_MS,
+  })
+
   const response = await openai.images.generate({
     model: 'dall-e-3',
     prompt,
@@ -105,6 +118,13 @@ async function generateWithDalle(
     console.error('DALLE BAD RESPONSE:', response)
     throw new Error('dall-e-3 returned no image')
   }
+
+  console.log('[generate-avatar] OpenAI image generation succeeded', {
+    model: 'dall-e-3',
+    mode,
+    imageBytesBase64Length: image.b64_json.length,
+    hasRevisedPrompt: Boolean(image.revised_prompt),
+  })
 
   return {
     imageUrl: `data:image/png;base64,${image.b64_json}`,
@@ -134,10 +154,17 @@ export async function POST(req: Request) {
     const prompt = buildAvatarPrompt(orderedAnswers, style, feedback, generationMode)
     const openai = new OpenAI({ apiKey: openaiKey })
 
-    // Use DALL-E directly — faster, fits within Vercel Hobby 10s limit
+    console.log('[generate-avatar] Prepared avatar generation request', {
+      answerCount: orderedAnswers.length,
+      style: style || null,
+      mode: generationMode,
+      hasFeedback: Boolean(feedback),
+      userId: userId || null,
+    })
+
     const result = await withTimeout(
       generateWithDalle(openai, prompt, userId, generationMode),
-      9000,
+      OPENAI_IMAGE_TIMEOUT_MS,
     )
 
     return NextResponse.json({
@@ -145,7 +172,11 @@ export async function POST(req: Request) {
       prompt: result.revisedPrompt,
     })
   } catch (error) {
-    console.error('ROUTE ERROR:', error)
+    console.error('[generate-avatar] Avatar generation failed', {
+      error,
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+    })
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to generate avatar.' },
       { status: 500 },
