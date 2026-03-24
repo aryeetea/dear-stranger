@@ -183,10 +183,21 @@ export async function createHubForCurrentUser(
       },
     ])
     .select()
-    .single()
+    .maybeSingle()
 
   if (error) throw error
-  return data
+  if (data) return data
+
+  const { data: createdHub, error: createdHubError } = await supabase
+    .from('hubs')
+    .select('*')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  if (createdHubError) throw createdHubError
+  if (!createdHub) throw new Error('Hub could not be loaded after creation.')
+
+  return createdHub
 }
 
 // ── ANONYMOUS SIGN IN ──
@@ -396,7 +407,11 @@ export async function getMyHub() {
 
     if (!user) return null
 
-    const { data, error } = await supabase.from('hubs').select('*').eq('id', user.id).single()
+    const { data, error } = await supabase
+      .from('hubs')
+      .select('*')
+      .eq('id', user.id)
+      .maybeSingle()
 
     if (error) {
       if (
@@ -464,9 +479,10 @@ export async function updateHub(updates: {
     .update(cleaned)
     .eq('id', user.id)
     .select()
-    .single()
+    .maybeSingle()
 
   if (error) throw error
+  if (!data) throw new Error('No hub found for the current user.')
   return data
 }
 

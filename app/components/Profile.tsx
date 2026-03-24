@@ -125,17 +125,20 @@ export default function Profile({
       try {
         const {
           data: { user },
+          error: userError,
         } = await supabase.auth.getUser()
 
-        if (!user) return
+        if (userError || !user) return
 
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from('hubs')
           .select('regen_count')
           .eq('id', user.id)
-          .single()
+          .maybeSingle()
 
-        if (data?.regen_count !== undefined && data?.regen_count !== null) {
+        if (error || !data) return
+
+        if (data.regen_count !== undefined && data.regen_count !== null) {
           setRegenCount(data.regen_count)
         }
       } catch {}
