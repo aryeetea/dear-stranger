@@ -21,13 +21,14 @@ import Profile from './components/Profile'
 import { LoginScreen, SignupScreen } from './components/AuthScreens'
 import { supabase } from '../lib/supabase'
 import { getLetterPreview } from './lib/letters'
-import { loadHubRelics, type HubRelicId } from './lib/worldbuilding'
+import { type HubRelicId } from './lib/worldbuilding'
 import {
   signInAndCreateHub,
   signOut,
   createHubForCurrentUser,
   getSession,
   getMyHub,
+  getMyHubRelicsFromDb,
   getAllHubs,
   sendLetter,
   updateHub,
@@ -179,16 +180,25 @@ export default function Home() {
   }, [screen])
 
   useEffect(() => {
+    let cancelled = false
+
     async function loadRelics() {
       if (!storageScope) {
         setHubRelics([])
         return
       }
 
-      setHubRelics(loadHubRelics(storageScope))
+      const relics = await getMyHubRelicsFromDb()
+      if (!cancelled) {
+        setHubRelics(relics || [])
+      }
     }
 
     void loadRelics()
+
+    return () => {
+      cancelled = true
+    }
   }, [storageScope])
 
   function openScribe({
@@ -913,7 +923,6 @@ export default function Home() {
           hubStyle={hubStyle}
           hubPaletteId={hubPaletteId}
           hubRelics={hubRelics}
-          storageScope={storageScope}
           regenCount={hubRegenCount}
           onClose={() => setProfileOpen(false)}
           onUpdateHub={({

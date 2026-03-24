@@ -1073,7 +1073,7 @@ export default function UniverseMap({
         return {
           id: hub.id,
           x: Math.cos(angle) * dist, y: Math.sin(angle) * dist,
-          name: hub.hub_name, bio: hub.bio || '', askAbout: hub.ask_about || '',
+          name: hub.hub_name || 'Unknown Hub', bio: hub.bio || '', askAbout: hub.ask_about || '',
           avatarUrl: hub.avatar_url || '', avatarImage: avatarImg,
           online: hub.online ?? true, pulse: 0,
           size: 0.9 + (i * 17 % 10) / 30,

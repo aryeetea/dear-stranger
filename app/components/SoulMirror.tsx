@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback, type CSSProperties } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { DEFAULT_HUB_PALETTE, HUB_PALETTES, HUB_STYLES, type HubPaletteId, type HubStyle } from './UniverseMap'
 import { useViewport } from '../lib/useViewport'
@@ -229,7 +229,7 @@ export default function SoulMirror({
     ? `min(820px, ${Math.max(height - 32, 420)}px)`
     : 'min(820px, 92vh)'
 
-  const cardStyle: React.CSSProperties = {
+  const cardStyle: CSSProperties = {
     background: 'rgba(10,12,30,0.9)',
     border: '1px solid rgba(230,199,110,0.22)',
     borderRadius: '12px',
@@ -796,7 +796,7 @@ export default function SoulMirror({
   )
 }
 
-const backBtn: React.CSSProperties = {
+const backBtn: CSSProperties = {
   fontFamily: "'Cinzel', serif",
   fontSize: '8px',
   letterSpacing: '0.25em',
@@ -809,7 +809,7 @@ const backBtn: React.CSSProperties = {
   borderRadius: '4px',
 }
 
-const continueBtn: React.CSSProperties = {
+const continueBtn: CSSProperties = {
   fontFamily: "'Cinzel', serif",
   fontSize: '10px',
   letterSpacing: '0.3em',

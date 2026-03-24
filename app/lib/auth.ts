@@ -42,7 +42,7 @@ function normalizeHubName(hubName: string) {
   return hubName.trim().toLowerCase()
 }
 
-async function getCurrentUserId() {
+async function getCurrentUserId(): Promise<string | null> {
   const {
     data: { user },
     error,
@@ -97,49 +97,6 @@ export async function signUp(email: string, password: string) {
   if (!data.user) throw new Error('No user returned after signup')
 
   return data.user
-}
-
-export async function ensureDraftHubForCurrentUser() {
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser()
-
-  if (userError) throw userError
-  if (!user) throw new Error('No authenticated user found')
-
-  const draftPayload = {
-    id: user.id,
-  }
-
-  const { data: existingHub, error: existingHubError } = await supabase
-    .from('hubs')
-    .select('id')
-    .eq('id', user.id)
-    .maybeSingle()
-
-  if (existingHubError) throw existingHubError
-
-  if (existingHub) {
-    const { data, error } = await supabase
-      .from('hubs')
-      .update(draftPayload)
-      .eq('id', user.id)
-      .select()
-      .single()
-
-    if (error) throw error
-    return data
-  }
-
-  const { data, error } = await supabase
-    .from('hubs')
-    .insert([draftPayload])
-    .select()
-    .single()
-
-  if (error) throw error
-  return data
 }
 
 export async function signUpAndCreateHub(
@@ -361,11 +318,14 @@ export async function exportMyLetters(): Promise<string> {
       lines.push(`Letter ${i + 1} · ${direction}`)
       lines.push(`${direction === 'SENT' ? 'To' : 'From'}: ${other}`)
       lines.push(`Date: ${date}`)
+
       const parsedSubject = parseLetterSubject(l.subject)
       if (parsedSubject.subject && parsedSubject.subject !== 'A letter for you') {
         lines.push(`Subject: ${parsedSubject.subject}`)
       }
+
       lines.push('')
+
       splitLetterPages(l.body).forEach((page, pageIndex) => {
         if (pageIndex > 0) {
           lines.push(`[Page ${pageIndex + 1}]`)
@@ -374,6 +334,7 @@ export async function exportMyLetters(): Promise<string> {
         lines.push(page)
         lines.push('')
       })
+
       lines.push('')
       lines.push('─'.repeat(40))
       lines.push('')
