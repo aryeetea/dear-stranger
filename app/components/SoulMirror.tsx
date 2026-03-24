@@ -31,13 +31,6 @@ const STYLE_OPTIONS = [
   { id: 'tideborn', label: 'Tideborn', desc: 'Oceanic, dreamy, and cool-toned.' },
 ]
 
-const DIRECT_DESCRIPTION_SUGGESTIONS = [
-  'A moonlit archivist with silver-veined skin, soft obsidian curls, a velvet coat stitched with constellations, rings like tiny relics, and a calm gaze that feels older than the room.',
-  'An otherworldly wanderer in layered silk and weathered gold, luminous brown skin, star-bright eyes, impossible flowers growing from the sleeves, and a halo of dusk-colored mist.',
-  'A dreamlike figure with glassy moonstone jewelry, deep expressive eyes, sculptural cheekbones, a cathedral-inspired coat, and light that moves across them like stained glass.',
-  'A celestial romantic with rich textured hair, pearl-and-ember fabrics, elegant hands, subtle cosmic markings, and an aura that feels tender, strange, and quietly powerful.',
-]
-
 const RULES = [
   { icon: '✦', title: 'Letters travel slowly — and that is the point', desc: 'Nothing in Dear Stranger arrives instantly. When you send a letter, it drifts through the universe for anywhere between one and seven days before landing. This is not a bug. The wait is part of the experience — it gives your words weight, and gives the reader time to anticipate. Write like your letter deserves the journey.' },
   { icon: '◎', title: 'Every hub is a real person', desc: 'Every glowing point, every lantern, every archway you see floating in the universe belongs to someone real — a student, a wanderer, someone who sat with the same questions you did during onboarding. Click a hub to see their presence. Write to connect.' },
@@ -59,7 +52,7 @@ function cleanDisplayText(text: string) {
 }
 
 export interface SoulMirrorResumeState {
-  phase?: 'mode' | 'voice' | 'style' | 'hubstyle' | 'hubcolor' | 'chat' | 'describe' | 'hubname' | 'bio' | 'ask' | 'welcome'
+  phase?: 'voice' | 'style' | 'hubstyle' | 'hubcolor' | 'chat' | 'hubname' | 'bio' | 'ask' | 'welcome'
   selectedStyle?: StyleOption
   selectedHubStyle?: HubStyle
   selectedHubPalette?: HubPaletteId
@@ -68,11 +61,9 @@ export interface SoulMirrorResumeState {
   hubName?: string
   bio?: string
   askAbout?: string
-  creationMode?: 'guided' | 'direct'
-  directAvatarDescription?: string
 }
 
-type Phase = 'mode' | 'voice' | 'style' | 'hubstyle' | 'hubcolor' | 'chat' | 'describe' | 'hubname' | 'bio' | 'ask' | 'welcome'
+type Phase = 'voice' | 'style' | 'hubstyle' | 'hubcolor' | 'chat' | 'hubname' | 'bio' | 'ask' | 'welcome'
 
 interface SoulMirrorProps {
   isReturning?: boolean
@@ -87,8 +78,6 @@ interface SoulMirrorProps {
     bio?: string,
     hubNameFromOnboarding?: string,
     askAbout?: string,
-    creationMode?: 'guided' | 'direct',
-    directAvatarDescription?: string,
   ) => void
 }
 
@@ -98,8 +87,7 @@ export default function SoulMirror({
   resumeState = null,
   onComplete,
 }: SoulMirrorProps) {
-  const [phase, setPhase] = useState<Phase>(resumeState?.phase || 'mode')
-  const [creationMode, setCreationMode] = useState<'guided' | 'direct'>(resumeState?.creationMode || 'guided')
+  const [phase, setPhase] = useState<Phase>(resumeState?.phase || 'voice')
   const [selectedVoice, setSelectedVoice] = useState<MirrorVoice | null>(resumeState?.selectedVoice || null)
   const [selectedStyle, setSelectedStyle] = useState<StyleOption | null>(resumeState?.selectedStyle || null)
   const [selectedHubStyle, setSelectedHubStyle] = useState<HubStyle>(resumeState?.selectedHubStyle || 'portal')
@@ -107,9 +95,6 @@ export default function SoulMirror({
   const [messages, setMessages] = useState<{ role: 'ai' | 'user'; text: string; isClosing?: boolean; chips?: string[] }[]>([])
   const [userAnswers, setUserAnswers] = useState<string[]>(resumeState?.userAnswers || [])
   const [inputValue, setInputValue] = useState('')
-  const [directAvatarDescription, setDirectAvatarDescription] = useState(resumeState?.directAvatarDescription || '')
-  const [showDirectSuggestion, setShowDirectSuggestion] = useState(false)
-  const [directSuggestion, setDirectSuggestion] = useState(DIRECT_DESCRIPTION_SUGGESTIONS[0])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [chatDone, setChatDone] = useState(Boolean(resumeState?.phase && (resumeState.phase === 'hubname' || resumeState.phase === 'bio' || resumeState.phase === 'ask' || resumeState.phase === 'welcome')))
@@ -123,30 +108,6 @@ export default function SoulMirror({
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, loading])
-
-  useEffect(() => {
-    if (phase !== 'describe' || creationMode !== 'direct') {
-      setShowDirectSuggestion(false)
-      return
-    }
-
-    if (directAvatarDescription.trim()) {
-      setShowDirectSuggestion(false)
-      return
-    }
-
-    const timeout = setTimeout(() => {
-      const nextSuggestion =
-        DIRECT_DESCRIPTION_SUGGESTIONS[
-          Math.floor(Math.random() * DIRECT_DESCRIPTION_SUGGESTIONS.length)
-        ]
-
-      setDirectSuggestion(nextSuggestion)
-      setShowDirectSuggestion(true)
-    }, 20000)
-
-    return () => clearTimeout(timeout)
-  }, [phase, creationMode, directAvatarDescription])
 
   const fetchAIMessage = useCallback(async (history: typeof messages, answers: string[]) => {
     if (!selectedStyle || !selectedVoice) return
@@ -188,10 +149,10 @@ export default function SoulMirror({
   }, [isReturning, selectedStyle, selectedVoice])
 
   useEffect(() => {
-    if (phase !== 'chat' || !selectedStyle || !selectedVoice || hasInitialized.current || creationMode !== 'guided') return
+    if (phase !== 'chat' || !selectedStyle || !selectedVoice || hasInitialized.current) return
     hasInitialized.current = true
     void fetchAIMessage([], [])
-  }, [creationMode, fetchAIMessage, phase, selectedStyle, selectedVoice])
+  }, [fetchAIMessage, phase, selectedStyle, selectedVoice])
 
   async function handleSend(text?: string) {
     const finalText = (text || inputValue).trim()
@@ -220,8 +181,6 @@ export default function SoulMirror({
       bio.trim(),
       hubName.trim(),
       askAbout.trim(),
-      creationMode,
-      directAvatarDescription.trim(),
     )
   }
 
@@ -276,82 +235,12 @@ export default function SoulMirror({
       )}
 
       <AnimatePresence mode="wait">
-        {phase === 'mode' && (
-          <motion.div
-            key="mode"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -16 }}
-            transition={{ duration: 0.4 }}
-            style={{ ...cardStyle, width: wideSelectionCardWidth, maxHeight: selectionCardMaxHeight, overflowY: 'auto', padding: 'clamp(28px,5vw,44px)' }}
-          >
-            <GoldLines />
-            <SectionHeader
-              step="Soul Mirror · Before we begin"
-              title="How would you like to shape your avatar?"
-              sub="Choose a guided question path or write your own vision directly. Either way, your avatar can be as imaginative, cinematic, soft, strange, elegant, celestial, or expressive as you want."
-            />
-            <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: '14px' }}>
-              <motion.button
-                whileHover={{ y: -2 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => {
-                  setCreationMode('guided')
-                  setPhase('voice')
-                }}
-                style={{
-                  textAlign: 'left',
-                  padding: '22px 18px',
-                  borderRadius: '12px',
-                  border: '1px solid rgba(230,199,110,0.22)',
-                  background: 'rgba(255,255,255,0.04)',
-                  cursor: 'pointer',
-                }}
-              >
-                <p style={{ fontSize: '22px', marginBottom: '10px' }}>✦</p>
-                <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.18em', color: '#e6c76e', textTransform: 'uppercase', marginBottom: '8px' }}>
-                  Answer Questions
-                </p>
-                <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '15px', color: 'rgba(255,255,255,0.62)', lineHeight: 1.6 }}>
-                  Let the mirror guide you with a series of questions and slowly uncover a look that feels like you.
-                </p>
-              </motion.button>
-
-              <motion.button
-                whileHover={{ y: -2 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => {
-                  setCreationMode('direct')
-                  setSelectedVoice(null)
-                  setPhase('style')
-                }}
-                style={{
-                  textAlign: 'left',
-                  padding: '22px 18px',
-                  borderRadius: '12px',
-                  border: '1px solid rgba(230,199,110,0.22)',
-                  background: 'rgba(255,255,255,0.04)',
-                  cursor: 'pointer',
-                }}
-              >
-                <p style={{ fontSize: '22px', marginBottom: '10px' }}>◎</p>
-                <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.18em', color: '#e6c76e', textTransform: 'uppercase', marginBottom: '8px' }}>
-                  Write My Own Description
-                </p>
-                <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '15px', color: 'rgba(255,255,255,0.62)', lineHeight: 1.6 }}>
-                  Describe your avatar in your own words. Be bold and creative with mood, fashion, colors, magic, symbolism, or anything else you imagine.
-                </p>
-              </motion.button>
-            </div>
-          </motion.div>
-        )}
-
         {phase === 'voice' && (
           <motion.div key="voice" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.4 }}
             style={{ ...cardStyle, width: wideSelectionCardWidth, maxHeight: selectionCardMaxHeight, overflowY: 'auto', padding: 'clamp(28px,5vw,44px)' }}>
             <GoldLines />
             <SectionHeader
-              step="Soul Mirror · Step 1 of 4"
+              step="Soul Mirror · Step 1 of 5"
               title={isReturning ? 'Hello, my old friend. How shall I speak to you this time?' : 'How would you like your mirror to speak?'}
               sub="Choose the voice the mirror uses during your experience."
             />
@@ -366,9 +255,6 @@ export default function SoulMirror({
                 </motion.button>
               ))}
             </div>
-            <div style={{ marginTop: '20px' }}>
-              <button onClick={() => setPhase('mode')} style={backBtn}>← Back</button>
-            </div>
           </motion.div>
         )}
 
@@ -377,7 +263,7 @@ export default function SoulMirror({
             style={{ ...cardStyle, width: wideSelectionCardWidth, maxHeight: selectionCardMaxHeight, overflowY: 'auto', padding: 'clamp(28px,5vw,44px)' }}>
             <GoldLines />
             <SectionHeader
-              step={creationMode === 'direct' ? 'Soul Mirror · Step 1 of 4' : 'Soul Mirror · Step 2 of 4'}
+              step="Soul Mirror · Step 2 of 5"
               title="Choose your avatar theme"
               sub="Pick the overall vibe for your portrait: magical, modern, moonlit, dark, soft, regal, or something in between."
             />
@@ -391,7 +277,7 @@ export default function SoulMirror({
                 </motion.button>
               ))}
             </div>
-            <button onClick={() => setPhase(creationMode === 'direct' ? 'mode' : 'voice')} style={backBtn}>← Back</button>
+            <button onClick={() => setPhase('voice')} style={backBtn}>← Back</button>
           </motion.div>
         )}
 
@@ -400,7 +286,7 @@ export default function SoulMirror({
             style={{ ...cardStyle, width: wideSelectionCardWidth, maxHeight: selectionCardMaxHeight, overflowY: 'auto', padding: 'clamp(28px,5vw,44px)' }}>
             <GoldLines />
             <SectionHeader
-              step={creationMode === 'direct' ? 'Soul Mirror · Step 2 of 4' : 'Soul Mirror · Step 3 of 5'}
+              step="Soul Mirror · Step 3 of 5"
               title="How does your hub appear in the universe?"
               sub="Choose a form that feels like a place someone would want to wander into."
             />
@@ -433,7 +319,7 @@ export default function SoulMirror({
             style={{ ...cardStyle, width: wideSelectionCardWidth, maxHeight: selectionCardMaxHeight, overflowY: 'auto', padding: 'clamp(28px,5vw,44px)' }}>
             <GoldLines />
             <SectionHeader
-              step={creationMode === 'direct' ? 'Soul Mirror · Step 3 of 4' : 'Soul Mirror · Step 4 of 5'}
+              step="Soul Mirror · Step 4 of 5"
               title="What color world does your hub glow in?"
               sub="Pick a palette that feels beautiful to you. This becomes the atmosphere and light your hub carries into the map."
             />
@@ -458,14 +344,14 @@ export default function SoulMirror({
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', flexDirection: isMobile ? 'column-reverse' : 'row', gap: '12px' }}>
               <button onClick={() => setPhase('hubstyle')} style={backBtn}>← Back</button>
-              <button onClick={() => setPhase(creationMode === 'guided' ? 'chat' : 'describe')} style={continueBtn}>
+              <button onClick={() => setPhase('chat')} style={continueBtn}>
                 Enter the Mirror ✦
               </button>
             </div>
           </motion.div>
         )}
 
-        {phase === 'chat' && creationMode === 'guided' && (
+        {phase === 'chat' && (
           <motion.div key="chat" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.4 }}
             style={{ ...cardStyle, width: 'min(580px, 100%)', height: isMobile ? `min(760px, ${Math.max(height - 32, 420)}px)` : 'min(720px, 92vh)', display: 'flex', flexDirection: 'column' }}>
             <div style={{ position: 'absolute', top: 0, left: '20%', right: '20%', height: '1px', background: 'linear-gradient(90deg, transparent, rgba(230,199,110,0.45), transparent)' }} />
@@ -557,134 +443,6 @@ export default function SoulMirror({
           </motion.div>
         )}
 
-        {phase === 'describe' && creationMode === 'direct' && (
-          <motion.div
-            key="describe"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -16 }}
-            transition={{ duration: 0.4 }}
-            style={{ ...cardStyle, width: 'min(640px, 95vw)', padding: 'clamp(32px,5vw,48px)' }}
-          >
-            <GoldLines />
-            <SectionHeader
-              step="Soul Mirror · Step 4 of 4"
-              title="Describe your avatar in your own words"
-              sub="Write as much detail as you want. Think otherworldly realism: grounded enough to feel alive, imaginative enough to feel like you stepped out of a dream."
-            />
-            <textarea
-              value={directAvatarDescription}
-              onChange={(e) => {
-                setDirectAvatarDescription(e.target.value)
-                if (e.target.value.trim()) setShowDirectSuggestion(false)
-              }}
-              placeholder="Describe your avatar in detail... luminous skin, impossible flowers, velvet shadows, sculptural jewelry, moonlit tailoring, tender but uncanny beauty, whatever feels like you."
-              rows={10}
-              style={{
-                width: '100%',
-                background: 'rgba(255,255,255,0.04)',
-                border: '1px solid rgba(255,255,255,0.12)',
-                borderRadius: '8px',
-                color: 'rgba(255,255,255,0.92)',
-                fontFamily: "'Cormorant Garamond', serif",
-                fontSize: '16px',
-                lineHeight: 1.8,
-                padding: '16px',
-                outline: 'none',
-                resize: 'vertical',
-                caretColor: '#e6c76e',
-                marginBottom: '20px',
-              }}
-            />
-            <AnimatePresence>
-              {showDirectSuggestion && !directAvatarDescription.trim() && (
-                <motion.div
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -6 }}
-                  transition={{ duration: 0.25 }}
-                  style={{
-                    marginBottom: '18px',
-                    padding: '14px 16px',
-                    borderRadius: '10px',
-                    border: '1px solid rgba(230,199,110,0.2)',
-                    background: 'rgba(255,255,255,0.04)',
-                  }}
-                >
-                  <p
-                    style={{
-                      fontFamily: "'Cinzel', serif",
-                      fontSize: '8px',
-                      letterSpacing: '0.22em',
-                      color: 'rgba(230,199,110,0.72)',
-                      textTransform: 'uppercase',
-                      marginBottom: '8px',
-                    }}
-                  >
-                    Need a spark?
-                  </p>
-                  <p
-                    style={{
-                      fontFamily: "'Cormorant Garamond', serif",
-                      fontSize: '16px',
-                      lineHeight: 1.7,
-                      color: 'rgba(255,255,255,0.74)',
-                      marginBottom: '12px',
-                    }}
-                  >
-                    {directSuggestion}
-                  </p>
-                  <div
-                    style={{
-                      display: 'flex',
-                      gap: '10px',
-                      flexDirection: isMobile ? 'column' : 'row',
-                    }}
-                  >
-                    <button
-                      onClick={() => {
-                        setDirectAvatarDescription(directSuggestion)
-                        setShowDirectSuggestion(false)
-                      }}
-                      style={{
-                        ...continueBtn,
-                        width: isMobile ? '100%' : 'auto',
-                        padding: '12px 16px',
-                        fontSize: '9px',
-                      }}
-                    >
-                      Use This Spark
-                    </button>
-                    <button
-                      onClick={() => {
-                        const currentIndex = DIRECT_DESCRIPTION_SUGGESTIONS.indexOf(directSuggestion)
-                        const nextIndex =
-                          currentIndex >= 0
-                            ? (currentIndex + 1) % DIRECT_DESCRIPTION_SUGGESTIONS.length
-                            : 0
-                        setDirectSuggestion(DIRECT_DESCRIPTION_SUGGESTIONS[nextIndex])
-                      }}
-                      style={{
-                        ...backBtn,
-                        width: isMobile ? '100%' : 'auto',
-                        padding: '12px 16px',
-                      }}
-                    >
-                      Another Idea
-                    </button>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-            <div style={{ display: 'flex', justifyContent: 'space-between', flexDirection: isMobile ? 'column-reverse' : 'row', gap: '12px' }}>
-              <button onClick={() => setPhase('hubcolor')} style={backBtn}>← Back</button>
-              <button onClick={() => setPhase('hubname')} style={continueBtn} disabled={!directAvatarDescription.trim()}>
-                Continue ✦
-              </button>
-            </div>
-          </motion.div>
-        )}
-
         {phase === 'hubname' && (
           <motion.div key="hubname" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.4 }}
             style={{ ...cardStyle, padding: 'clamp(40px,6vw,64px)', width: 'min(480px, 95vw)', textAlign: 'center' }}>
@@ -696,7 +454,7 @@ export default function SoulMirror({
               onKeyDown={e => { if (e.key === 'Enter' && hubName.trim()) setPhase('bio') }}
               style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.94)', fontFamily: "'Cormorant Garamond', serif", fontSize: '22px', padding: '10px 4px', outline: 'none', textAlign: 'center', letterSpacing: '0.08em', caretColor: '#e6c76e', marginBottom: '28px' }} />
             <div style={{ display: 'flex', justifyContent: 'space-between', flexDirection: isMobile ? 'column-reverse' : 'row', gap: '12px' }}>
-              <button onClick={() => setPhase(creationMode === 'guided' ? 'chat' : 'describe')} style={backBtn}>← Back</button>
+              <button onClick={() => setPhase('chat')} style={backBtn}>← Back</button>
               <button onClick={() => hubName.trim() && setPhase('bio')} disabled={!hubName.trim()}
                 style={{ ...continueBtn, opacity: hubName.trim() ? 1 : 0.5 }}>
                 Continue

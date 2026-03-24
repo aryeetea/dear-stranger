@@ -25,10 +25,12 @@ import {
   signInAndCreateHub,
   signOut,
   createHubForCurrentUser,
+  deleteCurrentAccount,
   getSession,
   getMyHub,
   getAllHubs,
   sendLetter,
+  touchHubLastSeen,
   updateHub,
   signIn,
   signUp,
@@ -51,6 +53,26 @@ const STARS = Array.from({ length: 30 }, (_, i) => ({
   width: `${(i % 3) * 0.6 + 0.3}px`,
   opacity: (i % 5) * 0.06 + 0.04,
 }))
+
+const INACTIVITY_THRESHOLD_MONTHS = 6
+
+function getMonthsSince(dateValue?: string | null) {
+  if (!dateValue) return 0
+
+  const parsed = new Date(dateValue)
+  if (Number.isNaN(parsed.getTime())) return 0
+
+  const now = new Date()
+  let months =
+    (now.getFullYear() - parsed.getFullYear()) * 12 +
+    (now.getMonth() - parsed.getMonth())
+
+  if (now.getDate() < parsed.getDate()) {
+    months -= 1
+  }
+
+  return Math.max(0, months)
+}
 
 function AuthBackground() {
   return (
@@ -195,6 +217,12 @@ export default function Home() {
   const [showGuestWall, setShowGuestWall] = useState(false)
   const [onboardingError, setOnboardingError] = useState('')
   const [avatarStatusMessage, setAvatarStatusMessage] = useState('')
+  const [inactivePrompt, setInactivePrompt] = useState<{
+    monthsAway: number
+    lastSeenAt: string | null
+  } | null>(null)
+  const [inactivityActionLoading, setInactivityActionLoading] = useState(false)
+  const [inactivityActionError, setInactivityActionError] = useState('')
   const [onboardingResumeState, setOnboardingResumeState] =
     useState<SoulMirrorResumeState | null>(null)
 
@@ -230,6 +258,9 @@ export default function Home() {
     setScribeInitialBody('')
     setAvatarProgress(0)
     setAvatarStatusMessage('')
+    setInactivePrompt(null)
+    setInactivityActionLoading(false)
+    setInactivityActionError('')
     if (avatarStatusTimeoutRef.current) {
       clearTimeout(avatarStatusTimeoutRef.current)
       avatarStatusTimeoutRef.current = null
@@ -293,9 +324,24 @@ export default function Home() {
         setHubRegenCount(hub?.regen_count || 0)
         setOnboardingError('')
         setOnboardingResumeState(null)
+        setInactivityActionError('')
 
         const guest = await isGuestUser()
         setIsGuest(guest)
+
+        const monthsAway = getMonthsSince(hub?.last_seen_at || null)
+        const shouldPromptForReturn =
+          Boolean(hub?.last_seen_at) && monthsAway >= INACTIVITY_THRESHOLD_MONTHS
+
+        if (shouldPromptForReturn) {
+          setInactivePrompt({
+            monthsAway,
+            lastSeenAt: hub?.last_seen_at || null,
+          })
+        } else {
+          setInactivePrompt(null)
+          void touchHubLastSeen()
+        }
 
         setScreen('universe')
         return
@@ -309,6 +355,47 @@ export default function Home() {
       setScreen('entry')
     }
   }, [clearHubState])
+
+  async function handleContinueAfterInactivity() {
+    try {
+      setInactivityActionLoading(true)
+      setInactivityActionError('')
+      const touched = await touchHubLastSeen()
+      if (!touched) {
+        throw new Error('Could not restore your place just yet.')
+      }
+      setInactivePrompt(null)
+    } catch (err) {
+      console.error('Failed to continue inactive account:', err)
+      setInactivityActionError(
+        err instanceof Error ? err.message : 'Could not restore your place just yet.',
+      )
+    } finally {
+      setInactivityActionLoading(false)
+    }
+  }
+
+  async function handleDeleteAfterInactivity() {
+    try {
+      setInactivityActionLoading(true)
+      setInactivityActionError('')
+      const result = await deleteCurrentAccount()
+
+      if (!result.success) {
+        throw new Error(result.error || 'Could not delete your account.')
+      }
+
+      clearHubState()
+      setScreen('entry')
+    } catch (err) {
+      console.error('Failed to delete inactive account:', err)
+      setInactivityActionError(
+        err instanceof Error ? err.message : 'Could not delete your account.',
+      )
+    } finally {
+      setInactivityActionLoading(false)
+    }
+  }
 
   useEffect(() => {
     async function checkSession() {
@@ -383,8 +470,6 @@ export default function Home() {
     userBio?: string,
     userHubName?: string,
     userAskAbout?: string,
-    creationMode: 'guided' | 'direct' = 'guided',
-    directAvatarDescription = '',
   ) {
     setOnboardingError('')
     console.log('1. onboarding started')
@@ -406,16 +491,7 @@ export default function Home() {
     const chosenHubPalette = selectedHubPalette || DEFAULT_HUB_PALETTE
     const chosenBio = userBio?.trim() || fallbackBio
     const chosenAskAbout = userAskAbout?.trim() || fallbackAskAbout
-    const trimmedDirectDescription = directAvatarDescription.trim()
     const avatarAnswers: Record<number, string> = { ...conversationAnswers }
-
-    if (creationMode === 'direct' && trimmedDirectDescription) {
-      avatarAnswers[0] = trimmedDirectDescription
-      if (selectedStyle) {
-        avatarAnswers[1] = `Visual direction: ${selectedStyle.label}. ${selectedStyle.desc}.`
-      }
-      avatarAnswers[2] = `Hub atmosphere: ${chosenHubStyle} form with ${chosenHubPalette} light.`
-    }
 
     const resumeState: SoulMirrorResumeState = {
       phase: 'welcome',
@@ -427,8 +503,6 @@ export default function Home() {
       hubName: hubNameAnswer,
       bio: chosenBio,
       askAbout: chosenAskAbout,
-      creationMode,
-      directAvatarDescription: trimmedDirectDescription,
     }
 
     try {
@@ -1027,6 +1101,159 @@ export default function Home() {
           >
             {avatarStatusMessage}
           </p>
+        </div>
+      )}
+
+      {inactivePrompt && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,5,0.9)',
+            backdropFilter: 'blur(14px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 96,
+            padding: 'clamp(20px, 5vw, 32px)',
+          }}
+        >
+          <div
+            style={{
+              width: 'min(520px, 95vw)',
+              background: 'rgba(10,12,30,0.95)',
+              border: '1px solid rgba(230,199,110,0.22)',
+              borderRadius: '12px',
+              padding: 'clamp(32px,5vw,48px)',
+              position: 'relative',
+            }}
+          >
+            <div
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: '20%',
+                right: '20%',
+                height: '1px',
+                background:
+                  'linear-gradient(90deg, transparent, rgba(230,199,110,0.45), transparent)',
+              }}
+            />
+
+            <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+              <p
+                style={{
+                  fontFamily: "'Cinzel', serif",
+                  fontSize: '9px',
+                  letterSpacing: '0.5em',
+                  color: 'rgba(201,168,76,0.65)',
+                  textTransform: 'uppercase',
+                  marginBottom: '10px',
+                }}
+              >
+                Welcome Back
+              </p>
+              <p
+                style={{
+                  fontFamily: "'IM Fell English', serif",
+                  fontStyle: 'italic',
+                  fontSize: 'clamp(17px,2.5vw,22px)',
+                  color: 'rgba(255,255,255,0.92)',
+                  lineHeight: 1.6,
+                  marginBottom: '10px',
+                }}
+              >
+                You&apos;ve been away for {inactivePrompt.monthsAway}{' '}
+                {inactivePrompt.monthsAway === 1 ? 'month' : 'months'}.
+              </p>
+              <p
+                style={{
+                  fontFamily: "'Cormorant Garamond', serif",
+                  fontSize: '15px',
+                  color: 'rgba(255,255,255,0.5)',
+                  lineHeight: 1.7,
+                }}
+              >
+                If you still want your place in the universe, keep it. If not, we can let
+                it fade and remove your information.
+              </p>
+            </div>
+
+            {inactivePrompt.lastSeenAt && (
+              <p
+                style={{
+                  fontFamily: "'Cinzel', serif",
+                  fontSize: '8px',
+                  letterSpacing: '0.2em',
+                  color: 'rgba(255,255,255,0.32)',
+                  textTransform: 'uppercase',
+                  textAlign: 'center',
+                  marginBottom: '18px',
+                }}
+              >
+                Last seen {new Date(inactivePrompt.lastSeenAt).toLocaleDateString('en-US')}
+              </p>
+            )}
+
+            {inactivityActionError && (
+              <p
+                style={{
+                  fontFamily: "'IM Fell English', serif",
+                  fontStyle: 'italic',
+                  fontSize: '14px',
+                  color: 'rgba(235,140,140,0.9)',
+                  textAlign: 'center',
+                  marginBottom: '16px',
+                }}
+              >
+                {inactivityActionError}
+              </p>
+            )}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <button
+                onClick={() => void handleContinueAfterInactivity()}
+                disabled={inactivityActionLoading}
+                style={{
+                  width: '100%',
+                  padding: '14px',
+                  background: 'transparent',
+                  border: '1px solid rgba(201,168,76,0.5)',
+                  color: '#c9a84c',
+                  fontFamily: "'Cinzel', serif",
+                  fontSize: '10px',
+                  letterSpacing: '0.3em',
+                  textTransform: 'uppercase',
+                  cursor: inactivityActionLoading ? 'default' : 'pointer',
+                  borderRadius: '4px',
+                  opacity: inactivityActionLoading ? 0.7 : 1,
+                }}
+              >
+                Keep My Hub ✦
+              </button>
+
+              <button
+                onClick={() => void handleDeleteAfterInactivity()}
+                disabled={inactivityActionLoading}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  background: 'transparent',
+                  border: '1px solid rgba(220,120,120,0.24)',
+                  color: 'rgba(220,140,140,0.8)',
+                  fontFamily: "'Cinzel', serif",
+                  fontSize: '9px',
+                  letterSpacing: '0.22em',
+                  textTransform: 'uppercase',
+                  cursor: inactivityActionLoading ? 'default' : 'pointer',
+                  borderRadius: '4px',
+                  opacity: inactivityActionLoading ? 0.7 : 1,
+                }}
+              >
+                Let It Fade
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

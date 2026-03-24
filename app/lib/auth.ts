@@ -12,6 +12,7 @@ export type HubRecord = {
   regen_count?: number | null
   letters_sent?: number | null
   email?: string | null
+  last_seen_at?: string | null
 }
 
 type HubNameRow = {
@@ -115,6 +116,7 @@ export async function signUpAndCreateHub(
         bio,
         ask_about: askAbout,
         email,
+        last_seen_at: new Date().toISOString(),
       },
     ])
 
@@ -180,6 +182,7 @@ export async function createHubForCurrentUser(
         bio,
         ask_about: askAbout,
         email,
+        last_seen_at: new Date().toISOString(),
       },
     ])
     .select()
@@ -216,6 +219,7 @@ export async function signInAndCreateHub(hubName: string, bio: string, askAbout:
         hub_name: hubName,
         bio,
         ask_about: askAbout,
+        last_seen_at: new Date().toISOString(),
       },
     ])
 
@@ -229,6 +233,51 @@ export async function signOut() {
     await supabase.auth.signOut()
   } catch (err) {
     console.error('signOut failed:', err)
+  }
+}
+
+export async function deleteCurrentAccount(): Promise<{ success: boolean; error?: string }> {
+  try {
+    const {
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession()
+
+    if (sessionError) throw sessionError
+    if (!session) throw new Error('No active session found.')
+
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 20000)
+
+    let response: Response
+    try {
+      response = await fetch('/api/delete-account', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        signal: controller.signal,
+      })
+    } finally {
+      clearTimeout(timeout)
+    }
+
+    const data = await response.json().catch(() => ({}))
+
+    if (!response.ok || data.error) {
+      throw new Error(data.error || `Delete failed with status ${response.status}`)
+    }
+
+    await supabase.auth.signOut()
+
+    return { success: true }
+  } catch (err) {
+    console.error('deleteCurrentAccount failed:', err)
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'Delete failed',
+    }
   }
 }
 
@@ -445,6 +494,31 @@ export async function updateHub(updates: {
   if (error) throw error
   if (!data) throw new Error('No hub found for the current user.')
   return data
+}
+
+export async function touchHubLastSeen(isoTimestamp = new Date().toISOString()) {
+  try {
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser()
+
+    if (userError) throw userError
+    if (!user) return null
+
+    const { data, error } = await supabase
+      .from('hubs')
+      .update({ last_seen_at: isoTimestamp })
+      .eq('id', user.id)
+      .select('id, last_seen_at')
+      .maybeSingle()
+
+    if (error) throw error
+    return data
+  } catch (err) {
+    console.error('touchHubLastSeen failed:', err)
+    return null
+  }
 }
 
 // ── SEND LETTER ──
