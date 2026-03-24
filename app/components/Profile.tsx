@@ -6,7 +6,6 @@ import {
   updateHub,
   signOut,
   deleteAccount,
-  saveMyHubRelicsToDb,
   uploadAvatarToStorage,
 } from '../lib/auth'
 import { supabase } from '../../lib/supabase'
@@ -239,7 +238,6 @@ export default function Profile({
       setSaving(true)
       setSaveError('')
       saveHubRelics(storageScope, hubRelicsDraft)
-      void saveMyHubRelicsToDb(hubRelicsDraft)
       setHubRelicsState(hubRelicsDraft)
       onUpdateHub?.({ hubRelics: hubRelicsDraft })
       setEditingRelics(false)

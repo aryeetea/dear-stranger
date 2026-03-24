@@ -14,7 +14,6 @@ import { supabase } from '../lib/supabase'
 import { getLetterPreview } from './lib/letters'
 import { loadHubRelics, type HubRelicId } from './lib/worldbuilding'
 import {
-  getMyHubRelicsFromDb,
   signInAndCreateHub,
   signOut,
   createHubForCurrentUser,
@@ -176,14 +175,6 @@ export default function Home() {
     async function loadRelics() {
       if (!storageScope) {
         setHubRelics([])
-        return
-      }
-
-      const syncedRelics = await getMyHubRelicsFromDb()
-      if (cancelled) return
-
-      if (syncedRelics) {
-        setHubRelics(syncedRelics)
         return
       }
 

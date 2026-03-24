@@ -112,12 +112,11 @@ export async function ensureDraftHubForCurrentUser() {
 
   const draftPayload = {
     id: user.id,
-    email: user.email || null,
   }
 
   const { data: existingHub, error: existingHubError } = await supabase
     .from('hubs')
-    .select('id, email')
+    .select('id')
     .eq('id', user.id)
     .maybeSingle()
 
@@ -126,7 +125,7 @@ export async function ensureDraftHubForCurrentUser() {
   if (existingHub) {
     const { data, error } = await supabase
       .from('hubs')
-      .update({ email: draftPayload.email })
+      .update(draftPayload)
       .eq('id', user.id)
       .select()
       .single()
@@ -168,7 +167,6 @@ export async function signUpAndCreateHub(
       hub_name: hubName,
       bio,
       ask_about: askAbout,
-      email,
     },
   ])
 
@@ -219,13 +217,10 @@ export async function createHubForCurrentUser(
 
   await assertHubNameAvailable(hubName, user.id)
 
-  const email = user.email || null
-
   const hubPayload = {
     hub_name: hubName,
     bio,
     ask_about: askAbout,
-    email,
   }
 
   if (existingHub) {

@@ -13,7 +13,7 @@ function normalizeDetail(value: string) {
 }
 
 // ⏱ timeout wrapper
-async function withTimeout<T>(promise: Promise<T>, ms = 30000): Promise<T> {
+async function withTimeout<T>(promise: Promise<T>, ms = 45000): Promise<T> {
   const timeout = new Promise<never>((_, reject) =>
     setTimeout(() => reject(new Error('Request timed out')), ms)
   )
@@ -90,13 +90,16 @@ ${feedback ? `Revision note: ${normalizeDetail(feedback)}` : ''}
 async function generateWithGptImage(
   openai: OpenAI,
   prompt: string,
-  mode: GenerationMode
+  userId: string | undefined,
+  mode: GenerationMode,
 ) {
   const response = await openai.images.generate({
     model: 'gpt-image-1',
     prompt,
     size: mode === 'reimagine' ? '1024x1024' : '1024x1536',
-    quality: 'medium',
+    quality: mode === 'reimagine' ? 'low' : 'high',
+    output_format: 'jpeg',
+    user: userId || undefined,
   })
 
   const image = response.data?.[0]
@@ -107,7 +110,7 @@ async function generateWithGptImage(
   }
 
   return {
-    imageUrl: `data:image/png;base64,${image.b64_json}`,
+    imageUrl: `data:image/jpeg;base64,${image.b64_json}`,
     revisedPrompt: image.revised_prompt || prompt,
   }
 }
@@ -116,19 +119,25 @@ async function generateWithGptImage(
 async function generateWithDalle(
   openai: OpenAI,
   prompt: string,
-  mode: GenerationMode
+  userId: string | undefined,
+  mode: GenerationMode,
 ) {
   const response = await openai.images.generate({
     model: 'dall-e-3',
     prompt,
+    n: 1,
     size: mode === 'reimagine' ? '1024x1024' : '1024x1792',
+    quality: mode === 'reimagine' ? 'standard' : 'hd',
+    style: 'vivid',
+    response_format: 'b64_json',
+    user: userId || undefined,
   })
 
   const image = response.data?.[0]
 
-  if (image?.url) {
+  if (image?.b64_json) {
     return {
-      imageUrl: image.url,
+      imageUrl: `data:image/png;base64,${image.b64_json}`,
       revisedPrompt: image.revised_prompt || prompt,
     }
   }
@@ -140,7 +149,7 @@ async function generateWithDalle(
 // 🚀 API ROUTE
 export async function POST(req: Request) {
   try {
-    const { answers, feedback, style, mode } = await req.json()
+    const { answers, feedback, style, mode, userId } = await req.json()
 
     const openaiKey = process.env.OPENAI_API_KEY
     if (!openaiKey) {
@@ -162,8 +171,8 @@ export async function POST(req: Request) {
 
     try {
       const result = await withTimeout(
-        generateWithGptImage(openai, prompt, generationMode),
-        30000
+        generateWithGptImage(openai, prompt, userId, generationMode),
+        45000,
       )
 
       return NextResponse.json({
@@ -175,8 +184,8 @@ export async function POST(req: Request) {
 
       try {
         const fallback = await withTimeout(
-          generateWithDalle(openai, prompt, generationMode),
-          30000
+          generateWithDalle(openai, prompt, userId, generationMode),
+          45000,
         )
 
         return NextResponse.json({
