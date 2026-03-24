@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import OpenAI from 'openai'
 
-export const maxDuration = 60
+export const maxDuration = 10
 
 type GenerationMode = 'create' | 'reimagine'
 
@@ -12,11 +12,10 @@ function normalizeDetail(value: string) {
     .trim()
 }
 
-async function withTimeout<T>(promise: Promise<T>, ms = 45000): Promise<T> {
+async function withTimeout<T>(promise: Promise<T>, ms = 9000): Promise<T> {
   const timeout = new Promise<never>((_, reject) =>
     setTimeout(() => reject(new Error('Request timed out')), ms),
   )
-
   return Promise.race([promise, timeout])
 }
 
@@ -37,24 +36,6 @@ const STYLE_DIRECTIONS: Record<string, string> = {
     'Stylized semi realistic futuristic portrait, elegant sci fi fashion, glowing details, sleek materials, cinematic neon atmosphere, not cartoon.',
   nature:
     'Stylized semi realistic nature inspired portrait, earthy palette, organic textures, floral accents, soft atmospheric light, detailed face, not cartoon.',
-  earthbound:
-    'Stylized semi realistic grounded portrait, natural lighting, warm tones, elegant realism, not cartoon.',
-  'mythic-modern':
-    'Stylized semi realistic mythic modern portrait, dramatic light, modern fashion with subtle mystical detail, not cartoon.',
-  regal:
-    'Stylized semi realistic regal portrait, rich fabrics, gold detail, powerful elegance, not cartoon.',
-  nocturne:
-    'Stylized semi realistic night portrait, moody cinematic shadows, colored highlights, not cartoon.',
-  'luminous-future':
-    'Stylized semi realistic futuristic portrait, glowing light, sleek materials, elegant sci fi atmosphere, not cartoon.',
-  garden:
-    'Stylized semi realistic garden portrait, warm greens, organic textures, soft natural light, not cartoon.',
-  sanctuary:
-    'Stylized semi realistic sacred portrait, candlelit atmosphere, spiritual calm, elegant realism, not cartoon.',
-  'velvet-gothic':
-    'Stylized semi realistic gothic portrait, dramatic shadows, velvet textures, romantic dark mood, not cartoon.',
-  tideborn:
-    'Stylized semi realistic oceanic portrait, cool blue light, flowing fabrics, watery atmosphere, not cartoon.',
 }
 
 function buildAvatarPrompt(
@@ -90,49 +71,15 @@ Requirements:
 - realistic clothing folds and texture detail
 - cinematic lighting with visible depth and shadows
 - beautiful atmospheric background
-- not flat
-- not chibi
-- not cartoon
-- not childish
-- not overly anime
-- no text
-- no watermark
+- not flat, not chibi, not cartoon, not childish, not overly anime
+- no text, no watermark
 - one character only
 
 Character details:
 ${details}
 
 ${feedback ? `Revision note: ${normalizeDetail(feedback)}` : ''}
-`
-    .trim()
-}
-
-async function generateWithGptImage(
-  openai: OpenAI,
-  prompt: string,
-  userId: string | undefined,
-  mode: GenerationMode,
-) {
-  const response = await openai.images.generate({
-    model: 'gpt-image-1',
-    prompt,
-    size: mode === 'reimagine' ? '1024x1024' : '1024x1536',
-    quality: mode === 'reimagine' ? 'medium' : 'high',
-    output_format: 'jpeg',
-    user: userId || undefined,
-  } as never)
-
-  const image = response.data?.[0]
-
-  if (!image?.b64_json) {
-    console.error('GPT IMAGE BAD RESPONSE:', response)
-    throw new Error('No image returned from gpt-image-1')
-  }
-
-  return {
-    imageUrl: `data:image/jpeg;base64,${image.b64_json}`,
-    revisedPrompt: (image as { revised_prompt?: string }).revised_prompt || prompt,
-  }
+`.trim()
 }
 
 async function generateWithDalle(
@@ -146,7 +93,7 @@ async function generateWithDalle(
     prompt,
     n: 1,
     size: mode === 'reimagine' ? '1024x1024' : '1024x1792',
-    quality: mode === 'reimagine' ? 'standard' : 'hd',
+    quality: 'standard',
     style: 'vivid',
     response_format: 'b64_json',
     user: userId || undefined,
@@ -187,32 +134,18 @@ export async function POST(req: Request) {
     const prompt = buildAvatarPrompt(orderedAnswers, style, feedback, generationMode)
     const openai = new OpenAI({ apiKey: openaiKey })
 
-    try {
-      const result = await withTimeout(
-        generateWithGptImage(openai, prompt, userId, generationMode),
-        45000,
-      )
+    // Use DALL-E directly — faster, fits within Vercel Hobby 10s limit
+    const result = await withTimeout(
+      generateWithDalle(openai, prompt, userId, generationMode),
+      9000,
+    )
 
-      return NextResponse.json({
-        imageUrl: result.imageUrl,
-        prompt: result.revisedPrompt,
-      })
-    } catch (primaryError) {
-      console.error('PRIMARY FAILED:', primaryError)
-
-      const fallback = await withTimeout(
-        generateWithDalle(openai, prompt, userId, generationMode),
-        45000,
-      )
-
-      return NextResponse.json({
-        imageUrl: fallback.imageUrl,
-        prompt: fallback.revisedPrompt,
-      })
-    }
+    return NextResponse.json({
+      imageUrl: result.imageUrl,
+      prompt: result.revisedPrompt,
+    })
   } catch (error) {
     console.error('ROUTE ERROR:', error)
-
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to generate avatar.' },
       { status: 500 },

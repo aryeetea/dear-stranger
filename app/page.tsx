@@ -193,7 +193,7 @@ export default function Home() {
   }
 
   const routeFromSession = useCallback(async () => {
-    const session = await getSession(0)
+    const session = await getSession()
 
     if (!session) {
       clearHubState()
@@ -344,7 +344,7 @@ export default function Home() {
       setScreen('generating')
       setGeneratingStatus('Crafting your soul mirror...')
 
-      let session = await getSession(4000)
+      let session = await getSession()
 
       if (session) {
         await createHubForCurrentUser(hubNameAnswer, chosenBio, chosenAskAbout)
@@ -353,7 +353,7 @@ export default function Home() {
         setIsGuest(guest)
       } else {
         await signInAndCreateHub(hubNameAnswer, chosenBio, chosenAskAbout)
-        session = await getSession(4000)
+        session = await getSession()
         setIsGuest(true)
       }
 
