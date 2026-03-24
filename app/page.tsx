@@ -82,7 +82,7 @@ async function requestAvatarImage(
   answers: Record<number, string>,
   userId?: string,
   style?: string,
-  timeoutMs = 15000,
+  timeoutMs = 30000,
 ) {
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), timeoutMs)

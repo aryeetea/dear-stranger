@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import OpenAI from 'openai'
 
-export const maxDuration = 20
+export const maxDuration = 35
 
 type GenerationMode = 'create' | 'reimagine'
 

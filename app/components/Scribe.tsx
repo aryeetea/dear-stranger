@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { playUiSound } from '../lib/sound'
 import { useViewport } from '../lib/useViewport'
 import { LETTER_FONTS, type LetterFont, joinLetterPages } from '../lib/letters'
 import {
@@ -385,25 +386,33 @@ const PAPER_ENVELOPE_COLOR: Record<string, string> = {
   sakura: '#f0b8cc', moonveil: '#c4d0ee', marbled: '#b4d7d2', aged: '#b89050',
 }
 
-function LetterContent({ fontFamily, ink, recipient, senderName, date, body, setBody, textareaRef }: {
+function LetterContent({ fontFamily, ink, recipient, senderName, date, body, setBody, textareaRef, showHeader = true, showSignoff = true }: {
   fontFamily: string; ink: { main: string; secondary: string; accent: string }
   recipient?: string; senderName?: string; date: string
   body: string; setBody: (v: string) => void
   textareaRef: React.RefObject<HTMLTextAreaElement | null>
+  showHeader?: boolean
+  showSignoff?: boolean
 }) {
   return (
     <div>
-      <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'12px', color:ink.secondary, marginBottom:'16px' }}>{date}</p>
-      <p style={{ fontFamily, fontSize:'18px', fontStyle:'italic', color:ink.secondary, marginBottom:'18px', lineHeight:1.8 }}>
-        {recipient ? `Dear ${recipient},` : 'Dear Stranger,'}
-      </p>
+      {showHeader && (
+        <>
+          <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'12px', color:ink.secondary, marginBottom:'16px' }}>{date}</p>
+          <p style={{ fontFamily, fontSize:'18px', fontStyle:'italic', color:ink.secondary, marginBottom:'18px', lineHeight:1.8 }}>
+            {recipient ? `Dear ${recipient},` : 'Dear Stranger,'}
+          </p>
+        </>
+      )}
       <textarea ref={textareaRef} value={body} onChange={e=>setBody(e.target.value)}
         placeholder="Begin your letter here..." rows={9}
         style={{ width:'100%', background:'transparent', border:'none', outline:'none', color:ink.main, caretColor:ink.accent, fontFamily, fontSize:'16px', lineHeight:2, resize:'none', letterSpacing:'0.01em' }}/>
-      <p style={{ fontFamily, fontStyle:'italic', fontSize:'15px', color:ink.secondary, marginTop:'10px', lineHeight:1.9 }}>
-        Yours across the distance,<br/>
-        <span style={{ color:ink.accent }}>{senderName || 'A Stranger'}</span>
-      </p>
+      {showSignoff && (
+        <p style={{ fontFamily, fontStyle:'italic', fontSize:'15px', color:ink.secondary, marginTop:'10px', lineHeight:1.9 }}>
+          Yours across the distance,<br/>
+          <span style={{ color:ink.accent }}>{senderName || 'A Stranger'}</span>
+        </p>
+      )}
     </div>
   )
 }
@@ -465,6 +474,7 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, ini
 
   function addPage() {
     const nextIndex = pages.length
+    playUiSound('select')
     setPages((currentPages) => [...currentPages, ''])
     setActivePage(nextIndex)
   }
@@ -475,8 +485,14 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, ini
       return
     }
 
+    playUiSound('close')
     setPages((currentPages) => currentPages.filter((_, index) => index !== activePage))
     setActivePage(Math.max(0, activePage - 1))
+  }
+
+  function goToView(nextView: typeof view) {
+    playUiSound(nextView === 'write' ? 'close' : 'open')
+    setView(nextView)
   }
 
   async function handleRelease() {
@@ -487,6 +503,7 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, ini
       return
     }
     setSubjectError(false)
+    playUiSound('send')
     setView('envelope')
     setReleasing(true)
     await new Promise(r => setTimeout(r, 2200))
@@ -509,7 +526,20 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, ini
   }
 
   const renderPaper = () => {
-    const content = <LetterContent fontFamily={fontFamily} ink={ink} recipient={recipientName} senderName={senderName} date={today} body={currentBody} setBody={updateCurrentPage} textareaRef={textareaRef}/>
+    const content = (
+      <LetterContent
+        fontFamily={fontFamily}
+        ink={ink}
+        recipient={recipientName}
+        senderName={senderName}
+        date={today}
+        body={currentBody}
+        setBody={updateCurrentPage}
+        textareaRef={textareaRef}
+        showHeader={safeActivePage === 0}
+        showSignoff={safeActivePage === pages.length - 1 && currentBody.trim().length > 0}
+      />
+    )
     switch (selectedPaper.id) {
       case 'ornate': return <OrnateStationery>{content}</OrnateStationery>
       case 'floral': return <FloralLetter>{content}</FloralLetter>
@@ -539,7 +569,7 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, ini
       </div>
 
       <motion.button initial={{ opacity:0 }} animate={{ opacity:1 }} transition={{ delay:0.3 }}
-        onClick={view==='write'?onClose:()=>setView('write')}
+        onClick={view==='write' ? () => { playUiSound('close'); onClose?.() } : () => goToView('write')}
         style={{ position:'fixed', top:isMobile ? 'max(16px, env(safe-area-inset-top))' : '24px', right:isMobile ? '16px' : '24px', background:'none', border:'1px solid rgba(255,255,255,0.18)', color:'rgba(255,255,255,0.78)', fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.3em', padding:'8px 16px', cursor:'pointer', textTransform:'uppercase', zIndex:80 }}
         onMouseEnter={e=>{e.currentTarget.style.color='rgba(255,255,255,0.96)';e.currentTarget.style.borderColor='rgba(255,255,255,0.32)';e.currentTarget.style.background='rgba(255,255,255,0.04)'}}
         onMouseLeave={e=>{e.currentTarget.style.color='rgba(255,255,255,0.78)';e.currentTarget.style.borderColor='rgba(255,255,255,0.18)';e.currentTarget.style.background='none'}}>
@@ -569,7 +599,7 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, ini
               })}
             </div>
             <div style={{ textAlign:'center' }}>
-              <button onClick={()=>setView('write')} style={{ padding:'12px 32px', background:'transparent', border:'1px solid rgba(230,199,110,0.45)', color:'#e6c76e', fontFamily:"'Cinzel', serif", fontSize:'10px', letterSpacing:'0.3em', textTransform:'uppercase', cursor:'pointer', borderRadius:'2px' }}
+              <button onClick={()=>goToView('write')} style={{ padding:'12px 32px', background:'transparent', border:'1px solid rgba(230,199,110,0.45)', color:'#e6c76e', fontFamily:"'Cinzel', serif", fontSize:'10px', letterSpacing:'0.3em', textTransform:'uppercase', cursor:'pointer', borderRadius:'2px' }}
                 onMouseEnter={e=>e.currentTarget.style.background='rgba(230,199,110,0.08)'}
                 onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
                 Write on {selectedPaper.label} ✦
@@ -597,7 +627,7 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, ini
               })}
             </div>
             <div style={{ textAlign:'center' }}>
-              <button onClick={()=>setView('write')} style={{ padding:'12px 32px', background:'transparent', border:'1px solid rgba(230,199,110,0.45)', color:'#e6c76e', fontFamily:"'Cinzel', serif", fontSize:'10px', letterSpacing:'0.3em', textTransform:'uppercase', cursor:'pointer', borderRadius:'2px' }}
+              <button onClick={()=>goToView('write')} style={{ padding:'12px 32px', background:'transparent', border:'1px solid rgba(230,199,110,0.45)', color:'#e6c76e', fontFamily:"'Cinzel', serif", fontSize:'10px', letterSpacing:'0.3em', textTransform:'uppercase', cursor:'pointer', borderRadius:'2px' }}
                 onMouseEnter={e=>e.currentTarget.style.background='rgba(230,199,110,0.08)'}
                 onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
                 Write in {selectedFont.label} ✦
@@ -630,7 +660,7 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, ini
               </div>
             ))}
             <div style={{ textAlign:'center', marginTop:'8px' }}>
-              <button onClick={()=>setView('write')} style={{ padding:'12px 32px', background:'transparent', border:'1px solid rgba(230,199,110,0.45)', color:'#e6c76e', fontFamily:"'Cinzel', serif", fontSize:'10px', letterSpacing:'0.3em', textTransform:'uppercase', cursor:'pointer', borderRadius:'2px' }}
+              <button onClick={()=>goToView('write')} style={{ padding:'12px 32px', background:'transparent', border:'1px solid rgba(230,199,110,0.45)', color:'#e6c76e', fontFamily:"'Cinzel', serif", fontSize:'10px', letterSpacing:'0.3em', textTransform:'uppercase', cursor:'pointer', borderRadius:'2px' }}
                 onMouseEnter={e=>e.currentTarget.style.background='rgba(230,199,110,0.08)'}
                 onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
                 {selectedStamp?`Seal with ${STAMPS.find(s=>s.id===selectedStamp)?.label} ✦`:'Continue without stamp ✦'}
@@ -663,7 +693,7 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, ini
               })}
             </div>
             <div style={{ textAlign:'center', marginTop:'8px' }}>
-              <button onClick={()=>setView('write')} style={{ padding:'12px 32px', background:'transparent', border:'1px solid rgba(230,199,110,0.45)', color:'#e6c76e', fontFamily:"'Cinzel', serif", fontSize:'10px', letterSpacing:'0.3em', textTransform:'uppercase', cursor:'pointer', borderRadius:'2px' }}
+              <button onClick={()=>goToView('write')} style={{ padding:'12px 32px', background:'transparent', border:'1px solid rgba(230,199,110,0.45)', color:'#e6c76e', fontFamily:"'Cinzel', serif", fontSize:'10px', letterSpacing:'0.3em', textTransform:'uppercase', cursor:'pointer', borderRadius:'2px' }}
                 onMouseEnter={e=>e.currentTarget.style.background='rgba(230,199,110,0.08)'}
                 onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
                 {selectedRitualRecord ? `Choose ${selectedRitualRecord.label} ✦` : 'Continue without passage ✦'}
@@ -756,7 +786,7 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, ini
             </div>
 
             <div style={{ textAlign:'center', marginTop:'24px' }}>
-              <button onClick={()=>setView('write')} style={{ padding:'12px 32px', background:'transparent', border:'1px solid rgba(230,199,110,0.45)', color:'#e6c76e', fontFamily:"'Cinzel', serif", fontSize:'10px', letterSpacing:'0.3em', textTransform:'uppercase', cursor:'pointer', borderRadius:'2px' }}
+              <button onClick={()=>goToView('write')} style={{ padding:'12px 32px', background:'transparent', border:'1px solid rgba(230,199,110,0.45)', color:'#e6c76e', fontFamily:"'Cinzel', serif", fontSize:'10px', letterSpacing:'0.3em', textTransform:'uppercase', cursor:'pointer', borderRadius:'2px' }}
                 onMouseEnter={e=>e.currentTarget.style.background='rgba(230,199,110,0.08)'}
                 onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
                 Dress the envelope ✦
@@ -851,7 +881,9 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, ini
               </div>
             </div>
 
-            {renderPaper()}
+            <div className="letter-surface">
+              {renderPaper()}
+            </div>
 
             {selectedStamp && (
               <div style={{ display:'flex', justifyContent:'flex-end', marginTop:'-8px', marginBottom:'4px' }}>
@@ -862,12 +894,12 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, ini
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', flexDirection:isNarrow ? 'column' : 'row', marginTop:'12px', flexWrap:'wrap', gap:'8px' }}>
               <div style={{ display:'flex', alignItems:'center', gap:'6px', flexWrap:'wrap' }}>
                 {[
-                  { label:selectedPaper.label, action:()=>setView('papers'), icon:'📄' },
-                  { label:selectedFont.label, action:()=>setView('fonts'), icon:'✒' },
-                  { label:selectedRitualRecord?.label || 'Passage', action:()=>setView('rituals'), icon:'☾' },
-                  { label:'Envelope', action:()=>setView('envelope-style'), icon:'✉' },
+                  { label:selectedPaper.label, action:()=>goToView('papers'), icon:'📄' },
+                  { label:selectedFont.label, action:()=>goToView('fonts'), icon:'✒' },
+                  { label:selectedRitualRecord?.label || 'Passage', action:()=>goToView('rituals'), icon:'☾' },
+                  { label:'Envelope', action:()=>goToView('envelope-style'), icon:'✉' },
                   { label:`${pages.length} page${pages.length === 1 ? '' : 's'}`, action:addPage, icon:'➕' },
-                  { label:selectedStamp?STAMPS.find(s=>s.id===selectedStamp)?.label||'Stamp':'Stamp', action:()=>setView('stamps'), icon:'🔖' },
+                  { label:selectedStamp?STAMPS.find(s=>s.id===selectedStamp)?.label||'Stamp':'Stamp', action:()=>goToView('stamps'), icon:'🔖' },
                 ].map((btn,i)=>(
                   <button key={i} onClick={btn.action}
                     style={{ background:'none', border:'1px solid rgba(255,255,255,0.18)', color:'rgba(255,255,255,0.8)', fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.15em', textTransform:'uppercase', padding:'5px 9px', cursor:'pointer', borderRadius:'2px', whiteSpace:'nowrap' }}

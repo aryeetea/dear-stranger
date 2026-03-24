@@ -3,22 +3,17 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  addConstellationHubToDb,
   getAllHubs,
-  getMyConstellationHubsFromDb,
   getMyLetters,
   getUniverseLetters,
-  removeConstellationHubFromDb,
 } from '../lib/auth'
+import { playUiSound } from '../lib/sound'
 import { useViewport } from '../lib/useViewport'
 import {
   HUB_RELICS,
-  UNIVERSE_PROMPTS,
-  getSeasonalUniverseMood,
-  loadConstellationHubs,
-  saveConstellationHubs,
-  type ConstellationHub,
   type HubRelicId,
+  UNIVERSE_PROMPTS,
+  type UniversePrompt,
 } from '../lib/worldbuilding'
 // ── HUB STYLE TYPES ──
 export type HubStyle =
@@ -157,6 +152,15 @@ interface TooltipState { hub: Hub; sx: number; sy: number; scale: number }
 interface ProfileState { hub: Hub; screenX: number; screenY: number; telescopeMode: boolean }
 type ReturnPathMap = Record<string, number>
 type UniverseLetterStarEventDetail = { id: string; senderName: string; preview: string }
+type FloatingUniversePrompt = UniversePrompt & {
+  instanceId: number
+  left: number
+  top: number
+  driftX: number
+  driftY: number
+  maxWidth: number
+  align: 'left' | 'center' | 'right'
+}
 
 const imageCache = new Map<string, HTMLImageElement>()
 function loadImage(url: string): Promise<HTMLImageElement> {
@@ -836,59 +840,17 @@ export default function UniverseMap({
   const animFrameRef = useRef<number>(0)
   const shootingStarsRef = useRef<ShootingStar[]>([])
   const starIdRef = useRef(0)
-  const constellationIdsRef = useRef<Set<string>>(new Set())
   const returnPathsRef = useRef<ReturnPathMap>({})
+  const universePromptInstanceRef = useRef(0)
+  const lastUniversePromptIdRef = useRef<string | null>(null)
 
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
   const [profile, setProfile] = useState<ProfileState | null>(null)
   const [starPreview, setStarPreview] = useState<ShootingStar | null>(null)
   const [activeNav, setActiveNav] = useState(0)
   const [hoveredNav, setHoveredNav] = useState<number | null>(null)
-  const [constellationOpen, setConstellationOpen] = useState(false)
-  const [constellationHubs, setConstellationHubs] = useState<ConstellationHub[]>([])
   const [returnPaths, setReturnPaths] = useState<ReturnPathMap>({})
-  const [promptIndex, setPromptIndex] = useState(0)
-  const seasonalMood = getSeasonalUniverseMood()
-  const currentPrompt = UNIVERSE_PROMPTS[promptIndex % UNIVERSE_PROMPTS.length]
-
-  useEffect(() => {
-    let cancelled = false
-
-    async function loadConstellations() {
-      if (!storageScope) {
-        setConstellationHubs([])
-        constellationIdsRef.current = new Set()
-        return
-      }
-
-      const syncedConstellations = await getMyConstellationHubsFromDb()
-      if (cancelled) return
-
-      if (syncedConstellations) {
-        setConstellationHubs(syncedConstellations)
-        saveConstellationHubs(storageScope, syncedConstellations)
-        return
-      }
-
-      setConstellationHubs(loadConstellationHubs(storageScope))
-    }
-
-    void loadConstellations()
-
-    return () => {
-      cancelled = true
-    }
-  }, [storageScope])
-
-  useEffect(() => {
-    const constellationIds = new Set(constellationHubs.map((hub) => hub.id))
-    constellationIdsRef.current = constellationIds
-
-    hubsRef.current = hubsRef.current.map((hub) => ({
-      ...hub,
-      isConstellated: constellationIds.has(hub.id),
-    }))
-  }, [constellationHubs])
+  const [floatingPrompt, setFloatingPrompt] = useState<FloatingUniversePrompt | null>(null)
 
   useEffect(() => {
     returnPathsRef.current = returnPaths
@@ -990,6 +952,61 @@ export default function UniverseMap({
     }
   }, [])
 
+  const spawnFloatingPrompt = useCallback(() => {
+    if (typeof window === 'undefined' || UNIVERSE_PROMPTS.length === 0) return
+
+    const promptPool = UNIVERSE_PROMPTS.filter(
+      (prompt) => prompt.id !== lastUniversePromptIdRef.current,
+    )
+    const nextPrompt =
+      (promptPool.length > 0 ? promptPool : UNIVERSE_PROMPTS)[
+        Math.floor(Math.random() * (promptPool.length > 0 ? promptPool.length : UNIVERSE_PROMPTS.length))
+      ]
+
+    lastUniversePromptIdRef.current = nextPrompt.id
+
+    const viewportWidth = window.innerWidth
+    const viewportHeight = window.innerHeight
+    const alignOptions: Array<'left' | 'center' | 'right'> = isMobile
+      ? ['left']
+      : ['left', 'center', 'right']
+    const align = alignOptions[Math.floor(Math.random() * alignOptions.length)]
+    const horizontalPadding = isMobile ? 24 : 56
+    const maxWidth = Math.min(isMobile ? viewportWidth - 48 : viewportWidth * 0.34, 420)
+    const left =
+      align === 'left'
+        ? horizontalPadding + Math.random() * Math.max(40, viewportWidth * 0.28)
+        : align === 'right'
+          ? viewportWidth - horizontalPadding - Math.random() * Math.max(40, viewportWidth * 0.18)
+          : viewportWidth * (0.38 + Math.random() * 0.24)
+    const top = isMobile
+      ? viewportHeight * (0.12 + Math.random() * 0.24)
+      : viewportHeight * (0.14 + Math.random() * 0.28)
+
+    setFloatingPrompt({
+      ...nextPrompt,
+      instanceId: universePromptInstanceRef.current++,
+      left,
+      top,
+      driftX: (Math.random() - 0.5) * (isMobile ? 18 : 38),
+      driftY: (Math.random() - 0.5) * (isMobile ? 24 : 42),
+      maxWidth,
+      align,
+    })
+  }, [isMobile])
+
+  useEffect(() => {
+    if (!onUniversePrompt) {
+      setFloatingPrompt(null)
+      return
+    }
+
+    spawnFloatingPrompt()
+    const interval = setInterval(spawnFloatingPrompt, 14000)
+
+    return () => clearInterval(interval)
+  }, [onUniversePrompt, spawnFloatingPrompt])
+
   const focusHub = useCallback((hubId: string) => {
     const canvas = canvasRef.current
     const hub = hubsRef.current.find((candidate) => candidate.id === hubId)
@@ -1006,24 +1023,9 @@ export default function UniverseMap({
       screenY: canvas.height / 2,
       telescopeMode: hub.hubStyle === 'telescope',
     })
-    setConstellationOpen(false)
+    playUiSound('focus')
     setTooltip(null)
   }, [])
-
-  const toggleConstellationHub = useCallback((hub: Hub) => {
-    if (!storageScope || hub.isMe) return
-
-    setConstellationHubs((current) => {
-      const exists = current.some((item) => item.id === hub.id)
-      const next = exists
-        ? current.filter((item) => item.id !== hub.id)
-        : [{ id: hub.id, name: hub.name }, ...current.filter((item) => item.id !== hub.id)].slice(0, 12)
-
-      saveConstellationHubs(storageScope, next)
-      void (exists ? removeConstellationHubFromDb(hub.id) : addConstellationHubToDb(hub.id))
-      return next
-    })
-  }, [storageScope])
 
   useEffect(() => {
     let resizeHandler: (() => void) | undefined
@@ -1090,7 +1092,6 @@ export default function UniverseMap({
           colorVariant: i % LEGACY_PORTAL_COLORS.length,
           hubStyle: (hub.hub_style as HubStyle) || styles[i % styles.length],
           paletteId: hub.backdrop_id || null,
-          isConstellated: constellationIdsRef.current.has(hub.id),
         } as Hub
       }))
 
@@ -1230,6 +1231,7 @@ export default function UniverseMap({
       const hub = getHubAt(e.clientX, e.clientY)
       if (hub) {
         const isTelescope = hub.hubStyle === 'telescope'
+        playUiSound('focus')
         setProfile({ hub, screenX: e.clientX, screenY: e.clientY, telescopeMode: isTelescope })
         setTooltip(null)
       } else setProfile(null)
@@ -1283,6 +1285,7 @@ export default function UniverseMap({
 
       const hub = getHubAt(touch.clientX, touch.clientY)
       if (hub) {
+        playUiSound('focus')
         setProfile({
           hub,
           screenX: touch.clientX,
@@ -1303,13 +1306,11 @@ export default function UniverseMap({
     { label: 'Observatory', icon: '⟡' },
     { label: 'Profile', icon: '◎' },
   ]
-  const profileIsConstellated = profile ? constellationHubs.some((hub) => hub.id === profile.hub.id) : false
   const profileReturnPathCount = profile ? returnPaths[profile.hub.id] || 0 : 0
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: '#04050f' }}>
       <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', background: 'radial-gradient(ellipse 60% 40% at 15% 25%, rgba(50,20,100,0.28) 0%, transparent 65%), radial-gradient(ellipse 50% 55% at 82% 72%, rgba(15,28,90,0.22) 0%, transparent 65%)' }} />
-      <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', background: seasonalMood.tint }} />
 
       <canvas ref={canvasRef}
         style={{ position: 'absolute', inset: 0, cursor: isMobile ? 'default' : tooltip?.hub?.hubStyle === 'telescope' ? 'zoom-in' : 'grab', touchAction: 'none' }}
@@ -1321,71 +1322,72 @@ export default function UniverseMap({
         onTouchCancel={() => { isDraggingRef.current = false }}
         onWheel={handleWheel} />
 
-      <div style={{ position: 'fixed', top: isMobile ? 'max(60px, calc(env(safe-area-inset-top) + 44px))' : '76px', left: isMobile ? '12px' : '20px', zIndex: 55, width: isMobile ? 'min(calc(100vw - 24px), 320px)' : '320px', pointerEvents: 'auto' }}>
-        <div style={{ marginBottom: '10px', padding: '12px 14px', background: 'rgba(8,10,28,0.82)', border: '1px solid rgba(230,199,110,0.14)', borderRadius: '14px', backdropFilter: 'blur(18px)', boxShadow: '0 10px 34px rgba(0,0,0,0.26)' }}>
-          <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.28em', color: '#e6c76e', textTransform: 'uppercase', marginBottom: '4px' }}>{seasonalMood.label}</p>
-          <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(255,255,255,0.68)', lineHeight: 1.45 }}>{seasonalMood.atmosphere}</p>
-        </div>
-
-        <button
-          onClick={() => setConstellationOpen((current) => !current)}
-          style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '12px 14px', background: 'rgba(8,10,28,0.88)', border: '1px solid rgba(230,199,110,0.18)', borderRadius: constellationOpen ? '14px 14px 0 0' : '14px', color: 'rgba(255,255,255,0.86)', backdropFilter: 'blur(18px)', cursor: 'pointer', boxShadow: '0 10px 34px rgba(0,0,0,0.35)' }}
-        >
-          <div style={{ textAlign: 'left' }}>
-            <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.28em', color: '#e6c76e', textTransform: 'uppercase', marginBottom: '4px' }}>Constellations</p>
-            <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(255,255,255,0.7)' }}>
-              {constellationHubs.length === 0 ? 'No saved hubs yet.' : `${constellationHubs.length} saved ${constellationHubs.length === 1 ? 'hub' : 'hubs'}`}
-            </p>
-          </div>
-          <span style={{ fontFamily: "'Cinzel', serif", fontSize: '18px', color: '#e6c76e', lineHeight: 1 }}>{constellationOpen ? '−' : '+'}</span>
-        </button>
-
-        <AnimatePresence>
-          {constellationOpen && (
-            <motion.div
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.2 }}
-              style={{ background: 'rgba(8,10,28,0.92)', border: '1px solid rgba(230,199,110,0.14)', borderTop: 'none', borderRadius: '0 0 14px 14px', padding: '12px', backdropFilter: 'blur(18px)' }}
-            >
-              {constellationHubs.length === 0 ? (
-                <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(255,255,255,0.58)', lineHeight: 1.5 }}>
-                  Save a few favorite hubs and they’ll gather here as your private constellation.
-                </p>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {constellationHubs.map((hub) => (
-                    <div key={hub.id} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <button
-                        onClick={() => focusHub(hub.id)}
-                        style={{ flex: 1, textAlign: 'left', padding: '10px 12px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)', color: 'rgba(255,255,255,0.82)', cursor: 'pointer' }}
-                      >
-                        <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.18em', color: '#e6c76e', textTransform: 'uppercase', marginBottom: '4px' }}>✦ Saved Hub</p>
-                        <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(255,255,255,0.82)' }}>{hub.name}</p>
-                      </button>
-                      <button
-                        onClick={() => {
-                          const next = constellationHubs.filter((item) => item.id !== hub.id)
-                          setConstellationHubs(next)
-                          if (storageScope) saveConstellationHubs(storageScope, next)
-                          void removeConstellationHubFromDb(hub.id)
-                        }}
-                        style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)', background: 'transparent', color: 'rgba(255,255,255,0.55)', cursor: 'pointer', fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.18em', textTransform: 'uppercase' }}
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-
       {/* Tooltip */}
       <AnimatePresence>
+        {floatingPrompt && !profile && !starPreview && (
+          <motion.button
+            key={`floating-prompt-${floatingPrompt.instanceId}`}
+            initial={{ opacity: 0, x: 0, y: 8 }}
+            animate={{
+              opacity: [0, 0.7, 0.7, 0],
+              x: floatingPrompt.driftX,
+              y: floatingPrompt.driftY,
+            }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 13.5, ease: 'easeInOut' }}
+            onClick={() => {
+              playUiSound('open')
+              onUniversePrompt?.({
+                subject: floatingPrompt.subject,
+                bodyStarter: floatingPrompt.bodyStarter,
+              })
+            }}
+            style={{
+              position: 'fixed',
+              left: floatingPrompt.left,
+              top: floatingPrompt.top,
+              transform:
+                floatingPrompt.align === 'center'
+                  ? 'translateX(-50%)'
+                  : floatingPrompt.align === 'right'
+                    ? 'translateX(-100%)'
+                    : 'none',
+              width: floatingPrompt.maxWidth,
+              background: 'transparent',
+              border: 'none',
+              padding: 0,
+              textAlign: floatingPrompt.align,
+              cursor: 'pointer',
+              zIndex: 40,
+            }}
+          >
+            <p
+              style={{
+                fontFamily: "'Cinzel', serif",
+                fontSize: isMobile ? '8px' : '9px',
+                letterSpacing: '0.28em',
+                color: 'rgba(201,168,76,0.48)',
+                textTransform: 'uppercase',
+                marginBottom: '10px',
+              }}
+            >
+              {floatingPrompt.title}
+            </p>
+            <p
+              style={{
+                fontFamily: "'IM Fell English', serif",
+                fontStyle: 'italic',
+                fontSize: isMobile ? '22px' : 'clamp(24px, 2.1vw, 34px)',
+                lineHeight: 1.45,
+                color: 'rgba(255,255,255,0.72)',
+                textShadow: '0 0 18px rgba(0,0,0,0.28)',
+              }}
+            >
+              {floatingPrompt.prompt}
+            </p>
+          </motion.button>
+        )}
+
         {tooltip && !profile && !isMobile && (
           <motion.div key="tip" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}
             style={{ position: 'fixed', left: tooltip.sx, top: tooltip.sy - tooltip.hub.size * tooltip.scale * 48, transform: 'translateX(-50%)', pointerEvents: 'none', zIndex: 60 }}>
@@ -1398,30 +1400,6 @@ export default function UniverseMap({
           </motion.div>
         )}
       </AnimatePresence>
-
-      <div style={{ position: 'fixed', top: isMobile ? 'max(190px, calc(env(safe-area-inset-top) + 172px))' : '76px', right: isMobile ? '12px' : '20px', zIndex: 55, width: isMobile ? 'min(calc(100vw - 24px), 320px)' : '320px', pointerEvents: 'auto' }}>
-        <div style={{ padding: '14px', background: 'rgba(8,10,28,0.86)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '14px', backdropFilter: 'blur(18px)', boxShadow: '0 10px 34px rgba(0,0,0,0.32)' }}>
-          <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.28em', color: '#e6c76e', textTransform: 'uppercase', marginBottom: '4px' }}>From the Universe</p>
-          <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.18em', color: 'rgba(255,255,255,0.82)', textTransform: 'uppercase', marginBottom: '8px' }}>{currentPrompt.title}</p>
-          <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(255,255,255,0.72)', lineHeight: 1.6, marginBottom: '14px' }}>
-            {currentPrompt.prompt}
-          </p>
-          <div style={{ display: 'flex', gap: '8px', flexDirection: isNarrow ? 'column' : 'row' }}>
-            <button
-              onClick={() => setPromptIndex((current) => current + 1)}
-              style={{ flex: 1, padding: '9px 10px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.14)', background: 'transparent', color: 'rgba(255,255,255,0.68)', fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.18em', textTransform: 'uppercase', cursor: 'pointer' }}
-            >
-              Another Signal
-            </button>
-            <button
-              onClick={() => onUniversePrompt?.({ subject: currentPrompt.subject, bodyStarter: currentPrompt.bodyStarter })}
-              style={{ flex: 1, padding: '9px 10px', borderRadius: '10px', border: '1px solid rgba(230,199,110,0.32)', background: 'rgba(230,199,110,0.08)', color: '#e6c76e', fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.18em', textTransform: 'uppercase', cursor: 'pointer' }}
-            >
-              Write From This
-            </button>
-          </div>
-        </div>
-      </div>
 
       {/* Shooting Star Preview */}
       <AnimatePresence>
@@ -1527,28 +1505,12 @@ export default function UniverseMap({
                       </p>
                     </div>
                   )}
-                  {!profile.hub.isMe && (
-                    <div style={{ marginTop: '20px', padding: '10px 12px', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', background: 'rgba(255,255,255,0.03)' }}>
-                      <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.22em', color: '#e6c76e', textTransform: 'uppercase', marginBottom: '6px' }}>Constellation</p>
-                      <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(255,255,255,0.68)' }}>
-                        {profileIsConstellated
-                          ? 'This hub already glows in your private constellation.'
-                          : 'Save this hub so you can find your way back to it later.'}
-                      </p>
-                    </div>
-                  )}
                 </div>
                 <div style={{ display: 'flex', gap: '10px', marginTop: '24px', flexWrap: 'wrap' }}>
                   <button onClick={() => setProfile(null)}
                     style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.25em', color: 'rgba(255,255,255,0.65)', padding: '10px 18px', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '4px', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase' }}>
                     Dismiss
                   </button>
-                  {!profile.hub.isMe && (
-                    <button onClick={() => toggleConstellationHub(profile.hub)}
-                      style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.25em', color: profileIsConstellated ? 'rgba(255,255,255,0.82)' : '#e6c76e', padding: '10px 18px', border: profileIsConstellated ? '1px solid rgba(255,255,255,0.18)' : '1px solid rgba(230,199,110,0.34)', borderRadius: '4px', background: profileIsConstellated ? 'rgba(255,255,255,0.04)' : 'rgba(230,199,110,0.08)', cursor: 'pointer', textTransform: 'uppercase' }}>
-                      {profileIsConstellated ? 'Remove from Constellation' : 'Save to Constellation ✦'}
-                    </button>
-                  )}
                   {!profile.hub.isMe && (
                     <button onClick={() => { setProfile(null); onWriteLetter?.(profile.hub.name) }}
                       style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.25em', color: '#e6c76e', padding: '10px 18px', border: '1px solid rgba(230,199,110,0.4)', borderRadius: '4px', background: 'rgba(230,199,110,0.08)', cursor: 'pointer', textTransform: 'uppercase' }}>
@@ -1568,7 +1530,13 @@ export default function UniverseMap({
         style={{ position: 'fixed', bottom: isMobile ? 'max(12px, env(safe-area-inset-bottom))' : '32px', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: isMobile ? '2px' : '4px', background: 'rgba(8,10,28,0.86)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', backdropFilter: 'blur(20px)', padding: isMobile ? '8px 6px' : '8px 12px', boxShadow: '0 4px 40px rgba(0,0,0,0.6)', zIndex: 50, width: 'fit-content', maxWidth: 'min(calc(100vw - 20px), 460px)' }}>
         {navItems.map((item, i) => (
           <button key={item.label}
-            onClick={() => { setActiveNav(i); if (i === 1) onWriteLetter?.(); if (i === 2) onObservatory?.(); if (i === 3) onProfile?.() }}
+            onClick={() => {
+              playUiSound(i === 0 ? 'select' : 'open')
+              setActiveNav(i)
+              if (i === 1) onWriteLetter?.()
+              if (i === 2) onObservatory?.()
+              if (i === 3) onProfile?.()
+            }}
             onMouseEnter={() => setHoveredNav(i)} onMouseLeave={() => setHoveredNav(null)}
             style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px', padding: isMobile ? '10px 10px' : '10px 18px', background: activeNav === i ? 'rgba(230,199,110,0.1)' : hoveredNav === i ? 'rgba(255,255,255,0.06)' : 'transparent', border: 'none', borderRadius: '10px', cursor: 'pointer', minWidth: isMobile ? '64px' : '64px' }}>
             <span style={{ fontSize: isMobile ? '16px' : '18px', lineHeight: 1, color: activeNav === i ? '#e6c76e' : 'rgba(255,255,255,0.75)', filter: activeNav === i ? 'drop-shadow(0 0 6px rgba(230,199,110,0.5))' : 'none' }}>{item.icon}</span>
