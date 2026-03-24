@@ -237,18 +237,6 @@ export default function Home() {
   useEffect(() => {
     async function checkSession() {
       try {
-        const hasStaleToken = Object.keys(localStorage).some((k) => k.includes('supabase'))
-        if (hasStaleToken) {
-          try {
-            const { data } = await supabase.auth.getSession()
-            if (!data.session) {
-              localStorage.clear()
-            }
-          } catch {
-            localStorage.clear()
-          }
-        }
-
         await routeFromSession()
       } catch (err) {
         console.error('checkSession failed:', err)

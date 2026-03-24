@@ -235,29 +235,33 @@ export async function signOut() {
 // ── DELETE ACCOUNT / HUB ──
 export async function deleteAccount(): Promise<{ success: boolean; error?: string }> {
   try {
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser()
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
 
-    if (userError) throw userError
-    if (!user) throw new Error('No user found')
+    if (sessionError) throw sessionError
+    if (!session) throw new Error('No active session found.')
 
-    const userId = user.id
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 20000)
 
-    const { error: lettersError } = await supabase
-      .from('letters')
-      .delete()
-      .or(`sender_id.eq.${userId},recipient_id.eq.${userId}`)
+    let response: Response
+    try {
+      response = await fetch('/api/delete-account', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        signal: controller.signal,
+      })
+    } finally {
+      clearTimeout(timeout)
+    }
 
-    if (lettersError) throw new Error(`Letters delete failed: ${lettersError.message}`)
+    const data = await response.json().catch(() => ({}))
 
-    const { error: hubError } = await supabase
-      .from('hubs')
-      .delete()
-      .eq('id', userId)
-
-    if (hubError) throw new Error(`Hub delete failed: ${hubError.message}`)
+    if (!response.ok || data.error) {
+      throw new Error(data.error || `Delete failed with status ${response.status}`)
+    }
 
     await supabase.auth.signOut()
 
