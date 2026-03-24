@@ -192,67 +192,64 @@ export default function Home() {
     return Boolean(hub?.hub_name?.trim())
   }
 
-   const routeFromSession = useCallback(async () => {
-  try {
-    const session = await getSession()
+  const routeFromSession = useCallback(async () => {
+    try {
+      const session = await getSession()
 
-    if (!session) {
+      if (!session) {
+        clearHubState()
+        setScreen('entry')
+        return
+      }
+
+      const hub = await getMyHub()
+
+      if (hasSavedHubIdentity(hub)) {
+        setHubName(hub?.hub_name || '')
+        setHubBio(hub?.bio || '')
+        setHubAskAbout(hub?.ask_about || '')
+        setHubAvatarUrl(hub?.avatar_url || '')
+        setHubStyle((hub?.hub_style as HubStyle) || 'portal')
+        setHubPaletteId(
+          isHubPaletteId(hub?.backdrop_id) ? hub.backdrop_id : DEFAULT_HUB_PALETTE,
+        )
+        setLettersSent(hub?.letters_sent || 0)
+        setHubRegenCount(hub?.regen_count || 0)
+        setOnboardingError('')
+        setOnboardingResumeState(null)
+
+        const guest = await isGuestUser()
+        setIsGuest(guest)
+
+        setScreen('universe')
+        return
+      }
+
+      clearHubState(false)
+      setScreen('onboarding')
+    } catch (err) {
+      console.error('routeFromSession failed:', err)
       clearHubState()
       setScreen('entry')
-      return
     }
-
-    const hub = await getMyHub()
-
-    if (hasSavedHubIdentity(hub)) {
-      setHubName(hub?.hub_name || '')
-      setHubBio(hub?.bio || '')
-      setHubAskAbout(hub?.ask_about || '')
-      setHubAvatarUrl(hub?.avatar_url || '')
-      setHubStyle((hub?.hub_style as HubStyle) || 'portal')
-      setHubPaletteId(
-        isHubPaletteId(hub?.backdrop_id) ? hub.backdrop_id : DEFAULT_HUB_PALETTE,
-      )
-      setLettersSent(hub?.letters_sent || 0)
-      setHubRegenCount(hub?.regen_count || 0)
-      setOnboardingError('')
-      setOnboardingResumeState(null)
-
-      const guest = await isGuestUser()
-      setIsGuest(guest)
-
-      setScreen('universe')
-      return
-    }
-
-    clearHubState(false)
-    setScreen('onboarding')
-
-  } catch (err) {
-    console.error('routeFromSession failed:', err)
-
-    // 🔥 THIS IS WHAT SAVES YOU
-    clearHubState()
-    setScreen('entry')
-  }
-}, [clearHubState])
+  }, [clearHubState])
 
   useEffect(() => {
     async function checkSession() {
-  try {
-    // auto-clear stale tokens before checking session
-    const hasStaleToken = Object.keys(localStorage).some(k => k.includes('supabase'))
-    if (hasStaleToken) {
       try {
-        const { data } = await supabase.auth.getSession()
-        if (!data.session) {
-          localStorage.clear()
+        const hasStaleToken = Object.keys(localStorage).some((k) => k.includes('supabase'))
+        if (hasStaleToken) {
+          try {
+            const { data } = await supabase.auth.getSession()
+            if (!data.session) {
+              localStorage.clear()
+            }
+          } catch {
+            localStorage.clear()
+          }
         }
-      } catch {
-        localStorage.clear()
-      }
-    }
-    await routeFromSession()
+
+        await routeFromSession()
       } catch (err) {
         console.error('checkSession failed:', err)
         try {
@@ -265,14 +262,12 @@ export default function Home() {
 
     void checkSession()
 
-    setTimeout(() => {
-  if (screenRef.current === 'loading') {
-    console.warn('Forced exit from loading')
-    setScreen('entry')
-  }
-}, 3000)
-
-
+    const loadingFallback = setTimeout(() => {
+      if (screenRef.current === 'loading') {
+        console.warn('Forced exit from loading')
+        setScreen('entry')
+      }
+    }, 3000)
 
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event) => {
       if (event === 'SIGNED_OUT') {
@@ -298,6 +293,7 @@ export default function Home() {
     })
 
     return () => {
+      clearTimeout(loadingFallback)
       authListener.subscription.unsubscribe()
     }
   }, [routeFromSession, clearHubState])
@@ -315,6 +311,7 @@ export default function Home() {
     directAvatarDescription = '',
   ) {
     setOnboardingError('')
+    console.log('1. onboarding started')
 
     const keys = Object.keys(answers)
       .map(Number)
@@ -363,18 +360,23 @@ export default function Home() {
       setScreen('generating')
       setGeneratingStatus('Crafting your soul mirror...')
 
+      console.log('2. before getSession')
       let session = await getSession()
 
       if (session) {
+        console.log('3. session exists, creating hub for current user')
         await createHubForCurrentUser(hubNameAnswer, chosenBio, chosenAskAbout)
 
         const guest = await isGuestUser()
         setIsGuest(guest)
       } else {
+        console.log('4. no session, signing in anonymously and creating hub')
         await signInAndCreateHub(hubNameAnswer, chosenBio, chosenAskAbout)
         session = await getSession()
         setIsGuest(true)
       }
+
+      console.log('5. after hub creation, session is:', session)
 
       setHubName(hubNameAnswer)
       setHubStyle(chosenHubStyle)
@@ -382,10 +384,19 @@ export default function Home() {
       setHubBio(chosenBio)
       setHubAskAbout(chosenAskAbout)
 
-      const userId = session?.user?.id
+      const freshSession = await getSession()
+      const userId = freshSession?.user?.id
+
+      console.log('🔥 fresh session:', freshSession)
+      console.log('🔥 userId for avatar:', userId)
+
+      if (!userId) {
+        console.error('❌ Avatar generation skipped: missing userId')
+      }
 
       setGeneratingStatus('Placing your hub in the universe...')
 
+      console.log('6. before updateHub')
       await withTimeout(
         updateHub({
           bio: chosenBio,
@@ -396,13 +407,18 @@ export default function Home() {
         12000,
         'Saving your hub took too long. Please try again.',
       )
+      console.log('7. after updateHub')
 
       setHubAvatarUrl('')
       setOnboardingResumeState(null)
       setScreen('universe')
 
+      console.log('🚀 About to start avatar generation block')
+
       void (async () => {
         try {
+          console.log('🔥 Inside avatar async block')
+
           const avatarUrl = await requestAvatarImage(
             avatarAnswers,
             userId,
@@ -410,13 +426,26 @@ export default function Home() {
             'create',
           )
 
-          if (!avatarUrl || !userId) return
+          console.log('🔥 Avatar API returned:', avatarUrl)
+
+          if (!avatarUrl) {
+            console.error('❌ No avatar returned')
+            return
+          }
+
+          if (!userId) {
+            console.error('❌ Missing userId, cannot upload avatar')
+            return
+          }
 
           const permanentUrl = await uploadAvatarToStorage(avatarUrl, userId)
+          console.log('✅ Uploaded avatar:', permanentUrl)
+
           setHubAvatarUrl(permanentUrl)
           await updateHub({ avatar_url: permanentUrl })
+          console.log('✅ Updated hub avatar_url')
         } catch (avatarError) {
-          console.error('Avatar generation failed after hub creation:', avatarError)
+          console.error('❌ Avatar generation failed:', avatarError)
         }
       })()
     } catch (err) {
