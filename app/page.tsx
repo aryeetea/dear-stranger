@@ -166,6 +166,7 @@ export default function Home() {
   const [hubRegenCount, setHubRegenCount] = useState(0)
   const [lettersSent, setLettersSent] = useState(0)
   const [generatingStatus, setGeneratingStatus] = useState('')
+  const [avatarProgress, setAvatarProgress] = useState(0)
   const [scribeOpen, setScribeOpen] = useState(false)
   const [scribeRecipient, setScribeRecipient] = useState<string | undefined>()
   const [scribeInitialSubject, setScribeInitialSubject] = useState('')
@@ -180,8 +181,6 @@ export default function Home() {
 
   const screenRef = useRef<Screen>('loading')
   const onboardingInFlightRef = useRef(false)
-  // NEW: prevents simultaneous auth operations from deadlocking Supabase's lock
-  const authInFlightRef = useRef(false)
 
   const clearHubState = useCallback((resetResume = true) => {
     setHubName('')
@@ -196,6 +195,7 @@ export default function Home() {
     setScribeRecipient(undefined)
     setScribeInitialSubject('')
     setScribeInitialBody('')
+    setAvatarProgress(0)
     if (resetResume) setOnboardingResumeState(null)
   }, [])
 
@@ -267,7 +267,18 @@ export default function Home() {
   useEffect(() => {
     async function checkSession() {
       try {
-        authInFlightRef.current = true
+        const hasStaleToken = Object.keys(localStorage).some((k) => k.includes('supabase'))
+        if (hasStaleToken) {
+          try {
+            const { data } = await supabase.auth.getSession()
+            if (!data.session) {
+              localStorage.clear()
+            }
+          } catch {
+            localStorage.clear()
+          }
+        }
+
         await routeFromSession()
       } catch (err) {
         console.error('checkSession failed:', err)
@@ -276,8 +287,6 @@ export default function Home() {
         } catch {}
         clearHubState()
         setScreen('entry')
-      } finally {
-        authInFlightRef.current = false
       }
     }
 
@@ -303,21 +312,12 @@ export default function Home() {
         event === 'TOKEN_REFRESHED' ||
         event === 'INITIAL_SESSION'
       ) {
-        // Skip if onboarding is in progress, generating screen is active,
-        // OR another auth check is already running (prevents lock contention)
-        if (
-          onboardingInFlightRef.current ||
-          screenRef.current === 'generating' ||
-          authInFlightRef.current
-        ) return
+        if (onboardingInFlightRef.current || screenRef.current === 'generating') return
 
         try {
-          authInFlightRef.current = true
           await routeFromSession()
         } catch (err) {
           console.error('auth state sync failed:', err)
-        } finally {
-          authInFlightRef.current = false
         }
       }
     })
@@ -389,6 +389,7 @@ export default function Home() {
       onboardingInFlightRef.current = true
       setScreen('generating')
       setGeneratingStatus('Crafting your soul mirror...')
+      setAvatarProgress(0)
 
       console.log('2. before getSession')
       let session = await getSession()
@@ -406,7 +407,7 @@ export default function Home() {
         setIsGuest(true)
       }
 
-      console.log('5. after hub creation, session is:', session)
+      console.log('5. after hub creation')
 
       setHubName(hubNameAnswer)
       setHubStyle(chosenHubStyle)
@@ -417,7 +418,6 @@ export default function Home() {
       const freshSession = await getSession()
       const userId = freshSession?.user?.id
 
-      console.log('🔥 fresh session:', freshSession)
       console.log('🔥 userId for avatar:', userId)
 
       if (!userId) {
@@ -445,6 +445,23 @@ export default function Home() {
 
       console.log('🚀 About to start avatar generation block')
 
+      let progress = 5
+      setAvatarProgress(progress)
+
+      const interval = setInterval(() => {
+        progress += Math.random() * 10
+        if (progress >= 90) progress = 90
+        setAvatarProgress(Math.floor(progress))
+
+        if (progress < 30) {
+          setGeneratingStatus('Summoning your form...')
+        } else if (progress < 70) {
+          setGeneratingStatus('Shaping your soul mirror...')
+        } else {
+          setGeneratingStatus('Finalizing your presence...')
+        }
+      }, 500)
+
       void (async () => {
         try {
           console.log('🔥 Inside avatar async block')
@@ -460,22 +477,32 @@ export default function Home() {
 
           if (!avatarUrl) {
             console.error('❌ No avatar returned')
+            clearInterval(interval)
+            setAvatarProgress(0)
             return
           }
 
           if (!userId) {
             console.error('❌ Missing userId, cannot upload avatar')
+            clearInterval(interval)
+            setAvatarProgress(0)
             return
           }
 
           const permanentUrl = await uploadAvatarToStorage(avatarUrl, userId)
           console.log('✅ Uploaded avatar:', permanentUrl)
 
+          clearInterval(interval)
+          setAvatarProgress(100)
+          setGeneratingStatus('Your soul mirror has arrived.')
+
           setHubAvatarUrl(permanentUrl)
           await updateHub({ avatar_url: permanentUrl })
           console.log('✅ Updated hub avatar_url')
         } catch (avatarError) {
           console.error('❌ Avatar generation failed:', avatarError)
+          clearInterval(interval)
+          setAvatarProgress(0)
         }
       })()
     } catch (err) {
@@ -491,6 +518,7 @@ export default function Home() {
       }
 
       setScreen('onboarding')
+      setAvatarProgress(0)
       setOnboardingError(
         err instanceof Error
           ? err.message
@@ -765,6 +793,16 @@ export default function Home() {
             }}
           >
             {generatingStatus}
+          </p>
+
+          <p
+            style={{
+              fontSize: '13px',
+              color: 'rgba(255,255,255,0.5)',
+              marginTop: '10px',
+            }}
+          >
+            {avatarProgress > 0 ? `${avatarProgress}%` : ''}
           </p>
         </div>
 
