@@ -112,54 +112,80 @@ export default function Profile({
   }
 
   async function regenerateAvatar() {
-  if (regenCount >= MAX_REGEN_ATTEMPTS || regenLoading) return
-  setRegenError('')
-  
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 45000)
-  
-  try {
-    setRegenLoading(true); setShowRegenInput(false)
-    const res = await fetch('/api/generate-avatar', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        answers: { 0: bioState, 1: askState },
-        feedback: regenFeedback,
-        mode: 'reimagine',
-      }),
-      signal: controller.signal,
-    })
-    const data = await res.json()
-    if (!res.ok || data.error) throw new Error(data.error || 'Failed')
-    if (!data.imageUrl) throw new Error('No avatar image came back from the mirror.')
+    if (regenCount >= MAX_REGEN_ATTEMPTS || regenLoading) return;
+    setRegenError("");
 
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) throw new Error('No user found')
-    const permanentUrl = await uploadAvatarToStorage(data.imageUrl, user.id)
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 45000);
 
-    const newCount = regenCount + 1
-    setCurrentAvatarUrl(permanentUrl)
-    setRegenCount(newCount)
-    setRegenFeedback('')
-    await updateHub({ avatar_url: permanentUrl, regen_count: newCount })
-    onUpdateHub?.({ avatarUrl: permanentUrl })
-  } catch (err) {
-    if (err instanceof Error && err.name === 'AbortError') {
-      setRegenError('The mirror took too long to respond. Your attempt was not used — try again.')
-    } else {
-      console.error('Regen failed:', err)
-      setRegenError(
-        err instanceof Error && err.message
-          ? err.message
-          : 'Something went wrong. Your attempt was not used — try again.',
-      )
+    try {
+      setRegenLoading(true);
+      setShowRegenInput(false);
+      const res = await fetch("/api/generate-avatar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          answers: { 0: bioState, 1: askState },
+          feedback: regenFeedback,
+          mode: "reimagine",
+        }),
+        signal: controller.signal,
+      });
+      let data;
+      try {
+        data = await res.json();
+      } catch (jsonErr) {
+        throw new Error("Failed to parse avatar response. Please try again later.");
+      }
+      if (!res.ok || data.error) {
+        // Show backend error with more context
+        let errorMsg = data && data.error ? data.error : `Avatar generation failed (status ${res.status}).`;
+        if (res.status === 500 && errorMsg.includes("OPENAI_API_KEY")) {
+          errorMsg = "Avatar generation is currently unavailable. Please contact support or try again later (missing OpenAI API key).";
+        }
+        setRegenError(errorMsg);
+        return;
+      }
+      if (!data.imageUrl) {
+        setRegenError("No avatar image came back from the mirror. Please try again or contact support.");
+        return;
+      }
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setRegenError("No user found. Please sign in again.");
+        return;
+      }
+      let permanentUrl;
+      try {
+        permanentUrl = await uploadAvatarToStorage(data.imageUrl, user.id);
+      } catch (uploadErr) {
+        setRegenError("Failed to save avatar image. Please try again or contact support.");
+        return;
+      }
+
+      const newCount = regenCount + 1;
+      setCurrentAvatarUrl(permanentUrl);
+      setRegenCount(newCount);
+      setRegenFeedback("");
+      await updateHub({ avatar_url: permanentUrl, regen_count: newCount });
+      onUpdateHub?.({ avatarUrl: permanentUrl });
+    } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") {
+        setRegenError("The mirror took too long to respond. Your attempt was not used — try again.");
+      } else {
+        console.error("Regen failed:", err);
+        setRegenError(
+          err instanceof Error && err.message
+            ? err.message
+            : "Something went wrong. Your attempt was not used — try again."
+        );
+      }
+    } finally {
+      clearTimeout(timeout);
+      setRegenLoading(false);
     }
-  } finally {
-    clearTimeout(timeout)
-    setRegenLoading(false)
   }
-}
 
   async function saveHub() {
     try {
@@ -326,7 +352,21 @@ export default function Profile({
                   </button>
                 </div>
                 {regenError && (
-                  <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(220,100,100,0.85)', marginTop: '8px' }}>{regenError}</p>
+                  <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} style={{ marginTop: '8px' }}>
+                    <p style={{
+                      fontFamily: "'IM Fell English', serif",
+                      fontStyle: 'italic',
+                      fontSize: '15px',
+                      color: 'rgba(220,100,100,0.95)',
+                      background: 'rgba(40,0,0,0.13)',
+                      border: '1px solid rgba(220,100,100,0.25)',
+                      borderRadius: '6px',
+                      padding: '10px 14px',
+                      lineHeight: 1.6,
+                      whiteSpace: 'pre-line',
+                      maxWidth: 480,
+                    }}>{regenError}</p>
+                  </motion.div>
                 )}
               </motion.div>
             )}
