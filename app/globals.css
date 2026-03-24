@@ -10,7 +10,7 @@
 
 body {
   background: var(--background);
-  color: var(--foreground);
+  color: rgba(255,255,255,0.92);
   font-family: 'Cormorant Garamond', Georgia, serif;
   margin: 0;
   padding: 0;
@@ -25,14 +25,7 @@ body {
 }
 
 h1, h2, h3, h4, h5, h6,
-p,
-span,
-label,
-a,
-button,
-input,
-textarea {
-  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.42);
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.42), 0 1px 6px #fff8, 0 0px 1px #fff4;
 }
 
 h1, h2, h3, h4, h5, h6,
@@ -50,17 +43,16 @@ textarea {
 }
 
 input::placeholder,
-textarea::placeholder {
-  color: rgba(255, 255, 255, 0.68);
+  color: rgba(255, 255, 255, 0.85);
   opacity: 1;
 }
 
 .scribe-textarea::placeholder {
-  color: rgba(44, 26, 8, 0.35);
+  color: rgba(44, 26, 8, 0.65);
   font-style: italic;
 }
 
 .scribe-textarea-dark::placeholder {
-  color: rgba(240, 210, 150, 0.3);
+  color: rgba(240, 210, 150, 0.65);
   font-style: italic;
 }

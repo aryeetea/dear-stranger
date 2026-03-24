@@ -293,14 +293,14 @@ function LetterContent({ fontFamily, ink, recipient, senderName, date, body, set
 }) {
   return (
     <div>
-      <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'12px', color:ink.secondary, marginBottom:'16px' }}>{date}</p>
-      <p style={{ fontFamily, fontSize:'18px', fontStyle:'italic', color:ink.secondary, marginBottom:'18px', lineHeight:1.8 }}>
+      <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'12px', color:ink.secondary, marginBottom:'16px', textShadow: '0 1px 6px #fff8, 0 0px 1px #fff4' }}>{date}</p>
+      <p style={{ fontFamily, fontSize:'18px', fontStyle:'italic', color:ink.secondary, marginBottom:'18px', lineHeight:1.8, textShadow: '0 1px 6px #fff8, 0 0px 1px #fff4' }}>
         {recipient ? `Dear ${recipient},` : 'Dear Stranger,'}
       </p>
       <textarea ref={textareaRef} value={body} onChange={e=>setBody(e.target.value)}
         placeholder="Begin your letter here..." rows={9}
-        style={{ width:'100%', background:'transparent', border:'none', outline:'none', color:ink.main, caretColor:ink.accent, fontFamily, fontSize:'16px', lineHeight:2, resize:'none', letterSpacing:'0.01em' }}/>
-      <p style={{ fontFamily, fontStyle:'italic', fontSize:'15px', color:ink.secondary, marginTop:'10px', lineHeight:1.9 }}>
+        style={{ width:'100%', background:'transparent', border:'none', outline:'none', color:ink.main, caretColor:ink.accent, fontFamily, fontSize:'16px', lineHeight:2, resize:'none', letterSpacing:'0.01em', textShadow: '0 1px 6px #fff8, 0 0px 1px #fff4' }}/>
+      <p style={{ fontFamily, fontStyle:'italic', fontSize:'15px', color:ink.secondary, marginTop:'10px', lineHeight:1.9, textShadow: '0 1px 6px #fff8, 0 0px 1px #fff4' }}>
         Yours across the distance,<br/>
         <span style={{ color:ink.accent }}>{senderName || 'A Stranger'}</span>
       </p>

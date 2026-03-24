@@ -192,6 +192,7 @@ export default function Home() {
   }
 
   useEffect(() => {
+    let ignore = false;
     async function checkSession() {
       try {
         await routeFromSession()
@@ -208,6 +209,7 @@ export default function Home() {
     checkSession()
 
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event) => {
+      if (ignore) return;
       if (event === 'SIGNED_OUT') {
         clearHubState()
         setPendingCredentials(null)
@@ -232,6 +234,7 @@ export default function Home() {
     })
 
     return () => {
+      ignore = true;
       authListener.subscription.unsubscribe()
     }
   }, [])

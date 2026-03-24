@@ -251,46 +251,59 @@ function LetterEntry({ letter, index, onClick }: { letter: Letter; index: number
         </div>
 
         <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(255,255,255,0.84)', lineHeight: 1.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {letter.preview}
-        </p>
+          return (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.06 }}
+              onClick={onClick}
+              style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '16px',
+                padding: '18px 20px',
+                background: colors.bg,
+                border: `1.5px solid ${isTransit ? 'rgba(230,199,110,0.28)' : 'rgba(255,255,255,0.18)'}`,
+                borderRadius: '4px',
+                cursor: isTransit ? 'default' : 'pointer',
+                transition: 'background 0.2s',
+                position: 'relative',
+                overflow: 'hidden',
+                boxShadow: isTransit ? `0 2px 8px ${colors.accent}22` : `0 1px 6px #0002`,
+              }}
+              whileHover={!isTransit ? ({ backgroundColor: 'rgba(255,255,255,0.07)' } as never) : {}}
+            >
+              <div style={{ fontSize: '18px', lineHeight: 1, flexShrink: 0, marginTop: '2px', opacity: isTransit ? 0.85 : letter.status === 'archive' ? 0.7 : 1, filter: isTransit ? 'none' : `drop-shadow(0 0 4px ${colors.accent}80)` }}>
+                {isTransit ? '\u2726' : '\ud83d\udcdc'}
+              </div>
 
-        {isTransit && (
-          <div style={{ marginTop: '12px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-              <span style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.2em', color: 'rgba(255,255,255,0.62)', textTransform: 'uppercase' }}>In transit</span>
-              <span style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.15em', color: 'rgba(230,199,110,0.85)' }}>{letter.travelProgress ?? 0}%</span>
-            </div>
-            <div style={{ height: '2px', background: 'rgba(255,255,255,0.08)', borderRadius: '1px', overflow: 'hidden', position: 'relative' }}>
-              <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${letter.travelProgress ?? 0}%`, background: `linear-gradient(90deg, transparent, ${colors.accent})` }} />
-              <motion.div animate={{ left: ['0%', '100%'] }} transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
-                style={{ position: 'absolute', top: 0, bottom: 0, width: '40px', background: `linear-gradient(90deg, transparent, ${colors.accent}aa, transparent)`, filter: 'blur(2px)' }} />
-            </div>
-          </div>
-        )}
-      </div>
-    </motion.div>
-  )
-}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: '5px' }}>
+                  <p style={{ fontFamily: "'Cinzel', serif", fontSize: '11px', letterSpacing: '0.18em', color: colors.accent, textTransform: 'uppercase', textShadow: `0 1px 6px #fff8, 0 0px 1px #fff4` }}>
+                    {letter.direction === 'received' ? `From \u00b7 ${letter.from}` : `To \u00b7 ${letter.to}`}
+                  </p>
+                  <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.15em', color: 'rgba(255,255,255,0.82)', whiteSpace: 'nowrap', flexShrink: 0, textShadow: '0 1px 6px #fff8, 0 0px 1px #fff4' }}>
+                    {isTransit ? 'traveling' : letter.arrivedAt || letter.sentAt}
+                  </p>
+                </div>
 
-function LetterModal({ letter, onClose, onReply }: { letter: Letter; onClose: () => void; onReply?: (name: string) => void }) {
-  const colors = PAPER_COLORS[letter.paperId] || PAPER_COLORS.ornate
+                <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(255,255,255,0.92)', lineHeight: 1.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textShadow: '0 1px 6px #fff8, 0 0px 1px #fff4' }}>
+                  {letter.preview}
+                </p>
 
-  const paperStyles: Record<string, CSSProperties> = {
-    ornate:    { background: 'linear-gradient(160deg, #fdf6e0, #f8efcc)', color: '#140c04' },
-    floral:    { background: 'linear-gradient(160deg, #fefafa, #faf4f6)', color: '#140810' },
-    notepad:   { background: 'linear-gradient(160deg, #f8fbff, #eef6ff)', color: '#0a0c18' },
-    scrapbook: { background: 'linear-gradient(160deg, #fef8e8, #faf2d8)', color: '#160c04' },
-    ribbon:    { background: 'linear-gradient(160deg, #fdf8f4, #f8f0e8)', color: '#140408' },
-    postage:   { background: 'linear-gradient(160deg, #f5f0ec, #ede8e0)', color: '#100c18' },
-    sakura:    { background: 'linear-gradient(160deg, #fff8fc, #fce8f0)', color: '#18080e' },
-    aged:      { background: 'linear-gradient(155deg, #c8a870, #b89050)', color: '#160c04' },
-  }
-
-  const ps = paperStyles[letter.paperId] || paperStyles.ornate
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}
+                {isTransit && (
+                  <div style={{ marginTop: '12px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                      <span style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.2em', color: 'rgba(255,255,255,0.82)', textTransform: 'uppercase', textShadow: '0 1px 6px #fff8, 0 0px 1px #fff4' }}>In transit</span>
+                      <span style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.15em', color: 'rgba(230,199,110,0.95)', textShadow: '0 1px 6px #fff8, 0 0px 1px #fff4' }}>{letter.travelProgress ?? 0}%</span>
+                    </div>
+                    <div style={{ height: '2px', background: 'rgba(255,255,255,0.14)', borderRadius: '1px', overflow: 'hidden', position: 'relative' }}>
+                      <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${letter.travelProgress ?? 0}%`, background: `linear-gradient(90deg, transparent, ${colors.accent})` }} />
+                      <motion.div animate={{ left: ['0%', '100%'] }} transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
+                        style={{ position: 'absolute', top: 0, bottom: 0, width: '40px', background: `linear-gradient(90deg, transparent, ${colors.accent}cc, transparent)`, filter: 'blur(2px)' }} />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </motion.div>
       onClick={onClose}
       style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,5,0.85)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 90, padding: '20px' }}
     >
