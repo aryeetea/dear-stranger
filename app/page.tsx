@@ -160,39 +160,64 @@ export default function Home() {
   }, [screen])
 
   async function routeFromSession() {
-    const session = await getSession()
+    function timeoutPromise<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+      return Promise.race([
+        promise,
+        new Promise<T>((_, reject) => setTimeout(() => reject(new Error(`Timeout in ${label}`)), ms)),
+      ])
+    }
+    try {
+      console.log('[routeFromSession] begin')
+      const session = await timeoutPromise(getSession(), 7000, 'getSession')
+      console.log('[routeFromSession] getSession result:', session)
 
-    if (!session) {
+      if (!session) {
+        clearHubState()
+        setScreen('entry')
+        console.log('[routeFromSession] no session, go to entry')
+        return
+      }
+
+      let hub = null
+      try {
+        hub = await timeoutPromise(getMyHub(), 7000, 'getMyHub')
+        console.log('[routeFromSession] getMyHub result:', hub)
+      } catch (err) {
+        console.error('[routeFromSession] getMyHub error:', err)
+      }
+
+      if (hub) {
+        setHubName(hub.hub_name || '')
+        setHubBio(hub.bio || '')
+        setHubAskAbout(hub.ask_about || '')
+        setHubAvatarUrl(hub.avatar_url || '')
+        setHubStyle((hub.hub_style as HubStyle) || 'portal')
+        setLettersSent(hub.letters_sent || 0)
+        setHubRegenCount(hub.regen_count || 0)
+        setOnboardingError('')
+        setOnboardingResumeState(null)
+
+        const guest = await isGuestUser()
+        setIsGuest(guest)
+        setScreen('universe')
+        console.log('[routeFromSession] session+hub, go to universe')
+        return
+      }
+
+      clearHubState(false)
+      setScreen('onboarding')
+      console.log('[routeFromSession] session+no hub, go to onboarding')
+    } catch (err) {
+      console.error('[routeFromSession] error:', err)
       clearHubState()
       setScreen('entry')
-      return
+      console.log('[routeFromSession] fallback to entry')
     }
-
-    const hub = await getMyHub()
-
-    if (hub) {
-      setHubName(hub.hub_name || '')
-      setHubBio(hub.bio || '')
-      setHubAskAbout(hub.ask_about || '')
-      setHubAvatarUrl(hub.avatar_url || '')
-      setHubStyle((hub.hub_style as HubStyle) || 'portal')
-      setLettersSent(hub.letters_sent || 0)
-      setHubRegenCount(hub.regen_count || 0)
-      setOnboardingError('')
-      setOnboardingResumeState(null)
-
-      const guest = await isGuestUser()
-      setIsGuest(guest)
-      setScreen('universe')
-      return
-    }
-
-    clearHubState(false)
-    setScreen('onboarding')
   }
 
   useEffect(() => {
     let ignore = false;
+    let fallbackTimer: NodeJS.Timeout | null = null;
     async function checkSession() {
       try {
         await routeFromSession()
@@ -203,18 +228,30 @@ export default function Home() {
         } catch {}
         clearHubState()
         setScreen('entry')
+        console.log('[checkSession] fallback to entry')
       }
     }
 
     checkSession()
 
+    // Fallback: if still loading after 10s, go to entry
+    fallbackTimer = setTimeout(() => {
+      if (screenRef.current === 'loading') {
+        clearHubState()
+        setScreen('entry')
+        console.log('[fallbackTimer] loading >10s, go to entry')
+      }
+    }, 10000)
+
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event) => {
       if (ignore) return;
+      console.log('[authStateChange]', event)
       if (event === 'SIGNED_OUT') {
         clearHubState()
         setPendingCredentials(null)
         setOnboardingError('')
         setScreen('entry')
+        console.log('[authStateChange] SIGNED_OUT, go to entry')
         return
       }
 
@@ -235,6 +272,7 @@ export default function Home() {
 
     return () => {
       ignore = true;
+      if (fallbackTimer) clearTimeout(fallbackTimer)
       authListener.subscription.unsubscribe()
     }
   }, [])
