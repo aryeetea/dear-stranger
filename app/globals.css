@@ -1,0 +1,66 @@
+@import "tailwindcss";
+
+:root {
+  --background: #04050f;
+  --foreground: #ffffff;
+  --gold: #c9a84c;
+  --gold-light: #e6c76e;
+  --void: #000005;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+h1, h2, h3, h4, h5, h6,
+p,
+span,
+label,
+a,
+button,
+input,
+textarea {
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.42);
+}
+
+h1, h2, h3, h4, h5, h6,
+p,
+span,
+label,
+a {
+  filter: brightness(1.14);
+}
+
+button,
+input,
+textarea {
+  filter: brightness(1.1);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: rgba(255, 255, 255, 0.68);
+  opacity: 1;
+}
+
+.scribe-textarea::placeholder {
+  color: rgba(44, 26, 8, 0.35);
+  font-style: italic;
+}
+
+.scribe-textarea-dark::placeholder {
+  color: rgba(240, 210, 150, 0.3);
+  font-style: italic;
+}
