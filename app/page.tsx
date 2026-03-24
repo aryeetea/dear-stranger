@@ -259,8 +259,20 @@ export default function Home() {
 
   useEffect(() => {
     async function checkSession() {
+  try {
+    // auto-clear stale tokens before checking session
+    const hasStaleToken = Object.keys(localStorage).some(k => k.includes('supabase'))
+    if (hasStaleToken) {
       try {
-        await routeFromSession()
+        const { data } = await supabase.auth.getSession()
+        if (!data.session) {
+          localStorage.clear()
+        }
+      } catch {
+        localStorage.clear()
+      }
+    }
+    await routeFromSession()
       } catch (err) {
         console.error('checkSession failed:', err)
         try {
