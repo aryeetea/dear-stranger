@@ -51,6 +51,13 @@ const RULES = [
 export interface StyleOption { id: string; label: string; desc: string }
 export interface MirrorVoice { id: string; label: string; desc: string; icon: string; prompt: string }
 
+function cleanDisplayText(text: string) {
+  return text
+    .replace(/\[CHIPS:[\s\S]*?\]/g, '')
+    .replace(/\[DONE\]/g, '')
+    .trim()
+}
+
 export interface SoulMirrorResumeState {
   phase?: 'mode' | 'voice' | 'style' | 'hubstyle' | 'hubcolor' | 'chat' | 'describe' | 'hubname' | 'bio' | 'ask' | 'welcome'
   selectedStyle?: StyleOption
@@ -166,7 +173,11 @@ export default function SoulMirror({
       if (!res.ok) throw new Error(data.error || 'Failed')
       const isClosing = data.done === true
       const chips: string[] = data.chips || []
-      setMessages(prev => [...prev, { role: 'ai', text: data.question, isClosing, chips }])
+      const cleanedQuestion = cleanDisplayText(typeof data.question === 'string' ? data.question : '')
+      setMessages(prev => [
+        ...prev,
+        { role: 'ai', text: cleanedQuestion, isClosing, chips },
+      ])
       if (isClosing) setChatDone(true)
     } catch (err) {
       setError('Something went quiet. Try again.')
@@ -488,7 +499,7 @@ export default function SoulMirror({
                         </p>
                       )}
                       <p style={{ fontFamily: msg.role === 'ai' ? "'IM Fell English', serif" : "'Cormorant Garamond', serif", fontStyle: msg.role === 'ai' ? 'italic' : 'normal', fontSize: msg.role === 'ai' ? '16px' : '15px', color: 'rgba(255,255,255,0.9)', lineHeight: 1.65 }}>
-                        {msg.text}
+                        {msg.role === 'ai' ? cleanDisplayText(msg.text) : msg.text}
                       </p>
                     </div>
                   </motion.div>

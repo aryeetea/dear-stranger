@@ -1,11 +1,10 @@
 'use client'
 
 import { useEffect, useState, type CSSProperties } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import {
   updateHub,
   signOut,
-  deleteAccount,
   uploadAvatarToStorage,
 } from '../lib/auth'
 import { supabase } from '../../lib/supabase'
@@ -19,8 +18,6 @@ import {
 } from './UniverseMap'
 
 const MAX_REGEN_ATTEMPTS = 3
-
-type DeleteStep = 'idle' | 'confirming' | 'deleting' | 'deleted'
 
 export default function Profile({
   hubName,
@@ -88,9 +85,6 @@ export default function Profile({
   const [saveError, setSaveError] = useState('')
 
   const [leavingConfirm, setLeavingConfirm] = useState(false)
-  const [deleteStep, setDeleteStep] = useState<DeleteStep>('idle')
-  const [deleteError, setDeleteError] = useState('')
-
   useEffect(() => {
     setHubNameState(hubName || 'Your Hub')
     setHubDraft(hubName || 'Your Hub')
@@ -159,24 +153,6 @@ export default function Profile({
 
     await signOut()
     window.location.reload()
-  }
-
-  async function handleStartDelete() {
-    setDeleteError('')
-    setDeleteStep('confirming')
-  }
-
-  async function handleConfirmDelete() {
-    setDeleteStep('deleting')
-    const result = await deleteAccount()
-
-    if (result.success) {
-      setDeleteStep('deleted')
-      setTimeout(() => window.location.reload(), 2500)
-    } else {
-      setDeleteError(result.error || 'Something went wrong.')
-      setDeleteStep('confirming')
-    }
   }
 
   async function regenerateAvatar() {
@@ -1189,219 +1165,6 @@ export default function Profile({
           </div>
 
           <div style={{ paddingTop: '20px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-            <AnimatePresence>
-              {deleteStep !== 'idle' && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  style={{
-                    position: 'fixed',
-                    inset: 0,
-                    background: 'rgba(0,0,5,0.88)',
-                    backdropFilter: 'blur(10px)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 100,
-                    padding: '20px',
-                  }}
-                >
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.95, y: 12 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0 }}
-                    style={{
-                      background: 'rgba(8,10,28,0.98)',
-                      border: '1px solid rgba(220,80,80,0.3)',
-                      borderRadius: '12px',
-                      width: 'min(520px,95vw)',
-                      padding: 'clamp(28px,5vw,44px)',
-                      position: 'relative',
-                    }}
-                  >
-                    <div
-                      style={{
-                        position: 'absolute',
-                        top: 0,
-                        left: '20%',
-                        right: '20%',
-                        height: '1px',
-                        background:
-                          'linear-gradient(90deg, transparent, rgba(220,80,80,0.4), transparent)',
-                      }}
-                    />
-
-                    {deleteStep === 'confirming' && (
-                      <div>
-                        <p
-                          style={{
-                            fontFamily: "'Cinzel', serif",
-                            fontSize: '9px',
-                            letterSpacing: '0.4em',
-                            color: 'rgba(220,80,80,0.8)',
-                            textTransform: 'uppercase',
-                            marginBottom: '12px',
-                          }}
-                        >
-                          Delete Your Hub
-                        </p>
-                        <p
-                          style={{
-                            fontFamily: "'IM Fell English', serif",
-                            fontStyle: 'italic',
-                            fontSize: '18px',
-                            color: 'rgba(255,255,255,0.9)',
-                            lineHeight: 1.6,
-                            marginBottom: '14px',
-                          }}
-                        >
-                          Deleting your account removes your entire presence from the universe.
-                        </p>
-                        <p
-                          style={{
-                            fontFamily: "'Cormorant Garamond', serif",
-                            fontSize: '14px',
-                            color: 'rgba(255,255,255,0.5)',
-                            lineHeight: 1.7,
-                            marginBottom: '14px',
-                          }}
-                        >
-                          This permanently deletes your hub, avatar, and every letter you have
-                          ever sent or received. Once deleted, those letters will not keep
-                          traveling, accumulating, or remain recoverable anywhere in the system.
-                        </p>
-                        <p
-                          style={{
-                            fontFamily: "'Cormorant Garamond', serif",
-                            fontSize: '14px',
-                            color: 'rgba(220,120,120,0.78)',
-                            lineHeight: 1.7,
-                            marginBottom: '22px',
-                          }}
-                        >
-                          This action cannot be undone.
-                        </p>
-                        {deleteError && (
-                          <p
-                            style={{
-                              fontFamily: "'IM Fell English', serif",
-                              fontStyle: 'italic',
-                              fontSize: '13px',
-                              color: 'rgba(220,100,100,0.8)',
-                              marginBottom: '12px',
-                            }}
-                          >
-                            {deleteError}
-                          </p>
-                        )}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                          <button
-                            onClick={() => void handleConfirmDelete()}
-                            style={{
-                              padding: '12px',
-                              background: 'rgba(220,60,60,0.1)',
-                              border: '1px solid rgba(220,60,60,0.4)',
-                              color: 'rgba(220,80,80,0.9)',
-                              fontFamily: "'Cinzel', serif",
-                              fontSize: '9px',
-                              letterSpacing: '0.25em',
-                              textTransform: 'uppercase',
-                              cursor: 'pointer',
-                              borderRadius: '4px',
-                            }}
-                          >
-                            Delete Everything Permanently
-                          </button>
-                          <button
-                            onClick={() => {
-                              setDeleteStep('idle')
-                              setDeleteError('')
-                            }}
-                            style={{
-                              padding: '10px',
-                              background: 'transparent',
-                              border: '1px solid rgba(255,255,255,0.1)',
-                              color: 'rgba(255,255,255,0.4)',
-                              fontFamily: "'Cinzel', serif",
-                              fontSize: '8px',
-                              letterSpacing: '0.2em',
-                              textTransform: 'uppercase',
-                              cursor: 'pointer',
-                              borderRadius: '4px',
-                            }}
-                          >
-                            Cancel — Keep My Hub
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    {deleteStep === 'deleting' && (
-                      <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                        <motion.div
-                          animate={{ rotate: 360 }}
-                          transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
-                          style={{
-                            width: '36px',
-                            height: '36px',
-                            borderRadius: '50%',
-                            border: '2px solid rgba(220,80,80,0.3)',
-                            borderTopColor: 'rgba(220,80,80,0.8)',
-                            margin: '0 auto 16px',
-                          }}
-                        />
-                        <p
-                          style={{
-                            fontFamily: "'Cinzel', serif",
-                            fontSize: '10px',
-                            letterSpacing: '0.3em',
-                            color: 'rgba(220,80,80,0.7)',
-                            textTransform: 'uppercase',
-                          }}
-                        >
-                          Erasing your presence...
-                        </p>
-                      </div>
-                    )}
-
-                    {deleteStep === 'deleted' && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        style={{ textAlign: 'center', padding: '20px 0' }}
-                      >
-                        <p style={{ fontSize: '32px', marginBottom: '16px', opacity: 0.4 }}>✦</p>
-                        <p
-                          style={{
-                            fontFamily: "'Cinzel', serif",
-                            fontSize: '10px',
-                            letterSpacing: '0.4em',
-                            color: 'rgba(255,255,255,0.5)',
-                            textTransform: 'uppercase',
-                            marginBottom: '10px',
-                          }}
-                        >
-                          Your hub is gone
-                        </p>
-                        <p
-                          style={{
-                            fontFamily: "'IM Fell English', serif",
-                            fontStyle: 'italic',
-                            fontSize: '15px',
-                            color: 'rgba(255,255,255,0.4)',
-                            lineHeight: 1.7,
-                          }}
-                        >
-                          The universe remembers nothing. Returning to the entry screen...
-                        </p>
-                      </motion.div>
-                    )}
-                  </motion.div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
             <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
               {leavingConfirm ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
@@ -1466,25 +1229,6 @@ export default function Profile({
                   }}
                 >
                   Leave the Universe
-                </button>
-              )}
-
-              {deleteStep === 'idle' && !leavingConfirm && (
-                <button
-                  onClick={() => void handleStartDelete()}
-                  style={{
-                    fontFamily: "'Cinzel', serif",
-                    fontSize: '8px',
-                    letterSpacing: '0.25em',
-                    color: 'rgba(200,60,60,0.5)',
-                    padding: '8px 16px',
-                    border: '1px solid rgba(200,60,60,0.18)',
-                    background: 'transparent',
-                    cursor: 'pointer',
-                    textTransform: 'uppercase',
-                  }}
-                >
-                  Delete My Hub
                 </button>
               )}
             </div>

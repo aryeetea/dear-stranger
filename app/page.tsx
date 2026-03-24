@@ -131,8 +131,26 @@ async function requestAvatarImage(
       throw new Error(data.error || `Avatar request failed with status ${response.status}`)
     }
 
+    const imageValue =
+      typeof data.imageUrl === 'string' && data.imageUrl.trim()
+        ? data.imageUrl.trim()
+        : typeof data.b64_json === 'string' && data.b64_json.trim()
+          ? `data:image/png;base64,${data.b64_json.trim()}`
+          : ''
+
+    const isValidImageValue =
+      /^https?:\/\//.test(imageValue) || /^data:image\//.test(imageValue)
+
+    if (!isValidImageValue) {
+      console.error('❌ Avatar API returned no usable image payload', {
+        data,
+        rawText,
+      })
+      return ''
+    }
+
     console.log('✅ Avatar API parsed successfully')
-    return typeof data.imageUrl === 'string' ? data.imageUrl : ''
+    return imageValue
   } catch (error) {
     console.error('❌ requestAvatarImage failed:', error)
     throw error
@@ -176,11 +194,26 @@ export default function Home() {
   const [isGuest, setIsGuest] = useState(false)
   const [showGuestWall, setShowGuestWall] = useState(false)
   const [onboardingError, setOnboardingError] = useState('')
+  const [avatarStatusMessage, setAvatarStatusMessage] = useState('')
   const [onboardingResumeState, setOnboardingResumeState] =
     useState<SoulMirrorResumeState | null>(null)
 
   const screenRef = useRef<Screen>('loading')
   const onboardingInFlightRef = useRef(false)
+  const avatarStatusTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const showTemporaryAvatarMessage = useCallback((message: string) => {
+    setAvatarStatusMessage(message)
+
+    if (avatarStatusTimeoutRef.current) {
+      clearTimeout(avatarStatusTimeoutRef.current)
+    }
+
+    avatarStatusTimeoutRef.current = setTimeout(() => {
+      setAvatarStatusMessage('')
+      avatarStatusTimeoutRef.current = null
+    }, 5000)
+  }, [])
 
   const clearHubState = useCallback((resetResume = true) => {
     setHubName('')
@@ -196,7 +229,20 @@ export default function Home() {
     setScribeInitialSubject('')
     setScribeInitialBody('')
     setAvatarProgress(0)
+    setAvatarStatusMessage('')
+    if (avatarStatusTimeoutRef.current) {
+      clearTimeout(avatarStatusTimeoutRef.current)
+      avatarStatusTimeoutRef.current = null
+    }
     if (resetResume) setOnboardingResumeState(null)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (avatarStatusTimeoutRef.current) {
+        clearTimeout(avatarStatusTimeoutRef.current)
+      }
+    }
   }, [])
 
   useEffect(() => {
@@ -416,7 +462,7 @@ export default function Home() {
       setHubAskAbout(chosenAskAbout)
 
       const freshSession = await getSession()
-      const userId = freshSession?.user?.id
+      let userId = freshSession?.user?.id
 
       console.log('🔥 userId for avatar:', userId)
 
@@ -465,6 +511,23 @@ export default function Home() {
       void (async () => {
         try {
           console.log('🔥 Inside avatar async block')
+          console.log('Starting avatar generation')
+
+          if (!userId) {
+            const latestSession = await getSession()
+            userId = latestSession?.user?.id
+          }
+
+          console.log('User ID:', userId)
+          console.log('Answers:', avatarAnswers)
+
+          if (!userId) {
+            console.error('Avatar failed to generate')
+            showTemporaryAvatarMessage('Still crafting your avatar...')
+            clearInterval(interval)
+            setAvatarProgress(0)
+            return
+          }
 
           const avatarUrl = await requestAvatarImage(
             avatarAnswers,
@@ -476,7 +539,8 @@ export default function Home() {
           console.log('🔥 Avatar API returned:', avatarUrl)
 
           if (!avatarUrl) {
-            console.error('❌ No avatar returned')
+            console.error('Avatar failed to generate')
+            showTemporaryAvatarMessage('Still crafting your avatar...')
             clearInterval(interval)
             setAvatarProgress(0)
             return
@@ -501,6 +565,7 @@ export default function Home() {
           console.log('✅ Updated hub avatar_url')
         } catch (avatarError) {
           console.error('❌ Avatar generation failed:', avatarError)
+          showTemporaryAvatarMessage('Still crafting your avatar...')
           clearInterval(interval)
           setAvatarProgress(0)
         }
@@ -933,6 +998,36 @@ export default function Home() {
           onObservatory={() => setObservatoryOpen(true)}
           onProfile={() => setProfileOpen(true)}
         />
+      )}
+
+      {avatarStatusMessage && (
+        <div
+          style={{
+            position: 'fixed',
+            top: '20px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            width: 'min(420px, calc(100vw - 24px))',
+            padding: '12px 16px',
+            background: 'rgba(10,12,30,0.92)',
+            border: '1px solid rgba(230,199,110,0.28)',
+            borderRadius: '10px',
+            zIndex: 95,
+            boxShadow: '0 14px 40px rgba(0,0,0,0.35)',
+          }}
+        >
+          <p
+            style={{
+              fontFamily: "'IM Fell English', serif",
+              fontStyle: 'italic',
+              fontSize: '14px',
+              color: 'rgba(255,255,255,0.9)',
+              textAlign: 'center',
+            }}
+          >
+            {avatarStatusMessage}
+          </p>
+        </div>
       )}
 
       {showGuestWall && <GuestWall />}

@@ -232,49 +232,6 @@ export async function signOut() {
   }
 }
 
-// ── DELETE ACCOUNT / HUB ──
-export async function deleteAccount(): Promise<{ success: boolean; error?: string }> {
-  try {
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-
-    if (sessionError) throw sessionError
-    if (!session) throw new Error('No active session found.')
-
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 20000)
-
-    let response: Response
-    try {
-      response = await fetch('/api/delete-account', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        signal: controller.signal,
-      })
-    } finally {
-      clearTimeout(timeout)
-    }
-
-    const data = await response.json().catch(() => ({}))
-
-    if (!response.ok || data.error) {
-      throw new Error(data.error || `Delete failed with status ${response.status}`)
-    }
-
-    await supabase.auth.signOut()
-
-    return { success: true }
-  } catch (err: unknown) {
-    console.error('deleteAccount failed:', err)
-    return {
-      success: false,
-      error: err instanceof Error ? err.message : 'Delete failed',
-    }
-  }
-}
-
 // ── EXPORT MY LETTERS ──
 export async function exportMyLetters(): Promise<string> {
   try {
