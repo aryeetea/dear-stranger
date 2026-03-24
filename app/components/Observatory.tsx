@@ -27,14 +27,14 @@ interface Letter {
 }
 
 const PAPER_COLORS: Record<string, { accent: string; bg: string }> = {
-  ornate:    { accent: '#e6c76e', bg: 'rgba(230,199,110,0.1)' },
-  floral:    { accent: '#e8a0c0', bg: 'rgba(220,150,180,0.1)' },
-  notepad:   { accent: '#8ab4e8', bg: 'rgba(100,160,220,0.1)' },
+  ornate: { accent: '#e6c76e', bg: 'rgba(230,199,110,0.1)' },
+  floral: { accent: '#e8a0c0', bg: 'rgba(220,150,180,0.1)' },
+  notepad: { accent: '#8ab4e8', bg: 'rgba(100,160,220,0.1)' },
   scrapbook: { accent: '#c8a060', bg: 'rgba(200,150,80,0.1)' },
-  ribbon:    { accent: '#e87070', bg: 'rgba(220,80,80,0.1)' },
-  postage:   { accent: '#a080c8', bg: 'rgba(140,100,180,0.1)' },
-  sakura:    { accent: '#f0a0c0', bg: 'rgba(240,150,190,0.1)' },
-  aged:      { accent: '#b89050', bg: 'rgba(180,130,60,0.1)' },
+  ribbon: { accent: '#e87070', bg: 'rgba(220,80,80,0.1)' },
+  postage: { accent: '#a080c8', bg: 'rgba(140,100,180,0.1)' },
+  sakura: { accent: '#f0a0c0', bg: 'rgba(240,150,190,0.1)' },
+  aged: { accent: '#b89050', bg: 'rgba(180,130,60,0.1)' },
 }
 
 function clamp(value: number, min: number, max: number) {
@@ -231,84 +231,94 @@ function LetterEntry({ letter, index, onClick }: { letter: Letter; index: number
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.06 }}
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.06 }}
       onClick={onClick}
-      style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', padding: '18px 20px', background: colors.bg, border: `1px solid ${isTransit ? 'rgba(230,199,110,0.16)' : 'rgba(255,255,255,0.1)'}`, borderRadius: '4px', cursor: isTransit ? 'default' : 'pointer', transition: 'background 0.2s', position: 'relative', overflow: 'hidden' }}
-      whileHover={!isTransit ? ({ backgroundColor: 'rgba(255,255,255,0.04)' } as never) : {}}
+      style={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: '16px',
+        padding: '18px 20px',
+        background: colors.bg,
+        border: `1.5px solid ${isTransit ? 'rgba(230,199,110,0.28)' : 'rgba(255,255,255,0.18)'}`,
+        borderRadius: '4px',
+        cursor: isTransit ? 'default' : 'pointer',
+        transition: 'background 0.2s',
+        position: 'relative',
+        overflow: 'hidden',
+        boxShadow: isTransit ? `0 2px 8px ${colors.accent}22` : `0 1px 6px #0002`,
+      }}
+      whileHover={!isTransit ? ({ backgroundColor: 'rgba(255,255,255,0.07)' } as never) : {}}
     >
-      <div style={{ fontSize: '18px', lineHeight: 1, flexShrink: 0, marginTop: '2px', opacity: isTransit ? 0.75 : letter.status === 'archive' ? 0.6 : 1, filter: isTransit ? 'none' : `drop-shadow(0 0 4px ${colors.accent}60)` }}>
+      <div style={{ fontSize: '18px', lineHeight: 1, flexShrink: 0, marginTop: '2px', opacity: isTransit ? 0.85 : letter.status === 'archive' ? 0.7 : 1, filter: isTransit ? 'none' : `drop-shadow(0 0 4px ${colors.accent}80)` }}>
         {isTransit ? '✦' : '📜'}
       </div>
 
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: '5px' }}>
-          <p style={{ fontFamily: "'Cinzel', serif", fontSize: '11px', letterSpacing: '0.18em', color: colors.accent, textTransform: 'uppercase' }}>
+          <p style={{ fontFamily: "'Cinzel', serif", fontSize: '11px', letterSpacing: '0.18em', color: colors.accent, textTransform: 'uppercase', textShadow: '0 1px 6px #fff8, 0 0px 1px #fff4' }}>
             {letter.direction === 'received' ? `From · ${letter.from}` : `To · ${letter.to}`}
           </p>
-          <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.15em', color: 'rgba(255,255,255,0.58)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+          <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.15em', color: 'rgba(255,255,255,0.82)', whiteSpace: 'nowrap', flexShrink: 0, textShadow: '0 1px 6px #fff8, 0 0px 1px #fff4' }}>
             {isTransit ? 'traveling' : letter.arrivedAt || letter.sentAt}
           </p>
         </div>
 
-        <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(255,255,255,0.84)', lineHeight: 1.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          return (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.06 }}
-              onClick={onClick}
-              style={{
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: '16px',
-                padding: '18px 20px',
-                background: colors.bg,
-                border: `1.5px solid ${isTransit ? 'rgba(230,199,110,0.28)' : 'rgba(255,255,255,0.18)'}`,
-                borderRadius: '4px',
-                cursor: isTransit ? 'default' : 'pointer',
-                transition: 'background 0.2s',
-                position: 'relative',
-                overflow: 'hidden',
-                boxShadow: isTransit ? `0 2px 8px ${colors.accent}22` : `0 1px 6px #0002`,
-              }}
-              whileHover={!isTransit ? ({ backgroundColor: 'rgba(255,255,255,0.07)' } as never) : {}}
-            >
-              <div style={{ fontSize: '18px', lineHeight: 1, flexShrink: 0, marginTop: '2px', opacity: isTransit ? 0.85 : letter.status === 'archive' ? 0.7 : 1, filter: isTransit ? 'none' : `drop-shadow(0 0 4px ${colors.accent}80)` }}>
-                {isTransit ? '\u2726' : '\ud83d\udcdc'}
-              </div>
+        <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(255,255,255,0.92)', lineHeight: 1.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textShadow: '0 1px 6px #fff8, 0 0px 1px #fff4' }}>
+          {letter.preview}
+        </p>
 
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: '5px' }}>
-                  <p style={{ fontFamily: "'Cinzel', serif", fontSize: '11px', letterSpacing: '0.18em', color: colors.accent, textTransform: 'uppercase', textShadow: `0 1px 6px #fff8, 0 0px 1px #fff4` }}>
-                    {letter.direction === 'received' ? `From \u00b7 ${letter.from}` : `To \u00b7 ${letter.to}`}
-                  </p>
-                  <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.15em', color: 'rgba(255,255,255,0.82)', whiteSpace: 'nowrap', flexShrink: 0, textShadow: '0 1px 6px #fff8, 0 0px 1px #fff4' }}>
-                    {isTransit ? 'traveling' : letter.arrivedAt || letter.sentAt}
-                  </p>
-                </div>
+        {isTransit && (
+          <div style={{ marginTop: '12px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+              <span style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.2em', color: 'rgba(255,255,255,0.82)', textTransform: 'uppercase', textShadow: '0 1px 6px #fff8, 0 0px 1px #fff4' }}>In transit</span>
+              <span style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.15em', color: 'rgba(230,199,110,0.95)', textShadow: '0 1px 6px #fff8, 0 0px 1px #fff4' }}>{letter.travelProgress ?? 0}%</span>
+            </div>
+            <div style={{ height: '2px', background: 'rgba(255,255,255,0.14)', borderRadius: '1px', overflow: 'hidden', position: 'relative' }}>
+              <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${letter.travelProgress ?? 0}%`, background: `linear-gradient(90deg, transparent, ${colors.accent})` }} />
+              <motion.div
+                animate={{ left: ['0%', '100%'] }}
+                transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
+                style={{ position: 'absolute', top: 0, bottom: 0, width: '40px', background: `linear-gradient(90deg, transparent, ${colors.accent}cc, transparent)`, filter: 'blur(2px)' }}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+    </motion.div>
+  )
+}
 
-                <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(255,255,255,0.92)', lineHeight: 1.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textShadow: '0 1px 6px #fff8, 0 0px 1px #fff4' }}>
-                  {letter.preview}
-                </p>
+function LetterModal({
+  letter,
+  onClose,
+  onReply,
+}: {
+  letter: Letter
+  onClose: () => void
+  onReply?: (name: string) => void
+}) {
+  const colors = PAPER_COLORS[letter.paperId] || PAPER_COLORS.ornate
+  const ps: CSSProperties = {
+    background: 'linear-gradient(180deg, rgba(18,16,24,0.96), rgba(10,8,14,0.98))',
+    border: `1px solid ${colors.accent}45`,
+    color: 'rgba(255,255,255,0.94)',
+  }
 
-                {isTransit && (
-                  <div style={{ marginTop: '12px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                      <span style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.2em', color: 'rgba(255,255,255,0.82)', textTransform: 'uppercase', textShadow: '0 1px 6px #fff8, 0 0px 1px #fff4' }}>In transit</span>
-                      <span style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.15em', color: 'rgba(230,199,110,0.95)', textShadow: '0 1px 6px #fff8, 0 0px 1px #fff4' }}>{letter.travelProgress ?? 0}%</span>
-                    </div>
-                    <div style={{ height: '2px', background: 'rgba(255,255,255,0.14)', borderRadius: '1px', overflow: 'hidden', position: 'relative' }}>
-                      <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${letter.travelProgress ?? 0}%`, background: `linear-gradient(90deg, transparent, ${colors.accent})` }} />
-                      <motion.div animate={{ left: ['0%', '100%'] }} transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
-                        style={{ position: 'absolute', top: 0, bottom: 0, width: '40px', background: `linear-gradient(90deg, transparent, ${colors.accent}cc, transparent)`, filter: 'blur(2px)' }} />
-                    </div>
-                  </div>
-                )}
-              </div>
-            </motion.div>
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
       onClick={onClose}
       style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,5,0.85)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 90, padding: '20px' }}
     >
       <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 8 }} transition={{ duration: 0.35 }}
+        initial={{ opacity: 0, scale: 0.95, y: 16 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 8 }}
+        transition={{ duration: 0.35 }}
         onClick={e => e.stopPropagation()}
         style={{ ...ps, width: 'min(600px, 92vw)', maxHeight: '80vh', overflowY: 'auto', borderRadius: '3px', padding: 'clamp(32px,5vw,56px) clamp(28px,6vw,60px)', boxShadow: `0 16px 60px rgba(0,0,0,0.9), 0 0 40px ${colors.accent}20`, position: 'relative' }}
       >
@@ -337,10 +347,12 @@ function LetterEntry({ letter, index, onClick }: { letter: Letter; index: number
 
         {letter.direction === 'received' && (
           <div style={{ marginTop: '32px', paddingTop: '20px', borderTop: `1px solid ${colors.accent}38` }}>
-            <button onClick={() => onReply?.(letter.from || '')}
+            <button
+              onClick={() => onReply?.(letter.from || '')}
               style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.3em', color: colors.accent, padding: '10px 24px', border: `1px solid ${colors.accent}70`, borderRadius: '2px', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase', transition: 'all 0.2s' }}
               onMouseEnter={e => { e.currentTarget.style.background = `${colors.accent}12`; e.currentTarget.style.borderColor = colors.accent; e.currentTarget.style.boxShadow = `0 0 20px ${colors.accent}20` }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = `${colors.accent}70`; e.currentTarget.style.boxShadow = 'none' }}>
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = `${colors.accent}70`; e.currentTarget.style.boxShadow = 'none' }}
+            >
               Reply ✦
             </button>
           </div>
@@ -348,10 +360,12 @@ function LetterEntry({ letter, index, onClick }: { letter: Letter; index: number
 
         <div style={{ position: 'absolute', bottom: 0, left: '15%', right: '15%', height: '1px', background: `linear-gradient(90deg, transparent, ${colors.accent}40, transparent)` }} />
 
-        <button onClick={onClose}
+        <button
+          onClick={onClose}
           style={{ position: 'absolute', top: '16px', right: '16px', background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', opacity: 0.6, transition: 'opacity 0.2s', color: 'inherit' }}
           onMouseEnter={e => { e.currentTarget.style.opacity = '0.95' }}
-          onMouseLeave={e => { e.currentTarget.style.opacity = '0.6' }}>
+          onMouseLeave={e => { e.currentTarget.style.opacity = '0.6' }}
+        >
           ×
         </button>
       </motion.div>
