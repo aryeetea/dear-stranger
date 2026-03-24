@@ -53,16 +53,6 @@ export const LETTER_ENVELOPE_LININGS = [
 
 export type LetterEnvelopeLiningId = (typeof LETTER_ENVELOPE_LININGS)[number]['id']
 
-export const DEFAULT_LETTER_SHELVES = [
-  { id: 'comfort', label: 'Comfort' },
-  { id: 'haunting', label: 'Haunting' },
-  { id: 'home', label: 'Home' },
-  { id: 'reply-later', label: 'Reply Later' },
-  { id: 'keepsakes', label: 'Keepsakes' },
-] as const
-
-export type LetterShelfId = (typeof DEFAULT_LETTER_SHELVES)[number]['id']
-
 export const HUB_RELICS = [
   { id: 'silver-key', label: 'Silver Key', icon: '🗝' },
   { id: 'pressed-flower', label: 'Pressed Flower', icon: '❀' },
@@ -147,7 +137,6 @@ export const UNIVERSE_PROMPTS: UniversePrompt[] = [
 ]
 
 const HUB_RELICS_STORAGE_PREFIX = 'dear-stranger:hub-relics:'
-const LETTER_SHELVES_STORAGE_PREFIX = 'dear-stranger:letter-shelves:'
 const CONSTELLATION_HUBS_STORAGE_PREFIX = 'dear-stranger:constellations:'
 
 function canUseStorage() {
@@ -158,17 +147,6 @@ export function sanitizeHubRelics(relicIds: readonly string[]) {
   return relicIds
     .filter((id): id is HubRelicId => HUB_RELICS.some((relic) => relic.id === id))
     .slice(0, 3)
-}
-
-export function sanitizeLetterShelfAssignments(
-  assignments: Record<string, string | undefined> | Partial<Record<string, LetterShelfId>>,
-) {
-  return Object.fromEntries(
-    Object.entries(assignments).filter(
-      ([, shelfId]) =>
-        shelfId && DEFAULT_LETTER_SHELVES.some((shelf) => shelf.id === shelfId),
-    ),
-  ) as Partial<Record<string, LetterShelfId>>
 }
 
 export function sanitizeConstellationHubs(hubs: Array<{ id?: string; name?: string }>) {
@@ -262,39 +240,6 @@ export function saveHubRelics(storageScope: string, relicIds: HubRelicId[]) {
 
   window.localStorage.setItem(
     `${HUB_RELICS_STORAGE_PREFIX}${storageScope}`,
-    JSON.stringify(cleaned),
-  )
-}
-
-export function loadLetterShelfAssignments(storageScope?: string) {
-  if (!storageScope || !canUseStorage()) return {} as Partial<Record<string, LetterShelfId>>
-
-  try {
-    const raw = window.localStorage.getItem(`${LETTER_SHELVES_STORAGE_PREFIX}${storageScope}`)
-    if (!raw) return {}
-
-    const parsed = JSON.parse(raw) as Record<string, string>
-
-    return Object.fromEntries(
-      Object.entries(parsed).filter(([, shelfId]) =>
-        DEFAULT_LETTER_SHELVES.some((shelf) => shelf.id === shelfId),
-      ),
-    ) as Partial<Record<string, LetterShelfId>>
-  } catch {
-    return {}
-  }
-}
-
-export function saveLetterShelfAssignments(
-  storageScope: string,
-  assignments: Partial<Record<string, LetterShelfId>>,
-) {
-  if (!storageScope || !canUseStorage()) return
-
-  const cleaned = sanitizeLetterShelfAssignments(assignments)
-
-  window.localStorage.setItem(
-    `${LETTER_SHELVES_STORAGE_PREFIX}${storageScope}`,
     JSON.stringify(cleaned),
   )
 }

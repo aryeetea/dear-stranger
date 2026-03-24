@@ -4,10 +4,8 @@ import {
   parseLetterSubject,
   sanitizeConstellationHubs,
   sanitizeHubRelics,
-  sanitizeLetterShelfAssignments,
   type ConstellationHub,
   type HubRelicId,
-  type LetterShelfId,
 } from './worldbuilding'
 
 export type HubRecord = {
@@ -399,7 +397,14 @@ export async function getUniverseLetters() {
 
     if (error) return []
 
-    return ((data || []) as Array<{ id: string; body?: string | null; subject?: string | null; sender?: { hub_name?: string | null } | null }>).map((l) => {
+    return (
+      (data || []) as Array<{
+        id: string
+        body?: string | null
+        subject?: string | null
+        sender?: { hub_name?: string | null } | null
+      }>
+    ).map((l) => {
       const parsedSubject = parseLetterSubject(l.subject)
 
       return {
@@ -526,7 +531,9 @@ export async function getMyHubRelicsFromDb(): Promise<HubRelicId[] | null> {
 
     if (error) return null
 
-    return sanitizeHubRelics((data || []).map((row: { relic_id?: string | null }) => row.relic_id || ''))
+    return sanitizeHubRelics(
+      (data || []).map((row: { relic_id?: string | null }) => row.relic_id || ''),
+    )
   } catch {
     return null
   }
@@ -553,62 +560,6 @@ export async function saveMyHubRelicsToDb(relicIds: HubRelicId[]): Promise<boole
       .insert(cleaned.map((relicId) => ({ user_id: userId, relic_id: relicId })))
 
     return !insertError
-  } catch {
-    return false
-  }
-}
-
-export async function getMyLetterShelfAssignmentsFromDb(): Promise<Partial<Record<string, LetterShelfId>> | null> {
-  try {
-    const userId = await getCurrentUserId()
-    if (!userId) return null
-
-    const { data, error } = await supabase
-      .from('letter_shelf_assignments')
-      .select('letter_id, shelf_id')
-      .eq('user_id', userId)
-
-    if (error) return null
-
-    const mapped = Object.fromEntries(
-      (data || []).map((row: { letter_id?: string | null; shelf_id?: string | null }) => [
-        row.letter_id || '',
-        row.shelf_id || undefined,
-      ]),
-    )
-
-    return sanitizeLetterShelfAssignments(mapped)
-  } catch {
-    return null
-  }
-}
-
-export async function saveMyLetterShelfAssignmentToDb(
-  letterId: string,
-  shelfId?: LetterShelfId,
-): Promise<boolean> {
-  try {
-    const userId = await getCurrentUserId()
-    if (!userId) return false
-
-    if (!shelfId) {
-      const { error } = await supabase
-        .from('letter_shelf_assignments')
-        .delete()
-        .eq('user_id', userId)
-        .eq('letter_id', letterId)
-
-      return !error
-    }
-
-    const { error } = await supabase
-      .from('letter_shelf_assignments')
-      .upsert(
-        [{ user_id: userId, letter_id: letterId, shelf_id: shelfId }],
-        { onConflict: 'user_id,letter_id' },
-      )
-
-    return !error
   } catch {
     return false
   }

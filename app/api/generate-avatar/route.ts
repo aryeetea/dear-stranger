@@ -12,81 +12,101 @@ function normalizeDetail(value: string) {
     .trim()
 }
 
-// ⏱ timeout wrapper
 async function withTimeout<T>(promise: Promise<T>, ms = 45000): Promise<T> {
   const timeout = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error('Request timed out')), ms)
+    setTimeout(() => reject(new Error('Request timed out')), ms),
   )
+
   return Promise.race([promise, timeout])
 }
 
-// 🎨 ALL STYLES (OPTIMIZED)
 const STYLE_DIRECTIONS: Record<string, string> = {
   fantasy:
-    `Stylized semi-realistic fantasy portrait. Cinematic lighting, deep shadows, glowing magical accents, rich jewel tones, mystical environment.`,
-
-  earthbound:
-    `Stylized semi-realistic grounded portrait. Natural lighting, soft shadows, warm tones, intimate and elegant styling.`,
-
-  'mythic-modern':
-    `Stylized semi-realistic mythic-modern portrait. Dramatic lighting, modern fashion with subtle magical elements, strong depth and contrast.`,
-
+    'Stylized semi realistic fantasy character portrait, cinematic lighting, rich jewel tones, magical atmosphere, elegant fabrics, detailed face, strong depth, not cartoon.',
+  modern:
+    'Stylized semi realistic modern fashion portrait, editorial feel, sharp styling, clean silhouette, realistic folds, elegant city mood, not cartoon.',
+  'fantasy-modern':
+    'Stylized semi realistic fantasy modern portrait, contemporary fashion mixed with subtle magical elements, cinematic light, polished concept art, not cartoon.',
   celestial:
-    `Stylized semi-realistic celestial portrait. Moonlit lighting, cool tones, glowing highlights, ethereal cosmic atmosphere.`,
-
+    'Stylized semi realistic celestial portrait, moonlit glow, silver blue tones, ethereal atmosphere, luminous highlights, detailed face, not cartoon.',
+  royal:
+    'Stylized semi realistic regal portrait, luxurious fabrics, gold accents, noble presence, dramatic lighting, elegant detail, not cartoon.',
+  streetwear:
+    'Stylized semi realistic streetwear portrait, fashionable urban styling, bold outfit, layered clothing, cinematic city lighting, concept art quality, not cartoon.',
+  futuristic:
+    'Stylized semi realistic futuristic portrait, elegant sci fi fashion, glowing details, sleek materials, cinematic neon atmosphere, not cartoon.',
+  nature:
+    'Stylized semi realistic nature inspired portrait, earthy palette, organic textures, floral accents, soft atmospheric light, detailed face, not cartoon.',
+  earthbound:
+    'Stylized semi realistic grounded portrait, natural lighting, warm tones, elegant realism, not cartoon.',
+  'mythic-modern':
+    'Stylized semi realistic mythic modern portrait, dramatic light, modern fashion with subtle mystical detail, not cartoon.',
   regal:
-    `Stylized semi-realistic regal portrait. Warm golden lighting, rich fabrics, royal elegance, strong facial structure.`,
-
+    'Stylized semi realistic regal portrait, rich fabrics, gold detail, powerful elegance, not cartoon.',
   nocturne:
-    `Stylized semi-realistic nocturne portrait. Night lighting, deep shadows, colored highlights, cinematic mood.`,
-
+    'Stylized semi realistic night portrait, moody cinematic shadows, colored highlights, not cartoon.',
   'luminous-future':
-    `Stylized semi-realistic futuristic portrait. Soft glowing light, reflective materials, elegant sci-fi aesthetic.`,
-
+    'Stylized semi realistic futuristic portrait, glowing light, sleek materials, elegant sci fi atmosphere, not cartoon.',
   garden:
-    `Stylized semi-realistic nature portrait. Dappled sunlight, warm greens, organic textures, soft atmospheric depth.`,
-
+    'Stylized semi realistic garden portrait, warm greens, organic textures, soft natural light, not cartoon.',
   sanctuary:
-    `Stylized semi-realistic sacred portrait. Candlelit glow, soft shadows, calm and spiritual atmosphere.`,
-
+    'Stylized semi realistic sacred portrait, candlelit atmosphere, spiritual calm, elegant realism, not cartoon.',
   'velvet-gothic':
-    `Stylized semi-realistic gothic portrait. Dark tones, velvet textures, dramatic lighting, romantic mood.`,
-
+    'Stylized semi realistic gothic portrait, dramatic shadows, velvet textures, romantic dark mood, not cartoon.',
   tideborn:
-    `Stylized semi-realistic oceanic portrait. Cool blue lighting, flowing fabrics, reflective watery atmosphere.`,
+    'Stylized semi realistic oceanic portrait, cool blue light, flowing fabrics, watery atmosphere, not cartoon.',
 }
 
-// 🎯 BALANCED PROMPT BUILDER
-function buildAvatarPrompt(answers: string[], style?: string, feedback?: string) {
+function buildAvatarPrompt(
+  answers: string[],
+  style?: string,
+  feedback?: string,
+  mode: GenerationMode = 'create',
+) {
   const details = answers
     .map((a, i) => `${i + 1}. ${normalizeDetail(a)}`)
     .join('\n')
 
   const styleKey = (style || '').toLowerCase().replace(/\s+/g, '-')
-  const styleDirection = STYLE_DIRECTIONS[styleKey] || STYLE_DIRECTIONS['earthbound']
+  const styleDirection = STYLE_DIRECTIONS[styleKey] || STYLE_DIRECTIONS.modern
+
+  const modeLine =
+    mode === 'reimagine'
+      ? 'This is a reimagining of an existing avatar. Keep the same core identity and vibe, but improve polish, lighting, anatomy, outfit detail, and overall visual quality.'
+      : 'Create the character from scratch based on the description below.'
 
   return `
-Create a vertical full-body stylized semi-realistic character portrait.
+Create a vertical full body stylized semi realistic character portrait.
 
 ${styleDirection}
 
+${modeLine}
+
 Requirements:
-- Strong directional lighting with visible shadow depth
-- Sculpted face (cheekbones, jawline, nose highlights)
-- Realistic fabric folds and textures
-- Character centered, full body visible
-- Clean silhouette, cinematic pose
-- Subtle atmospheric background
-- High-end character concept art (NOT cartoon, NOT flat)
+- full body visible from head to toe
+- vertical composition
+- highly polished character concept art
+- strong face structure and expressive eyes
+- realistic clothing folds and texture detail
+- cinematic lighting with visible depth and shadows
+- beautiful atmospheric background
+- not flat
+- not chibi
+- not cartoon
+- not childish
+- not overly anime
+- no text
+- no watermark
+- one character only
 
 Character details:
 ${details}
 
 ${feedback ? `Revision note: ${normalizeDetail(feedback)}` : ''}
 `
+    .trim()
 }
 
-// 🧠 PRIMARY GENERATOR
 async function generateWithGptImage(
   openai: OpenAI,
   prompt: string,
@@ -97,10 +117,10 @@ async function generateWithGptImage(
     model: 'gpt-image-1',
     prompt,
     size: mode === 'reimagine' ? '1024x1024' : '1024x1536',
-    quality: mode === 'reimagine' ? 'low' : 'high',
+    quality: mode === 'reimagine' ? 'medium' : 'high',
     output_format: 'jpeg',
     user: userId || undefined,
-  })
+  } as never)
 
   const image = response.data?.[0]
 
@@ -111,11 +131,10 @@ async function generateWithGptImage(
 
   return {
     imageUrl: `data:image/jpeg;base64,${image.b64_json}`,
-    revisedPrompt: image.revised_prompt || prompt,
+    revisedPrompt: (image as { revised_prompt?: string }).revised_prompt || prompt,
   }
 }
 
-// 🔁 FALLBACK
 async function generateWithDalle(
   openai: OpenAI,
   prompt: string,
@@ -135,18 +154,17 @@ async function generateWithDalle(
 
   const image = response.data?.[0]
 
-  if (image?.b64_json) {
-    return {
-      imageUrl: `data:image/png;base64,${image.b64_json}`,
-      revisedPrompt: image.revised_prompt || prompt,
-    }
+  if (!image?.b64_json) {
+    console.error('DALLE BAD RESPONSE:', response)
+    throw new Error('dall-e-3 returned no image')
   }
 
-  console.error('DALLE BAD RESPONSE:', response)
-  throw new Error('dall-e-3 returned no image')
+  return {
+    imageUrl: `data:image/png;base64,${image.b64_json}`,
+    revisedPrompt: image.revised_prompt || prompt,
+  }
 }
 
-// 🚀 API ROUTE
 export async function POST(req: Request) {
   try {
     const { answers, feedback, style, mode, userId } = await req.json()
@@ -165,9 +183,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'No answers provided.' }, { status: 400 })
     }
 
-    const prompt = buildAvatarPrompt(orderedAnswers, style, feedback)
-    const openai = new OpenAI({ apiKey: openaiKey })
     const generationMode: GenerationMode = mode === 'reimagine' ? 'reimagine' : 'create'
+    const prompt = buildAvatarPrompt(orderedAnswers, style, feedback, generationMode)
+    const openai = new OpenAI({ apiKey: openaiKey })
 
     try {
       const result = await withTimeout(
@@ -182,31 +200,22 @@ export async function POST(req: Request) {
     } catch (primaryError) {
       console.error('PRIMARY FAILED:', primaryError)
 
-      try {
-        const fallback = await withTimeout(
-          generateWithDalle(openai, prompt, userId, generationMode),
-          45000,
-        )
+      const fallback = await withTimeout(
+        generateWithDalle(openai, prompt, userId, generationMode),
+        45000,
+      )
 
-        return NextResponse.json({
-          imageUrl: fallback.imageUrl,
-          prompt: fallback.revisedPrompt,
-        })
-      } catch (fallbackError) {
-        console.error('FALLBACK FAILED:', fallbackError)
-
-        return NextResponse.json(
-          { error: 'Image generation failed (both models).' },
-          { status: 500 }
-        )
-      }
+      return NextResponse.json({
+        imageUrl: fallback.imageUrl,
+        prompt: fallback.revisedPrompt,
+      })
     }
   } catch (error) {
     console.error('ROUTE ERROR:', error)
 
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to generate avatar.' },
-      { status: 500 }
+      { status: 500 },
     )
   }
 }

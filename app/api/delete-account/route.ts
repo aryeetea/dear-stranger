@@ -63,11 +63,6 @@ export async function POST(req: Request) {
     }
 
     await deleteIfPresent(async () => {
-      const { error } = await admin.from('letter_shelf_assignments').delete().eq('user_id', user.id)
-      return { error }
-    })
-
-    await deleteIfPresent(async () => {
       const { error } = await admin.from('hub_relics').delete().eq('user_id', user.id)
       return { error }
     })
