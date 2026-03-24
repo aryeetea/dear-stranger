@@ -6,6 +6,7 @@ import {
   getAllHubs,
   getMyLetters,
   getUniverseLetters,
+  type HubRecord,
 } from '../lib/auth'
 import { playUiSound } from '../lib/sound'
 import { useViewport } from '../lib/useViewport'
@@ -820,10 +821,10 @@ function drawReturnPath(
 }
 
 export default function UniverseMap({
-  hubName, hubBio, hubAvatarUrl, hubStyle = 'portal', hubPaletteId = DEFAULT_HUB_PALETTE, hubRelics = [], storageScope = '',
+  hubName, hubBio, hubAvatarUrl, hubStyle = 'portal', hubPaletteId = DEFAULT_HUB_PALETTE, hubRelics = [],
   onWriteLetter, onUniversePrompt, onObservatory, onProfile,
 }: {
-  hubName?: string; hubBio?: string; hubAvatarUrl?: string; hubStyle?: HubStyle; hubPaletteId?: HubPaletteId; hubRelics?: HubRelicId[]; storageScope?: string
+  hubName?: string; hubBio?: string; hubAvatarUrl?: string; hubStyle?: HubStyle; hubPaletteId?: HubPaletteId; hubRelics?: HubRelicId[]
   onWriteLetter?: (recipientName?: string) => void
   onUniversePrompt?: (prompt: { subject: string; bodyStarter: string }) => void
   onObservatory?: () => void; onProfile?: () => void
@@ -1008,36 +1009,13 @@ export default function UniverseMap({
   }, [isMobile])
 
   useEffect(() => {
-    if (!onUniversePrompt) {
-      setFloatingPrompt(null)
-      return
-    }
+    if (!onUniversePrompt) return
 
     spawnFloatingPrompt()
     const interval = setInterval(spawnFloatingPrompt, 14000)
 
     return () => clearInterval(interval)
   }, [onUniversePrompt, spawnFloatingPrompt])
-
-  const focusHub = useCallback((hubId: string) => {
-    const canvas = canvasRef.current
-    const hub = hubsRef.current.find((candidate) => candidate.id === hubId)
-    if (!canvas || !hub) return
-
-    offsetRef.current = {
-      x: canvas.width / 2 - hub.x * scaleRef.current,
-      y: canvas.height / 2 - hub.y * scaleRef.current,
-    }
-
-    setProfile({
-      hub,
-      screenX: canvas.width / 2,
-      screenY: canvas.height / 2,
-      telescopeMode: hub.hubStyle === 'telescope',
-    })
-    playUiSound('focus')
-    setTooltip(null)
-  }, [])
 
   useEffect(() => {
     let resizeHandler: (() => void) | undefined
@@ -1073,7 +1051,7 @@ export default function UniverseMap({
         }
       })
 
-      const reciprocalPaths = realHubs.reduce<ReturnPathMap>((acc, hub: any) => {
+      const reciprocalPaths = realHubs.reduce<ReturnPathMap>((acc, hub: HubRecord) => {
         const sent = sentCounts.get(hub.id) || 0
         const received = receivedCounts.get(hub.id) || 0
 
@@ -1087,7 +1065,7 @@ export default function UniverseMap({
       returnPathsRef.current = reciprocalPaths
       setReturnPaths(reciprocalPaths)
 
-      const otherHubs = await Promise.all(realHubs.map(async (hub: any, i: number) => {
+      const otherHubs = await Promise.all(realHubs.map(async (hub: HubRecord, i: number) => {
         const angle = (i / Math.max(realHubs.length, 1)) * Math.PI * 2 + 0.3
         const dist = 180 + (i * 73) % 320
         const avatarImg = hub.avatar_url ? await loadImage(hub.avatar_url) : undefined
@@ -1336,7 +1314,7 @@ export default function UniverseMap({
 
       {/* Tooltip */}
       <AnimatePresence>
-        {floatingPrompt && !profile && !starPreview && (
+        {onUniversePrompt && floatingPrompt && !profile && !starPreview && (
           <motion.button
             key={`floating-prompt-${floatingPrompt.instanceId}`}
             initial={{ opacity: 0, x: 0, y: 10 }}

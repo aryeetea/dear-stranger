@@ -457,15 +457,6 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, ini
     if (view === 'write') setTimeout(() => textareaRef.current?.focus(), 300)
   }, [view, selectedPaper])
 
-  useEffect(() => {
-    setSubject(initialSubject)
-    setPages([initialBody])
-    setActivePage(0)
-    setView('write')
-    setSent(false)
-    setReleasing(false)
-  }, [initialSubject, initialBody, recipientName])
-
   function updateCurrentPage(nextPage: string) {
     setPages((currentPages) =>
       currentPages.map((page, index) => (index === safeActivePage ? nextPage : page)),

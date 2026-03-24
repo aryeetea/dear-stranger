@@ -193,7 +193,7 @@ export default function FeedbackButton() {
                     />
 
                     {/* Email (optional) */}
-                    <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.3em', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', marginBottom: '10px' }}>Email (optional — if you'd like a reply)</p>
+                    <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.3em', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', marginBottom: '10px' }}>Email (optional — if you&apos;d like a reply)</p>
                     <input
                       type="email"
                       value={email}

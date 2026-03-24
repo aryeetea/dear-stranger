@@ -17,6 +17,9 @@ import {
   type LetterWaxSealId,
 } from '../lib/worldbuilding'
 
+type StoredLetters = Awaited<ReturnType<typeof getMyLetters>>
+type StoredLetter = StoredLetters['transit'][number]
+
 // ── Static stars — no Math.random in render ──
 const OBS_STARS = Array.from({ length: 30 }, (_, i) => ({
   width: `${(i % 4) * 0.35 + 0.3}px`,
@@ -85,8 +88,9 @@ export default function Observatory({
         setLoading(true)
         const data = await getMyLetters()
 
-        const mapSentLetter = (l: any): Letter => {
+        const mapSentLetter = (l: StoredLetter): Letter => {
           const parsedSubject = parseLetterSubject(l.subject || 'A letter for you')
+          const status: Letter['status'] = l.status === 'transit' ? 'transit' : l.status === 'archive' ? 'archive' : 'arrived'
           const createdMs = new Date(l.created_at).getTime()
           const arrivesMs = l.arrives_at ? new Date(l.arrives_at).getTime() : createdMs
           const nowMs = Date.now()
@@ -106,15 +110,16 @@ export default function Observatory({
             liningId: parsedSubject.liningId,
             sentAt: l.created_at,
             arrivedAt: l.arrives_at || undefined,
-            status: l.status,
+            status,
             direction: 'sent',
-            travelProgress: l.status === 'transit' ? clamp(Math.floor(rawProgress), 0, 100) : undefined,
+            travelProgress: status === 'transit' ? clamp(Math.floor(rawProgress), 0, 100) : undefined,
             pageCount: getLetterPageCount(l.body),
           }
         }
 
-        const mapReceivedLetter = (l: any): Letter => {
+        const mapReceivedLetter = (l: StoredLetter): Letter => {
           const parsedSubject = parseLetterSubject(l.subject || 'A letter for you')
+          const status: Letter['status'] = l.status === 'transit' ? 'transit' : l.status === 'archive' ? 'archive' : 'arrived'
 
           return {
             id: l.id,
@@ -130,7 +135,7 @@ export default function Observatory({
             liningId: parsedSubject.liningId,
             sentAt: l.created_at,
             arrivedAt: l.arrives_at || undefined,
-            status: l.status,
+            status,
             direction: 'received',
             pageCount: getLetterPageCount(l.body),
           }
@@ -138,10 +143,10 @@ export default function Observatory({
 
         setLetters({
           transit: (data.transit || []).map(mapSentLetter),
-          arrived: (data.arrived || []).map((l: any) =>
+          arrived: (data.arrived || []).map((l) =>
             l.recipient?.hub_name ? mapReceivedLetter(l) : mapSentLetter(l)
           ),
-          archive: (data.archive || []).map((l: any) =>
+          archive: (data.archive || []).map((l) =>
             l.recipient?.hub_name ? mapReceivedLetter(l) : mapSentLetter(l)
           ),
         })

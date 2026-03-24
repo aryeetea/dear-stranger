@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { DEFAULT_HUB_PALETTE, HUB_PALETTES, HUB_STYLES, type HubPaletteId, type HubStyle } from './UniverseMap'
 import { useViewport } from '../lib/useViewport'
@@ -141,13 +141,7 @@ export default function SoulMirror({
     return () => clearTimeout(timeout)
   }, [phase, creationMode, directAvatarDescription])
 
-  useEffect(() => {
-    if (phase !== 'chat' || !selectedStyle || !selectedVoice || hasInitialized.current || creationMode !== 'guided') return
-    hasInitialized.current = true
-    void fetchAIMessage([], [])
-  }, [phase, selectedStyle, selectedVoice, creationMode])
-
-  async function fetchAIMessage(history: typeof messages, answers: string[]) {
+  const fetchAIMessage = useCallback(async (history: typeof messages, answers: string[]) => {
     if (!selectedStyle || !selectedVoice) return
     try {
       setLoading(true)
@@ -180,7 +174,13 @@ export default function SoulMirror({
     } finally {
       setLoading(false)
     }
-  }
+  }, [isReturning, selectedStyle, selectedVoice])
+
+  useEffect(() => {
+    if (phase !== 'chat' || !selectedStyle || !selectedVoice || hasInitialized.current || creationMode !== 'guided') return
+    hasInitialized.current = true
+    void fetchAIMessage([], [])
+  }, [creationMode, fetchAIMessage, phase, selectedStyle, selectedVoice])
 
   async function handleSend(text?: string) {
     const finalText = (text || inputValue).trim()

@@ -134,7 +134,7 @@ export default function Profile({
       let data;
       try {
         data = await res.json();
-      } catch (jsonErr) {
+      } catch {
         throw new Error("Failed to parse avatar response. Please try again later.");
       }
       if (!res.ok || data.error) {
@@ -159,7 +159,7 @@ export default function Profile({
       let permanentUrl;
       try {
         permanentUrl = await uploadAvatarToStorage(data.imageUrl, user.id);
-      } catch (uploadErr) {
+      } catch {
         setRegenError("Failed to save avatar image. Please try again or contact support.");
         return;
       }

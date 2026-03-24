@@ -10,12 +10,13 @@ import {
   type LetterShelfId,
 } from './worldbuilding'
 
-type HubRecord = {
+export type HubRecord = {
   id: string
   hub_name: string | null
   bio?: string | null
   ask_about?: string | null
   avatar_url?: string | null
+  online?: boolean | null
   hub_style?: string | null
   backdrop_id?: string | null
   regen_count?: number | null
@@ -702,7 +703,7 @@ export async function updateHub(updates: {
   hub_style?: string
   backdrop_id?: string
   regen_count?: number
-  [key: string]: any
+  [key: string]: unknown
 }) {
   const {
     data: { user },

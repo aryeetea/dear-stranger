@@ -4,6 +4,10 @@ import OpenAI from 'openai'
 export const maxDuration = 45
 
 type GenerationMode = 'create' | 'reimagine'
+type GeneratedImage = {
+  b64_json?: string | null
+  revised_prompt?: string | null
+}
 
 function normalizeDetail(value: string) {
   return value
@@ -114,14 +118,14 @@ async function generateWithGptImage(
     quality: mode === 'reimagine' ? 'medium' : 'high',
     output_format: 'jpeg',
     user: userId || undefined,
-  } as any)
+  })
 
-  const image = response.data?.[0]
+  const image = response.data?.[0] as GeneratedImage | undefined
   if (!image?.b64_json) throw new Error('gpt-image-1 returned no image data.')
 
   return {
     imageUrl: `data:image/jpeg;base64,${image.b64_json}`,
-    revisedPrompt: (image as any).revised_prompt || prompt,
+    revisedPrompt: image.revised_prompt || prompt,
   }
 }
 

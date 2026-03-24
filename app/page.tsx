@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import EntryScreen from './components/EntryScreen'
 import SoulMirror from './components/SoulMirror'
 import type { MirrorVoice, SoulMirrorResumeState, StyleOption } from './components/SoulMirror'
@@ -148,7 +148,7 @@ export default function Home() {
   const screenRef = useRef<Screen>('loading')
   const onboardingInFlightRef = useRef(false)
 
-  function clearHubState(resetResume = true) {
+  const clearHubState = useCallback((resetResume = true) => {
     setHubName('')
     setHubBio('')
     setHubAskAbout('')
@@ -164,7 +164,7 @@ export default function Home() {
     setScribeInitialSubject('')
     setScribeInitialBody('')
     if (resetResume) setOnboardingResumeState(null)
-  }
+  }, [])
 
   useEffect(() => {
     screenRef.current = screen
@@ -218,7 +218,7 @@ export default function Home() {
     return Boolean(hub?.hub_name?.trim())
   }
 
-  async function routeFromSession() {
+  const routeFromSession = useCallback(async () => {
     const session = await getSession(0)
 
     if (!session) {
@@ -259,7 +259,7 @@ export default function Home() {
 
     clearHubState(false)
     setScreen('onboarding')
-  }
+  }, [clearHubState])
 
   useEffect(() => {
     async function checkSession() {
@@ -303,7 +303,7 @@ export default function Home() {
     return () => {
       authListener.subscription.unsubscribe()
     }
-  }, [])
+  }, [routeFromSession, clearHubState])
 
   async function handleOnboardingComplete(
   answers: Record<number, string>,
@@ -821,7 +821,6 @@ export default function Home() {
           hubStyle={hubStyle}
           hubPaletteId={hubPaletteId}
           hubRelics={hubRelics}
-          storageScope={storageScope}
           onWriteLetter={(name) => {
             if (isGuest) {
               setShowGuestWall(true)
@@ -848,6 +847,7 @@ export default function Home() {
 
       {scribeOpen && (
         <Scribe
+          key={[scribeRecipient || '', scribeInitialSubject, scribeInitialBody].join('::')}
           recipientName={scribeRecipient}
           lettersSent={lettersSent}
           initialSubject={scribeInitialSubject}
