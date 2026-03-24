@@ -192,7 +192,8 @@ export default function Home() {
     return Boolean(hub?.hub_name?.trim())
   }
 
-  const routeFromSession = useCallback(async () => {
+   const routeFromSession = useCallback(async () => {
+  try {
     const session = await getSession()
 
     if (!session) {
@@ -219,13 +220,22 @@ export default function Home() {
 
       const guest = await isGuestUser()
       setIsGuest(guest)
+
       setScreen('universe')
       return
     }
 
     clearHubState(false)
     setScreen('onboarding')
-  }, [clearHubState])
+
+  } catch (err) {
+    console.error('routeFromSession failed:', err)
+
+    // 🔥 THIS IS WHAT SAVES YOU
+    clearHubState()
+    setScreen('entry')
+  }
+}, [clearHubState])
 
   useEffect(() => {
     async function checkSession() {
@@ -254,6 +264,15 @@ export default function Home() {
     }
 
     void checkSession()
+
+    setTimeout(() => {
+  if (screenRef.current === 'loading') {
+    console.warn('Forced exit from loading')
+    setScreen('entry')
+  }
+}, 3000)
+
+
 
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event) => {
       if (event === 'SIGNED_OUT') {
