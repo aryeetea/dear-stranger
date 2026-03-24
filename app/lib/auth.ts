@@ -418,10 +418,10 @@ export async function getUniverseLetters() {
   }
 }
 
-export async function getSession(maxWaitMs = 10000) {
+export async function getSession(maxWaitMs = 0) {
   const start = Date.now()
 
-  while (Date.now() - start < maxWaitMs) {
+  while (true) {
     try {
       const { data, error } = await supabase.auth.getSession()
 
@@ -440,14 +440,14 @@ export async function getSession(maxWaitMs = 10000) {
       if (data.session) {
         return data.session
       }
+    } catch {}
 
-      await new Promise((r) => setTimeout(r, 400))
-    } catch {
-      await new Promise((r) => setTimeout(r, 400))
+    if (Date.now() - start >= maxWaitMs) {
+      return null
     }
-  }
 
-  return null
+    await new Promise((r) => setTimeout(r, 250))
+  }
 }
 
 export async function getMyHub() {

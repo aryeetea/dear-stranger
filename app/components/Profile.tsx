@@ -116,7 +116,7 @@ export default function Profile({
   setRegenError('')
   
   const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 30000) // 30s timeout
+  const timeout = setTimeout(() => controller.abort(), 15000)
   
   try {
     setRegenLoading(true); setShowRegenInput(false)

@@ -82,7 +82,7 @@ async function requestAvatarImage(
   answers: Record<number, string>,
   userId?: string,
   style?: string,
-  timeoutMs = 55000,
+  timeoutMs = 15000,
 ) {
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), timeoutMs)
@@ -219,7 +219,7 @@ export default function Home() {
   }
 
   async function routeFromSession() {
-    const session = await getSession()
+    const session = await getSession(0)
 
     if (!session) {
       clearHubState()
@@ -366,7 +366,7 @@ export default function Home() {
     setScreen('generating')
     setGeneratingStatus('Crafting your soul mirror...')
 
-    let session = await getSession()
+    let session = await getSession(4000)
 
     if (session) {
       await createHubForCurrentUser(hubNameAnswer, chosenBio, chosenAskAbout)
@@ -375,7 +375,7 @@ export default function Home() {
       setIsGuest(guest)
     } else {
       await signInAndCreateHub(hubNameAnswer, chosenBio, chosenAskAbout)
-      session = await getSession()
+      session = await getSession(4000)
       setIsGuest(true)
     }
 

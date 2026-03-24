@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import OpenAI from 'openai'
 
-export const maxDuration = 60
+export const maxDuration = 20
 
 type GenerationMode = 'create' | 'reimagine'
 
@@ -103,7 +103,7 @@ async function generateWithGptImage(
     model: 'gpt-image-1',
     prompt,
     size: mode === 'reimagine' ? '1024x1024' : '1024x1536',
-    quality: mode === 'reimagine' ? 'medium' : 'high',
+    quality: 'medium',
     output_format: 'jpeg',
     user: userId || undefined,
   } as any)
@@ -128,7 +128,7 @@ async function generateWithDalle(
     prompt,
     n: 1,
     size: mode === 'reimagine' ? '1024x1024' : '1024x1792',
-    quality: mode === 'reimagine' ? 'standard' : 'hd',
+    quality: 'standard',
     style: 'vivid',
     response_format: 'b64_json',
     user: userId || undefined,
