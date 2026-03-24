@@ -92,9 +92,20 @@ async function requestAvatarImage(
   timeoutMs = 45000,
 ) {
   const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), timeoutMs)
+  const timeout = setTimeout(() => {
+    console.error('❌ Avatar fetch timed out after', timeoutMs, 'ms')
+    controller.abort()
+  }, timeoutMs)
 
   try {
+    console.log('📡 calling /api/generate-avatar', {
+      answerCount: Object.keys(answers || {}).length,
+      userId,
+      style,
+      mode,
+      timeoutMs,
+    })
+
     const response = await fetch('/api/generate-avatar', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -102,12 +113,29 @@ async function requestAvatarImage(
       signal: controller.signal,
     })
 
-    const data = await response.json().catch(() => ({}))
+    console.log('📡 /api/generate-avatar status:', response.status)
+
+    const rawText = await response.text()
+    console.log('📡 /api/generate-avatar raw response:', rawText)
+
+    let data: any = {}
+    try {
+      data = rawText ? JSON.parse(rawText) : {}
+    } catch (parseError) {
+      console.error('❌ Failed to parse avatar API response as JSON:', parseError)
+      throw new Error('Avatar API returned invalid JSON')
+    }
+
     if (!response.ok || data.error) {
+      console.error('❌ Avatar API error response:', data)
       throw new Error(data.error || `Avatar request failed with status ${response.status}`)
     }
 
+    console.log('✅ Avatar API parsed successfully')
     return typeof data.imageUrl === 'string' ? data.imageUrl : ''
+  } catch (error) {
+    console.error('❌ requestAvatarImage failed:', error)
+    throw error
   } finally {
     clearTimeout(timeout)
   }
@@ -152,6 +180,8 @@ export default function Home() {
 
   const screenRef = useRef<Screen>('loading')
   const onboardingInFlightRef = useRef(false)
+  // NEW: prevents simultaneous auth operations from deadlocking Supabase's lock
+  const authInFlightRef = useRef(false)
 
   const clearHubState = useCallback((resetResume = true) => {
     setHubName('')
@@ -237,6 +267,7 @@ export default function Home() {
   useEffect(() => {
     async function checkSession() {
       try {
+        authInFlightRef.current = true
         await routeFromSession()
       } catch (err) {
         console.error('checkSession failed:', err)
@@ -245,6 +276,8 @@ export default function Home() {
         } catch {}
         clearHubState()
         setScreen('entry')
+      } finally {
+        authInFlightRef.current = false
       }
     }
 
@@ -270,12 +303,21 @@ export default function Home() {
         event === 'TOKEN_REFRESHED' ||
         event === 'INITIAL_SESSION'
       ) {
-        if (onboardingInFlightRef.current || screenRef.current === 'generating') return
+        // Skip if onboarding is in progress, generating screen is active,
+        // OR another auth check is already running (prevents lock contention)
+        if (
+          onboardingInFlightRef.current ||
+          screenRef.current === 'generating' ||
+          authInFlightRef.current
+        ) return
 
         try {
+          authInFlightRef.current = true
           await routeFromSession()
         } catch (err) {
           console.error('auth state sync failed:', err)
+        } finally {
+          authInFlightRef.current = false
         }
       }
     })
