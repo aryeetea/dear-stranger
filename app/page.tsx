@@ -505,29 +505,50 @@ export default function Home() {
       askAbout: chosenAskAbout,
     }
 
+    let fallbackTimeout: ReturnType<typeof setTimeout> | null = null
     try {
       onboardingInFlightRef.current = true
       setScreen('generating')
       setGeneratingStatus('Crafting your soul mirror...')
       setAvatarProgress(0)
 
-      console.log('2. before getSession')
-      let session = await getSession()
+      // Fallback timeout: after 15s, force universe screen
+      fallbackTimeout = setTimeout(() => {
+        if (screenRef.current === 'generating') {
+          console.error('⏰ Onboarding stuck on generating for 15s, forcing universe screen')
+          setScreen('universe')
+        }
+      }, 15000)
 
-      if (session) {
-        console.log('3. session exists, creating hub for current user')
-        await createHubForCurrentUser(hubNameAnswer, chosenBio, chosenAskAbout)
-
-        const guest = await isGuestUser()
-        setIsGuest(guest)
-      } else {
-        console.log('4. no session, signing in anonymously and creating hub')
-        await signInAndCreateHub(hubNameAnswer, chosenBio, chosenAskAbout)
+      let session
+      try {
+        console.log('2. before getSession')
         session = await getSession()
-        setIsGuest(true)
+        console.log('3. after getSession', session)
+      } catch (err) {
+        console.error('❌ Error in getSession:', err)
+        throw err
       }
 
-      console.log('5. after hub creation')
+      try {
+        if (session) {
+          console.log('4. before createHubForCurrentUser')
+          await createHubForCurrentUser(hubNameAnswer, chosenBio, chosenAskAbout)
+          console.log('5. after createHubForCurrentUser')
+          const guest = await isGuestUser()
+          setIsGuest(guest)
+        } else {
+          console.log('6. before signInAndCreateHub')
+          await signInAndCreateHub(hubNameAnswer, chosenBio, chosenAskAbout)
+          console.log('7. after signInAndCreateHub')
+          session = await getSession()
+          console.log('8. after fresh getSession', session)
+          setIsGuest(true)
+        }
+      } catch (err) {
+        console.error('❌ Error in createHub/signInAndCreateHub:', err)
+        throw err
+      }
 
       setHubName(hubNameAnswer)
       setHubStyle(chosenHubStyle)
@@ -535,10 +556,16 @@ export default function Home() {
       setHubBio(chosenBio)
       setHubAskAbout(chosenAskAbout)
 
-      const freshSession = await getSession()
-      let userId = freshSession?.user?.id
-
-      console.log('🔥 userId for avatar:', userId)
+      let userId
+      try {
+        console.log('9. before fresh getSession')
+        const freshSession = await getSession()
+        console.log('10. after fresh getSession', freshSession)
+        userId = freshSession?.user?.id
+        console.log('🔥 userId for avatar:', userId)
+      } catch (err) {
+        console.error('❌ Error in fresh getSession:', err)
+      }
 
       if (!userId) {
         console.error('❌ Avatar generation skipped: missing userId')
@@ -546,25 +573,33 @@ export default function Home() {
 
       setGeneratingStatus('Placing your hub in the universe...')
 
-      console.log('6. before updateHub')
-      await withTimeout(
-        updateHub({
-          bio: chosenBio,
-          ask_about: chosenAskAbout,
-          hub_style: chosenHubStyle,
-          backdrop_id: chosenHubPalette,
-        }),
-        12000,
-        'Saving your hub took too long. Please try again.',
-      )
-      console.log('7. after updateHub')
 
+      // --- TEMPORARY MANUAL BLOCK ---
+      console.log('6. before updateHub')
+      try {
+        await withTimeout(
+          updateHub({
+            bio: chosenBio,
+            ask_about: chosenAskAbout,
+            hub_style: chosenHubStyle,
+            backdrop_id: chosenHubPalette,
+          }),
+          12000,
+          'Saving your hub took too long. Please try again.',
+        )
+        console.log('7. after updateHub')
+      } catch (err) {
+        console.error('updateHub failed, continuing anyway:', err)
+      }
+
+      console.log('8. before setScreen universe')
       setHubAvatarUrl('')
       setOnboardingResumeState(null)
       setScreen('universe')
+      console.log('9. after setScreen universe')
+      // --- END TEMPORARY MANUAL BLOCK ---
 
-      console.log('🚀 About to start avatar generation block')
-
+      // Avatar generation block (unchanged, but logs already present)
       let progress = 5
       setAvatarProgress(progress)
 
@@ -665,6 +700,7 @@ export default function Home() {
       )
     } finally {
       onboardingInFlightRef.current = false
+      if (fallbackTimeout) clearTimeout(fallbackTimeout)
     }
   }
 
