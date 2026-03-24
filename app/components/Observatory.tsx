@@ -237,7 +237,7 @@ export default function Observatory({
           <motion.div key={activeTab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.3 }}>
             {loading ? (
               <div style={{ textAlign: 'center', padding: '60px 0' }}>
-                <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '16px', color: 'rgba(255,255,255,0.75)' }}>loading letters...</p>
+                {/* loading letters message removed as requested */}
               </div>
             ) : currentLetters.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '60px 0' }}>

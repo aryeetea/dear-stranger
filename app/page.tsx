@@ -523,8 +523,17 @@ export default function Home() {
       let session
       try {
         console.log('2. before getSession')
-        session = await getSession()
-        console.log('3. after getSession', session)
+        // Use direct Supabase call for session
+        const { data: { session: supaSession }, error: sessionError } = await supabase.auth.getSession()
+        if (sessionError) {
+          console.error('❌ Error from supabase.auth.getSession:', sessionError)
+          throw sessionError
+        }
+        session = supaSession
+        console.log('3. after getSession:', session)
+        if (!session) {
+          throw new Error('Session retrieval failed: session is null')
+        }
       } catch (err) {
         console.error('❌ Error in getSession:', err)
         throw err
@@ -541,8 +550,17 @@ export default function Home() {
           console.log('6. before signInAndCreateHub')
           await signInAndCreateHub(hubNameAnswer, chosenBio, chosenAskAbout)
           console.log('7. after signInAndCreateHub')
-          session = await getSession()
-          console.log('8. after fresh getSession', session)
+          // Use direct Supabase call for fresh session
+          const { data: { session: freshSession }, error: freshSessionError } = await supabase.auth.getSession()
+          if (freshSessionError) {
+            console.error('❌ Error from supabase.auth.getSession (fresh):', freshSessionError)
+            throw freshSessionError
+          }
+          session = freshSession
+          console.log('8. after fresh getSession:', session)
+          if (!session) {
+            throw new Error('Fresh session retrieval failed: session is null')
+          }
           setIsGuest(true)
         }
       } catch (err) {
@@ -559,9 +577,17 @@ export default function Home() {
       let userId
       try {
         console.log('9. before fresh getSession')
-        const freshSession = await getSession()
-        console.log('10. after fresh getSession', freshSession)
+        // Use direct Supabase call for fresh session
+        const { data: { session: freshSession }, error: freshSessionError } = await supabase.auth.getSession()
+        if (freshSessionError) {
+          console.error('❌ Error from supabase.auth.getSession (fresh):', freshSessionError)
+          throw freshSessionError
+        }
+        console.log('10. after fresh getSession:', freshSession)
         userId = freshSession?.user?.id
+        if (!userId) {
+          throw new Error('User ID missing after fresh session retrieval')
+        }
         console.log('🔥 userId for avatar:', userId)
       } catch (err) {
         console.error('❌ Error in fresh getSession:', err)
