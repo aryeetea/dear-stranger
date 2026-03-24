@@ -10,18 +10,58 @@ function normalizeDetail(value: string) {
     .trim()
 }
 
+const BASE_RENDER_STYLE = `
+Polished semi realistic character illustration.
+Painterly cinematic finish.
+Detailed face, skin, hair, and clothing.
+Believable anatomy and natural proportions.
+Elegant, immersive, high quality character art.
+
+Hard rules:
+- not cartoon
+- not anime
+- not chibi
+- not photorealistic
+- not flat illustration
+- not 3D render
+- not childish
+- not exaggerated caricature
+
+Keep the same rendering quality and artistic finish across all avatars.
+`.trim()
+
 const STYLE_DIRECTIONS: Record<string, string> = {
-  fantasy: `High fantasy illustration. Flowing magical robes, ethereal fabrics, glowing runes or subtle magic. Rich jewel tones — deep purples, midnight blues, gold. Background: misty enchanted forest or ancient stone archway with soft magical light. Painterly and cinematic.`,
-  modern: `Contemporary fashion illustration. Clean stylish outfit — tailored jacket or elevated streetwear. Neutral and earth tones with one bold accent. Background: moody urban architecture at dusk, soft bokeh city lights. Editorial and sophisticated.`,
-  'fantasy-modern': `Fantasy-modern fusion. Magical elements woven into contemporary fashion — glowing accessories, iridescent fabrics. Background: neon-lit alley meets starlit sky. Cinematic and otherworldly.`,
-  celestial: `Celestial fine art illustration. Flowing cosmic robes adorned with stars and moon phases, silver and indigo palette, constellation details. Background: deep space nebula with soft aurora light. Ethereal and divine.`,
-  royal: `Regal portrait illustration. Elaborate noble attire — rich velvets, gold embroidery, a crown or ornate headpiece. Deep jewel tones. Background: grand candlelit hall or palace balcony at dusk. Majestic and commanding.`,
-  streetwear: `Urban fashion illustration. Stylish streetwear — oversized jacket, designer sneakers, bold graphic tee or cargo pants. Dark moody background: rain-slicked city street at night with warm neon reflections. Cool and atmospheric.`,
-  futuristic: `Sci-fi concept art illustration. Sleek futuristic outfit — form-fitting suit, glowing tech accessories, holographic details. Background: gleaming megacity skyline or neon-lit space station corridor. Sharp and cinematic.`,
-  nature: `Nature-inspired illustration. Flowing earthy garments woven with floral and botanical details, warm greens and terracottas. Background: misty ancient forest with dappled golden light filtering through tall trees. Organic and peaceful.`,
+  fantasy: `Magical, storybook, and glowing. Fantasy inspired clothing, mystical details, rich jewel tones, enchanted atmosphere. Painterly and cinematic.`,
+
+  modern: `Clean, stylish, current, and realistic. Contemporary fashion, polished styling, grounded elegance, subtle editorial atmosphere.`,
+
+  'fantasy-modern': `A blend of magical and modern style. Contemporary fashion mixed with subtle fantasy details, symbolic accents, cinematic atmosphere.`,
+
+  celestial: `Stars, moonlight, cosmic beauty, and divine energy. Luminous silvers, indigo glow, celestial details, ethereal atmosphere.`,
+
+  royal: `Elegant, luxurious, noble, and powerful. Rich fabrics, refined structure, regal details, dramatic and commanding presence.`,
+
+  streetwear: `Bold, cool, trendy, and expressive. Stylish streetwear, layered urban fashion, modern attitude, atmospheric city energy.`,
+
+  futuristic: `Sleek, sci fi, advanced, and glowing. Futuristic silhouettes, luminous accents, polished technology inspired styling.`,
+
+  nature: `Earthy, floral, organic, and peaceful. Botanical details, soft greens and warm earth tones, natural textures, serene atmosphere.`,
 }
 
-function buildAvatarPrompt(answers: string[], style?: string, feedback?: string) {
+function getThemeDirection(style?: string) {
+  const styleKey = (style || '').toLowerCase().replace(/\s+/g, '-')
+  return (
+    STYLE_DIRECTIONS[styleKey] ||
+    `${normalizeDetail(style || 'Expressive cinematic styling')}. Keep it elegant, atmospheric, and cohesive.`
+  )
+}
+
+function buildAvatarPrompt(
+  answers: string[],
+  style?: string,
+  feedback?: string,
+  mode: 'create' | 'reimagine' = 'create',
+) {
   const trimmedAnswers = answers
     .map((a) => normalizeDetail(a))
     .filter(Boolean)
@@ -31,18 +71,34 @@ function buildAvatarPrompt(answers: string[], style?: string, feedback?: string)
     .map((a, i) => `${i + 1}. ${a}`)
     .join('\n')
 
-  const styleKey = (style || '').toLowerCase().replace(/\s+/g, '-')
-  const styleDirection = STYLE_DIRECTIONS[styleKey] || STYLE_DIRECTIONS.modern
+  const themeDirection = getThemeDirection(style)
+
+  const modeDirection =
+    mode === 'reimagine'
+      ? `
+This is a reimagined version of an existing avatar.
+Keep the same core person and identity recognizable.
+Clearly apply the requested changes.
+Do not return a near duplicate.
+If needed, change outfit details, pose, lighting, composition, accessories, or atmosphere so the edit is visibly noticeable.
+`
+      : `
+Create this avatar from scratch.
+`
 
   const feedbackLine = feedback?.trim()
-    ? `Important revision note: ${normalizeDetail(feedback)}.`
+    ? `Required visible changes: ${normalizeDetail(feedback)}.`
     : ''
 
   return [
-    `Create a single full-body character portrait. ${styleDirection}`,
-    'The character must be clearly visible from head to toe with a clean readable silhouette.',
-    'Use a vertical portrait composition. Dramatic lighting. Rich detail. Cinematic quality.',
-    'Do not add text, watermarks, or logos.',
+    `Create a single full body character portrait.`,
+    `Base render style: ${BASE_RENDER_STYLE}`,
+    `Theme direction: ${themeDirection}`,
+    `Important: keep the rendering style consistent across all avatars. Only the outfit, atmosphere, setting, palette, and theme details should change based on the selected style.`,
+    modeDirection,
+    `The character must be clearly visible from head to toe with a clean readable silhouette.`,
+    `Use a vertical portrait composition. Dramatic lighting. Rich detail. Cinematic quality.`,
+    `Do not add text, watermarks, or logos.`,
     details ? `Character details based on their self-description:\n${details}` : '',
     feedbackLine,
   ]
@@ -50,7 +106,11 @@ function buildAvatarPrompt(answers: string[], style?: string, feedback?: string)
     .join('\n\n')
 }
 
-async function generateWithGptImage(openai: OpenAI, prompt: string, userId?: string) {
+async function generateWithGptImage(
+  openai: OpenAI,
+  prompt: string,
+  userId?: string,
+) {
   const response = await openai.images.generate({
     model: 'gpt-image-1',
     prompt,
@@ -69,7 +129,11 @@ async function generateWithGptImage(openai: OpenAI, prompt: string, userId?: str
   }
 }
 
-async function generateWithDalle(openai: OpenAI, prompt: string, userId?: string) {
+async function generateWithDalle(
+  openai: OpenAI,
+  prompt: string,
+  userId?: string,
+) {
   const response = await openai.images.generate({
     model: 'dall-e-3',
     prompt,
@@ -88,12 +152,13 @@ async function generateWithDalle(openai: OpenAI, prompt: string, userId?: string
       revisedPrompt: image.revised_prompt || prompt,
     }
   }
+
   throw new Error('dall-e-3 returned no image data.')
 }
 
 export async function POST(req: Request) {
   try {
-    const { answers, feedback, userId, style } = await req.json()
+    const { answers, feedback, userId, style, mode } = await req.json()
 
     const openaiKey = process.env.OPENAI_API_KEY
     if (!openaiKey) {
@@ -109,16 +174,31 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'No answers provided.' }, { status: 400 })
     }
 
-    const imagePrompt = buildAvatarPrompt(orderedAnswers, style, feedback)
+    const generationMode: 'create' | 'reimagine' =
+      mode === 'reimagine' ? 'reimagine' : 'create'
+
+    const imagePrompt = buildAvatarPrompt(
+      orderedAnswers,
+      style,
+      feedback,
+      generationMode,
+    )
+
     const openai = new OpenAI({ apiKey: openaiKey })
 
     try {
       const result = await generateWithGptImage(openai, imagePrompt, userId)
-      return NextResponse.json({ imageUrl: result.imageUrl, prompt: result.revisedPrompt })
+      return NextResponse.json({
+        imageUrl: result.imageUrl,
+        prompt: result.revisedPrompt,
+      })
     } catch (primaryError) {
       console.warn('gpt-image-1 failed, falling back to dall-e-3:', primaryError)
       const fallback = await generateWithDalle(openai, imagePrompt, userId)
-      return NextResponse.json({ imageUrl: fallback.imageUrl, prompt: fallback.revisedPrompt })
+      return NextResponse.json({
+        imageUrl: fallback.imageUrl,
+        prompt: fallback.revisedPrompt,
+      })
     }
   } catch (error) {
     console.error('generate-avatar error:', error)
