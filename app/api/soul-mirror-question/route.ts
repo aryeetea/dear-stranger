@@ -226,10 +226,30 @@ export async function POST(req: Request) {
       VOICE_PROMPTS[(mirrorVoice as MirrorVoice) || 'friend'] ||
       VOICE_PROMPTS.friend
 
+    // Map style id/label to concrete question and chip guidance so all 8 themes work distinctly
+    const STYLE_QUESTION_HINTS: Record<string, string> = {
+      fantasy: 'Ask about magical or arcane details: glowing effects, enchanted clothing, mystical weapons or objects, ethereal or otherworldly features. Chips should reflect fantasy elements like "glowing eyes", "arcane robes", "enchanted staff".',
+      modern: 'Ask about contemporary fashion, everyday clothing, hairstyle, accessories, and urban presence. Chips should reflect real-world style like "fitted jacket", "natural hair", "classic sneakers".',
+      'fantasy-modern': 'Ask about a blend of real-world clothing with magical or glowing touches — enchanted accessories, glowing tattoos, modern cuts with otherworldly details. Chips can blend both worlds.',
+      celestial: 'Ask about cosmic or stellar details: starlight skin, moon-inspired accessories, ethereal glow, constellation patterns, flowing divine fabrics. Chips should reflect celestial elements like "star-dusted skin", "moon crown", "luminous robes".',
+      royal: 'Ask about regal, luxurious details: elaborate crown or headpiece, rich fabrics, embroidery, jewels, commanding posture and colors. Chips should reflect nobility like "ornate crown", "velvet coat", "jeweled accessories".',
+      streetwear: 'Ask about bold urban fashion: hoodies, sneakers, layered fits, accessories, color palette, logos, and expressive style. Chips should reflect streetwear culture like "oversized hoodie", "fresh sneakers", "gold chain".',
+      futuristic: 'Ask about sci-fi or tech-forward elements: sleek bodysuit, glowing implants, holographic accessories, advanced materials, neon or chrome accents. Chips should reflect futurism like "neon-lit visor", "chrome suit", "glowing tech".',
+      nature: 'Ask about earthy or organic details: natural hair, floral or leaf-woven clothing, bioluminescent glow, earthy textures and colors, connection to natural elements. Chips should reflect nature like "flower crown", "mossy textures", "earth tones".',
+    }
+    const styleKey = (style || '').toLowerCase().replace(/\s+/g, '-')
+    const styleHint = STYLE_QUESTION_HINTS[styleKey]
+      ? `The person chose the "${style}" aesthetic. ${STYLE_QUESTION_HINTS[styleKey]} The aesthetic shapes what you ask about and what you suggest in chips — but the person's actual appearance is entirely their own. Never assume or impose it.`
+      : style
+      ? `The person chose the "${style}" aesthetic (${styleDescription}). Let this shape the mood of your questions and chip suggestions, but never assume or impose their appearance — it must come entirely from what they tell you.`
+      : ''
+
     const instructions = `
 ${voiceInstruction}
 
 Your role: You are the Soul Mirror for Dear Stranger. You help someone describe their avatar's visible appearance, clothing, physical features, texture, palette, and world-facing presence.
+
+${styleHint}
 
 ${isReturning ? 'This person is returning after 90 days. If it is the opening turn, greet them like someone familiar before asking the question.' : ''}
 
@@ -252,7 +272,7 @@ Core rules:
 - For non-closing turns, the message must contain exactly one question mark and stay within 20 words.
 - Do not use markdown, bullet points, labels, or decorative symbols.
 - Keep continuity with what the person already shared.
-- Chips should be short, natural answer starters, 2 to 5 words each.
+- Chips should be short, natural answer starters, 2 to 5 words each, and match the chosen aesthetic.
 
 Closing rules:
 - If you are closing, write a warm final mirror message instead of a question.

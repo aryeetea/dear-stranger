@@ -11,113 +11,9 @@ function normalizeDetail(value: string) {
     .trim()
 }
 
-const BASE_RENDER_STYLE = `
-Highly stylized fantasy digital illustration.
-Game concept art quality. Rich painterly detail with dramatic cinematic lighting.
-Expressive, otherworldly character design with elaborate costume and magical effects.
-Detailed face with fantasy features: glowing or luminous eyes, sharp elven or arcane aesthetics.
-Intricate armor, robes, or fantasy clothing with jeweled and arcane detailing.
-Dynamic pose with flowing fabric, hair, and magical energy trails.
-Atmospheric background with environmental storytelling: castles, ruins, dragons, crystals, cosmic sky.
-Swirling particle effects, arcane light trails, glowing magical orbs or weapons.
-Deep rich color palette: midnight blues, indigos, gold accents, glowing teals and purples.
-Dramatic volumetric lighting, god rays, rim lighting, and magical glow sources.
-
-Hard rules:
-- not photorealistic
-- not plain portrait
-- not minimal background
-- not flat illustration
-- not 3D render
-- not childish or cute chibi
-- not grounded or mundane setting
-- backgrounds must be rich and atmospheric, never plain or blurred out
-- always include magical effects, energy, or fantastical atmosphere
-- character must feel legendary, powerful, and otherworldly
-
-Keep the same high-fantasy rendering quality and artistic intensity across all avatars.
-`.trim()
-
-const STYLE_DIRECTIONS: Record<string, string> = {
-  fantasy: `
-Dark high fantasy sorceress or warrior aesthetic.
-Otherworldly skin tone options (deep violet, midnight blue, obsidian, silver).
-Elaborate fantasy armor or arcane robes with gold and gemstone detailing.
-Glowing arcane staff, sword, or magical weapon.
-Crescent moon, dragon silhouette, enchanted castle in atmospheric background.
-Blue arcane crystal formations at ground level.
-Swirling magical energy and particle trails surrounding the character.
-Starfield or cosmic night sky with dramatic cloud formations.
-`.trim(),
-
-  modern: `
-Stylized urban fantasy aesthetic: contemporary fashion merged with subtle magical elements.
-Glowing tattoos, enchanted accessories, neon-lit city or mystical urban backdrop.
-Sharp editorial lighting with magical color grading.
-Supernatural calm and power in expression and pose.
-`.trim(),
-
-  'fantasy-modern': `
-Fusion of street style and arcane power.
-Modern silhouette with fantasy armor pieces, glowing runes, or enchanted accessories.
-Dramatic city skyline at dusk merged with fantasy atmospheric elements.
-Magical energy woven through contemporary outfit details.
-`.trim(),
-
-  celestial: `
-Cosmic deity or star-born sorceress aesthetic.
-Skin that shimmers with starlight or galaxy patterns.
-Crown or headdress of constellation points or lunar crescents.
-Flowing robes made of solidified starlight and cosmic energy.
-Background of nebulae, star clusters, celestial bodies, and divine light columns.
-Radiant silver, indigo, and gold magical auras.
-`.trim(),
-
-  royal: `
-Dark fantasy queen or emperor aesthetic.
-Towering dramatic crown with gemstones and arcane runes.
-Sweeping royal robes with intricate embroidery and supernatural shimmer.
-Throne room, fortress, or war-torn kingdom in background.
-Commanding regal pose radiating immense power.
-Deep crimson, midnight gold, and obsidian color palette.
-`.trim(),
-
-  streetwear: `
-Urban arcane warrior aesthetic.
-High-end streetwear layered with glowing magical armor pieces and enchanted accessories.
-Graffiti murals with living runes in the background.
-Energy aura in neon colors surrounding the character.
-Confident and powerful street-level pose with supernatural presence.
-`.trim(),
-
-  futuristic: `
-Sci-fi mage or cyberpunk sorcerer aesthetic.
-Sleek bioluminescent bodysuit fused with holographic arcane patterns.
-Glowing implants, energy conduits, or futuristic staff/weapon.
-Megacity ruins or space station interior as atmospheric backdrop.
-Electric blue, violet, and chrome color palette with neon magical effects.
-`.trim(),
-
-  nature: `
-Ancient forest guardian or druid queen aesthetic.
-Armor crafted from living wood, stone, and blooming flora.
-Bioluminescent plants, glowing spirit creatures, and ancient tree spirits in background.
-Warm earth tones layered with magical bioluminescent greens and golds.
-Vines, roots, and petals swirling with magical wind energy.
-`.trim(),
-}
-
-function getThemeDirection(style?: string) {
-  const styleKey = (style || '').toLowerCase().replace(/\s+/g, '-')
-  return (
-    STYLE_DIRECTIONS[styleKey] ||
-    `${normalizeDetail(style || 'Dark high fantasy cinematic styling')}. Otherworldly, dramatic, atmospheric, and visually spectacular.`
-  )
-}
-
 function buildAvatarPrompt(
   answers: string[],
-  style?: string,
+  _style?: string,
   feedback?: string,
   mode: 'create' | 'reimagine' = 'create',
 ) {
@@ -126,40 +22,23 @@ function buildAvatarPrompt(
     .filter(Boolean)
     .slice(0, 8)
 
-  const details = trimmedAnswers
-    .map((a, i) => `${i + 1}. ${a}`)
-    .join('\n')
+  const details = trimmedAnswers.join(' — ')
 
-  const themeDirection = getThemeDirection(style)
-
-  const modeDirection =
-    mode === 'reimagine'
-      ? `
-This is a reimagined version of an existing avatar.
-Keep the same core person and identity recognizable.
-Clearly apply the requested changes.
-Do not return a near duplicate.
-Change outfit details, pose, lighting, composition, accessories, magical effects, or atmosphere so the edit is visibly dramatic and noticeable.
-`
-      : `
-Create this avatar from scratch with maximum visual impact and fantasy world-building.
-`
+  const modeNote = mode === 'reimagine'
+    ? `This is a reimagined version. Keep the character's core identity recognizable but make the changes clearly visible — alter lighting, pose, outfit, or atmosphere so the difference is dramatic.`
+    : ''
 
   const feedbackLine = feedback?.trim()
-    ? `Required visible changes: ${normalizeDetail(feedback)}.`
+    ? `Specific changes requested: ${normalizeDetail(feedback)}.`
     : ''
 
   return [
-    `Create a single full body character portrait in the style of premium high fantasy digital game art.`,
-    `Base render style: ${BASE_RENDER_STYLE}`,
-    `Theme direction: ${themeDirection}`,
-    `Important: maintain consistent high-fantasy rendering quality. Outfit, magical effects, atmosphere, setting, and color palette should shift dramatically based on the selected theme. The character must always feel like a legendary figure from an epic fantasy world.`,
-    modeDirection,
-    `The character must be fully visible from head to toe with a powerful, dynamic silhouette.`,
-    `Use a vertical portrait composition. Explosive dramatic lighting. Swirling magical particle effects. Rich layered background with environmental detail. Cinematic game art quality.`,
-    `Do not add text, watermarks, or logos.`,
-    details ? `Character details based on their self-description:\n${details}` : '',
+    details
+      ? `Create a full-body character portrait. The character is described as: ${details}. Represent this person EXACTLY as described — their appearance, skin tone, hair, clothing, body, and features must match their description precisely. Do not substitute, stylize over, or drift from what they described. Their description is the only authority on the character's look.`
+      : `Create a full-body character portrait of a mysterious figure in a cinematic illustrated style.`,
+    modeNote,
     feedbackLine,
+    `Rendering: painterly digital illustration, cinematic quality. Full body visible head to toe, vertical composition. Face clearly lit and readable — never buried in shadow. Rich atmospheric background that complements the character. No text, watermarks, or logos.`,
   ]
     .filter(Boolean)
     .join('\n\n')
@@ -174,7 +53,7 @@ async function generateWithGptImage(
     model: 'gpt-image-1',
     prompt,
     size: '1024x1536',
-    quality: 'low',
+    quality: 'high',
     output_format: 'jpeg',
     user: userId || undefined,
   } as any)
@@ -197,6 +76,8 @@ async function generateWithSeedream(prompt: string) {
       prompt,
       image_size: { width: 1024, height: 1536 },
       num_images: 1,
+      guidance_scale: 7.5,
+      num_inference_steps: 30,
     },
   }) as { data: { images: { url: string }[] } }
   const imageUrl = result.data?.images?.[0]?.url

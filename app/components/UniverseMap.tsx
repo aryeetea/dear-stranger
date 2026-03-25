@@ -574,10 +574,10 @@ function drawShootingStar(ctx: CanvasRenderingContext2D, star: ShootingStar) {
 }
 
 export default function UniverseMap({
-  hubName, hubAvatarUrl, hubStyle = 'portal', hubColor = 'gold',
+  hubName, hubBio, hubAskAbout, hubAvatarUrl, hubStyle = 'portal', hubColor = 'gold',
   onWriteLetter, onObservatory, onProfile,
 }: {
-  hubName?: string; hubAvatarUrl?: string; hubStyle?: HubStyle; hubColor?: HubColor
+  hubName?: string; hubBio?: string; hubAskAbout?: string; hubAvatarUrl?: string; hubStyle?: HubStyle; hubColor?: HubColor
   onWriteLetter?: (recipientName?: string) => void
   onObservatory?: () => void; onProfile?: () => void
 }) {
@@ -695,7 +695,8 @@ export default function UniverseMap({
 
       hubsRef.current = [{
         x: 0, y: 0, name: hubName || 'Your Hub',
-        bio: 'This is your place in the universe.',
+        bio: hubBio || 'This is your place in the universe.',
+        askAbout: hubAskAbout || '',
         avatarUrl: hubAvatarUrl || '', avatarImage: myAvatarImg,
         online: true, pulse: 0, size: 1.1, isMe: true,
         floatOffset: 0, floatSpeed: 0.5, colorTheme: hubColor, hubStyle,

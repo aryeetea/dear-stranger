@@ -834,6 +834,8 @@ export default function Home() {
       {screen === 'universe' && (
         <UniverseMap
           hubName={hubName}
+          hubBio={hubBio}
+          hubAskAbout={hubAskAbout}
           hubAvatarUrl={hubAvatarUrl}
           hubStyle={hubStyle}
           hubColor={hubColor}
