@@ -332,9 +332,11 @@ export default function Home() {
 
     const hubNameAnswer = (userHubName || answers[keys[keys.length - 1]] || 'Your Hub').trim()
 
-    const conversationAnswers: Record<number, string> = {}
-    for (let i = 0; i < keys.length - 1; i++) {
-      conversationAnswers[i] = answers[keys[i]]
+
+    // Always include bio and askAbout for avatar generation, just like Profile reimagine
+    const conversationAnswers: Record<number, string> = {
+      0: userBio?.trim() || fallbackBio,
+      1: userAskAbout?.trim() || fallbackAskAbout,
     }
 
     const fallbackBio = 'A wanderer who arrived here quietly, carrying something unspoken.'
