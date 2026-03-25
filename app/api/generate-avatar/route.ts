@@ -11,48 +11,106 @@ function normalizeDetail(value: string) {
 }
 
 const BASE_RENDER_STYLE = `
-Polished semi realistic character illustration.
-Painterly cinematic finish.
-Detailed face, skin, hair, and clothing.
-Believable anatomy and natural proportions.
-Elegant, immersive, high quality character art.
+Highly stylized fantasy digital illustration.
+Game concept art quality. Rich painterly detail with dramatic cinematic lighting.
+Expressive, otherworldly character design with elaborate costume and magical effects.
+Detailed face with fantasy features: glowing or luminous eyes, sharp elven or arcane aesthetics.
+Intricate armor, robes, or fantasy clothing with jeweled and arcane detailing.
+Dynamic pose with flowing fabric, hair, and magical energy trails.
+Atmospheric background with environmental storytelling: castles, ruins, dragons, crystals, cosmic sky.
+Swirling particle effects, arcane light trails, glowing magical orbs or weapons.
+Deep rich color palette: midnight blues, indigos, gold accents, glowing teals and purples.
+Dramatic volumetric lighting, god rays, rim lighting, and magical glow sources.
 
 Hard rules:
-- not cartoon
-- not anime
-- not chibi
 - not photorealistic
+- not plain portrait
+- not minimal background
 - not flat illustration
 - not 3D render
-- not childish
-- not exaggerated caricature
+- not childish or cute chibi
+- not grounded or mundane setting
+- backgrounds must be rich and atmospheric, never plain or blurred out
+- always include magical effects, energy, or fantastical atmosphere
+- character must feel legendary, powerful, and otherworldly
 
-Keep the same rendering quality and artistic finish across all avatars.
+Keep the same high-fantasy rendering quality and artistic intensity across all avatars.
 `.trim()
 
 const STYLE_DIRECTIONS: Record<string, string> = {
-  fantasy: `Magical, storybook, and glowing. Fantasy inspired clothing, mystical details, rich jewel tones, enchanted atmosphere. Painterly and cinematic.`,
+  fantasy: `
+Dark high fantasy sorceress or warrior aesthetic.
+Otherworldly skin tone options (deep violet, midnight blue, obsidian, silver).
+Elaborate fantasy armor or arcane robes with gold and gemstone detailing.
+Glowing arcane staff, sword, or magical weapon.
+Crescent moon, dragon silhouette, enchanted castle in atmospheric background.
+Blue arcane crystal formations at ground level.
+Swirling magical energy and particle trails surrounding the character.
+Starfield or cosmic night sky with dramatic cloud formations.
+`.trim(),
 
-  modern: `Clean, stylish, current, and realistic. Contemporary fashion, polished styling, grounded elegance, subtle editorial atmosphere.`,
+  modern: `
+Stylized urban fantasy aesthetic: contemporary fashion merged with subtle magical elements.
+Glowing tattoos, enchanted accessories, neon-lit city or mystical urban backdrop.
+Sharp editorial lighting with magical color grading.
+Supernatural calm and power in expression and pose.
+`.trim(),
 
-  'fantasy-modern': `A blend of magical and modern style. Contemporary fashion mixed with subtle fantasy details, symbolic accents, cinematic atmosphere.`,
+  'fantasy-modern': `
+Fusion of street style and arcane power.
+Modern silhouette with fantasy armor pieces, glowing runes, or enchanted accessories.
+Dramatic city skyline at dusk merged with fantasy atmospheric elements.
+Magical energy woven through contemporary outfit details.
+`.trim(),
 
-  celestial: `Stars, moonlight, cosmic beauty, and divine energy. Luminous silvers, indigo glow, celestial details, ethereal atmosphere.`,
+  celestial: `
+Cosmic deity or star-born sorceress aesthetic.
+Skin that shimmers with starlight or galaxy patterns.
+Crown or headdress of constellation points or lunar crescents.
+Flowing robes made of solidified starlight and cosmic energy.
+Background of nebulae, star clusters, celestial bodies, and divine light columns.
+Radiant silver, indigo, and gold magical auras.
+`.trim(),
 
-  royal: `Elegant, luxurious, noble, and powerful. Rich fabrics, refined structure, regal details, dramatic and commanding presence.`,
+  royal: `
+Dark fantasy queen or emperor aesthetic.
+Towering dramatic crown with gemstones and arcane runes.
+Sweeping royal robes with intricate embroidery and supernatural shimmer.
+Throne room, fortress, or war-torn kingdom in background.
+Commanding regal pose radiating immense power.
+Deep crimson, midnight gold, and obsidian color palette.
+`.trim(),
 
-  streetwear: `Bold, cool, trendy, and expressive. Stylish streetwear, layered urban fashion, modern attitude, atmospheric city energy.`,
+  streetwear: `
+Urban arcane warrior aesthetic.
+High-end streetwear layered with glowing magical armor pieces and enchanted accessories.
+Graffiti murals with living runes in the background.
+Energy aura in neon colors surrounding the character.
+Confident and powerful street-level pose with supernatural presence.
+`.trim(),
 
-  futuristic: `Sleek, sci fi, advanced, and glowing. Futuristic silhouettes, luminous accents, polished technology inspired styling.`,
+  futuristic: `
+Sci-fi mage or cyberpunk sorcerer aesthetic.
+Sleek bioluminescent bodysuit fused with holographic arcane patterns.
+Glowing implants, energy conduits, or futuristic staff/weapon.
+Megacity ruins or space station interior as atmospheric backdrop.
+Electric blue, violet, and chrome color palette with neon magical effects.
+`.trim(),
 
-  nature: `Earthy, floral, organic, and peaceful. Botanical details, soft greens and warm earth tones, natural textures, serene atmosphere.`,
+  nature: `
+Ancient forest guardian or druid queen aesthetic.
+Armor crafted from living wood, stone, and blooming flora.
+Bioluminescent plants, glowing spirit creatures, and ancient tree spirits in background.
+Warm earth tones layered with magical bioluminescent greens and golds.
+Vines, roots, and petals swirling with magical wind energy.
+`.trim(),
 }
 
 function getThemeDirection(style?: string) {
   const styleKey = (style || '').toLowerCase().replace(/\s+/g, '-')
   return (
     STYLE_DIRECTIONS[styleKey] ||
-    `${normalizeDetail(style || 'Expressive cinematic styling')}. Keep it elegant, atmospheric, and cohesive.`
+    `${normalizeDetail(style || 'Dark high fantasy cinematic styling')}. Otherworldly, dramatic, atmospheric, and visually spectacular.`
   )
 }
 
@@ -80,10 +138,10 @@ This is a reimagined version of an existing avatar.
 Keep the same core person and identity recognizable.
 Clearly apply the requested changes.
 Do not return a near duplicate.
-If needed, change outfit details, pose, lighting, composition, accessories, or atmosphere so the edit is visibly noticeable.
+Change outfit details, pose, lighting, composition, accessories, magical effects, or atmosphere so the edit is visibly dramatic and noticeable.
 `
       : `
-Create this avatar from scratch.
+Create this avatar from scratch with maximum visual impact and fantasy world-building.
 `
 
   const feedbackLine = feedback?.trim()
@@ -91,13 +149,13 @@ Create this avatar from scratch.
     : ''
 
   return [
-    `Create a single full body character portrait.`,
+    `Create a single full body character portrait in the style of premium high fantasy digital game art.`,
     `Base render style: ${BASE_RENDER_STYLE}`,
     `Theme direction: ${themeDirection}`,
-    `Important: keep the rendering style consistent across all avatars. Only the outfit, atmosphere, setting, palette, and theme details should change based on the selected style.`,
+    `Important: maintain consistent high-fantasy rendering quality. Outfit, magical effects, atmosphere, setting, and color palette should shift dramatically based on the selected theme. The character must always feel like a legendary figure from an epic fantasy world.`,
     modeDirection,
-    `The character must be clearly visible from head to toe with a clean readable silhouette.`,
-    `Use a vertical portrait composition. Dramatic lighting. Rich detail. Cinematic quality.`,
+    `The character must be fully visible from head to toe with a powerful, dynamic silhouette.`,
+    `Use a vertical portrait composition. Explosive dramatic lighting. Swirling magical particle effects. Rich layered background with environmental detail. Cinematic game art quality.`,
     `Do not add text, watermarks, or logos.`,
     details ? `Character details based on their self-description:\n${details}` : '',
     feedbackLine,
