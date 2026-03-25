@@ -55,6 +55,42 @@ const FONTS = [
   { id: 'lato', label: 'Lato', family: "'Lato', sans-serif", preview: 'A letter across the stars' },
 ]
 
+const FONT_COLORS = [
+  { id: 'iron-gall',  label: 'Iron Gall',     color: '#1a0e04', desc: 'Classic black ink'   },
+  { id: 'prussian',  label: 'Prussian Blue',  color: '#0c2040', desc: 'Deep ocean blue'     },
+  { id: 'forest',    label: 'Forest Green',   color: '#0c2410', desc: 'Dark forest green'   },
+  { id: 'burgundy',  label: 'Burgundy',       color: '#380614', desc: 'Rich wine red'       },
+  { id: 'amethyst',  label: 'Amethyst',       color: '#260c38', desc: 'Deep violet'         },
+  { id: 'sepia',     label: 'Sepia',          color: '#4a2a08', desc: 'Warm aged brown'     },
+  { id: 'midnight',  label: 'Midnight',       color: '#08081c', desc: 'Deep indigo'         },
+  { id: 'jade',      label: 'Jade',           color: '#0a2820', desc: 'Dark jade green'     },
+  { id: 'crimson',   label: 'Crimson',        color: '#420808', desc: 'Deep crimson red'    },
+  { id: 'slate',     label: 'Slate',          color: '#161620', desc: 'Cool blue-grey'      },
+  { id: 'teak',      label: 'Teak',           color: '#3a1c06', desc: 'Warm teak wood'      },
+  { id: 'navy',      label: 'Navy',           color: '#060a28', desc: 'Deep navy blue'      },
+]
+
+function hexToRgba(hex: string, alpha: number): string {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return `rgba(${r},${g},${b},${alpha})`
+}
+
+const PAPER_TONES = [
+  { id: 'parchment', label: 'Parchment',   bg: 'linear-gradient(160deg, #fdf6e0, #f8efcc)', desc: 'Warm cream'    },
+  { id: 'ivory',     label: 'Ivory',        bg: 'linear-gradient(160deg, #fefefc, #f8f8f0)', desc: 'Pure ivory'    },
+  { id: 'rose',      label: 'Rose Blush',   bg: 'linear-gradient(160deg, #fef0f3, #fce0e8)', desc: 'Soft pink'     },
+  { id: 'sky',       label: 'Sky',          bg: 'linear-gradient(160deg, #f0f6fe, #e4eefb)', desc: 'Pale blue'     },
+  { id: 'sage',      label: 'Sage',         bg: 'linear-gradient(160deg, #f0f6f0, #e4eee4)', desc: 'Pale green'    },
+  { id: 'lavender',  label: 'Lavender',     bg: 'linear-gradient(160deg, #f4f0fc, #eae0f8)', desc: 'Soft violet'   },
+  { id: 'peach',     label: 'Peach',        bg: 'linear-gradient(160deg, #fef4ec, #fce8d8)', desc: 'Warm peach'    },
+  { id: 'mist',      label: 'Silver Mist',  bg: 'linear-gradient(160deg, #f4f4f8, #eaeaf0)', desc: 'Cool grey'     },
+  { id: 'gold',      label: 'Golden',       bg: 'linear-gradient(160deg, #fef8e0, #faecc8)', desc: 'Warm gold'     },
+  { id: 'lilac',     label: 'Lilac',        bg: 'linear-gradient(160deg, #faf0fc, #f2e0f8)', desc: 'Soft lilac'    },
+  { id: 'mint',      label: 'Mint',         bg: 'linear-gradient(160deg, #f0faf6, #e4f4ec)', desc: 'Cool mint'     },
+]
+
 function StampSVG({ id, size = 60 }: { id: string; size?: number }) {
   const s = size
   if (id === 'moon-seal') return <svg width={s} height={s} viewBox="0 0 60 60"><circle cx="30" cy="30" r="28" fill="#8b1a1a"/><circle cx="30" cy="30" r="24" fill="#9a2020"/><path d="M22 20 Q30 14 38 20 Q32 22 30 30 Q24 22 22 20Z" fill="rgba(255,220,200,0.7)"/><text x="30" y="45" textAnchor="middle" fontSize="8" fontFamily="serif" fill="rgba(255,200,180,0.7)" letterSpacing="1">SEALED</text></svg>
@@ -88,9 +124,9 @@ function EnvelopeSVG({ color = '#c8a050' }: { color?: string }) {
   )
 }
 
-function OrnateStationery({ children }: { children: React.ReactNode }) {
+function OrnateStationery({ children, paperBg }: { children: React.ReactNode; paperBg?: string }) {
   return (
-    <div style={{ position:'relative', background:'linear-gradient(160deg, #fdf6e0 0%, #f8efcc 100%)', boxShadow:'0 20px 80px rgba(0,0,0,0.7)', overflow:'hidden' }}>
+    <div style={{ position:'relative', background: paperBg || 'linear-gradient(160deg, #fdf6e0 0%, #f8efcc 100%)', boxShadow:'0 20px 80px rgba(0,0,0,0.7)', overflow:'hidden' }}>
       {[['0','0','0deg'],['100%','0','90deg'],['0','100%','-90deg'],['100%','100%','180deg']].map(([l,t,rot],i)=>(
         <div key={i} style={{ position:'absolute', left:l, top:t, transform:`translate(${i%2?'-100%':'0'},${i>1?'-100%':'0'})`, zIndex:3, pointerEvents:'none' }}>
           <svg width="90" height="90" viewBox="0 0 90 90" style={{ transform:`rotate(${rot})` }}>
@@ -117,9 +153,9 @@ function OrnateStationery({ children }: { children: React.ReactNode }) {
   )
 }
 
-function FloralLetter({ children }: { children: React.ReactNode }) {
+function FloralLetter({ children, paperBg }: { children: React.ReactNode; paperBg?: string }) {
   return (
-    <div style={{ position:'relative', background:'linear-gradient(160deg, #fefafa 0%, #faf4f6 100%)', boxShadow:'0 20px 80px rgba(0,0,0,0.6)', overflow:'hidden' }}>
+    <div style={{ position:'relative', background: paperBg || 'linear-gradient(160deg, #fefafa 0%, #faf4f6 100%)', boxShadow:'0 20px 80px rgba(0,0,0,0.6)', overflow:'hidden' }}>
       <div style={{ position:'absolute', right:0, top:0, bottom:0, width:'60px', pointerEvents:'none', zIndex:1 }}>
         <svg width="60" height="100%" viewBox="0 0 60 600" preserveAspectRatio="none">
           {[50,130,210,290,370,450].map((y,i)=>(
@@ -138,9 +174,9 @@ function FloralLetter({ children }: { children: React.ReactNode }) {
   )
 }
 
-function RibbonLetter({ children }: { children: React.ReactNode }) {
+function RibbonLetter({ children, paperBg }: { children: React.ReactNode; paperBg?: string }) {
   return (
-    <div style={{ position:'relative', background:'linear-gradient(160deg, #fdf8f4 0%, #f8f0e8 100%)', boxShadow:'0 20px 80px rgba(0,0,0,0.6)', overflow:'hidden' }}>
+    <div style={{ position:'relative', background: paperBg || 'linear-gradient(160deg, #fdf8f4 0%, #f8f0e8 100%)', boxShadow:'0 20px 80px rgba(0,0,0,0.6)', overflow:'hidden' }}>
       <div style={{ position:'absolute', inset:0, pointerEvents:'none', zIndex:1 }}>
         <svg width="100%" height="100%" style={{ position:'absolute', inset:0 }}>
           <path d="M0 8 Q50 2 100 8 Q150 14 200 8 Q250 2 300 8 Q350 14 400 8 Q450 2 500 8 Q550 14 600 8" fill="none" stroke="rgba(160,30,30,0.6)" strokeWidth="3" strokeLinecap="round"/>
@@ -170,9 +206,9 @@ function RibbonLetter({ children }: { children: React.ReactNode }) {
   )
 }
 
-function PostageLetter({ children }: { children: React.ReactNode }) {
+function PostageLetter({ children, paperBg }: { children: React.ReactNode; paperBg?: string }) {
   return (
-    <div style={{ position:'relative', background:'linear-gradient(160deg, #f5f0ec 0%, #ede8e0 100%)', boxShadow:'0 20px 80px rgba(0,0,0,0.65)', overflow:'hidden' }}>
+    <div style={{ position:'relative', background: paperBg || 'linear-gradient(160deg, #f5f0ec 0%, #ede8e0 100%)', boxShadow:'0 20px 80px rgba(0,0,0,0.65)', overflow:'hidden' }}>
       <div style={{ position:'absolute', inset:0, pointerEvents:'none', zIndex:1 }}>
         <div style={{ position:'absolute', inset:'12px', border:'2px solid rgba(100,60,140,0.4)' }}/>
         <div style={{ position:'absolute', top:'20px', left:'20px', width:'70px', height:'80px', border:'1.5px solid rgba(160,40,40,0.5)', background:'rgba(255,255,255,0.5)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'4px' }}>
@@ -197,13 +233,13 @@ function PostageLetter({ children }: { children: React.ReactNode }) {
   )
 }
 
-function SpiralNotepad({ children }: { children: React.ReactNode }) {
+function SpiralNotepad({ children, paperBg }: { children: React.ReactNode; paperBg?: string }) {
   return (
     <div style={{ position:'relative', display:'flex' }}>
       <div style={{ width:'28px', flexShrink:0, background:'linear-gradient(180deg, #d0d8e0 0%, #c0c8d0 100%)', borderRadius:'4px 0 0 4px', boxShadow:'2px 0 8px rgba(0,0,0,0.2)', position:'relative', zIndex:2 }}>
         {[...Array(14)].map((_,i)=><div key={i} style={{ position:'absolute', left:'4px', top:`${20+i*30}px`, width:'20px', height:'14px', borderRadius:'50%', border:'2.5px solid rgba(100,120,140,0.7)', background:'rgba(160,180,200,0.3)' }}/>)}
       </div>
-      <div style={{ flex:1, background:'#f8fbff', boxShadow:'0 20px 80px rgba(0,0,0,0.5)', position:'relative', overflow:'hidden' }}>
+      <div style={{ flex:1, background: paperBg || '#f8fbff', boxShadow:'0 20px 80px rgba(0,0,0,0.5)', position:'relative', overflow:'hidden' }}>
         <div style={{ background:'linear-gradient(180deg, #d4e8f8 0%, #c8e0f4 100%)', padding:'12px 20px', borderBottom:'2px solid rgba(100,160,220,0.3)', display:'flex', alignItems:'center', gap:'10px' }}>
           <div style={{ width:'28px', height:'28px', borderRadius:'50%', border:'2px solid rgba(100,160,220,0.5)', display:'flex', alignItems:'center', justifyContent:'center' }}>
             <div style={{ width:'10px', height:'10px', borderRadius:'50%', background:'rgba(100,160,220,0.6)' }}/>
@@ -218,12 +254,12 @@ function SpiralNotepad({ children }: { children: React.ReactNode }) {
   )
 }
 
-function ScrapbookLetter({ children }: { children: React.ReactNode }) {
+function ScrapbookLetter({ children, paperBg }: { children: React.ReactNode; paperBg?: string }) {
   return (
     <div style={{ position:'relative', background:'linear-gradient(155deg, #d4c090 0%, #c8b078 100%)', padding:'24px', boxShadow:'0 20px 80px rgba(0,0,0,0.7)' }}>
       <div style={{ position:'absolute', top:'8px', left:'30%', width:'80px', height:'18px', background:'rgba(200,220,240,0.55)', transform:'rotate(-2deg)', border:'1px solid rgba(180,200,220,0.4)', pointerEvents:'none' }}/>
       <div style={{ position:'absolute', top:'8px', right:'25%', width:'60px', height:'18px', background:'rgba(200,220,240,0.55)', transform:'rotate(3deg)', border:'1px solid rgba(180,200,220,0.4)', pointerEvents:'none' }}/>
-      <div style={{ position:'relative', background:'linear-gradient(160deg, #fef8e8 0%, #faf2d8 100%)', padding:'32px 28px', transform:'rotate(-0.5deg)', boxShadow:'2px 4px 20px rgba(0,0,0,0.2)', overflow:'hidden' }}>
+      <div style={{ position:'relative', background: paperBg || 'linear-gradient(160deg, #fef8e8 0%, #faf2d8 100%)', padding:'32px 28px', transform:'rotate(-0.5deg)', boxShadow:'2px 4px 20px rgba(0,0,0,0.2)', overflow:'hidden' }}>
         <div style={{ position:'absolute', top:'-8px', left:'50%', transform:'translateX(-50%)', width:'16px', height:'16px', borderRadius:'50%', background:'radial-gradient(circle at 35% 35%, #e87070, #8b2020)', boxShadow:'0 2px 6px rgba(0,0,0,0.4)' }}/>
         {[...Array(18)].map((_,i)=><div key={i} style={{ position:'absolute', left:'20px', right:'20px', top:`${48+i*28}px`, height:'1px', background:'rgba(140,100,40,0.12)' }}/>)}
         <div style={{ position:'relative', zIndex:1 }}>{children}</div>
@@ -233,9 +269,9 @@ function ScrapbookLetter({ children }: { children: React.ReactNode }) {
   )
 }
 
-function CherryBlossom({ children }: { children: React.ReactNode }) {
+function CherryBlossom({ children, paperBg }: { children: React.ReactNode; paperBg?: string }) {
   return (
-    <div style={{ position:'relative', background:'#fff8fc', boxShadow:'0 20px 80px rgba(0,0,0,0.6)', overflow:'hidden' }}>
+    <div style={{ position:'relative', background: paperBg || '#fff8fc', boxShadow:'0 20px 80px rgba(0,0,0,0.6)', overflow:'hidden' }}>
       <div style={{ position:'absolute', inset:0, pointerEvents:'none', zIndex:1 }}>
         <svg width="100%" height="100%" style={{ position:'absolute', inset:0 }}>
           <path d="M0 50 Q40 20 80 40 Q120 55 160 25 Q200 5 280 20 Q350 35 420 15" fill="none" stroke="rgba(120,60,40,0.5)" strokeWidth="2.5" strokeLinecap="round"/>
@@ -255,10 +291,10 @@ function CherryBlossom({ children }: { children: React.ReactNode }) {
   )
 }
 
-function AgedDistressed({ children }: { children: React.ReactNode }) {
+function AgedDistressed({ children, paperBg }: { children: React.ReactNode; paperBg?: string }) {
   return (
     <div style={{ position:'relative' }}>
-      <div style={{ position:'relative', background:'linear-gradient(155deg, #c8a870 0%, #b89050 40%, #c0a060 100%)', clipPath:`polygon(0% 1.5%, 1% 0%, 2.5% 1.8%, 4% 0.3%, 6% 1.5%, 8% 0%, 10% 1.8%, 13% 0.5%, 16% 1.5%, 20% 0%, 24% 1.8%, 28% 0.3%, 32% 1.5%, 37% 0%, 42% 1.8%, 48% 0.5%, 54% 1.5%, 60% 0%, 66% 1.8%, 72% 0.3%, 78% 1.5%, 84% 0%, 90% 1.8%, 95% 0.3%, 100% 1.5%, 100% 98.5%, 99% 100%, 97.5% 98.2%, 96% 99.7%, 94% 98.5%, 91% 100%, 88% 98.2%, 85% 99.5%, 81% 98.5%, 76% 100%, 71% 98.2%, 66% 99.7%, 61% 98.5%, 55% 100%, 49% 98.2%, 43% 99.5%, 37% 98.5%, 31% 100%, 25% 98.2%, 19% 99.7%, 14% 98.5%, 9% 100%, 5% 98.2%, 2% 99.5%, 0% 98.5%)`, boxShadow:'0 20px 80px rgba(0,0,0,0.7)', overflow:'hidden', minHeight:'400px' }}>
+      <div style={{ position:'relative', background: paperBg || 'linear-gradient(155deg, #c8a870 0%, #b89050 40%, #c0a060 100%)', clipPath:`polygon(0% 1.5%, 1% 0%, 2.5% 1.8%, 4% 0.3%, 6% 1.5%, 8% 0%, 10% 1.8%, 13% 0.5%, 16% 1.5%, 20% 0%, 24% 1.8%, 28% 0.3%, 32% 1.5%, 37% 0%, 42% 1.8%, 48% 0.5%, 54% 1.5%, 60% 0%, 66% 1.8%, 72% 0.3%, 78% 1.5%, 84% 0%, 90% 1.8%, 95% 0.3%, 100% 1.5%, 100% 98.5%, 99% 100%, 97.5% 98.2%, 96% 99.7%, 94% 98.5%, 91% 100%, 88% 98.2%, 85% 99.5%, 81% 98.5%, 76% 100%, 71% 98.2%, 66% 99.7%, 61% 98.5%, 55% 100%, 49% 98.2%, 43% 99.5%, 37% 98.5%, 31% 100%, 25% 98.2%, 19% 99.7%, 14% 98.5%, 9% 100%, 5% 98.2%, 2% 99.5%, 0% 98.5%)`, boxShadow:'0 20px 80px rgba(0,0,0,0.7)', overflow:'hidden', minHeight:'400px' }}>
         <div style={{ position:'absolute', inset:0, pointerEvents:'none', backgroundImage:`url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0.3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.12'/%3E%3C/svg%3E")`, backgroundSize:'200px', mixBlendMode:'multiply' }}/>
         {[[8,15,18],[78,8,14],[55,72,20],[20,85,12]].map(([l,t,sz],i)=><div key={i} style={{ position:'absolute', left:`${l}%`, top:`${t}%`, width:`${sz}px`, height:`${sz}px`, background:'radial-gradient(circle, rgba(100,55,10,0.18) 0%, transparent 70%)', borderRadius:'50%', pointerEvents:'none' }}/>)}
         {[...Array(16)].map((_,i)=><div key={i} style={{ position:'absolute', left:'36px', right:'36px', top:`${72+i*30}px`, height:'1px', background:'rgba(80,40,10,0.12)' }}/>)}
@@ -317,16 +353,22 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
   const [selectedPaper, setSelectedPaper] = useState(unlockedPapers[0])
   const [selectedFont, setSelectedFont] = useState(FONTS[0])
   const [selectedStamp, setSelectedStamp] = useState<string | undefined>()
+  const [selectedColor, setSelectedColor] = useState<string | null>(null)
+  const [selectedPaperColor, setSelectedPaperColor] = useState<string | null>(null)
   const [subject, setSubject] = useState('')
   const [subjectError, setSubjectError] = useState(false)
   const [body, setBody] = useState('')
   const [sent, setSent] = useState(false)
   const [releasing, setReleasing] = useState(false)
-  const [view, setView] = useState<'write'|'papers'|'fonts'|'stamps'|'envelope'>('write')
+  const [view, setView] = useState<'write'|'papers'|'fonts'|'stamps'|'colors'|'paper-color'|'envelope'>('write')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const today = new Date().toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' })
   const ink = PAPER_INK[selectedPaper.id] || PAPER_INK.ornate
+  const _fontColor = selectedColor ? (FONT_COLORS.find(c => c.id === selectedColor)?.color ?? ink.main) : null
+  const effectiveInk = _fontColor
+    ? { main: _fontColor, secondary: hexToRgba(_fontColor, 0.72), accent: ink.accent }
+    : ink
   const fontFamily = selectedFont.family
   const envelopeColor = PAPER_ENVELOPE_COLOR[selectedPaper.id]
 
@@ -353,17 +395,18 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
   }
 
   const renderPaper = () => {
-    const content = <LetterContent fontFamily={fontFamily} ink={ink} recipient={recipientName} senderName={senderName} date={today} body={body} setBody={setBody} textareaRef={textareaRef}/>
+    const content = <LetterContent fontFamily={fontFamily} ink={effectiveInk} recipient={recipientName} senderName={senderName} date={today} body={body} setBody={setBody} textareaRef={textareaRef}/>
+    const pbg = selectedPaperColor ? (PAPER_TONES.find(t => t.id === selectedPaperColor)?.bg ?? undefined) : undefined
     switch (selectedPaper.id) {
-      case 'ornate': return <OrnateStationery>{content}</OrnateStationery>
-      case 'floral': return <FloralLetter>{content}</FloralLetter>
-      case 'notepad': return <SpiralNotepad>{content}</SpiralNotepad>
-      case 'scrapbook': return <ScrapbookLetter>{content}</ScrapbookLetter>
-      case 'ribbon': return <RibbonLetter>{content}</RibbonLetter>
-      case 'postage': return <PostageLetter>{content}</PostageLetter>
-      case 'sakura': return <CherryBlossom>{content}</CherryBlossom>
-      case 'aged': return <AgedDistressed>{content}</AgedDistressed>
-      default: return <OrnateStationery>{content}</OrnateStationery>
+      case 'ornate': return <OrnateStationery paperBg={pbg}>{content}</OrnateStationery>
+      case 'floral': return <FloralLetter paperBg={pbg}>{content}</FloralLetter>
+      case 'notepad': return <SpiralNotepad paperBg={pbg}>{content}</SpiralNotepad>
+      case 'scrapbook': return <ScrapbookLetter paperBg={pbg}>{content}</ScrapbookLetter>
+      case 'ribbon': return <RibbonLetter paperBg={pbg}>{content}</RibbonLetter>
+      case 'postage': return <PostageLetter paperBg={pbg}>{content}</PostageLetter>
+      case 'sakura': return <CherryBlossom paperBg={pbg}>{content}</CherryBlossom>
+      case 'aged': return <AgedDistressed paperBg={pbg}>{content}</AgedDistressed>
+      default: return <OrnateStationery paperBg={pbg}>{content}</OrnateStationery>
     }
   }
 
@@ -481,6 +524,84 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
           </motion.div>
         )}
 
+        {view==='colors' && (
+          <motion.div key="colors" initial={{ opacity:0, y:16 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0 }} style={{ width:'min(560px, 95vw)', zIndex:2 }}>
+            <div style={{ textAlign:'center', marginBottom:'24px' }}>
+              <p style={{ fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.5em', color:'#e6c76e', textTransform:'uppercase', marginBottom:'5px' }}>Choose Your Ink</p>
+              <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'13px', color:'rgba(255,255,255,0.8)' }}>The colour your words are written in</p>
+            </div>
+            <motion.div whileTap={{scale:0.98}} onClick={()=>setSelectedColor(null)}
+              style={{ marginBottom:'12px', padding:'12px 18px', background:selectedColor===null?'rgba(230,199,110,0.12)':'rgba(255,255,255,0.03)', border:selectedColor===null?'1px solid rgba(230,199,110,0.45)':'1px solid rgba(255,255,255,0.08)', borderRadius:'4px', cursor:'pointer', display:'flex', alignItems:'center', gap:'14px' }}>
+              <div style={{ width:'24px', height:'24px', borderRadius:'50%', background:'linear-gradient(135deg, #1a0e04, #0c2040, #0c2410)', flexShrink:0 }}/>
+              <div style={{ flex:1 }}>
+                <p style={{ fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.2em', color:selectedColor===null?'#e6c76e':'rgba(255,255,255,0.84)', textTransform:'uppercase' }}>Paper Default</p>
+                <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'11px', color:'rgba(255,255,255,0.56)', marginTop:'2px' }}>Ink chosen to match your paper</p>
+              </div>
+              {selectedColor===null&&<span style={{ color:'#e6c76e', fontSize:'13px' }}>✓</span>}
+            </motion.div>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(130px, 1fr))', gap:'10px', marginBottom:'24px' }}>
+              {FONT_COLORS.map(c => {
+                const isSelected = selectedColor === c.id
+                return (
+                  <motion.div key={c.id} whileTap={{scale:0.96}} onClick={()=>setSelectedColor(c.id)}
+                    style={{ cursor:'pointer', padding:'12px', background:isSelected?'rgba(230,199,110,0.12)':'rgba(255,255,255,0.03)', border:isSelected?'1px solid rgba(230,199,110,0.5)':'1px solid rgba(255,255,255,0.1)', borderRadius:'4px' }}>
+                    <div style={{ height:'44px', background:'#f8f0dc', borderRadius:'3px', marginBottom:'8px', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                      <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'13px', color:c.color, userSelect:'none' }}>A letter</p>
+                    </div>
+                    <p style={{ fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.18em', color:isSelected?'#e6c76e':'rgba(255,255,255,0.8)', textTransform:'uppercase', textAlign:'center' }}>{c.label}</p>
+                    <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'10px', color:'rgba(255,255,255,0.5)', textAlign:'center', marginTop:'2px' }}>{c.desc}</p>
+                  </motion.div>
+                )
+              })}
+            </div>
+            <div style={{ textAlign:'center' }}>
+              <button onClick={()=>setView('write')} style={{ padding:'12px 32px', background:'transparent', border:'1px solid rgba(230,199,110,0.45)', color:'#e6c76e', fontFamily:"'Cinzel', serif", fontSize:'10px', letterSpacing:'0.3em', textTransform:'uppercase', cursor:'pointer', borderRadius:'2px' }}
+                onMouseEnter={e=>e.currentTarget.style.background='rgba(230,199,110,0.08)'}
+                onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                {selectedColor ? `Write in ${FONT_COLORS.find(c=>c.id===selectedColor)?.label} ✦` : 'Write with paper ink ✦'}
+              </button>
+            </div>
+          </motion.div>
+        )}
+
+        {view==='paper-color' && (
+          <motion.div key="paper-color" initial={{ opacity:0, y:16 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0 }} style={{ width:'min(560px, 95vw)', zIndex:2 }}>
+            <div style={{ textAlign:'center', marginBottom:'24px' }}>
+              <p style={{ fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.5em', color:'#e6c76e', textTransform:'uppercase', marginBottom:'5px' }}>Choose Your Paper Tone</p>
+              <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'13px', color:'rgba(255,255,255,0.8)' }}>The colour of the paper you write on</p>
+            </div>
+            <motion.div whileTap={{scale:0.98}} onClick={()=>setSelectedPaperColor(null)}
+              style={{ marginBottom:'12px', padding:'12px 18px', background:selectedPaperColor===null?'rgba(230,199,110,0.12)':'rgba(255,255,255,0.03)', border:selectedPaperColor===null?'1px solid rgba(230,199,110,0.45)':'1px solid rgba(255,255,255,0.08)', borderRadius:'4px', cursor:'pointer', display:'flex', alignItems:'center', gap:'14px' }}>
+              <div style={{ width:'24px', height:'24px', borderRadius:'3px', background:'linear-gradient(135deg, #fdf6e0, #fef0f3, #f8fbff)', flexShrink:0, border:'1px solid rgba(0,0,0,0.08)' }}/>
+              <div style={{ flex:1 }}>
+                <p style={{ fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.2em', color:selectedPaperColor===null?'#e6c76e':'rgba(255,255,255,0.84)', textTransform:'uppercase' }}>Paper Default</p>
+                <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'11px', color:'rgba(255,255,255,0.56)', marginTop:'2px' }}>Natural tone of the chosen paper style</p>
+              </div>
+              {selectedPaperColor===null&&<span style={{ color:'#e6c76e', fontSize:'13px' }}>✓</span>}
+            </motion.div>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(130px, 1fr))', gap:'10px', marginBottom:'24px' }}>
+              {PAPER_TONES.map(t => {
+                const isSelected = selectedPaperColor === t.id
+                return (
+                  <motion.div key={t.id} whileTap={{scale:0.96}} onClick={()=>setSelectedPaperColor(t.id)}
+                    style={{ cursor:'pointer', padding:'10px', background:isSelected?'rgba(230,199,110,0.12)':'rgba(255,255,255,0.03)', border:isSelected?'1px solid rgba(230,199,110,0.5)':'1px solid rgba(255,255,255,0.1)', borderRadius:'4px' }}>
+                    <div style={{ height:'52px', background:t.bg, borderRadius:'3px', marginBottom:'8px', border:'1px solid rgba(0,0,0,0.07)', boxShadow:'inset 0 1px 4px rgba(255,255,255,0.7)' }}/>
+                    <p style={{ fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.18em', color:isSelected?'#e6c76e':'rgba(255,255,255,0.8)', textTransform:'uppercase', textAlign:'center' }}>{t.label}</p>
+                    <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'10px', color:'rgba(255,255,255,0.5)', textAlign:'center', marginTop:'2px' }}>{t.desc}</p>
+                  </motion.div>
+                )
+              })}
+            </div>
+            <div style={{ textAlign:'center' }}>
+              <button onClick={()=>setView('write')} style={{ padding:'12px 32px', background:'transparent', border:'1px solid rgba(230,199,110,0.45)', color:'#e6c76e', fontFamily:"'Cinzel', serif", fontSize:'10px', letterSpacing:'0.3em', textTransform:'uppercase', cursor:'pointer', borderRadius:'2px' }}
+                onMouseEnter={e=>e.currentTarget.style.background='rgba(230,199,110,0.08)'}
+                onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                {selectedPaperColor ? `Write on ${PAPER_TONES.find(t=>t.id===selectedPaperColor)?.label} paper ✦` : 'Write on default paper ✦'}
+              </button>
+            </div>
+          </motion.div>
+        )}
+
         {view==='write' && !sent && (
           <motion.div key="write" initial={{ opacity:0, y:16 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0 }} style={{ width:'min(580px, 95vw)', zIndex:2 }}>
             <div style={{ textAlign:'center', marginBottom:'14px' }}>
@@ -519,6 +640,8 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
                   { label:selectedPaper.label, action:()=>setView('papers'), icon:'📄' },
                   { label:selectedFont.label, action:()=>setView('fonts'), icon:'✒' },
                   { label:selectedStamp?STAMPS.find(s=>s.id===selectedStamp)?.label||'Stamp':'Stamp', action:()=>setView('stamps'), icon:'🔖' },
+                  { label:selectedColor?FONT_COLORS.find(c=>c.id===selectedColor)?.label||'Ink':'Ink Color', action:()=>setView('colors'), icon:'🎨' },
+                  { label:selectedPaperColor?PAPER_TONES.find(t=>t.id===selectedPaperColor)?.label||'Paper Tone':'Paper Tone', action:()=>setView('paper-color'), icon:'🗒' },
                 ].map((btn,i)=>(
                   <button key={i} onClick={btn.action}
                     style={{ background:'none', border:'1px solid rgba(255,255,255,0.18)', color:'rgba(255,255,255,0.8)', fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.15em', textTransform:'uppercase', padding:'5px 9px', cursor:'pointer', borderRadius:'2px', whiteSpace:'nowrap' }}
