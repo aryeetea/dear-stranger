@@ -445,19 +445,22 @@ export default function Home() {
           }
         })()
       } catch (err) {
-        err.message === 'That hub name is already taken. Choose another one.'
-      ) {
-        setOnboardingResumeState({ ...resumeState, phase: 'hubname' })
-      } else {
-        setOnboardingResumeState(resumeState)
-      }
+        if (
+          err instanceof Error &&
+          err.message === 'That hub name is already taken. Choose another one.'
+        ) {
+          setOnboardingResumeState({ ...resumeState, phase: 'hubname' })
+        } else {
+          setOnboardingResumeState(resumeState)
+        }
 
-      setScreen('onboarding')
-      setOnboardingError(
-        err instanceof Error
-          ? err.message
-          : 'Your hub could not be created yet. Please try again.',
-      )
+        setScreen('onboarding')
+        setOnboardingError(
+          err instanceof Error
+            ? err.message
+            : 'Your hub could not be created yet. Please try again.',
+        )
+      }
     } finally {
       onboardingInFlightRef.current = false
     }
