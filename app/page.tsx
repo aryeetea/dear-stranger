@@ -138,6 +138,7 @@ export default function Home() {
   const [scribeOpen, setScribeOpen] = useState(false)
   const [scribeRecipient, setScribeRecipient] = useState<string | undefined>()
   const [observatoryOpen, setObservatoryOpen] = useState(false)
+  const [navResetSignal, setNavResetSignal] = useState(0)
   const [profileOpen, setProfileOpen] = useState(false)
   const [isGuest, setIsGuest] = useState(false)
   const [showGuestWall, setShowGuestWall] = useState(false)
@@ -859,6 +860,7 @@ export default function Home() {
           }}
           onObservatory={() => setObservatoryOpen(true)}
           onProfile={() => setProfileOpen(true)}
+          navResetSignal={navResetSignal}
         />
       )}
 
@@ -869,7 +871,7 @@ export default function Home() {
           recipientName={scribeRecipient}
           senderName={hubName}
           lettersSent={lettersSent}
-          onClose={() => setScribeOpen(false)}
+          onClose={() => { setScribeOpen(false); setNavResetSignal(s => s + 1) }}
           onSend={async (letter) => {
             if (isGuest) {
               alert('You must create an account or sign in to send letters.');
@@ -906,7 +908,7 @@ export default function Home() {
 
       {observatoryOpen && (
         <Observatory
-          onClose={() => setObservatoryOpen(false)}
+          onClose={() => { setObservatoryOpen(false); setNavResetSignal(s => s + 1) }}
           onWriteLetter={(name) => {
             if (isGuest) {
               setObservatoryOpen(false)
@@ -931,7 +933,7 @@ export default function Home() {
           hubColor={hubColor}
           hubDecoration={hubDecoration}
           hubGlowIntensity={hubGlowIntensity}
-          onClose={() => setProfileOpen(false)}
+          onClose={() => { setProfileOpen(false); setNavResetSignal(s => s + 1) }}
           onUpdateHub={({ hubName: nextHubName, bio: nextBio, askAbout: nextAskAbout, avatarUrl: nextAvatarUrl, hubStyle: nextHubStyle, hubColor: nextHubColor, hubDecoration: nextHubDecoration, hubGlowIntensity: nextHubGlowIntensity }) => {
             if (typeof nextHubName === 'string') setHubName(nextHubName)
             if (typeof nextBio === 'string') setHubBio(nextBio)

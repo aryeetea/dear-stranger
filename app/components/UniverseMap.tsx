@@ -812,12 +812,13 @@ function drawShootingStar(ctx: CanvasRenderingContext2D, star: ShootingStar) {
 export default function UniverseMap({
   hubName, hubBio, hubAskAbout, hubAvatarUrl, hubStyle = 'portal', hubColor = 'gold',
   hubDecoration = 'none', hubGlowIntensity = 'normal',
-  onWriteLetter, onObservatory, onProfile,
+  onWriteLetter, onObservatory, onProfile, navResetSignal = 0,
 }: {
   hubName?: string; hubBio?: string; hubAskAbout?: string; hubAvatarUrl?: string; hubStyle?: HubStyle; hubColor?: HubColor
   hubDecoration?: HubDecoration; hubGlowIntensity?: HubGlowIntensity
   onWriteLetter?: (recipientName?: string) => void
   onObservatory?: () => void; onProfile?: () => void
+  navResetSignal?: number
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const hubsRef = useRef<Hub[]>([])
@@ -836,6 +837,8 @@ export default function UniverseMap({
   const [starPreview, setStarPreview] = useState<ShootingStar | null>(null)
   const [activeNav, setActiveNav] = useState(0)
   const [hoveredNav, setHoveredNav] = useState<number | null>(null)
+
+  useEffect(() => { if (navResetSignal > 0) setActiveNav(0) }, [navResetSignal])
 
   // Spawn a shooting star from a universe letter
   function spawnShootingStar(letter?: { id: string; senderName: string; preview: string }) {

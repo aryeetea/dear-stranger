@@ -543,28 +543,54 @@ export async function upgradeGuestAccount(email: string, password: string): Prom
   if (error) throw error
 }
 
+function resizeAndCompressDataUrl(
+  dataUrl: string,
+  maxWidth = 512,
+  maxHeight = 768,
+  quality = 0.82,
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => {
+      let { width, height } = img
+      const ratio = Math.min(maxWidth / width, maxHeight / height, 1)
+      width = Math.round(width * ratio)
+      height = Math.round(height * ratio)
+      const canvas = document.createElement('canvas')
+      canvas.width = width
+      canvas.height = height
+      const ctx = canvas.getContext('2d')
+      if (!ctx) return reject(new Error('Canvas 2d context unavailable'))
+      ctx.drawImage(img, 0, 0, width, height)
+      resolve(canvas.toDataURL('image/jpeg', quality))
+    }
+    img.onerror = () => reject(new Error('Failed to load image for resize'))
+    img.src = dataUrl
+  })
+}
+
 export async function uploadAvatarToStorage(
   base64DataUrl: string,
   userId: string,
 ): Promise<string> {
-  const matches = base64DataUrl.match(/^data:(.+);base64,(.+)$/)
+  const compressed = await resizeAndCompressDataUrl(base64DataUrl)
+
+  const matches = compressed.match(/^data:(.+);base64,(.+)$/)
   if (!matches) throw new Error('Invalid base64 image format')
 
   const mimeType = matches[1]
   const base64Data = matches[2]
-  const ext = mimeType.includes('png') ? 'png' : 'jpg'
 
   const byteCharacters = atob(base64Data)
   const byteArray = new Uint8Array(byteCharacters.length)
-
   for (let i = 0; i < byteCharacters.length; i++) {
     byteArray[i] = byteCharacters.charCodeAt(i)
   }
 
-  const filePath = `avatars/${userId}.${ext}`
+  const filePath = `avatars/${userId}.jpg`
 
   const { error } = await supabase.storage.from('avatars').upload(filePath, byteArray, {
-    contentType: mimeType,
+    contentType: 'image/jpeg',
     upsert: true,
   })
 
