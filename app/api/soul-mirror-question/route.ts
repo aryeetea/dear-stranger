@@ -333,9 +333,9 @@ Return JSON only using the provided schema.
       return NextResponse.json({ error: 'Soul Mirror model error.' }, { status: 500 })
     }
 
-    if (!parsed.question || !Array.isArray(parsed.chips) || parsed.chips.length < 4) {
+    if (!parsed.question || !Array.isArray(parsed.chips) || parsed.chips.length < 2) {
       console.error('Soul Mirror invalid model response, parsed:', parsed)
-      return NextResponse.json({ error: 'Soul Mirror did not return a valid question or chips.' }, { status: 500 })
+      return NextResponse.json({ error: 'Soul Mirror did not return a valid question or enough chips.' }, { status: 500 })
     }
 
     const done = mustClose || (hasEnough && parsed.done === true)

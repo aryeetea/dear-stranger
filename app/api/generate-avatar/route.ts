@@ -44,6 +44,24 @@ function buildAvatarPrompt(
     .join('\n\n')
 }
 
+async function generateWithDallE3(openai: OpenAI, prompt: string) {
+  const response = await openai.images.generate({
+    model: 'dall-e-3',
+    prompt: prompt.slice(0, 4000),
+    size: '1024x1792',
+    quality: 'hd',
+    response_format: 'b64_json',
+  })
+
+  const image = response.data?.[0]
+  if (!image?.b64_json) throw new Error('dall-e-3 returned no image data.')
+
+  return {
+    imageUrl: `data:image/png;base64,${image.b64_json}`,
+    revisedPrompt: (image as any).revised_prompt || prompt,
+  }
+}
+
 async function generateWithGptImage(
   openai: OpenAI,
   prompt: string,
@@ -129,12 +147,21 @@ export async function POST(req: Request) {
         prompt: result.revisedPrompt,
       })
     } catch (primaryError) {
-      console.warn('gpt-image-1 failed, falling back to Seedream via fal.ai:', primaryError)
-      const seedream = await generateWithSeedream(imagePrompt)
-      return NextResponse.json({
-        imageUrl: seedream.imageUrl,
-        prompt: seedream.revisedPrompt,
-      })
+      console.warn('gpt-image-1 failed, falling back to DALL-E 3:', primaryError)
+      try {
+        const dalle = await generateWithDallE3(openai, imagePrompt)
+        return NextResponse.json({
+          imageUrl: dalle.imageUrl,
+          prompt: dalle.revisedPrompt,
+        })
+      } catch (dalleError) {
+        console.warn('DALL-E 3 failed, falling back to Seedream via fal.ai:', dalleError)
+        const seedream = await generateWithSeedream(imagePrompt)
+        return NextResponse.json({
+          imageUrl: seedream.imageUrl,
+          prompt: seedream.revisedPrompt,
+        })
+      }
     }
   } catch (error) {
     console.error('generate-avatar error:', error)
