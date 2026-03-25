@@ -26,6 +26,8 @@ export default function Profile({
   const [bioState, setBioState] = useState(bio || 'A wanderer who arrived here quietly, carrying something unspoken.')
   const [askState, setAskState] = useState(askAbout || 'Silence, slow mornings, and letters that take their time.')
   const [currentAvatarUrl, setCurrentAvatarUrl] = useState(initialAvatarUrl || '')
+  // Track last prop value to only update if it changes
+  const [lastAvatarProp, setLastAvatarProp] = useState(initialAvatarUrl || '')
   // ── regen count loaded from DB, not reset on reload ──
   const [regenCount, setRegenCount] = useState(initialRegenCount ?? 0)
   const [regenLoading, setRegenLoading] = useState(false)
@@ -69,8 +71,17 @@ export default function Profile({
   const [deleteError, setDeleteError] = useState('')
 
   useEffect(() => {
-    setCurrentAvatarUrl(initialAvatarUrl || '')
-  }, [initialAvatarUrl])
+    // Only update local state if the prop actually changed (not just on every mount)
+    if (initialAvatarUrl && initialAvatarUrl !== lastAvatarProp) {
+      setCurrentAvatarUrl(initialAvatarUrl)
+      setLastAvatarProp(initialAvatarUrl)
+    }
+    // If avatar is cleared (e.g. on onboarding), also clear local state
+    if (!initialAvatarUrl && lastAvatarProp) {
+      setCurrentAvatarUrl('')
+      setLastAvatarProp('')
+    }
+  }, [initialAvatarUrl, lastAvatarProp])
 
   // ── load regen count from DB on mount ──
   useEffect(() => {
