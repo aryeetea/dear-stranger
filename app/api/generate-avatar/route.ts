@@ -123,7 +123,6 @@ async function generateWithSeedream(prompt: string) {
         image_size: { width: 1024, height: 1536 },
         num_images: 1,
         guidance_scale: 7.5,
-        num_inference_steps: 30,
       },
     },
   )) as { data?: { images?: Array<{ url?: string }> } }
