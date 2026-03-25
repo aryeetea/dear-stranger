@@ -11,12 +11,12 @@ const MAX_REGEN_ATTEMPTS = 3
 type DeleteStep = 'idle' | 'exporting' | 'exported' | 'deleting' | 'deleted'
 
 export default function Profile({
-  hubName, bio, askAbout, avatarUrl: initialAvatarUrl, regenCount: initialRegenCount,
+  hubName, bio, askAbout, avatarUrl: initialAvatarUrl, avatarPromptPending, regenCount: initialRegenCount,
   hubStyle: initialHubStyle = 'portal', hubColor: initialHubColor = 'gold',
   hubDecoration: initialHubDecoration = 'none', hubGlowIntensity: initialHubGlowIntensity = 'normal',
   onClose, onUpdateHub,
 }: {
-  hubName?: string; bio?: string; askAbout?: string; avatarUrl?: string; regenCount?: number
+  hubName?: string; bio?: string; askAbout?: string; avatarUrl?: string; avatarPromptPending?: string | null; regenCount?: number
   hubStyle?: HubStyle; hubColor?: HubColor
   hubDecoration?: HubDecoration; hubGlowIntensity?: HubGlowIntensity
   onClose?: () => void
@@ -139,9 +139,14 @@ export default function Profile({
     setRegenError('')
     try {
       setRegenLoading(true); setShowRegenInput(false)
+      // If there's no existing avatar but we have the original description, generate fresh
+      const hasExistingAvatar = Boolean(currentAvatarUrl)
+      const requestBody = !hasExistingAvatar && avatarPromptPending
+        ? { answers: { 0: avatarPromptPending }, feedback: regenFeedback || undefined, mode: 'create' }
+        : { answers: { 0: bioState, 1: askState }, feedback: regenFeedback, mode: 'reimagine', previousImageUrl: currentAvatarUrl || undefined }
       const res = await fetch('/api/generate-avatar', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ answers: { 0: bioState, 1: askState }, feedback: regenFeedback, mode: 'reimagine', previousImageUrl: currentAvatarUrl || undefined }),
+        body: JSON.stringify(requestBody),
       })
       const data = await res.json()
       if (!res.ok || data.error) throw new Error(data.error || 'Failed')

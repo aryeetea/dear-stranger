@@ -128,6 +128,8 @@ export default function Home() {
   const [hubBio, setHubBio] = useState('')
   const [hubAskAbout, setHubAskAbout] = useState('')
   const [hubAvatarUrl, setHubAvatarUrl] = useState('')
+  const [hubAvatarPending, setHubAvatarPending] = useState<string | null>(null)
+  const avatarRetryAttemptedRef = useRef(false)
   const [hubStyle, setHubStyle] = useState<HubStyle>('portal')
   const [hubColor, setHubColor] = useState<HubColor>('gold')
   const [hubDecoration, setHubDecoration] = useState<HubDecoration>('none')
@@ -199,6 +201,7 @@ export default function Home() {
     setHubGlowIntensity('normal')
     setLettersSent(0)
     setHubRegenCount(0)
+    setHubAvatarPending(null)
     setIsGuest(false)
     if (resetResume) setOnboardingResumeState(null)
   }
@@ -206,6 +209,26 @@ export default function Home() {
   useEffect(() => {
     screenRef.current = screen
   }, [screen])
+
+  // Auto-retry avatar generation when returning to universe with a pending description
+  useEffect(() => {
+    if (screen !== 'universe' || !hubAvatarPending || hubAvatarUrl || avatarRetryAttemptedRef.current) return
+    avatarRetryAttemptedRef.current = true
+    void (async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+        const avatarUrl = await requestAvatarImage({ 0: hubAvatarPending }, user.id)
+        if (!avatarUrl) return
+        const permanentUrl = await uploadAvatarToStorage(avatarUrl, user.id)
+        setHubAvatarUrl(permanentUrl)
+        setHubAvatarPending(null)
+        await updateHub({ avatar_url: permanentUrl, avatar_prompt_pending: null })
+      } catch (err) {
+        console.error('Avatar auto-retry failed:', err)
+      }
+    })()
+  }, [screen, hubAvatarPending, hubAvatarUrl])
 
   async function routeFromSession() {
     function timeoutPromise<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
@@ -239,6 +262,7 @@ export default function Home() {
         setHubBio(hub.bio || '')
         setHubAskAbout(hub.ask_about || '')
         setHubAvatarUrl(hub.avatar_url || '')
+        setHubAvatarPending((hub as any).avatar_prompt_pending || null)
         setHubStyle((hub.hub_style as HubStyle) || 'portal')
         setHubColor(coerceHubColor(hub.backdrop_id))
         setHubDecoration((hub.decoration as HubDecoration) || 'none')
@@ -433,12 +457,14 @@ export default function Home() {
             if (!avatarUrl) return
             const permanentUrl = await uploadAvatarToStorage(avatarUrl, userId)
             setHubAvatarUrl(permanentUrl)
+            setHubAvatarPending(null)
             await updateHub({ avatar_url: permanentUrl, avatar_prompt_pending: null })
           } catch (avatarError) {
             console.error('Avatar generation failed after hub creation:', avatarError)
-            // Save the user's description so we can generate it later once the issue is fixed
+            // Save the user's description so we can retry it automatically
             if (avatarDescription) {
               try {
+                setHubAvatarPending(avatarDescription)
                 await updateHub({ avatar_prompt_pending: avatarDescription })
               } catch {}
             }
@@ -760,6 +786,7 @@ export default function Home() {
               setHubBio(hub.bio || '')
               setHubAskAbout(hub.ask_about || '')
               setHubAvatarUrl(hub.avatar_url || '')
+              setHubAvatarPending((hub as any).avatar_prompt_pending || null)
               setHubStyle((hub.hub_style as HubStyle) || 'portal')
               setHubColor(coerceHubColor(hub.backdrop_id))
               setHubDecoration((hub.decoration as HubDecoration) || 'none')
@@ -930,6 +957,7 @@ export default function Home() {
           bio={hubBio}
           askAbout={hubAskAbout}
           avatarUrl={hubAvatarUrl}
+          avatarPromptPending={hubAvatarPending}
           regenCount={hubRegenCount}
           hubStyle={hubStyle}
           hubColor={hubColor}
