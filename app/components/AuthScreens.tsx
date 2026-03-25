@@ -4,8 +4,6 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { signIn, signInWithGoogle, signOut } from '../lib/auth'
 
-type AuthView = 'login' | 'signup'
-
 function GoogleIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 18 18">
@@ -121,11 +119,9 @@ export function LoginScreen({
 
 export function SignupScreen({
   onSuccess,
-  onGoToLogin,
   setPendingCredentials,
 }: {
   onSuccess: () => void
-  onGoToLogin: () => void
   setPendingCredentials: (creds: { email: string; password: string } | null) => void
 }) {
   const [email, setEmail] = useState('')
@@ -214,13 +210,6 @@ export function SignupScreen({
         onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
         {loading ? 'Preparing...' : 'Continue to Soul Mirror ✦'}
       </button>
-
-      <div style={{ textAlign: 'center' }}>
-        <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(255,255,255,0.35)' }}>
-          Already have a hub?{' '}
-          <span onClick={onGoToLogin} style={{ color: 'rgba(201,168,76,0.7)', cursor: 'pointer', textDecoration: 'underline' }}>Sign in</span>
-        </p>
-      </div>
     </motion.div>
   )
 }

@@ -775,11 +775,6 @@ export default function Home() {
             setOnboardingError('')
             setScreen('onboarding')
           }}
-          onGoToLogin={() => {
-            setOnboardingError('')
-            setPendingCredentials(null)
-            setScreen('login')
-          }}
           setPendingCredentials={setPendingCredentials}
         />
       </div>
