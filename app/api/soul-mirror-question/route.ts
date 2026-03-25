@@ -274,13 +274,12 @@ Return JSON only using the provided schema.
 
     const openai = new OpenAI({ apiKey: openaiKey })
     const response = await openai.responses.create({
-      model: process.env.SOUL_MIRROR_MODEL || 'gpt-4.1-mini',
+      model: 'gpt-5.4',
       instructions,
       input,
       max_output_tokens: 220,
       temperature: getTemperature(mirrorVoice),
       text: {
-        verbosity: 'low',
         format: {
           type: 'json_schema',
           name: 'soul_mirror_reply',
