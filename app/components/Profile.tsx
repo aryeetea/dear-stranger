@@ -141,7 +141,7 @@ export default function Profile({
       setRegenLoading(true); setShowRegenInput(false)
       const res = await fetch('/api/generate-avatar', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ answers: { 0: bioState, 1: askState }, feedback: regenFeedback }),
+        body: JSON.stringify({ answers: { 0: bioState, 1: askState }, feedback: regenFeedback, mode: 'reimagine', previousImageUrl: currentAvatarUrl || undefined }),
       })
       const data = await res.json()
       if (!res.ok || data.error) throw new Error(data.error || 'Failed')

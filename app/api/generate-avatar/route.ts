@@ -66,9 +66,44 @@ async function generateWithGptImage(
   openai: OpenAI,
   prompt: string,
   userId?: string,
+  previousImageUrl?: string,
+  mode: Mode = 'create',
 ) {
+  if (mode === 'reimagine' && previousImageUrl) {
+    let imageFile: File
+
+    if (previousImageUrl.startsWith('data:')) {
+      const [meta, base64] = previousImageUrl.split(',')
+      const mimeType = meta.split(':')[1].split(';')[0]
+      const buffer = Buffer.from(base64, 'base64')
+      imageFile = new File([buffer], 'image.jpg', { type: mimeType })
+    } else {
+      const resp = await fetch(previousImageUrl)
+      const buffer = await resp.arrayBuffer()
+      imageFile = new File([buffer], 'image.jpg', { type: 'image/jpeg' })
+    }
+
+    const response = await openai.images.edit({
+      model: 'gpt-image-1',
+      image: imageFile,
+      prompt: prompt.slice(0, 4000),
+      size: '1024x1536',
+    } as any)
+
+    const image = response.data?.[0]
+    if (!image?.b64_json) {
+      throw new Error('gpt-image-1 edit returned no image data.')
+    }
+
+    return {
+      imageUrl: `data:image/jpeg;base64,${image.b64_json}`,
+      revisedPrompt: (image as any).revised_prompt || prompt,
+      provider: 'gpt-image-1',
+    }
+  }
+
   const response = await openai.images.generate({
-    model: 'gpt-image-1.5',
+    model: 'gpt-image-1',
     prompt: prompt.slice(0, 4000),
     size: '1024x1536',
     quality: 'high',
@@ -78,13 +113,13 @@ async function generateWithGptImage(
 
   const image = response.data?.[0]
   if (!image?.b64_json) {
-    throw new Error('gpt-image-1.5 returned no image data.')
+    throw new Error('gpt-image-1 returned no image data.')
   }
 
   return {
     imageUrl: `data:image/jpeg;base64,${image.b64_json}`,
     revisedPrompt: (image as any).revised_prompt || prompt,
-    provider: 'gpt-image-1.5',
+    provider: 'gpt-image-1',
   }
 }
 
@@ -156,12 +191,14 @@ export async function POST(req: Request) {
       userId,
       style,
       mode,
+      previousImageUrl,
     }: {
       answers?: unknown
       feedback?: string
       userId?: string
       style?: string
       mode?: string
+      previousImageUrl?: string
     } = body
 
     const openaiKey = process.env.OPENAI_API_KEY
@@ -192,14 +229,14 @@ export async function POST(req: Request) {
     const openai = new OpenAI({ apiKey: openaiKey })
 
     try {
-      const result = await generateWithGptImage(openai, imagePrompt, userId)
+      const result = await generateWithGptImage(openai, imagePrompt, userId, previousImageUrl, generationMode)
       return NextResponse.json({
         imageUrl: result.imageUrl,
         prompt: result.revisedPrompt,
         provider: result.provider,
       })
     } catch (gptError) {
-      console.warn('gpt-image-1.5 failed, trying dall-e-3:', gptError)
+      console.warn('gpt-image-1 failed, trying dall-e-3:', gptError)
 
       try {
         const result = await generateWithDallE3(openai, imagePrompt)
