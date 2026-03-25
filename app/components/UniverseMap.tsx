@@ -4,8 +4,10 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { getAllHubs, getUniverseLetters } from '../lib/auth'
 // ── HUB STYLE TYPES ──
-export type HubStyle = 'portal' | 'lantern' | 'ruin' | 'hourglass' | 'telescope' | 'greenhouse' | 'lotus'
+export type HubStyle = 'portal' | 'lantern' | 'ruin' | 'hourglass' | 'telescope' | 'greenhouse' | 'lotus' | 'cottage'
 export type HubColor = 'gold' | 'sage' | 'rose' | 'azure' | 'amber' | 'violet' | 'teal' | 'sand'
+export type HubDecoration = 'none' | 'moon' | 'rings' | 'fireflies' | 'petals' | 'snowflakes' | 'comet'
+export type HubGlowIntensity = 'dim' | 'normal' | 'blazing'
 
 export const HUB_STYLES: { id: HubStyle; label: string; desc: string; icon: string }[] = [
   { id: 'portal', label: 'Portal Ring', desc: 'A spinning cosmic gateway', icon: '◎' },
@@ -15,6 +17,23 @@ export const HUB_STYLES: { id: HubStyle; label: string; desc: string; icon: stri
   { id: 'telescope', label: 'Starwatch Shrine', desc: 'A celestial shrine with a lens of focused light', icon: '✧' },
   { id: 'greenhouse', label: 'Greenhouse Bubble', desc: 'A glass dome brimming with quiet life', icon: '✦' },
   { id: 'lotus', label: 'Lotus Bloom', desc: 'A luminous lotus opening softly over still water', icon: '🪷' },
+  { id: 'cottage', label: 'Cozy Cottage', desc: 'A warm little house glowing softly in the dark', icon: '🏡' },
+]
+
+export const HUB_DECORATIONS: { id: HubDecoration; label: string; icon: string }[] = [
+  { id: 'none', label: 'None', icon: '○' },
+  { id: 'moon', label: 'Crescent Moon', icon: '☽' },
+  { id: 'rings', label: 'Rings', icon: '◎' },
+  { id: 'fireflies', label: 'Fireflies', icon: '✦' },
+  { id: 'petals', label: 'Petals', icon: '🌸' },
+  { id: 'snowflakes', label: 'Snowflakes', icon: '❄' },
+  { id: 'comet', label: 'Comet', icon: '☄' },
+]
+
+export const HUB_GLOW_LEVELS: { id: HubGlowIntensity; label: string; desc: string }[] = [
+  { id: 'dim', label: 'Dim', desc: 'Quiet, barely visible' },
+  { id: 'normal', label: 'Normal', desc: 'Soft and present' },
+  { id: 'blazing', label: 'Blazing', desc: 'Bright and unmissable' },
 ]
 
 export const HUB_COLOR_THEMES: { id: HubColor; label: string; ring: string; glow: string; inner: string }[] = [
@@ -35,6 +54,7 @@ interface Hub {
   online: boolean; pulse: number; size: number
   isMe?: boolean; floatOffset: number; floatSpeed: number
   colorTheme: HubColor; hubStyle: HubStyle
+  decoration: HubDecoration; glowIntensity: HubGlowIntensity
 }
 
 interface ShootingStar {
@@ -526,9 +546,216 @@ function drawLotus(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: num
   }
 }
 
+function drawCottage(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: number, colors: (typeof HUB_COLOR_THEMES)[number], t: number, online: boolean, isMe: boolean, avatarImage?: HTMLImageElement) {
+  const r = 26 * s
+  const bob = Math.sin(t * 0.5) * 1.5 * s
+
+  // Ground glow
+  const ground = ctx.createRadialGradient(cx, cy + r * 0.9 + bob, 0, cx, cy + r * 0.9 + bob, r * 1.8)
+  ground.addColorStop(0, `rgba(${colors.glow},0.18)`)
+  ground.addColorStop(1, `rgba(${colors.glow},0)`)
+  ctx.beginPath(); ctx.ellipse(cx, cy + r * 0.9 + bob, r * 1.6, r * 0.4, 0, 0, Math.PI * 2)
+  ctx.fillStyle = ground; ctx.fill()
+
+  // House walls
+  const wallH = r * 1.1; const wallW = r * 1.4
+  const wallX = cx - wallW / 2; const wallY = cy - r * 0.1 + bob
+  const wallGrad = ctx.createLinearGradient(wallX, wallY, wallX + wallW, wallY + wallH)
+  wallGrad.addColorStop(0, `rgba(${colors.glow},0.28)`)
+  wallGrad.addColorStop(1, `rgba(${colors.glow},0.1)`)
+  ctx.beginPath(); ctx.rect(wallX, wallY, wallW, wallH)
+  ctx.fillStyle = wallGrad; ctx.fill()
+  ctx.strokeStyle = `rgba(${colors.glow},0.5)`; ctx.lineWidth = 1.2 * s; ctx.stroke()
+
+  // Roof (triangle)
+  ctx.beginPath()
+  ctx.moveTo(cx - wallW * 0.62, wallY)
+  ctx.lineTo(cx, cy - r * 0.85 + bob)
+  ctx.lineTo(cx + wallW * 0.62, wallY)
+  ctx.closePath()
+  const roofGrad = ctx.createLinearGradient(cx, cy - r * 0.85 + bob, cx, wallY)
+  roofGrad.addColorStop(0, `rgba(${colors.glow},0.55)`)
+  roofGrad.addColorStop(1, `rgba(${colors.glow},0.28)`)
+  ctx.fillStyle = roofGrad; ctx.fill()
+  ctx.strokeStyle = `rgba(${colors.glow},0.65)`; ctx.lineWidth = 1.5 * s; ctx.stroke()
+
+  // Chimney
+  ctx.beginPath()
+  ctx.rect(cx + wallW * 0.2, cy - r * 0.9 + bob, 6 * s, 10 * s)
+  ctx.fillStyle = `rgba(${colors.glow},0.45)`; ctx.fill()
+  // Smoke puffs
+  for (let i = 0; i < 3; i++) {
+    const age = ((t * 0.4 + i * 0.6) % 1.8)
+    const smokeY = cy - r * 0.9 + bob - age * 14 * s
+    const smokeAlpha = (1 - age / 1.8) * 0.22
+    ctx.beginPath(); ctx.arc(cx + wallW * 0.23 + Math.sin(age * 2 + i) * 4 * s, smokeY, (3 + age * 3) * s, 0, Math.PI * 2)
+    ctx.fillStyle = `rgba(${colors.glow},${smokeAlpha})`; ctx.fill()
+  }
+
+  // Front door
+  const doorW = 8 * s; const doorH = 14 * s
+  ctx.beginPath()
+  ctx.rect(cx - doorW / 2, wallY + wallH - doorH, doorW, doorH)
+  ctx.fillStyle = `rgba(${colors.glow},0.55)`; ctx.fill()
+  ctx.strokeStyle = `rgba(${colors.glow},0.7)`; ctx.lineWidth = 0.8 * s; ctx.stroke()
+  // Door top arch
+  ctx.beginPath(); ctx.arc(cx, wallY + wallH - doorH, doorW / 2, Math.PI, 0)
+  ctx.fillStyle = `rgba(${colors.glow},0.55)`; ctx.fill()
+
+  // Window left
+  const winSize = 9 * s
+  ctx.beginPath(); ctx.rect(wallX + 8 * s, wallY + 10 * s, winSize, winSize)
+  const winGlow = ctx.createRadialGradient(wallX + 8 * s + winSize / 2, wallY + 10 * s + winSize / 2, 0, wallX + 8 * s + winSize / 2, wallY + 10 * s + winSize / 2, winSize)
+  winGlow.addColorStop(0, `rgba(255,240,180,${0.6 + 0.2 * Math.sin(t * 1.5)})`)
+  winGlow.addColorStop(1, `rgba(${colors.glow},0.15)`)
+  ctx.fillStyle = winGlow; ctx.fill()
+  ctx.strokeStyle = `rgba(${colors.glow},0.6)`; ctx.lineWidth = 0.8 * s; ctx.stroke()
+
+  // Window right
+  ctx.beginPath(); ctx.rect(wallX + wallW - 8 * s - winSize, wallY + 10 * s, winSize, winSize)
+  ctx.fillStyle = winGlow; ctx.fill()
+  ctx.strokeStyle = `rgba(${colors.glow},0.6)`; ctx.lineWidth = 0.8 * s; ctx.stroke()
+
+  // Outer warm halo from windows
+  const halo = ctx.createRadialGradient(cx, cy + r * 0.3 + bob, 0, cx, cy + r * 0.3 + bob, r * 2)
+  halo.addColorStop(0, `rgba(255,220,120,${0.08 + 0.04 * Math.sin(t * 0.9)})`)
+  halo.addColorStop(1, 'rgba(255,200,80,0)')
+  ctx.beginPath(); ctx.arc(cx, cy + r * 0.3 + bob, r * 2, 0, Math.PI * 2)
+  ctx.fillStyle = halo; ctx.fill()
+
+  // Avatar small portrait in door window
+  if (avatarImage?.complete && avatarImage.naturalWidth > 0) {
+    ctx.save(); ctx.globalAlpha = 0.5
+    ctx.beginPath(); ctx.arc(cx, wallY + wallH - doorH * 0.5, doorW * 0.42, 0, Math.PI * 2); ctx.clip()
+    ctx.drawImage(avatarImage, cx - doorW * 0.42, wallY + wallH - doorH * 0.5 - doorW * 0.42, doorW * 0.84, doorW * 0.84)
+    ctx.restore()
+  }
+
+  if (!isMe) {
+    ctx.beginPath(); ctx.arc(cx + wallW * 0.55, cy - r * 0.5 + bob, 3 * s, 0, Math.PI * 2)
+    ctx.fillStyle = online ? '#7ecf7e' : 'rgba(255,255,255,0.2)'; ctx.fill()
+  }
+}
+
+function drawDecoration(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: number, colors: (typeof HUB_COLOR_THEMES)[number], t: number, decoration: HubDecoration) {
+  if (decoration === 'none') return
+  const r = 34 * s
+  ctx.save()
+
+  if (decoration === 'moon') {
+    const angle = t * 0.4
+    const mx = cx + Math.cos(angle) * r * 1.5; const my = cy + Math.sin(angle) * r * 1.5
+    ctx.save(); ctx.translate(mx, my); ctx.rotate(angle + Math.PI / 2)
+    ctx.beginPath()
+    ctx.arc(0, 0, 6 * s, Math.PI * 0.15, Math.PI * 1.85)
+    ctx.arc(2.5 * s, 0, 4.5 * s, Math.PI * 1.85, Math.PI * 0.15, true)
+    ctx.closePath()
+    ctx.fillStyle = `rgba(${colors.glow},0.75)`; ctx.fill()
+    ctx.restore()
+  }
+
+  if (decoration === 'rings') {
+    // Back half of ring (drawn before hub, but we draw all here and rely on paint order)
+    ctx.beginPath(); ctx.ellipse(cx, cy, r * 1.6, r * 0.4, -0.2, Math.PI, Math.PI * 2)
+    ctx.strokeStyle = `rgba(${colors.glow},0.35)`; ctx.lineWidth = 2.5 * s; ctx.stroke()
+    ctx.beginPath(); ctx.ellipse(cx, cy, r * 1.6, r * 0.4, -0.2, 0, Math.PI)
+    ctx.strokeStyle = `rgba(${colors.glow},0.55)`; ctx.lineWidth = 2.5 * s; ctx.stroke()
+  }
+
+  if (decoration === 'fireflies') {
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2 + t * 0.28 + Math.sin(t * 0.5 + i * 1.1) * 0.9
+      const d = r * (1.1 + 0.5 * Math.abs(Math.sin(t * 0.35 + i * 0.7)))
+      const fx = cx + Math.cos(a) * d; const fy = cy + Math.sin(a) * d
+      const fa = 0.4 + 0.55 * Math.abs(Math.sin(t * 1.2 + i))
+      // glow halo
+      const fg = ctx.createRadialGradient(fx, fy, 0, fx, fy, 5 * s)
+      fg.addColorStop(0, `rgba(180,255,150,${fa})`)
+      fg.addColorStop(1, `rgba(100,220,80,0)`)
+      ctx.beginPath(); ctx.arc(fx, fy, 5 * s, 0, Math.PI * 2)
+      ctx.fillStyle = fg; ctx.fill()
+      ctx.beginPath(); ctx.arc(fx, fy, 1.6 * s, 0, Math.PI * 2)
+      ctx.fillStyle = `rgba(220,255,180,${fa})`; ctx.fill()
+    }
+  }
+
+  if (decoration === 'petals') {
+    for (let i = 0; i < 7; i++) {
+      const a = (i / 7) * Math.PI * 2 + t * 0.22 + Math.sin(t * 0.4 + i) * 0.6
+      const d = r * (1.0 + 0.6 * Math.abs(Math.sin(t * 0.3 + i * 0.9)))
+      const px = cx + Math.cos(a) * d; const py = cy + Math.sin(a) * d
+      const pa = 0.35 + 0.45 * Math.abs(Math.sin(t * 0.7 + i))
+      ctx.save(); ctx.translate(px, py); ctx.rotate(a + t * 0.4)
+      ctx.beginPath(); ctx.ellipse(0, 0, 4 * s, 2 * s, 0, 0, Math.PI * 2)
+      ctx.fillStyle = `rgba(255,200,220,${pa})`; ctx.fill()
+      ctx.restore()
+    }
+  }
+
+  if (decoration === 'snowflakes') {
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * Math.PI * 2 + t * 0.18
+      const d = r * (1.15 + 0.45 * Math.abs(Math.sin(t * 0.25 + i * 1.2)))
+      const flx = cx + Math.cos(a) * d; const fly = cy + Math.sin(a) * d
+      const fa = 0.3 + 0.5 * Math.abs(Math.sin(t * 0.6 + i))
+      ctx.save(); ctx.translate(flx, fly); ctx.rotate(t * 0.3 + i)
+      for (let arm = 0; arm < 6; arm++) {
+        ctx.save(); ctx.rotate((arm / 6) * Math.PI * 2)
+        ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -5 * s)
+        ctx.strokeStyle = `rgba(200,230,255,${fa})`; ctx.lineWidth = 0.8 * s; ctx.stroke()
+        ctx.restore()
+      }
+      ctx.restore()
+    }
+  }
+
+  if (decoration === 'comet') {
+    const a = t * 0.55
+    const cx2 = cx + Math.cos(a) * r * 1.55; const cy2 = cy + Math.sin(a) * r * 1.55
+    // Tail
+    for (let i = 0; i < 10; i++) {
+      const ta = a - (i / 10) * 0.9
+      const tx = cx + Math.cos(ta) * r * (1.55 - i * 0.04)
+      const ty = cy + Math.sin(ta) * r * (1.55 - i * 0.04)
+      ctx.beginPath(); ctx.arc(tx, ty, (1.8 - i * 0.15) * s, 0, Math.PI * 2)
+      ctx.fillStyle = `rgba(${colors.glow},${(1 - i / 10) * 0.5})`; ctx.fill()
+    }
+    // Head
+    const cg = ctx.createRadialGradient(cx2, cy2, 0, cx2, cy2, 5 * s)
+    cg.addColorStop(0, `rgba(255,255,220,0.95)`)
+    cg.addColorStop(1, `rgba(${colors.glow},0)`)
+    ctx.beginPath(); ctx.arc(cx2, cy2, 5 * s, 0, Math.PI * 2)
+    ctx.fillStyle = cg; ctx.fill()
+  }
+
+  ctx.restore()
+}
+
 function drawHub(ctx: CanvasRenderingContext2D, hub: Hub, sx: number, sy: number, s: number, t: number) {
   const colors = getColor(hub.colorTheme)
+  const glowMult = hub.glowIntensity === 'dim' ? 0.45 : hub.glowIntensity === 'blazing' ? 1 : 1
+
   ctx.save()
+
+  // Blazing: extra wide aura behind everything
+  if (hub.glowIntensity === 'blazing') {
+    const blazeR = 52 * s * (0.9 + 0.1 * Math.sin(t * 0.8))
+    const blaze = ctx.createRadialGradient(sx, sy, 0, sx, sy, blazeR)
+    blaze.addColorStop(0, `rgba(${colors.glow},0.28)`)
+    blaze.addColorStop(0.5, `rgba(${colors.glow},0.12)`)
+    blaze.addColorStop(1, `rgba(${colors.glow},0)`)
+    ctx.beginPath(); ctx.arc(sx, sy, blazeR, 0, Math.PI * 2)
+    ctx.fillStyle = blaze; ctx.fill()
+  }
+
+  // Dim: fade the whole hub
+  if (hub.glowIntensity === 'dim') ctx.globalAlpha = glowMult
+
+  // Decoration (behind hub)
+  if (hub.decoration !== 'none' && hub.decoration !== 'rings') {
+    drawDecoration(ctx, sx, sy, s, colors, t, hub.decoration)
+  }
+
   switch (hub.hubStyle) {
     case 'lantern': drawLantern(ctx, sx, sy, s, colors, t, hub.online, !!hub.isMe, hub.avatarImage); break
     case 'ruin': drawRuin(ctx, sx, sy, s, colors, t, hub.online, !!hub.isMe, hub.avatarImage); break
@@ -536,8 +763,17 @@ function drawHub(ctx: CanvasRenderingContext2D, hub: Hub, sx: number, sy: number
     case 'telescope': drawTelescope(ctx, sx, sy, s, colors, t, hub.online, !!hub.isMe, hub.avatarImage); break
     case 'greenhouse': drawGreenhouse(ctx, sx, sy, s, colors, t, hub.online, !!hub.isMe, hub.avatarImage); break
     case 'lotus': drawLotus(ctx, sx, sy, s, colors, t, hub.online, !!hub.isMe, hub.avatarImage); break
+    case 'cottage': drawCottage(ctx, sx, sy, s, colors, t, hub.online, !!hub.isMe, hub.avatarImage); break
     default: drawPortal(ctx, sx, sy, s, colors, t, hub.online, !!hub.isMe, hub.avatarImage)
   }
+
+  // Rings drawn after hub (so front half overlaps hub)
+  if (hub.decoration === 'rings') {
+    drawDecoration(ctx, sx, sy, s, colors, t, hub.decoration)
+  }
+
+  ctx.globalAlpha = 1
+
   // Hub name label
   ctx.font = `${Math.max(9, 10 * s)}px Cinzel, serif`
   ctx.fillStyle = `rgba(255,255,255,${hub.isMe ? 0.9 : 0.65})`
@@ -575,9 +811,11 @@ function drawShootingStar(ctx: CanvasRenderingContext2D, star: ShootingStar) {
 
 export default function UniverseMap({
   hubName, hubBio, hubAskAbout, hubAvatarUrl, hubStyle = 'portal', hubColor = 'gold',
+  hubDecoration = 'none', hubGlowIntensity = 'normal',
   onWriteLetter, onObservatory, onProfile,
 }: {
   hubName?: string; hubBio?: string; hubAskAbout?: string; hubAvatarUrl?: string; hubStyle?: HubStyle; hubColor?: HubColor
+  hubDecoration?: HubDecoration; hubGlowIntensity?: HubGlowIntensity
   onWriteLetter?: (recipientName?: string) => void
   onObservatory?: () => void; onProfile?: () => void
 }) {
@@ -690,6 +928,8 @@ export default function UniverseMap({
           floatSpeed: 0.4 + (i * 23 % 10) / 30,
           colorTheme: (HUB_COLOR_THEMES.find(theme => theme.id === hub.backdrop_id)?.id || HUB_COLOR_THEMES[i % HUB_COLOR_THEMES.length].id),
           hubStyle: (hub.hub_style as HubStyle) || styles[i % styles.length],
+          decoration: (hub.decoration as HubDecoration) || 'none',
+          glowIntensity: (hub.glow_intensity as HubGlowIntensity) || 'normal',
         } as Hub
       }))
 
@@ -700,6 +940,7 @@ export default function UniverseMap({
         avatarUrl: hubAvatarUrl || '', avatarImage: myAvatarImg,
         online: true, pulse: 0, size: 1.1, isMe: true,
         floatOffset: 0, floatSpeed: 0.5, colorTheme: hubColor, hubStyle,
+        decoration: hubDecoration, glowIntensity: hubGlowIntensity,
       }, ...otherHubs]
 
       // Star field background
@@ -752,7 +993,26 @@ export default function UniverseMap({
     }
     void init()
     return () => { cancelAnimationFrame(animFrameRef.current); if (resizeHandler) window.removeEventListener('resize', resizeHandler) }
-  }, [hubName, hubAvatarUrl, hubStyle, hubColor])
+  }, [hubName, hubStyle, hubColor, hubDecoration, hubGlowIntensity])
+
+  // ── Patch avatar in-place when it changes without re-running full init ──
+  useEffect(() => {
+    if (!hubAvatarUrl) return
+    loadImage(hubAvatarUrl).then(img => {
+      if (hubsRef.current.length > 0 && hubsRef.current[0].isMe) {
+        hubsRef.current[0].avatarUrl = hubAvatarUrl
+        hubsRef.current[0].avatarImage = img
+      }
+    })
+  }, [hubAvatarUrl])
+
+  // ── Patch decoration/glow in-place ──
+  useEffect(() => {
+    if (hubsRef.current.length > 0 && hubsRef.current[0].isMe) {
+      hubsRef.current[0].decoration = hubDecoration
+      hubsRef.current[0].glowIntensity = hubGlowIntensity
+    }
+  }, [hubDecoration, hubGlowIntensity])
 
   const getHubAt = useCallback((mx: number, my: number): Hub | null => {
     const scale = scaleRef.current; const offset = offsetRef.current

@@ -8,6 +8,8 @@ type HubRecord = {
   avatar_url?: string | null
   hub_style?: string | null
   backdrop_id?: string | null
+  decoration?: string | null
+  glow_intensity?: string | null
   regen_count?: number | null
   letters_sent?: number | null
   email?: string | null

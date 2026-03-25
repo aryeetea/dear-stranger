@@ -5,7 +5,7 @@ import EntryScreen from './components/EntryScreen'
 import SoulMirror from './components/SoulMirror'
 import type { MirrorVoice, SoulMirrorResumeState, StyleOption } from './components/SoulMirror'
 import UniverseMap from './components/UniverseMap'
-import type { HubColor, HubStyle } from './components/UniverseMap'
+import type { HubColor, HubStyle, HubDecoration, HubGlowIntensity } from './components/UniverseMap'
 import Scribe from './components/Scribe'
 import Observatory from './components/Observatory'
 import Profile from './components/Profile'
@@ -130,6 +130,8 @@ export default function Home() {
   const [hubAvatarUrl, setHubAvatarUrl] = useState('')
   const [hubStyle, setHubStyle] = useState<HubStyle>('portal')
   const [hubColor, setHubColor] = useState<HubColor>('gold')
+  const [hubDecoration, setHubDecoration] = useState<HubDecoration>('none')
+  const [hubGlowIntensity, setHubGlowIntensity] = useState<HubGlowIntensity>('normal')
   const [hubRegenCount, setHubRegenCount] = useState(0)
   const [lettersSent, setLettersSent] = useState(0)
   const [generatingStatus, setGeneratingStatus] = useState('')
@@ -192,6 +194,8 @@ export default function Home() {
     setHubAvatarUrl('')
     setHubStyle('portal')
     setHubColor('gold')
+    setHubDecoration('none')
+    setHubGlowIntensity('normal')
     setLettersSent(0)
     setHubRegenCount(0)
     setIsGuest(false)
@@ -236,6 +240,8 @@ export default function Home() {
         setHubAvatarUrl(hub.avatar_url || '')
         setHubStyle((hub.hub_style as HubStyle) || 'portal')
         setHubColor(coerceHubColor(hub.backdrop_id))
+        setHubDecoration((hub.decoration as HubDecoration) || 'none')
+        setHubGlowIntensity((hub.glow_intensity as HubGlowIntensity) || 'normal')
         setLettersSent(hub.letters_sent || 0)
         setHubRegenCount(hub.regen_count || 0)
         setOnboardingError('')
@@ -753,6 +759,8 @@ export default function Home() {
               setHubAvatarUrl(hub.avatar_url || '')
               setHubStyle((hub.hub_style as HubStyle) || 'portal')
               setHubColor(coerceHubColor(hub.backdrop_id))
+              setHubDecoration((hub.decoration as HubDecoration) || 'none')
+              setHubGlowIntensity((hub.glow_intensity as HubGlowIntensity) || 'normal')
               setLettersSent(hub.letters_sent || 0)
               setHubRegenCount(hub.regen_count || 0)
               setIsGuest(false)
@@ -839,6 +847,8 @@ export default function Home() {
           hubAvatarUrl={hubAvatarUrl}
           hubStyle={hubStyle}
           hubColor={hubColor}
+          hubDecoration={hubDecoration}
+          hubGlowIntensity={hubGlowIntensity}
           onWriteLetter={(name) => {
             if (isGuest) {
               setShowGuestWall(true)
@@ -857,6 +867,7 @@ export default function Home() {
       {scribeOpen && (
         <Scribe
           recipientName={scribeRecipient}
+          senderName={hubName}
           lettersSent={lettersSent}
           onClose={() => setScribeOpen(false)}
           onSend={async (letter) => {
@@ -918,14 +929,18 @@ export default function Home() {
           regenCount={hubRegenCount}
           hubStyle={hubStyle}
           hubColor={hubColor}
+          hubDecoration={hubDecoration}
+          hubGlowIntensity={hubGlowIntensity}
           onClose={() => setProfileOpen(false)}
-          onUpdateHub={({ hubName: nextHubName, bio: nextBio, askAbout: nextAskAbout, avatarUrl: nextAvatarUrl, hubStyle: nextHubStyle, hubColor: nextHubColor }) => {
+          onUpdateHub={({ hubName: nextHubName, bio: nextBio, askAbout: nextAskAbout, avatarUrl: nextAvatarUrl, hubStyle: nextHubStyle, hubColor: nextHubColor, hubDecoration: nextHubDecoration, hubGlowIntensity: nextHubGlowIntensity }) => {
             if (typeof nextHubName === 'string') setHubName(nextHubName)
             if (typeof nextBio === 'string') setHubBio(nextBio)
             if (typeof nextAskAbout === 'string') setHubAskAbout(nextAskAbout)
             if (typeof nextAvatarUrl === 'string') setHubAvatarUrl(nextAvatarUrl)
             if (nextHubStyle) setHubStyle(nextHubStyle)
             if (nextHubColor) setHubColor(nextHubColor)
+            if (nextHubDecoration) setHubDecoration(nextHubDecoration)
+            if (nextHubGlowIntensity) setHubGlowIntensity(nextHubGlowIntensity)
           }}
         />
       )}

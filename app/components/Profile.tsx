@@ -4,7 +4,7 @@ import { useEffect, useState, type CSSProperties } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { updateHub, signOut, deleteAccount, exportMyLetters, uploadAvatarToStorage } from '../lib/auth'
 import { supabase } from '../../lib/supabase'
-import { HUB_COLOR_THEMES, HUB_STYLES, type HubColor, type HubStyle } from './UniverseMap'
+import { HUB_COLOR_THEMES, HUB_STYLES, HUB_DECORATIONS, HUB_GLOW_LEVELS, type HubColor, type HubStyle, type HubDecoration, type HubGlowIntensity } from './UniverseMap'
 
 const MAX_REGEN_ATTEMPTS = 3
 
@@ -13,12 +13,14 @@ type DeleteStep = 'idle' | 'exporting' | 'exported' | 'deleting' | 'deleted'
 export default function Profile({
   hubName, bio, askAbout, avatarUrl: initialAvatarUrl, regenCount: initialRegenCount,
   hubStyle: initialHubStyle = 'portal', hubColor: initialHubColor = 'gold',
+  hubDecoration: initialHubDecoration = 'none', hubGlowIntensity: initialHubGlowIntensity = 'normal',
   onClose, onUpdateHub,
 }: {
   hubName?: string; bio?: string; askAbout?: string; avatarUrl?: string; regenCount?: number
   hubStyle?: HubStyle; hubColor?: HubColor
+  hubDecoration?: HubDecoration; hubGlowIntensity?: HubGlowIntensity
   onClose?: () => void
-  onUpdateHub?: (updates: { hubName?: string; bio?: string; askAbout?: string; avatarUrl?: string; hubStyle?: HubStyle; hubColor?: HubColor }) => void
+  onUpdateHub?: (updates: { hubName?: string; bio?: string; askAbout?: string; avatarUrl?: string; hubStyle?: HubStyle; hubColor?: HubColor; hubDecoration?: HubDecoration; hubGlowIntensity?: HubGlowIntensity }) => void
 }) {
   const [hubNameState, setHubNameState] = useState(hubName || 'Your Hub')
   const [bioState, setBioState] = useState(bio || 'A wanderer who arrived here quietly, carrying something unspoken.')
@@ -42,16 +44,18 @@ export default function Profile({
 
   const [selectedHubStyle, setSelectedHubStyle] = useState<HubStyle>(initialHubStyle)
   const [selectedHubColor, setSelectedHubColor] = useState<HubColor>(initialHubColor)
+  const [selectedDecoration, setSelectedDecoration] = useState<HubDecoration>(initialHubDecoration)
+  const [selectedGlowIntensity, setSelectedGlowIntensity] = useState<HubGlowIntensity>(initialHubGlowIntensity)
   const [appearanceSaving, setAppearanceSaving] = useState(false)
   const [appearanceSaved, setAppearanceSaved] = useState(false)
 
-  const appearanceChanged = selectedHubStyle !== initialHubStyle || selectedHubColor !== initialHubColor
+  const appearanceChanged = selectedHubStyle !== initialHubStyle || selectedHubColor !== initialHubColor || selectedDecoration !== initialHubDecoration || selectedGlowIntensity !== initialHubGlowIntensity
 
   async function saveAppearance() {
     try {
       setAppearanceSaving(true)
-      await updateHub({ hub_style: selectedHubStyle, backdrop_id: selectedHubColor })
-      onUpdateHub?.({ hubStyle: selectedHubStyle, hubColor: selectedHubColor })
+      await updateHub({ hub_style: selectedHubStyle, backdrop_id: selectedHubColor, decoration: selectedDecoration, glow_intensity: selectedGlowIntensity })
+      onUpdateHub?.({ hubStyle: selectedHubStyle, hubColor: selectedHubColor, hubDecoration: selectedDecoration, hubGlowIntensity: selectedGlowIntensity })
       setAppearanceSaved(true)
       setTimeout(() => setAppearanceSaved(false), 2000)
     } catch (err) {
@@ -132,22 +136,23 @@ export default function Profile({
       if (!res.ok || data.error) throw new Error(data.error || 'Failed')
       if (!data.imageUrl) throw new Error('No avatar image came back from the mirror.')
 
-      // ── upload to Storage, get permanent URL ──
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('No user found')
-      const permanentUrl = await uploadAvatarToStorage(data.imageUrl, user.id)
-
-      // ── only increment AFTER full success ──
+      // ── Show the new image immediately — don't wait for storage upload ──
       const newCount = regenCount + 1
-      setCurrentAvatarUrl(permanentUrl)
+      setCurrentAvatarUrl(data.imageUrl)
       setRegenCount(newCount)
       setRegenFeedback('')
+      setRegenLoading(false)
+
+      // ── Upload to Storage in the background, then swap to permanent URL ──
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const permanentUrl = await uploadAvatarToStorage(data.imageUrl, user.id)
+      setCurrentAvatarUrl(permanentUrl)
       await updateHub({ avatar_url: permanentUrl, regen_count: newCount })
       onUpdateHub?.({ avatarUrl: permanentUrl })
     } catch (err) {
       console.error('Regen failed:', err)
       setRegenError('Something went wrong. Your attempt was not used — try again.')
-    } finally {
       setRegenLoading(false)
     }
   }
@@ -373,6 +378,42 @@ export default function Profile({
                     onMouseLeave={e => { if (!isSelected) { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)' } }}>
                     <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: `radial-gradient(circle at 35% 35%, rgba(255,255,255,0.85), ${theme.ring})`, boxShadow: `0 0 14px rgba(${theme.glow},0.3)`, border: '1px solid rgba(255,255,255,0.15)' }} />
                     <span style={{ fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.14em', textTransform: 'uppercase', color: isSelected ? '#c9a84c' : 'rgba(255,255,255,0.55)' }}>{theme.label}</span>
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Decoration picker */}
+            <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.26em', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', marginBottom: '10px' }}>Decoration</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(72px, 1fr))', gap: '8px', marginBottom: '20px' }}>
+              {HUB_DECORATIONS.map(dec => {
+                const isSelected = selectedDecoration === dec.id
+                return (
+                  <button key={dec.id}
+                    onClick={() => setSelectedDecoration(dec.id)}
+                    style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', padding: '10px 6px', borderRadius: '10px', border: isSelected ? '1px solid rgba(201,168,76,0.65)' : '1px solid rgba(255,255,255,0.1)', background: isSelected ? 'rgba(201,168,76,0.1)' : 'rgba(255,255,255,0.03)', cursor: 'pointer', transition: 'all 0.18s' }}
+                    onMouseEnter={e => { if (!isSelected) { e.currentTarget.style.background = 'rgba(201,168,76,0.06)'; e.currentTarget.style.borderColor = 'rgba(201,168,76,0.3)' } }}
+                    onMouseLeave={e => { if (!isSelected) { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)' } }}>
+                    <span style={{ fontSize: '16px' }}>{dec.icon}</span>
+                    <span style={{ fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.14em', textTransform: 'uppercase', color: isSelected ? '#c9a84c' : 'rgba(255,255,255,0.55)' }}>{dec.label}</span>
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Glow intensity picker */}
+            <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.26em', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', marginBottom: '10px' }}>Glow</p>
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
+              {HUB_GLOW_LEVELS.map(glow => {
+                const isSelected = selectedGlowIntensity === glow.id
+                return (
+                  <button key={glow.id}
+                    onClick={() => setSelectedGlowIntensity(glow.id)}
+                    style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '10px 8px', borderRadius: '10px', border: isSelected ? '1px solid rgba(201,168,76,0.65)' : '1px solid rgba(255,255,255,0.1)', background: isSelected ? 'rgba(201,168,76,0.1)' : 'rgba(255,255,255,0.03)', cursor: 'pointer', transition: 'all 0.18s' }}
+                    onMouseEnter={e => { if (!isSelected) { e.currentTarget.style.background = 'rgba(201,168,76,0.06)'; e.currentTarget.style.borderColor = 'rgba(201,168,76,0.3)' } }}
+                    onMouseLeave={e => { if (!isSelected) { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)' } }}>
+                    <span style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.15em', textTransform: 'uppercase', color: isSelected ? '#c9a84c' : 'rgba(255,255,255,0.65)' }}>{glow.label}</span>
+                    <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '11px', color: 'rgba(255,255,255,0.38)', lineHeight: 1.3, textAlign: 'center' }}>{glow.desc}</span>
                   </button>
                 )
               })}
