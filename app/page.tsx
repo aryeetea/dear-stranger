@@ -333,14 +333,14 @@ export default function Home() {
     const hubNameAnswer = (userHubName || answers[keys[keys.length - 1]] || 'Your Hub').trim()
 
 
+    // Move fallback values above their use
+    const fallbackBio = 'A wanderer who arrived here quietly, carrying something unspoken.'
+    const fallbackAskAbout = 'Silence, slow mornings, and letters that take their time.'
     // Always include bio and askAbout for avatar generation, just like Profile reimagine
     const conversationAnswers: Record<number, string> = {
       0: userBio?.trim() || fallbackBio,
       1: userAskAbout?.trim() || fallbackAskAbout,
     }
-
-    const fallbackBio = 'A wanderer who arrived here quietly, carrying something unspoken.'
-    const fallbackAskAbout = 'Silence, slow mornings, and letters that take their time.'
     const chosenHubStyle = selectedHubStyle || 'portal'
     const chosenHubColor = selectedHubColor || 'gold'
     const chosenBio = userBio?.trim() || fallbackBio
