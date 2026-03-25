@@ -916,12 +916,16 @@ export default function Home() {
           askAbout={hubAskAbout}
           avatarUrl={hubAvatarUrl}
           regenCount={hubRegenCount}
+          hubStyle={hubStyle}
+          hubColor={hubColor}
           onClose={() => setProfileOpen(false)}
-          onUpdateHub={({ hubName: nextHubName, bio: nextBio, askAbout: nextAskAbout, avatarUrl: nextAvatarUrl }) => {
+          onUpdateHub={({ hubName: nextHubName, bio: nextBio, askAbout: nextAskAbout, avatarUrl: nextAvatarUrl, hubStyle: nextHubStyle, hubColor: nextHubColor }) => {
             if (typeof nextHubName === 'string') setHubName(nextHubName)
             if (typeof nextBio === 'string') setHubBio(nextBio)
             if (typeof nextAskAbout === 'string') setHubAskAbout(nextAskAbout)
             if (typeof nextAvatarUrl === 'string') setHubAvatarUrl(nextAvatarUrl)
+            if (nextHubStyle) setHubStyle(nextHubStyle)
+            if (nextHubColor) setHubColor(nextHubColor)
           }}
         />
       )}

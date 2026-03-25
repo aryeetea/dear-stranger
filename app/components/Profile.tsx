@@ -4,6 +4,7 @@ import { useEffect, useState, type CSSProperties } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { updateHub, signOut, deleteAccount, exportMyLetters, uploadAvatarToStorage } from '../lib/auth'
 import { supabase } from '../../lib/supabase'
+import { HUB_COLOR_THEMES, HUB_STYLES, type HubColor, type HubStyle } from './UniverseMap'
 
 const MAX_REGEN_ATTEMPTS = 3
 
@@ -11,11 +12,13 @@ type DeleteStep = 'idle' | 'exporting' | 'exported' | 'deleting' | 'deleted'
 
 export default function Profile({
   hubName, bio, askAbout, avatarUrl: initialAvatarUrl, regenCount: initialRegenCount,
+  hubStyle: initialHubStyle = 'portal', hubColor: initialHubColor = 'gold',
   onClose, onUpdateHub,
 }: {
   hubName?: string; bio?: string; askAbout?: string; avatarUrl?: string; regenCount?: number
+  hubStyle?: HubStyle; hubColor?: HubColor
   onClose?: () => void
-  onUpdateHub?: (updates: { hubName?: string; bio?: string; askAbout?: string; avatarUrl?: string }) => void
+  onUpdateHub?: (updates: { hubName?: string; bio?: string; askAbout?: string; avatarUrl?: string; hubStyle?: HubStyle; hubColor?: HubColor }) => void
 }) {
   const [hubNameState, setHubNameState] = useState(hubName || 'Your Hub')
   const [bioState, setBioState] = useState(bio || 'A wanderer who arrived here quietly, carrying something unspoken.')
@@ -36,6 +39,25 @@ export default function Profile({
   const [bioDraft, setBioDraft] = useState(bioState)
   const [askDraft, setAskDraft] = useState(askState)
   const [saveError, setSaveError] = useState('')
+
+  const [selectedHubStyle, setSelectedHubStyle] = useState<HubStyle>(initialHubStyle)
+  const [selectedHubColor, setSelectedHubColor] = useState<HubColor>(initialHubColor)
+  const [appearanceSaving, setAppearanceSaving] = useState(false)
+  const [appearanceSaved, setAppearanceSaved] = useState(false)
+
+  const appearanceChanged = selectedHubStyle !== initialHubStyle || selectedHubColor !== initialHubColor
+
+  async function saveAppearance() {
+    try {
+      setAppearanceSaving(true)
+      await updateHub({ hub_style: selectedHubStyle, backdrop_id: selectedHubColor })
+      onUpdateHub?.({ hubStyle: selectedHubStyle, hubColor: selectedHubColor })
+      setAppearanceSaved(true)
+      setTimeout(() => setAppearanceSaved(false), 2000)
+    } catch (err) {
+      console.error(err)
+    } finally { setAppearanceSaving(false) }
+  }
 
   const [leavingConfirm, setLeavingConfirm] = useState(false)
   const [deleteStep, setDeleteStep] = useState<DeleteStep>('idle')
@@ -308,6 +330,65 @@ export default function Profile({
             ) : (
               <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: 'clamp(15px,1.8vw,18px)', color: 'rgba(255,255,255,0.72)', lineHeight: 1.7 }}>{askState}</p>
             )}
+          </div>
+
+          <div style={{ height: '1px', background: 'linear-gradient(90deg, rgba(255,255,255,0.08), transparent)', marginBottom: '28px' }} />
+
+          {/* ── Hub Appearance ── */}
+          <div style={{ marginBottom: '36px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '18px' }}>
+              <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.4em', color: 'rgba(201,168,76,0.65)', textTransform: 'uppercase' }}>Hub Appearance</p>
+            </div>
+
+            {/* Style grid */}
+            <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.26em', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', marginBottom: '10px' }}>Structure</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '8px', marginBottom: '20px' }}>
+              {HUB_STYLES.map(style => {
+                const isSelected = selectedHubStyle === style.id
+                return (
+                  <button key={style.id}
+                    onClick={() => setSelectedHubStyle(style.id)}
+                    style={{ textAlign: 'left', padding: '12px 12px', borderRadius: '10px', border: isSelected ? '1px solid rgba(201,168,76,0.65)' : '1px solid rgba(255,255,255,0.1)', background: isSelected ? 'rgba(201,168,76,0.1)' : 'rgba(255,255,255,0.03)', cursor: 'pointer', transition: 'all 0.18s', position: 'relative' }}
+                    onMouseEnter={e => { if (!isSelected) { e.currentTarget.style.background = 'rgba(201,168,76,0.06)'; e.currentTarget.style.borderColor = 'rgba(201,168,76,0.3)' } }}
+                    onMouseLeave={e => { if (!isSelected) { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)' } }}>
+                    {isSelected && <div style={{ position: 'absolute', top: '8px', right: '10px', width: '14px', height: '14px', borderRadius: '50%', background: '#c9a84c', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '8px', color: '#000', fontWeight: 'bold' }}>✓</div>}
+                    <p style={{ fontSize: '16px', marginBottom: '5px' }}>{style.icon}</p>
+                    <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.15em', color: isSelected ? '#c9a84c' : 'rgba(255,255,255,0.65)', textTransform: 'uppercase', marginBottom: '3px' }}>{style.label}</p>
+                    <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '11px', color: 'rgba(255,255,255,0.4)', lineHeight: 1.4 }}>{style.desc}</p>
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Color grid */}
+            <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.26em', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', marginBottom: '10px' }}>Color</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(70px, 1fr))', gap: '8px', marginBottom: '20px' }}>
+              {HUB_COLOR_THEMES.map(theme => {
+                const isSelected = selectedHubColor === theme.id
+                return (
+                  <button key={theme.id}
+                    onClick={() => setSelectedHubColor(theme.id)}
+                    style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '7px', padding: '10px 6px', borderRadius: '10px', border: isSelected ? '1px solid rgba(201,168,76,0.65)' : '1px solid rgba(255,255,255,0.1)', background: isSelected ? 'rgba(201,168,76,0.1)' : 'rgba(255,255,255,0.03)', cursor: 'pointer', transition: 'all 0.18s' }}
+                    onMouseEnter={e => { if (!isSelected) { e.currentTarget.style.background = 'rgba(201,168,76,0.06)'; e.currentTarget.style.borderColor = 'rgba(201,168,76,0.3)' } }}
+                    onMouseLeave={e => { if (!isSelected) { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)' } }}>
+                    <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: `radial-gradient(circle at 35% 35%, rgba(255,255,255,0.85), ${theme.ring})`, boxShadow: `0 0 14px rgba(${theme.glow},0.3)`, border: '1px solid rgba(255,255,255,0.15)' }} />
+                    <span style={{ fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.14em', textTransform: 'uppercase', color: isSelected ? '#c9a84c' : 'rgba(255,255,255,0.55)' }}>{theme.label}</span>
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Save button */}
+            <AnimatePresence>
+              {(appearanceChanged || appearanceSaved) && (
+                <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+                  <button onClick={() => void saveAppearance()} disabled={appearanceSaving || appearanceSaved}
+                    style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.25em', color: appearanceSaved ? 'rgba(100,200,130,0.9)' : '#c9a84c', padding: '9px 20px', border: `1px solid ${appearanceSaved ? 'rgba(100,200,130,0.4)' : 'rgba(201,168,76,0.4)'}`, background: 'transparent', cursor: appearanceSaving || appearanceSaved ? 'default' : 'pointer', borderRadius: '6px', textTransform: 'uppercase', transition: 'all 0.2s' }}>
+                    {appearanceSaving ? 'Saving...' : appearanceSaved ? '✓ Saved' : 'Save Appearance'}
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           <div style={{ height: '1px', background: 'linear-gradient(90deg, rgba(255,255,255,0.08), transparent)', marginBottom: '28px' }} />
