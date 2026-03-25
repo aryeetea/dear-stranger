@@ -318,36 +318,24 @@ export async function getUniverseLetters() {
   }
 }
 
-export async function getSession(maxWaitMs = 10000) {
-  const start = Date.now()
-
-  while (Date.now() - start < maxWaitMs) {
-    try {
-      const { data, error } = await supabase.auth.getSession()
-
-      if (error) {
-        if (
-          error.message?.includes('Refresh Token') ||
-          error.message?.includes('refresh_token')
-        ) {
-          try {
-            await supabase.auth.signOut()
-          } catch {}
-        }
-        return null
+export async function getSession() {
+  try {
+    const { data, error } = await supabase.auth.getSession()
+    if (error) {
+      if (
+        error.message?.includes('Refresh Token') ||
+        error.message?.includes('refresh_token')
+      ) {
+        try {
+          await supabase.auth.signOut()
+        } catch {}
       }
-
-      if (data.session) {
-        return data.session
-      }
-
-      await new Promise((r) => setTimeout(r, 400))
-    } catch {
-      await new Promise((r) => setTimeout(r, 400))
+      return null
     }
+    return data.session ?? null
+  } catch {
+    return null
   }
-
-  return null
 }
 
 export async function getMyHub() {

@@ -4,7 +4,8 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { getAllHubs, getUniverseLetters } from '../lib/auth'
 // ── HUB STYLE TYPES ──
-export type HubStyle = 'portal' | 'lantern' | 'ruin' | 'hourglass' | 'telescope' | 'greenhouse'
+export type HubStyle = 'portal' | 'lantern' | 'ruin' | 'hourglass' | 'telescope' | 'greenhouse' | 'lotus'
+export type HubColor = 'gold' | 'sage' | 'rose' | 'azure' | 'amber' | 'violet' | 'teal' | 'sand'
 
 export const HUB_STYLES: { id: HubStyle; label: string; desc: string; icon: string }[] = [
   { id: 'portal', label: 'Portal Ring', desc: 'A spinning cosmic gateway', icon: '◎' },
@@ -13,20 +14,19 @@ export const HUB_STYLES: { id: HubStyle; label: string; desc: string; icon: stri
   { id: 'hourglass', label: 'Prism Bloom', desc: 'A faceted crystal flower suspended in light', icon: '◇' },
   { id: 'telescope', label: 'Starwatch Shrine', desc: 'A celestial shrine with a lens of focused light', icon: '✧' },
   { id: 'greenhouse', label: 'Greenhouse Bubble', desc: 'A glass dome brimming with quiet life', icon: '✦' },
+  { id: 'lotus', label: 'Lotus Bloom', desc: 'A luminous lotus opening softly over still water', icon: '🪷' },
 ]
 
-const PORTAL_COLORS = [
-  { ring: '#8b6fc0', glow: '130,80,200', inner: '#4a2a7a' },
-  { ring: '#6faa88', glow: '80,160,120', inner: '#2a5a40' },
-  { ring: '#aa6f6f', glow: '180,80,80', inner: '#6a2a2a' },
-  { ring: '#6f8faa', glow: '80,120,180', inner: '#2a4a6a' },
-  { ring: '#aa8f5a', glow: '180,140,60', inner: '#6a5a20' },
-  { ring: '#8f5aaa', glow: '140,60,180', inner: '#4a1a6a' },
-  { ring: '#5a8faa', glow: '60,130,180', inner: '#1a4a6a' },
-  { ring: '#aa8f6f', glow: '180,140,80', inner: '#6a5a30' },
+export const HUB_COLOR_THEMES: { id: HubColor; label: string; ring: string; glow: string; inner: string }[] = [
+  { id: 'gold', label: 'Gold', ring: '#c9a84c', glow: '201,168,76', inner: '#6a4a10' },
+  { id: 'sage', label: 'Sage', ring: '#6faa88', glow: '80,160,120', inner: '#2a5a40' },
+  { id: 'rose', label: 'Rose', ring: '#aa6f6f', glow: '180,80,80', inner: '#6a2a2a' },
+  { id: 'azure', label: 'Azure', ring: '#6f8faa', glow: '80,120,180', inner: '#2a4a6a' },
+  { id: 'amber', label: 'Amber', ring: '#aa8f5a', glow: '180,140,60', inner: '#6a5a20' },
+  { id: 'violet', label: 'Violet', ring: '#8f5aaa', glow: '140,60,180', inner: '#4a1a6a' },
+  { id: 'teal', label: 'Teal', ring: '#5a8faa', glow: '60,130,180', inner: '#1a4a6a' },
+  { id: 'sand', label: 'Sand', ring: '#aa8f6f', glow: '180,140,80', inner: '#6a5a30' },
 ]
-
-const MY_PORTAL = { ring: '#c9a84c', glow: '201,168,76', inner: '#6a4a10' }
 
 interface Hub {
   x: number; y: number
@@ -34,7 +34,7 @@ interface Hub {
   avatarUrl?: string; avatarImage?: HTMLImageElement
   online: boolean; pulse: number; size: number
   isMe?: boolean; floatOffset: number; floatSpeed: number
-  colorVariant: number; hubStyle: HubStyle
+  colorTheme: HubColor; hubStyle: HubStyle
 }
 
 interface ShootingStar {
@@ -60,13 +60,13 @@ function loadImage(url: string): Promise<HTMLImageElement> {
   })
 }
 
-function getColor(colorVariant: number, isMe?: boolean) {
-  return isMe ? MY_PORTAL : PORTAL_COLORS[colorVariant % PORTAL_COLORS.length]
+function getColor(colorTheme?: string | null) {
+  return HUB_COLOR_THEMES.find(theme => theme.id === colorTheme) || HUB_COLOR_THEMES[0]
 }
 
 // ── DRAW FUNCTIONS PER STYLE ──
 
-function drawPortal(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: number, colors: typeof MY_PORTAL, t: number, online: boolean, isMe: boolean, avatarImage?: HTMLImageElement) {
+function drawPortal(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: number, colors: (typeof HUB_COLOR_THEMES)[number], t: number, online: boolean, isMe: boolean, avatarImage?: HTMLImageElement) {
   const r = 28 * s
   const pulse = 0.85 + 0.15 * Math.sin(t * (isMe ? 1.2 : 0.8))
   const auraR = r * 2.2 * pulse
@@ -115,7 +115,7 @@ function drawPortal(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: nu
   }
 }
 
-function drawLantern(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: number, colors: typeof MY_PORTAL, t: number, online: boolean, isMe: boolean, avatarImage?: HTMLImageElement) {
+function drawLantern(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: number, colors: (typeof HUB_COLOR_THEMES)[number], t: number, online: boolean, isMe: boolean, avatarImage?: HTMLImageElement) {
   const r = 26 * s
   const breathe = 0.92 + 0.08 * Math.sin(t * 0.9)
   // Outer glow halo
@@ -159,7 +159,7 @@ function drawLantern(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: n
   }
 }
 
-function drawRuin(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: number, colors: typeof MY_PORTAL, t: number, online: boolean, isMe: boolean, avatarImage?: HTMLImageElement) {
+function drawRuin(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: number, colors: (typeof HUB_COLOR_THEMES)[number], t: number, online: boolean, isMe: boolean, avatarImage?: HTMLImageElement) {
   const r = 28 * s
   const sway = Math.sin(t * 0.3) * 1.5
   // Misty ground glow
@@ -227,7 +227,7 @@ function drawRuin(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: numb
   }
 }
 
-function drawHourglass(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: number, colors: typeof MY_PORTAL, t: number, online: boolean, isMe: boolean, avatarImage?: HTMLImageElement) {
+function drawHourglass(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: number, colors: (typeof HUB_COLOR_THEMES)[number], t: number, online: boolean, isMe: boolean, avatarImage?: HTMLImageElement) {
   const r = 30 * s
   const pulse = 0.92 + 0.08 * Math.sin(t * 0.8)
   const bloomR = r * pulse
@@ -315,7 +315,7 @@ function drawHourglass(ctx: CanvasRenderingContext2D, cx: number, cy: number, s:
   }
 }
 
-function drawTelescope(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: number, colors: typeof MY_PORTAL, t: number, online: boolean, isMe: boolean, avatarImage?: HTMLImageElement) {
+function drawTelescope(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: number, colors: (typeof HUB_COLOR_THEMES)[number], t: number, online: boolean, isMe: boolean, avatarImage?: HTMLImageElement) {
   const r = 28 * s
   const bob = Math.sin(t * 0.6) * 2 * s
   // Dome base shadow
@@ -381,7 +381,7 @@ function drawTelescope(ctx: CanvasRenderingContext2D, cx: number, cy: number, s:
   }
 }
 
-function drawGreenhouse(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: number, colors: typeof MY_PORTAL, t: number, online: boolean, isMe: boolean, avatarImage?: HTMLImageElement) {
+function drawGreenhouse(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: number, colors: (typeof HUB_COLOR_THEMES)[number], t: number, online: boolean, isMe: boolean, avatarImage?: HTMLImageElement) {
   const r = 26 * s
   const breathe = 0.96 + 0.04 * Math.sin(t * 0.7)
   // Outer mist
@@ -437,8 +437,97 @@ function drawGreenhouse(ctx: CanvasRenderingContext2D, cx: number, cy: number, s
   }
 }
 
+function drawLotus(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: number, colors: (typeof HUB_COLOR_THEMES)[number], t: number, online: boolean, isMe: boolean, avatarImage?: HTMLImageElement) {
+  const r = 28 * s
+  const bloom = 0.94 + 0.06 * Math.sin(t * 0.85)
+  const glow = ctx.createRadialGradient(cx, cy, r * 0.2, cx, cy, r * 2.4)
+  glow.addColorStop(0, `rgba(${colors.glow},0.2)`)
+  glow.addColorStop(0.45, 'rgba(255,210,235,0.12)')
+  glow.addColorStop(1, `rgba(${colors.glow},0)`)
+  ctx.beginPath(); ctx.arc(cx, cy, r * 2.4, 0, Math.PI * 2)
+  ctx.fillStyle = glow; ctx.fill()
+
+  ctx.beginPath()
+  ctx.ellipse(cx, cy + r * 0.95, r * 1.3, r * 0.22, 0, 0, Math.PI * 2)
+  ctx.fillStyle = `rgba(${colors.glow},0.14)`
+  ctx.fill()
+
+  for (let i = 0; i < 8; i++) {
+    const angle = -Math.PI / 2 + (i - 3.5) * 0.38 + Math.sin(t * 0.4 + i) * 0.02
+    ctx.save()
+    ctx.translate(cx, cy + r * 0.16)
+    ctx.rotate(angle)
+    const petal = ctx.createLinearGradient(0, -r * 0.88 * bloom, 0, r * 0.16)
+    petal.addColorStop(0, 'rgba(255,235,245,0.88)')
+    petal.addColorStop(0.45, `rgba(${colors.glow},0.55)`)
+    petal.addColorStop(1, `rgba(${colors.glow},0.12)`)
+    ctx.beginPath()
+    ctx.moveTo(0, -r * 0.82 * bloom)
+    ctx.quadraticCurveTo(r * 0.28, -r * 0.28, 0, r * 0.1)
+    ctx.quadraticCurveTo(-r * 0.28, -r * 0.28, 0, -r * 0.82 * bloom)
+    ctx.closePath()
+    ctx.fillStyle = petal
+    ctx.fill()
+    ctx.strokeStyle = `rgba(255,245,250,0.28)`
+    ctx.lineWidth = 0.8 * s
+    ctx.stroke()
+    ctx.restore()
+  }
+
+  for (let i = 0; i < 6; i++) {
+    const angle = -Math.PI / 2 + (i - 2.5) * 0.5
+    ctx.save()
+    ctx.translate(cx, cy + r * 0.35)
+    ctx.rotate(angle)
+    ctx.beginPath()
+    ctx.moveTo(0, -r * 0.58 * bloom)
+    ctx.quadraticCurveTo(r * 0.22, -r * 0.16, 0, r * 0.08)
+    ctx.quadraticCurveTo(-r * 0.22, -r * 0.16, 0, -r * 0.58 * bloom)
+    ctx.closePath()
+    ctx.fillStyle = `rgba(${colors.glow},0.34)`
+    ctx.fill()
+    ctx.restore()
+  }
+
+  if (avatarImage?.complete && avatarImage.naturalWidth > 0) {
+    ctx.save()
+    ctx.beginPath()
+    ctx.arc(cx, cy + r * 0.02, r * 0.5, 0, Math.PI * 2)
+    ctx.clip()
+    ctx.drawImage(avatarImage, cx - r * 0.5, cy - r * 0.48, r, r)
+    ctx.restore()
+  } else {
+    const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * 0.52)
+    core.addColorStop(0, `rgba(${colors.glow},0.42)`)
+    core.addColorStop(1, `rgba(${colors.glow},0.08)`)
+    ctx.beginPath(); ctx.arc(cx, cy + r * 0.02, r * 0.52, 0, Math.PI * 2)
+    ctx.fillStyle = core
+    ctx.fill()
+  }
+
+  ctx.beginPath()
+  ctx.arc(cx, cy + r * 0.02, r * 0.54, 0, Math.PI * 2)
+  ctx.strokeStyle = 'rgba(255,245,250,0.3)'
+  ctx.lineWidth = 1.1 * s
+  ctx.stroke()
+
+  for (let i = 0; i < 5; i++) {
+    const angle = (i / 5) * Math.PI * 2 + t * 0.35
+    const px = cx + Math.cos(angle) * r * 1.05
+    const py = cy - r * 0.28 + Math.sin(angle) * r * 0.32
+    ctx.beginPath(); ctx.arc(px, py, 1.6 * s, 0, Math.PI * 2)
+    ctx.fillStyle = `rgba(255,240,220,${0.22 + 0.24 * Math.abs(Math.sin(t + i))})`
+    ctx.fill()
+  }
+
+  if (!isMe) {
+    ctx.beginPath(); ctx.arc(cx + r * 0.76, cy - r * 0.7, 3 * s, 0, Math.PI * 2)
+    ctx.fillStyle = online ? '#7ecf7e' : 'rgba(255,255,255,0.2)'; ctx.fill()
+  }
+}
+
 function drawHub(ctx: CanvasRenderingContext2D, hub: Hub, sx: number, sy: number, s: number, t: number) {
-  const colors = getColor(hub.colorVariant, hub.isMe)
+  const colors = getColor(hub.colorTheme)
   ctx.save()
   switch (hub.hubStyle) {
     case 'lantern': drawLantern(ctx, sx, sy, s, colors, t, hub.online, !!hub.isMe, hub.avatarImage); break
@@ -446,6 +535,7 @@ function drawHub(ctx: CanvasRenderingContext2D, hub: Hub, sx: number, sy: number
     case 'hourglass': drawHourglass(ctx, sx, sy, s, colors, t, hub.online, !!hub.isMe, hub.avatarImage); break
     case 'telescope': drawTelescope(ctx, sx, sy, s, colors, t, hub.online, !!hub.isMe, hub.avatarImage); break
     case 'greenhouse': drawGreenhouse(ctx, sx, sy, s, colors, t, hub.online, !!hub.isMe, hub.avatarImage); break
+    case 'lotus': drawLotus(ctx, sx, sy, s, colors, t, hub.online, !!hub.isMe, hub.avatarImage); break
     default: drawPortal(ctx, sx, sy, s, colors, t, hub.online, !!hub.isMe, hub.avatarImage)
   }
   // Hub name label
@@ -484,10 +574,10 @@ function drawShootingStar(ctx: CanvasRenderingContext2D, star: ShootingStar) {
 }
 
 export default function UniverseMap({
-  hubName, hubAvatarUrl, hubStyle = 'portal',
+  hubName, hubAvatarUrl, hubStyle = 'portal', hubColor = 'gold',
   onWriteLetter, onObservatory, onProfile,
 }: {
-  hubName?: string; hubAvatarUrl?: string; hubStyle?: HubStyle
+  hubName?: string; hubAvatarUrl?: string; hubStyle?: HubStyle; hubColor?: HubColor
   onWriteLetter?: (recipientName?: string) => void
   onObservatory?: () => void; onProfile?: () => void
 }) {
@@ -589,7 +679,7 @@ export default function UniverseMap({
         const angle = (i / Math.max(realHubs.length, 1)) * Math.PI * 2 + 0.3
         const dist = 180 + (i * 73) % 320
         const avatarImg = hub.avatar_url ? await loadImage(hub.avatar_url) : undefined
-        const styles: HubStyle[] = ['portal', 'lantern', 'ruin', 'hourglass', 'telescope', 'greenhouse']
+        const styles: HubStyle[] = ['portal', 'lantern', 'ruin', 'hourglass', 'telescope', 'greenhouse', 'lotus']
         return {
           x: Math.cos(angle) * dist, y: Math.sin(angle) * dist,
           name: hub.hub_name, bio: hub.bio || '', askAbout: hub.ask_about || '',
@@ -598,7 +688,7 @@ export default function UniverseMap({
           size: 0.9 + (i * 17 % 10) / 30,
           floatOffset: (i * 137) % (Math.PI * 2),
           floatSpeed: 0.4 + (i * 23 % 10) / 30,
-          colorVariant: i % PORTAL_COLORS.length,
+          colorTheme: (HUB_COLOR_THEMES.find(theme => theme.id === hub.backdrop_id)?.id || HUB_COLOR_THEMES[i % HUB_COLOR_THEMES.length].id),
           hubStyle: (hub.hub_style as HubStyle) || styles[i % styles.length],
         } as Hub
       }))
@@ -608,7 +698,7 @@ export default function UniverseMap({
         bio: 'This is your place in the universe.',
         avatarUrl: hubAvatarUrl || '', avatarImage: myAvatarImg,
         online: true, pulse: 0, size: 1.1, isMe: true,
-        floatOffset: 0, floatSpeed: 0.5, colorVariant: 0, hubStyle,
+        floatOffset: 0, floatSpeed: 0.5, colorTheme: hubColor, hubStyle,
       }, ...otherHubs]
 
       // Star field background
@@ -661,7 +751,7 @@ export default function UniverseMap({
     }
     void init()
     return () => { cancelAnimationFrame(animFrameRef.current); if (resizeHandler) window.removeEventListener('resize', resizeHandler) }
-  }, [hubName, hubAvatarUrl, hubStyle])
+  }, [hubName, hubAvatarUrl, hubStyle, hubColor])
 
   const getHubAt = useCallback((mx: number, my: number): Hub | null => {
     const scale = scaleRef.current; const offset = offsetRef.current

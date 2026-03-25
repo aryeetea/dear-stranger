@@ -31,7 +31,12 @@ function countWords(text: string) {
   return stripFormatting(text).split(/\s+/).filter(Boolean).length
 }
 
-async function repairMirrorReply(model: ReturnType<GoogleGenerativeAI['getGenerativeModel']>, rawReply: string, latestUserMessage: string, isDone: boolean) {
+async function repairMirrorReply(
+  model: ReturnType<GoogleGenerativeAI['getGenerativeModel']>,
+  rawReply: string,
+  latestUserMessage: string,
+  isDone: boolean,
+) {
   const repairPrompt = isDone
     ? `Rewrite this into one complete closing message. Keep the same voice, remove markdown styling, and make it feel finished.
 
@@ -45,6 +50,7 @@ Return only the rewritten closing, followed by a new line in this format:
 - stay in the same voice
 - respond to the user's latest answer
 - ask exactly one clear question
+- focus on visual appearance, clothing, features, color, texture, or setting
 - contain exactly one question mark
 - be 20 words or fewer
 - remove markdown styling and decorative symbols
@@ -85,7 +91,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing GEMINI_API_KEY' }, { status: 500 })
     }
 
-    const voiceInstruction = mirrorVoicePrompt || VOICE_PROMPTS[mirrorVoice] || VOICE_PROMPTS.friend
+    const voiceInstruction =
+      mirrorVoicePrompt || VOICE_PROMPTS[mirrorVoice] || VOICE_PROMPTS.friend
+
     const hasEnough = exchangeNumber >= minExchanges
     const mustClose = exchangeNumber >= maxExchanges
     const isFirstTurn = exchangeNumber === 0
@@ -93,14 +101,15 @@ export async function POST(req: Request) {
     const systemPrompt = `
 ${voiceInstruction}
 
-Your role: You are a Soul Mirror helping someone create their ${style || 'artistic'} style avatar (${styleDescription || ''}) for Dear Stranger, a slow pen-pal app.
+Your role: You are a Soul Mirror helping someone describe their avatar's physical appearance, clothing, visible features, and visual presence for Dear Stranger.
 
 ${isReturning ? `IMPORTANT: This person is returning after 90 days. Open with a warm returning greeting in your voice style.` : ''}
 
 ${isFirstTurn ? `
 Your first message must:
-- Be centered on this exact question: "In another world, how do you see yourself? Describe yourself in as much detail as you can."
+- Be centered on this exact question: "In another world, how do you look? Describe your appearance in as much detail as you can."
 - You may add a brief lead-in in your voice style, but do not rewrite or replace that core question.
+- The question must clearly be about physical appearance, not personality, identity, or emotions.
 - Contain exactly one question.
 - Keep the full question to 20 words or fewer.
 ` : `
@@ -111,9 +120,12 @@ You are continuing an existing conversation.
 `}
 
 After that:
-- Start asking the real question quickly. Do not spend the whole message on reaction or hype.
-- Ask targeted follow-up questions only if you still need visual detail.
-- Focus on physical appearance, energy/vibe, colors or textures, or the world/setting.
+- Start asking the real question quickly.
+- Do not spend the whole message on reaction, hype, or poetic filler.
+- Focus first on physical appearance.
+- Prioritize face, skin, eyes, hair, body, clothing, accessories, and other visible features.
+- Only ask about vibe, aura, energy, or setting after strong visual details are established.
+- Ask targeted follow-up questions only if you still need visual detail for the avatar.
 - Ask one thing at a time.
 - Every turn must contain exactly one question.
 - Every question must be 20 words or fewer.
@@ -124,20 +136,23 @@ After that:
 - Do not ignore vivid details they already gave you.
 - If they already shared a lot, narrow in on the single most useful missing visual detail.
 - Keep continuity so the conversation feels like one thoughtful exchange.
+- Keep the user grounded in describing what can actually be seen.
 
 ${hasEnough ? `
 Assessment: you now have ${exchangeNumber} exchanges.
-- If you have enough visual detail for a strong ${style} portrait, write a warm closing in your voice and end with exactly [DONE].
+- If you have enough visual detail for a strong ${style || 'avatar'} portrait, write a warm closing and end with exactly [DONE].
 - If not, ask one more focused visual question.
 ` : ''}
+
 ${mustClose ? `You must close now. Write your closing and end with [DONE].` : ''}
 
 After your question or closing, always add this on a new line:
 [CHIPS: chip1 | chip2 | chip3 | chip4]
 
 Chips must be short, 2-5 words each, directly relevant to what you just asked, and feel like natural things the person might actually say.
+
 Keep responses concise.
-`
+`.trim()
 
     const genAI = new GoogleGenerativeAI(apiKey)
     const model = genAI.getGenerativeModel({
@@ -146,6 +161,7 @@ Keep responses concise.
     })
 
     const rawHistory = Array.isArray(messages) ? [...messages] : []
+
     const latestUserMessage =
       answers[answers.length - 1] ||
       (rawHistory.length > 0 && rawHistory[rawHistory.length - 1]?.role === 'user'
@@ -170,9 +186,11 @@ Keep responses concise.
       if (openingReply) {
         normalizedHistory.push({
           role: 'user',
-          parts: [{
-            text: `The Soul Mirror asked: ${openingPrompt}\nMy answer: ${openingReply}`,
-          }],
+          parts: [
+            {
+              text: `The Soul Mirror asked: ${openingPrompt}\nMy answer: ${openingReply}`,
+            },
+          ],
         })
       } else if (foldedLatestUserMessage) {
         foldedLatestUserMessage = `The Soul Mirror asked: ${openingPrompt}\nMy answer: ${foldedLatestUserMessage}`
@@ -180,49 +198,71 @@ Keep responses concise.
     }
 
     const remainingHistoryStart =
-      historyForChat.length > 1 && historyForChat[0]?.role === 'ai' && historyForChat[1]?.role === 'user'
+      historyForChat.length > 1 &&
+      historyForChat[0]?.role === 'ai' &&
+      historyForChat[1]?.role === 'user'
         ? 2
         : historyForChat.length > 0 && historyForChat[0]?.role === 'ai'
           ? 1
           : 0
 
     const conversationHistory = normalizedHistory.concat(
-      historyForChat.slice(remainingHistoryStart).map((message: { role: string; text: string }) => ({
-        role: message.role === 'ai' ? 'model' : 'user',
-        parts: [{ text: message.text }],
-      }))
+      historyForChat
+        .slice(remainingHistoryStart)
+        .map((message: { role: string; text: string }) => ({
+          role: message.role === 'ai' ? 'model' : 'user',
+          parts: [{ text: message.text }],
+        })),
     )
 
     const chat = model.startChat({
       history: conversationHistory,
       generationConfig: {
         maxOutputTokens: 400,
-        temperature: mirrorVoice === 'genz' ? 1.0 : mirrorVoice === 'poetic' ? 0.95 : 0.8,
+        temperature:
+          mirrorVoice === 'genz'
+            ? 1.0
+            : mirrorVoice === 'poetic'
+              ? 0.95
+              : 0.8,
       },
     })
 
     const result = await chat.sendMessage(
       conversationHistory.length === 0 && answers.length === 0
         ? 'Begin. Ask your opening question.'
-        : foldedLatestUserMessage
+        : foldedLatestUserMessage,
     )
 
     let raw = result.response.text().trim()
     let isDone = raw.includes('[DONE]') || mustClose
 
-    if (looksIncomplete(raw, isDone) || (!isDone && countWords(raw.replace(/\[CHIPS:[\s\S]*?\]/g, '')) > 20)) {
+    if (
+      looksIncomplete(raw, isDone) ||
+      (!isDone && countWords(raw.replace(/$begin:math:display$CHIPS\:\[\\s\\S\]\*\?$end:math:display$/g, '')) > 20)
+    ) {
       raw = await repairMirrorReply(model, raw, foldedLatestUserMessage, isDone)
       isDone = raw.includes('[DONE]') || mustClose
     }
 
-    const chipsMatch = raw.match(/\[CHIPS:\s*(.+?)\]/)
+    const chipsMatch = raw.match(/$begin:math:display$CHIPS\:\\s\*\(\.\+\?\)$end:math:display$/)
     const chips: string[] = chipsMatch
-      ? chipsMatch[1].split('|').map((chip: string) => chip.trim()).filter(Boolean).slice(0, 4)
+      ? chipsMatch[1]
+          .split('|')
+          .map((chip: string) => chip.trim())
+          .filter(Boolean)
+          .slice(0, 4)
       : []
 
-    const cleaned = stripFormatting(raw.replace('[DONE]', '').replace(/\[CHIPS:[\s\S]*?\]/g, '').trim())
+    const cleaned = stripFormatting(
+      raw.replace('[DONE]', '').replace(/$begin:math:display$CHIPS\:\[\\s\\S\]\*\?$end:math:display$/g, '').trim(),
+    )
 
-    return NextResponse.json({ question: cleaned, done: isDone, chips })
+    return NextResponse.json({
+      question: cleaned,
+      done: isDone,
+      chips,
+    })
   } catch (err) {
     console.error('Soul mirror error:', err)
     return NextResponse.json({ error: 'Mirror went quiet.' }, { status: 500 })

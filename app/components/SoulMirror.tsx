@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { HUB_STYLES, type HubStyle } from './UniverseMap'
+import { HUB_COLOR_THEMES, HUB_STYLES, type HubColor, type HubStyle } from './UniverseMap'
 
 const MIN_EXCHANGES = 5
 const MAX_EXCHANGES = 9
@@ -40,16 +40,18 @@ const RULES = [
 export interface StyleOption { id: string; label: string; desc: string }
 export interface MirrorVoice { id: string; label: string; desc: string; icon: string; prompt: string }
 export interface SoulMirrorResumeState {
-  phase?: 'hubname' | 'bio' | 'welcome'
+  phase?: 'bio' | 'askabout' | 'hubstyle' | 'hubname' | 'welcome'
   selectedStyle?: StyleOption
   selectedHubStyle?: HubStyle
+  selectedHubColor?: HubColor
   selectedVoice?: MirrorVoice
   userAnswers?: string[]
   hubName?: string
   bio?: string
+  askAbout?: string
 }
 
-type Phase = 'voice' | 'style' | 'hubstyle' | 'chat' | 'hubname' | 'bio' | 'welcome'
+type Phase = 'voice' | 'style' | 'chat' | 'bio' | 'askabout' | 'hubstyle' | 'hubname' | 'welcome'
 
 interface SoulMirrorProps {
   isReturning?: boolean
@@ -59,8 +61,10 @@ interface SoulMirrorProps {
     answers: Record<number, string>,
     selectedStyle?: StyleOption,
     hubStyle?: HubStyle,
+    hubColor?: HubColor,
     mirrorVoice?: MirrorVoice,
     bio?: string,
+    askAbout?: string,
     hubNameFromOnboarding?: string,
   ) => void
 }
@@ -70,6 +74,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
   const [selectedVoice, setSelectedVoice] = useState<MirrorVoice | null>(resumeState?.selectedVoice || null)
   const [selectedStyle, setSelectedStyle] = useState<StyleOption | null>(resumeState?.selectedStyle || null)
   const [selectedHubStyle, setSelectedHubStyle] = useState<HubStyle>(resumeState?.selectedHubStyle || 'portal')
+  const [selectedHubColor, setSelectedHubColor] = useState<HubColor>(resumeState?.selectedHubColor || 'gold')
   const [messages, setMessages] = useState<{ role: 'ai' | 'user'; text: string; isClosing?: boolean; chips?: string[] }[]>([])
   const [userAnswers, setUserAnswers] = useState<string[]>(resumeState?.userAnswers || [])
   const [inputValue, setInputValue] = useState('')
@@ -78,6 +83,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
   const [chatDone, setChatDone] = useState(Boolean(resumeState?.phase))
   const [hubName, setHubName] = useState(resumeState?.hubName || '')
   const [bio, setBio] = useState(resumeState?.bio || '')
+  const [askAbout, setAskAbout] = useState(resumeState?.askAbout || '')
   const bottomRef = useRef<HTMLDivElement>(null)
   const hasInitialized = useRef(false)
 
@@ -133,7 +139,16 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
     const answersRecord: Record<number, string> = {}
     userAnswers.forEach((a, i) => { answersRecord[i] = a })
     answersRecord[userAnswers.length] = hubName.trim()
-    onComplete?.(answersRecord, selectedStyle || undefined, selectedHubStyle, selectedVoice || undefined, bio.trim(), hubName.trim())
+    onComplete?.(
+      answersRecord,
+      selectedStyle || undefined,
+      selectedHubStyle,
+      selectedHubColor,
+      selectedVoice || undefined,
+      bio.trim(),
+      askAbout.trim(),
+      hubName.trim(),
+    )
   }
 
   const progressPct = Math.min(100, (userAnswers.length / MIN_EXCHANGES) * 100)
@@ -179,7 +194,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
           <motion.div key="voice" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.4 }}
             style={{ ...cardStyle, width: 'min(720px, 95vw)', padding: 'clamp(28px,5vw,44px)' }}>
             <GoldLines />
-            <SectionHeader step="Soul Mirror · Step 1 of 4"
+            <SectionHeader step="Soul Mirror · Step 1 of 6"
               title={isReturning ? 'Hello, my old friend. How shall I speak to you this time?' : 'How would you like your mirror to speak?'}
               sub="Choose the voice the mirror uses during your conversation." />
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: '12px' }}>
@@ -202,11 +217,11 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
           <motion.div key="style" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.4 }}
             style={{ ...cardStyle, width: 'min(680px, 95vw)', padding: 'clamp(28px,5vw,44px)' }}>
             <GoldLines />
-            <SectionHeader step="Soul Mirror · Step 2 of 4" title="Choose your avatar style" sub="This shapes how your Soul Mirror portrait is designed." />
+            <SectionHeader step="Soul Mirror · Step 2 of 6" title="Choose your avatar style" sub="This shapes how your Soul Mirror portrait is designed." />
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: '12px', marginBottom: '24px' }}>
               {STYLE_OPTIONS.map(style => (
                 <motion.button key={style.id} whileHover={{ y: -2 }} whileTap={{ scale: 0.97 }}
-                  onClick={() => { setSelectedStyle(style); setPhase('hubstyle') }}
+                  onClick={() => { setSelectedStyle(style); setPhase('chat') }}
                   style={{ textAlign: 'left', padding: '16px', borderRadius: '12px', border: '1px solid rgba(230,199,110,0.2)', background: 'rgba(255,255,255,0.04)', cursor: 'pointer', transition: 'all 0.2s' }}
                   onMouseEnter={e => { e.currentTarget.style.background = 'rgba(230,199,110,0.09)'; e.currentTarget.style.borderColor = 'rgba(230,199,110,0.4)' }}
                   onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor = 'rgba(230,199,110,0.2)' }}>
@@ -219,35 +234,6 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
           </motion.div>
         )}
 
-        {phase === 'hubstyle' && (
-          <motion.div key="hubstyle" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.4 }}
-            style={{ ...cardStyle, width: 'min(720px, 95vw)', padding: 'clamp(28px,5vw,44px)' }}>
-            <GoldLines />
-            <SectionHeader step="Soul Mirror · Step 3 of 4" title="How does your hub appear in the universe?" sub="Each structure has its own animation and personality. Others see this when they explore the map." />
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px', marginBottom: '28px' }}>
-              {HUB_STYLES.map(style => {
-                const isSelected = selectedHubStyle === style.id
-                return (
-                  <motion.button key={style.id} whileHover={{ y: -2 }} whileTap={{ scale: 0.97 }}
-                    onClick={() => setSelectedHubStyle(style.id)}
-                    style={{ textAlign: 'left', padding: '18px 16px', borderRadius: '12px', border: isSelected ? '1px solid rgba(230,199,110,0.7)' : '1px solid rgba(230,199,110,0.2)', background: isSelected ? 'rgba(230,199,110,0.12)' : 'rgba(255,255,255,0.04)', cursor: 'pointer', transition: 'all 0.2s', position: 'relative' }}
-                    onMouseEnter={e => { if (!isSelected) { e.currentTarget.style.background = 'rgba(230,199,110,0.08)'; e.currentTarget.style.borderColor = 'rgba(230,199,110,0.35)' } }}
-                    onMouseLeave={e => { if (!isSelected) { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor = 'rgba(230,199,110,0.2)' } }}>
-                    {isSelected && <div style={{ position: 'absolute', top: '10px', right: '12px', width: '16px', height: '16px', borderRadius: '50%', background: '#c9a84c', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', color: '#000', fontWeight: 'bold' }}>✓</div>}
-                    <p style={{ fontSize: '20px', marginBottom: '8px' }}>{style.icon}</p>
-                    <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.18em', color: isSelected ? '#e6c76e' : 'rgba(255,255,255,0.7)', textTransform: 'uppercase', marginBottom: '6px' }}>{style.label}</p>
-                    <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '13px', color: 'rgba(255,255,255,0.5)', lineHeight: 1.5 }}>{style.desc}</p>
-                  </motion.button>
-                )
-              })}
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <button onClick={() => setPhase('style')} style={backBtn}>← Back</button>
-              <button onClick={() => setPhase('chat')} style={continueBtn}>Enter the Mirror ✦</button>
-            </div>
-          </motion.div>
-        )}
-
         {phase === 'chat' && (
           <motion.div key="chat" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.4 }}
             style={{ ...cardStyle, width: 'min(580px, 95vw)', height: 'min(720px, 92vh)', display: 'flex', flexDirection: 'column' }}>
@@ -256,9 +242,9 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
             <div style={{ padding: '16px 22px 12px', borderBottom: '1px solid rgba(255,255,255,0.07)', flexShrink: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
-                  <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.4em', color: '#e6c76e', textTransform: 'uppercase' }}>Soul Mirror · Step 4 of 4</p>
+                  <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.4em', color: '#e6c76e', textTransform: 'uppercase' }}>Soul Mirror · Step 3 of 6</p>
                   <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '12px', color: 'rgba(255,255,255,0.55)', marginTop: '3px' }}>
-                    {selectedVoice?.label} · {selectedStyle?.label} · {HUB_STYLES.find(style => style.id === selectedHubStyle)?.label}
+                    {selectedVoice?.label} · {selectedStyle?.label}
                   </p>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
@@ -319,7 +305,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
 
             <div style={{ padding: '10px 16px 18px', borderTop: '1px solid rgba(255,255,255,0.07)', flexShrink: 0, marginTop: '8px' }}>
               {chatDone ? (
-                <motion.button initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} onClick={() => setPhase('hubname')}
+                <motion.button initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} onClick={() => setPhase('bio')}
                   style={{ width: '100%', padding: '14px', background: 'rgba(230,199,110,0.12)', border: '1px solid rgba(230,199,110,0.55)', color: '#e6c76e', fontFamily: "'Cinzel', serif", fontSize: '11px', letterSpacing: '0.3em', textTransform: 'uppercase', cursor: 'pointer', borderRadius: '8px' }}>
                   Continue ✦
                 </motion.button>
@@ -343,33 +329,12 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
           </motion.div>
         )}
 
-        {phase === 'hubname' && (
-          <motion.div key="hubname" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.4 }}
-            style={{ ...cardStyle, padding: 'clamp(40px,6vw,64px)', width: 'min(480px, 95vw)', textAlign: 'center' }}>
-            <GoldLines />
-            <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.5em', color: '#e6c76e', textTransform: 'uppercase', marginBottom: '16px' }}>Almost there</p>
-            <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: 'clamp(18px,3vw,24px)', color: 'rgba(255,255,255,0.92)', lineHeight: 1.6, marginBottom: '8px' }}>What would you name your place in the universe?</p>
-            <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '14px', color: 'rgba(255,255,255,0.4)', marginBottom: '28px' }}>This is how others will find you on the map.</p>
-            <input autoFocus value={hubName} onChange={e => setHubName(e.target.value)} placeholder="Your hub name..."
-              onKeyDown={e => { if (e.key === 'Enter' && hubName.trim()) setPhase('bio') }}
-              style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.94)', fontFamily: "'Cormorant Garamond', serif", fontSize: '22px', padding: '10px 4px', outline: 'none', textAlign: 'center', letterSpacing: '0.08em', caretColor: '#e6c76e', marginBottom: '28px' }}
-              onFocus={e => { e.target.style.borderBottomColor = '#e6c76e' }}
-              onBlur={e => { e.target.style.borderBottomColor = 'rgba(255,255,255,0.2)' }} />
-            <button onClick={() => hubName.trim() && setPhase('bio')} disabled={!hubName.trim()}
-              style={{ width: '100%', padding: '14px', background: 'transparent', border: '1px solid rgba(230,199,110,0.42)', color: hubName.trim() ? '#e6c76e' : 'rgba(230,199,110,0.3)', fontFamily: "'Cinzel', serif", fontSize: '11px', letterSpacing: '0.3em', textTransform: 'uppercase', cursor: hubName.trim() ? 'pointer' : 'default', borderRadius: '4px' }}
-              onMouseEnter={e => { if (hubName.trim()) e.currentTarget.style.background = 'rgba(230,199,110,0.08)' }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
-              Continue
-            </button>
-          </motion.div>
-        )}
-
         {phase === 'bio' && (
           <motion.div key="bio" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.4 }}
             style={{ ...cardStyle, width: 'min(520px, 95vw)', padding: 'clamp(36px,5vw,52px)' }}>
             <GoldLines />
             <div style={{ marginBottom: '24px' }}>
-              <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.5em', color: '#e6c76e', textTransform: 'uppercase', marginBottom: '10px' }}>Your Bio</p>
+              <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.5em', color: '#e6c76e', textTransform: 'uppercase', marginBottom: '10px' }}>Step 4 of 6</p>
               <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: 'clamp(16px,2.5vw,22px)', color: 'rgba(255,255,255,0.9)', lineHeight: 1.6, marginBottom: '8px' }}>Tell the universe who you are</p>
               <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '14px', color: 'rgba(255,255,255,0.45)', lineHeight: 1.6 }}>This appears on your hub card when others visit. You can always edit it in your profile.</p>
             </div>
@@ -379,9 +344,106 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
               onFocus={e => { e.target.style.borderColor = 'rgba(230,199,110,0.4)' }}
               onBlur={e => { e.target.style.borderColor = 'rgba(255,255,255,0.12)' }} />
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <button onClick={() => setPhase('hubname')} style={backBtn}>← Back</button>
-              <button onClick={() => setPhase('welcome')} style={continueBtn}>
+              <button onClick={() => setPhase('chat')} style={backBtn}>← Back</button>
+              <button onClick={() => setPhase('askabout')} style={continueBtn}>
                 {bio.trim() ? 'Continue ✦' : 'Skip for now ✦'}
+              </button>
+            </div>
+          </motion.div>
+        )}
+
+        {phase === 'askabout' && (
+          <motion.div key="askabout" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.4 }}
+            style={{ ...cardStyle, width: 'min(520px, 95vw)', padding: 'clamp(36px,5vw,52px)' }}>
+            <GoldLines />
+            <div style={{ marginBottom: '24px' }}>
+              <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.5em', color: '#e6c76e', textTransform: 'uppercase', marginBottom: '10px' }}>Step 5 of 6</p>
+              <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: 'clamp(16px,2.5vw,22px)', color: 'rgba(255,255,255,0.9)', lineHeight: 1.6, marginBottom: '8px' }}>What should strangers ask you about?</p>
+              <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '14px', color: 'rgba(255,255,255,0.45)', lineHeight: 1.6 }}>This gives people an easy, human way to begin writing to you.</p>
+            </div>
+            <textarea value={askAbout} onChange={e => setAskAbout(e.target.value)}
+              placeholder="Music that changed you, your major, grief, astrology, poetry, home, healing, your latest hyperfixation..."
+              rows={4}
+              style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '8px', color: 'rgba(255,255,255,0.9)', fontFamily: "'Cormorant Garamond', serif", fontSize: '16px', lineHeight: 1.8, padding: '14px 16px', outline: 'none', resize: 'none', caretColor: '#e6c76e', marginBottom: '20px' }}
+              onFocus={e => { e.target.style.borderColor = 'rgba(230,199,110,0.4)' }}
+              onBlur={e => { e.target.style.borderColor = 'rgba(255,255,255,0.12)' }} />
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <button onClick={() => setPhase('bio')} style={backBtn}>← Back</button>
+              <button onClick={() => setPhase('hubstyle')} style={continueBtn}>
+                {askAbout.trim() ? 'Choose Hub ✦' : 'Skip for now ✦'}
+              </button>
+            </div>
+          </motion.div>
+        )}
+
+        {phase === 'hubstyle' && (
+          <motion.div key="hubstyle" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.4 }}
+            style={{ ...cardStyle, width: 'min(720px, 95vw)', padding: 'clamp(28px,5vw,44px)' }}>
+            <GoldLines />
+            <SectionHeader step="Soul Mirror · Step 6 of 6" title="How does your hub appear in the universe?" sub="Each structure has its own animation and personality. Others see this when they explore the map." />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px', marginBottom: '28px' }}>
+              {HUB_STYLES.map(style => {
+                const isSelected = selectedHubStyle === style.id
+                return (
+                  <motion.button key={style.id} whileHover={{ y: -2 }} whileTap={{ scale: 0.97 }}
+                    onClick={() => setSelectedHubStyle(style.id)}
+                    style={{ textAlign: 'left', padding: '18px 16px', borderRadius: '12px', border: isSelected ? '1px solid rgba(230,199,110,0.7)' : '1px solid rgba(230,199,110,0.2)', background: isSelected ? 'rgba(230,199,110,0.12)' : 'rgba(255,255,255,0.04)', cursor: 'pointer', transition: 'all 0.2s', position: 'relative' }}
+                    onMouseEnter={e => { if (!isSelected) { e.currentTarget.style.background = 'rgba(230,199,110,0.08)'; e.currentTarget.style.borderColor = 'rgba(230,199,110,0.35)' } }}
+                    onMouseLeave={e => { if (!isSelected) { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor = 'rgba(230,199,110,0.2)' } }}>
+                    {isSelected && <div style={{ position: 'absolute', top: '10px', right: '12px', width: '16px', height: '16px', borderRadius: '50%', background: '#c9a84c', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', color: '#000', fontWeight: 'bold' }}>✓</div>}
+                    <p style={{ fontSize: '20px', marginBottom: '8px' }}>{style.icon}</p>
+                    <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.18em', color: isSelected ? '#e6c76e' : 'rgba(255,255,255,0.7)', textTransform: 'uppercase', marginBottom: '6px' }}>{style.label}</p>
+                    <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '13px', color: 'rgba(255,255,255,0.5)', lineHeight: 1.5 }}>{style.desc}</p>
+                  </motion.button>
+                )
+              })}
+            </div>
+            <div style={{ marginBottom: '28px' }}>
+              <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.28em', color: '#e6c76e', textTransform: 'uppercase', marginBottom: '12px', textAlign: 'center' }}>Choose a color</p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(84px, 1fr))', gap: '10px' }}>
+                {HUB_COLOR_THEMES.map(theme => {
+                  const isSelected = selectedHubColor === theme.id
+                  return (
+                    <motion.button
+                      key={theme.id}
+                      whileHover={{ y: -2 }}
+                      whileTap={{ scale: 0.97 }}
+                      onClick={() => setSelectedHubColor(theme.id)}
+                      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', padding: '12px 8px', borderRadius: '12px', border: isSelected ? '1px solid rgba(230,199,110,0.7)' : '1px solid rgba(255,255,255,0.12)', background: isSelected ? 'rgba(230,199,110,0.1)' : 'rgba(255,255,255,0.03)', cursor: 'pointer' }}
+                    >
+                      <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: `radial-gradient(circle at 35% 35%, rgba(255,255,255,0.85), ${theme.ring})`, boxShadow: `0 0 18px rgba(${theme.glow},0.28)`, border: '1px solid rgba(255,255,255,0.2)' }} />
+                      <span style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.16em', textTransform: 'uppercase', color: isSelected ? '#e6c76e' : 'rgba(255,255,255,0.68)' }}>{theme.label}</span>
+                    </motion.button>
+                  )
+                })}
+              </div>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <button onClick={() => setPhase('askabout')} style={backBtn}>← Back</button>
+              <button onClick={() => setPhase('hubname')} style={continueBtn}>Name Your Hub ✦</button>
+            </div>
+          </motion.div>
+        )}
+
+        {phase === 'hubname' && (
+          <motion.div key="hubname" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.4 }}
+            style={{ ...cardStyle, padding: 'clamp(40px,6vw,64px)', width: 'min(480px, 95vw)', textAlign: 'center' }}>
+            <GoldLines />
+            <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.5em', color: '#e6c76e', textTransform: 'uppercase', marginBottom: '16px' }}>Almost there</p>
+            <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: 'clamp(18px,3vw,24px)', color: 'rgba(255,255,255,0.92)', lineHeight: 1.6, marginBottom: '8px' }}>What would you name your place in the universe?</p>
+            <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '14px', color: 'rgba(255,255,255,0.4)', marginBottom: '28px' }}>This is how others will find you on the map.</p>
+            <input autoFocus value={hubName} onChange={e => setHubName(e.target.value)} placeholder="Your hub name..."
+              onKeyDown={e => { if (e.key === 'Enter' && hubName.trim()) setPhase('welcome') }}
+              style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.94)', fontFamily: "'Cormorant Garamond', serif", fontSize: '22px', padding: '10px 4px', outline: 'none', textAlign: 'center', letterSpacing: '0.08em', caretColor: '#e6c76e', marginBottom: '28px' }}
+              onFocus={e => { e.target.style.borderBottomColor = '#e6c76e' }}
+              onBlur={e => { e.target.style.borderBottomColor = 'rgba(255,255,255,0.2)' }} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px' }}>
+              <button onClick={() => setPhase('hubstyle')} style={backBtn}>← Back</button>
+              <button onClick={() => hubName.trim() && setPhase('welcome')} disabled={!hubName.trim()}
+                style={{ width: '100%', padding: '14px', background: 'transparent', border: '1px solid rgba(230,199,110,0.42)', color: hubName.trim() ? '#e6c76e' : 'rgba(230,199,110,0.3)', fontFamily: "'Cinzel', serif", fontSize: '11px', letterSpacing: '0.3em', textTransform: 'uppercase', cursor: hubName.trim() ? 'pointer' : 'default', borderRadius: '4px' }}
+                onMouseEnter={e => { if (hubName.trim()) e.currentTarget.style.background = 'rgba(230,199,110,0.08)' }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
+                Continue
               </button>
             </div>
           </motion.div>

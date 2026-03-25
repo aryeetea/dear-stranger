@@ -5,7 +5,7 @@ import EntryScreen from './components/EntryScreen'
 import SoulMirror from './components/SoulMirror'
 import type { MirrorVoice, SoulMirrorResumeState, StyleOption } from './components/SoulMirror'
 import UniverseMap from './components/UniverseMap'
-import type { HubStyle } from './components/UniverseMap'
+import type { HubColor, HubStyle } from './components/UniverseMap'
 import Scribe from './components/Scribe'
 import Observatory from './components/Observatory'
 import Profile from './components/Profile'
@@ -41,6 +41,12 @@ const STARS = Array.from({ length: 30 }, (_, i) => ({
   width: `${(i % 3) * 0.6 + 0.3}px`,
   opacity: (i % 5) * 0.06 + 0.04,
 }))
+
+const HUB_COLOR_IDS: HubColor[] = ['gold', 'sage', 'rose', 'azure', 'amber', 'violet', 'teal', 'sand']
+
+function coerceHubColor(value?: string | null): HubColor {
+  return HUB_COLOR_IDS.includes(value as HubColor) ? (value as HubColor) : 'gold'
+}
 
 function AuthBackground() {
   return (
@@ -123,6 +129,7 @@ export default function Home() {
   const [hubAskAbout, setHubAskAbout] = useState('')
   const [hubAvatarUrl, setHubAvatarUrl] = useState('')
   const [hubStyle, setHubStyle] = useState<HubStyle>('portal')
+  const [hubColor, setHubColor] = useState<HubColor>('gold')
   const [hubRegenCount, setHubRegenCount] = useState(0)
   const [lettersSent, setLettersSent] = useState(0)
   const [generatingStatus, setGeneratingStatus] = useState('')
@@ -149,6 +156,7 @@ export default function Home() {
     setHubAskAbout('')
     setHubAvatarUrl('')
     setHubStyle('portal')
+    setHubColor('gold')
     setLettersSent(0)
     setHubRegenCount(0)
     setIsGuest(false)
@@ -168,7 +176,7 @@ export default function Home() {
     }
     try {
       console.log('[routeFromSession] begin')
-      const session = await timeoutPromise(getSession(), 7000, 'getSession')
+      const session = await getSession()
       console.log('[routeFromSession] getSession result:', session)
 
       if (!session) {
@@ -192,6 +200,7 @@ export default function Home() {
         setHubAskAbout(hub.ask_about || '')
         setHubAvatarUrl(hub.avatar_url || '')
         setHubStyle((hub.hub_style as HubStyle) || 'portal')
+        setHubColor(coerceHubColor(hub.backdrop_id))
         setLettersSent(hub.letters_sent || 0)
         setHubRegenCount(hub.regen_count || 0)
         setOnboardingError('')
@@ -281,8 +290,10 @@ export default function Home() {
     answers: Record<number, string>,
     selectedStyle?: StyleOption,
     selectedHubStyle?: HubStyle,
+    selectedHubColor?: HubColor,
     mirrorVoice?: MirrorVoice,
     userBio?: string,
+    userAskAbout?: string,
     userHubName?: string,
   ) {
     setOnboardingError('')
@@ -301,16 +312,20 @@ export default function Home() {
     const fallbackBio = 'A wanderer who arrived here quietly, carrying something unspoken.'
     const fallbackAskAbout = 'Silence, slow mornings, and letters that take their time.'
     const chosenHubStyle = selectedHubStyle || 'portal'
+    const chosenHubColor = selectedHubColor || 'gold'
     const chosenBio = userBio?.trim() || fallbackBio
+    const chosenAskAbout = userAskAbout?.trim() || fallbackAskAbout
 
     const resumeState: SoulMirrorResumeState = {
       phase: 'welcome',
       selectedStyle,
       selectedHubStyle: chosenHubStyle,
+      selectedHubColor: chosenHubColor,
       selectedVoice: mirrorVoice,
       userAnswers: keys.slice(0, -1).map((key) => answers[key]),
       hubName: hubNameAnswer,
       bio: chosenBio,
+      askAbout: chosenAskAbout,
     }
 
     try {
@@ -333,7 +348,7 @@ export default function Home() {
           pendingCredentials.password,
           hubNameAnswer,
           chosenBio,
-          fallbackAskAbout,
+          chosenAskAbout,
         )
 
         session = await getSession()
@@ -346,20 +361,21 @@ export default function Home() {
         setPendingCredentials(null)
         setIsGuest(false)
       } else if (session) {
-        await createHubForCurrentUser(hubNameAnswer, chosenBio, fallbackAskAbout)
+        await createHubForCurrentUser(hubNameAnswer, chosenBio, chosenAskAbout)
 
         const guest = await isGuestUser()
         setIsGuest(guest)
       } else {
-        await signInAndCreateHub(hubNameAnswer, chosenBio, fallbackAskAbout)
+        await signInAndCreateHub(hubNameAnswer, chosenBio, chosenAskAbout)
         session = await getSession()
         setIsGuest(true)
       }
 
       setHubName(hubNameAnswer)
       setHubStyle(chosenHubStyle)
+      setHubColor(chosenHubColor)
       setHubBio(chosenBio)
-      setHubAskAbout(fallbackAskAbout)
+      setHubAskAbout(chosenAskAbout)
 
       const userId = session?.user?.id
 
@@ -368,9 +384,9 @@ export default function Home() {
       await withTimeout(
         updateHub({
           bio: chosenBio,
-          ask_about: fallbackAskAbout,
+          ask_about: chosenAskAbout,
           hub_style: chosenHubStyle,
-          backdrop_id: 'void',
+          backdrop_id: chosenHubColor,
         }),
         12000,
         'Saving your hub took too long. Please try again.',
@@ -715,6 +731,7 @@ export default function Home() {
               setHubAskAbout(hub.ask_about || '')
               setHubAvatarUrl(hub.avatar_url || '')
               setHubStyle((hub.hub_style as HubStyle) || 'portal')
+              setHubColor(coerceHubColor(hub.backdrop_id))
               setLettersSent(hub.letters_sent || 0)
               setHubRegenCount(hub.regen_count || 0)
               setIsGuest(false)
@@ -776,17 +793,12 @@ export default function Home() {
           onEnter={() => {
             setOnboardingError('')
             setPendingCredentials(null)
-            setScreen('onboarding')
+            setScreen('signup')
           }}
           onLogin={() => {
             setOnboardingError('')
             setPendingCredentials(null)
             setScreen('login')
-          }}
-          onSignup={() => {
-            setOnboardingError('')
-            setPendingCredentials(null)
-            setScreen('signup')
           }}
         />
       )}
@@ -804,6 +816,7 @@ export default function Home() {
           hubName={hubName}
           hubAvatarUrl={hubAvatarUrl}
           hubStyle={hubStyle}
+          hubColor={hubColor}
           onWriteLetter={(name) => {
             if (isGuest) {
               setShowGuestWall(true)
