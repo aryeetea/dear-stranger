@@ -289,7 +289,16 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
                 </motion.button>
               ))}
             </div>
-            <button onClick={() => setPhase('voice')} style={backBtn}>← Back</button>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <button onClick={() => setPhase('voice')} style={backBtn}>← Back</button>
+              <button
+                onClick={() => { setSelectedStyle(null); setPhase('chat') }}
+                style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.42)', fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.2em', textTransform: 'uppercase', cursor: 'pointer' }}
+                onMouseEnter={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.72)' }}
+                onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.42)' }}>
+                Skip — let the mirror decide ✦
+              </button>
+            </div>
           </motion.div>
         )}
 
