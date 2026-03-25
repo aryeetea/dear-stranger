@@ -148,10 +148,14 @@ export default function Profile({
       if (!user) return
       const permanentUrl = await uploadAvatarToStorage(data.imageUrl, user.id)
       setCurrentAvatarUrl(permanentUrl)
-      await updateHub({ avatar_url: permanentUrl, regen_count: newCount })
+      await updateHub({ avatar_url: permanentUrl, regen_count: newCount, avatar_prompt_pending: null })
       onUpdateHub?.({ avatarUrl: permanentUrl })
     } catch (err) {
       console.error('Regen failed:', err)
+      try {
+        const pendingDescription = [bioState, askState, regenFeedback].filter(Boolean).join(' — ')
+        await updateHub({ avatar_prompt_pending: pendingDescription })
+      } catch {}
       setRegenError('Something went wrong. Your attempt was not used — try again.')
       setRegenLoading(false)
     }

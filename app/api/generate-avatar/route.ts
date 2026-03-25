@@ -140,22 +140,23 @@ export async function POST(req: Request) {
 
     const openai = new OpenAI({ apiKey: openaiKey })
 
+    // DALL-E 3 is primary (widely available); gpt-image-1 and Seedream are fallbacks
     try {
-      const result = await generateWithGptImage(openai, imagePrompt, userId)
+      const result = await generateWithDallE3(openai, imagePrompt)
       return NextResponse.json({
         imageUrl: result.imageUrl,
         prompt: result.revisedPrompt,
       })
     } catch (primaryError) {
-      console.warn('gpt-image-1 failed, falling back to DALL-E 3:', primaryError)
+      console.warn('DALL-E 3 failed, trying gpt-image-1:', primaryError)
       try {
-        const dalle = await generateWithDallE3(openai, imagePrompt)
+        const gptImg = await generateWithGptImage(openai, imagePrompt, userId)
         return NextResponse.json({
-          imageUrl: dalle.imageUrl,
-          prompt: dalle.revisedPrompt,
+          imageUrl: gptImg.imageUrl,
+          prompt: gptImg.revisedPrompt,
         })
-      } catch (dalleError) {
-        console.warn('DALL-E 3 failed, falling back to Seedream via fal.ai:', dalleError)
+      } catch (gptError) {
+        console.warn('gpt-image-1 failed, falling back to Seedream via fal.ai:', gptError)
         const seedream = await generateWithSeedream(imagePrompt)
         return NextResponse.json({
           imageUrl: seedream.imageUrl,

@@ -436,9 +436,14 @@ export default function Home() {
 
           const permanentUrl = await uploadAvatarToStorage(avatarUrl, userId)
           setHubAvatarUrl(permanentUrl)
-          await updateHub({ avatar_url: permanentUrl })
+          await updateHub({ avatar_url: permanentUrl, avatar_prompt_pending: null })
         } catch (avatarError) {
           console.error('Avatar generation failed after hub creation:', avatarError)
+          // Save the user's description so we can generate it later once the issue is fixed
+          const pendingDescription = Object.values(conversationAnswers).filter(Boolean).join(' — ')
+          try {
+            await updateHub({ avatar_prompt_pending: pendingDescription })
+          } catch {}
         }
       })()
     } catch (err) {

@@ -6,6 +6,7 @@ type HubRecord = {
   bio?: string | null
   ask_about?: string | null
   avatar_url?: string | null
+  avatar_prompt_pending?: string | null
   hub_style?: string | null
   backdrop_id?: string | null
   decoration?: string | null

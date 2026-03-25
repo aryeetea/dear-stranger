@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { getAllHubs, getUniverseLetters } from '../lib/auth'
 // ── HUB STYLE TYPES ──
 export type HubStyle = 'portal' | 'lantern' | 'ruin' | 'hourglass' | 'telescope' | 'greenhouse' | 'lotus' | 'cottage'
-export type HubColor = 'gold' | 'sage' | 'rose' | 'azure' | 'amber' | 'violet' | 'teal' | 'sand'
+export type HubColor = 'gold' | 'sage' | 'rose' | 'azure' | 'amber' | 'violet' | 'teal' | 'sand' | 'blue' | 'green' | 'charcoal' | 'crimson'
 export type HubDecoration = 'none' | 'moon' | 'rings' | 'fireflies' | 'petals' | 'snowflakes' | 'comet'
 export type HubGlowIntensity = 'dim' | 'normal' | 'blazing'
 
