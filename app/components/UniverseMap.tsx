@@ -45,6 +45,11 @@ export const HUB_COLOR_THEMES: { id: HubColor; label: string; ring: string; glow
   { id: 'violet', label: 'Violet', ring: '#8f5aaa', glow: '140,60,180', inner: '#4a1a6a' },
   { id: 'teal', label: 'Teal', ring: '#5a8faa', glow: '60,130,180', inner: '#1a4a6a' },
   { id: 'sand', label: 'Sand', ring: '#aa8f6f', glow: '180,140,80', inner: '#6a5a30' },
+  // Added more color options for variety (especially for male users)
+  { id: 'blue', label: 'Blue', ring: '#3a6ea5', glow: '58,110,165', inner: '#1a2a40' },
+  { id: 'green', label: 'Green', ring: '#3aa56e', glow: '58,165,110', inner: '#1a402a' },
+  { id: 'charcoal', label: 'Charcoal', ring: '#444950', glow: '68,73,80', inner: '#23262a' },
+  { id: 'crimson', label: 'Crimson', ring: '#a53a3a', glow: '165,58,58', inner: '#401a1a' },
 ]
 
 interface Hub {
