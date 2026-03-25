@@ -212,22 +212,42 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
       <AnimatePresence mode="wait">
         {phase === 'mode' && (
           <motion.div key="mode" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.4 }}
-            style={{ ...cardStyle, width: 'min(520px, 95vw)', padding: 'clamp(36px,5vw,52px)' }}>
+            style={{ ...cardStyle, width: 'min(560px, 95vw)', padding: 'clamp(40px,6vw,60px)' }}>
             <GoldLines />
-            <SectionHeader step="Avatar Creation" title="How do you want to describe your avatar?" sub="Choose your preferred way to create your Soul Mirror avatar." />
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '18px', marginBottom: '24px' }}>
-              <button
+            <div style={{ textAlign: 'center', marginBottom: '36px' }}>
+              <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.55em', color: 'rgba(201,168,76,0.55)', textTransform: 'uppercase', marginBottom: '14px' }}>Soul Mirror</p>
+              <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: 'clamp(22px,3.5vw,30px)', color: 'rgba(255,255,255,0.93)', lineHeight: 1.4, marginBottom: '12px' }}>Before we begin</p>
+              <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '16px', color: 'rgba(255,255,255,0.5)', lineHeight: 1.7 }}>Your Soul Mirror will shape how you appear in this universe. Choose how you'd like to describe yourself.</p>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '8px' }}>
+              <motion.button
+                whileHover={{ y: -2 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => { setAvatarMode('guided'); setPhase('voice') }}
-                style={{ padding: '18px', borderRadius: '10px', border: '1px solid rgba(230,199,110,0.3)', background: avatarMode === 'guided' ? 'rgba(230,199,110,0.09)' : 'rgba(255,255,255,0.04)', color: '#e6c76e', fontFamily: "'Cinzel', serif", fontSize: '13px', letterSpacing: '0.18em', textTransform: 'uppercase', cursor: 'pointer', fontWeight: 500 }}
+                style={{ textAlign: 'left', padding: '22px 24px', borderRadius: '12px', border: '1px solid rgba(230,199,110,0.28)', background: 'rgba(255,255,255,0.04)', cursor: 'pointer', transition: 'all 0.2s' }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(230,199,110,0.08)'; e.currentTarget.style.borderColor = 'rgba(230,199,110,0.5)' }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor = 'rgba(230,199,110,0.28)' }}
               >
-                Guided Questions (step-by-step)
-              </button>
-              <button
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '20px' }}>✦</span>
+                  <p style={{ fontFamily: "'Cinzel', serif", fontSize: '11px', letterSpacing: '0.22em', color: '#e6c76e', textTransform: 'uppercase' }}>Let the mirror ask me</p>
+                </div>
+                <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '15px', color: 'rgba(255,255,255,0.52)', lineHeight: 1.6, paddingLeft: '34px' }}>Answer a few questions and the mirror builds your portrait from what you share. Best if you're not sure where to start.</p>
+              </motion.button>
+              <motion.button
+                whileHover={{ y: -2 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => { setAvatarMode('freeform'); setPhase('freeform') }}
-                style={{ padding: '18px', borderRadius: '10px', border: '1px solid rgba(230,199,110,0.3)', background: avatarMode === 'freeform' ? 'rgba(230,199,110,0.09)' : 'rgba(255,255,255,0.04)', color: '#e6c76e', fontFamily: "'Cinzel', serif", fontSize: '13px', letterSpacing: '0.18em', textTransform: 'uppercase', cursor: 'pointer', fontWeight: 500 }}
+                style={{ textAlign: 'left', padding: '22px 24px', borderRadius: '12px', border: '1px solid rgba(230,199,110,0.28)', background: 'rgba(255,255,255,0.04)', cursor: 'pointer', transition: 'all 0.2s' }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(230,199,110,0.08)'; e.currentTarget.style.borderColor = 'rgba(230,199,110,0.5)' }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor = 'rgba(230,199,110,0.28)' }}
               >
-                Freeform Description (write your own)
-              </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '20px' }}>◎</span>
+                  <p style={{ fontFamily: "'Cinzel', serif", fontSize: '11px', letterSpacing: '0.22em', color: '#e6c76e', textTransform: 'uppercase' }}>I'll describe myself</p>
+                </div>
+                <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '15px', color: 'rgba(255,255,255,0.52)', lineHeight: 1.6, paddingLeft: '34px' }}>Write your own description in your own words. No prompts, just your vision. Best if you already know what you want.</p>
+              </motion.button>
             </div>
           </motion.div>
         )}
