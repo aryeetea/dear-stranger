@@ -1,270 +1,264 @@
-import { GoogleGenerativeAI } from '@google/generative-ai'
 import { NextResponse } from 'next/server'
+import OpenAI from 'openai'
 
-const VOICE_PROMPTS: Record<string, string> = {
-  friend: `You are a warm, gentle, encouraging friend helping someone create their avatar. You speak with genuine care and interest and use natural, conversational language.`,
-  poetic: `You are poetic and mysterious. Speak in metaphors and layered imagery. Let silence breathe. Ask questions that feel worth lingering in.`,
-  direct: `You are direct and honest. Ask exactly what you mean with no filler or softening. Be refreshingly real.`,
-  genz: `You are very online and playful, but still natural. Use current slang lightly and only when it sounds real.`,
-  elder: `You are a wise elder: calm, patient, and philosophical. Ask questions that reveal deeper truths.`,
-  playful: `You are playful and endlessly curious. Approach each answer with wonder and delight.`,
-}
+export const maxDuration = 60
 
-function stripFormatting(text: string) {
-  return text
-    .replace(/\*\*/g, '')
-    .replace(/\*/g, '')
-    .replace(/[_`]/g, '')
+function normalizeDetail(value: string) {
+  return value
     .replace(/\s+/g, ' ')
+    .replace(/^[,.;:\s]+|[,.;:\s]+$/g, '')
     .trim()
 }
 
-function looksIncomplete(text: string, isDone: boolean) {
-  const cleaned = stripFormatting(text)
-  if (!cleaned) return true
-  if (/[,:;\-–—]$/.test(cleaned)) return true
-  if (!isDone && !cleaned.includes('?')) return true
-  return false
+const BASE_RENDER_STYLE = `
+Highly stylized fantasy digital illustration.
+Game concept art quality. Rich painterly detail with dramatic cinematic lighting.
+Expressive, otherworldly character design with elaborate costume and magical effects.
+Detailed face with fantasy features: glowing or luminous eyes, sharp elven or arcane aesthetics.
+Intricate armor, robes, or fantasy clothing with jeweled and arcane detailing.
+Dynamic pose with flowing fabric, hair, and magical energy trails.
+Atmospheric background with environmental storytelling: castles, ruins, dragons, crystals, cosmic sky.
+Swirling particle effects, arcane light trails, glowing magical orbs or weapons.
+Deep rich color palette: midnight blues, indigos, gold accents, glowing teals and purples.
+Dramatic volumetric lighting, god rays, rim lighting, and magical glow sources.
+
+Hard rules:
+- not photorealistic
+- not plain portrait
+- not minimal background
+- not flat illustration
+- not 3D render
+- not childish or cute chibi
+- not grounded or mundane setting
+- backgrounds must be rich and atmospheric, never plain or blurred out
+- always include magical effects, energy, or fantastical atmosphere
+- character must feel legendary, powerful, and otherworldly
+
+Keep the same high-fantasy rendering quality and artistic intensity across all avatars.
+`.trim()
+
+const STYLE_DIRECTIONS: Record<string, string> = {
+  fantasy: `
+Dark high fantasy sorceress or warrior aesthetic.
+Otherworldly skin tone options (deep violet, midnight blue, obsidian, silver).
+Elaborate fantasy armor or arcane robes with gold and gemstone detailing.
+Glowing arcane staff, sword, or magical weapon.
+Crescent moon, dragon silhouette, enchanted castle in atmospheric background.
+Blue arcane crystal formations at ground level.
+Swirling magical energy and particle trails surrounding the character.
+Starfield or cosmic night sky with dramatic cloud formations.
+`.trim(),
+
+  modern: `
+Stylized urban fantasy aesthetic: contemporary fashion merged with subtle magical elements.
+Glowing tattoos, enchanted accessories, neon-lit city or mystical urban backdrop.
+Sharp editorial lighting with magical color grading.
+Supernatural calm and power in expression and pose.
+`.trim(),
+
+  'fantasy-modern': `
+Fusion of street style and arcane power.
+Modern silhouette with fantasy armor pieces, glowing runes, or enchanted accessories.
+Dramatic city skyline at dusk merged with fantasy atmospheric elements.
+Magical energy woven through contemporary outfit details.
+`.trim(),
+
+  celestial: `
+Cosmic deity or star-born sorceress aesthetic.
+Skin that shimmers with starlight or galaxy patterns.
+Crown or headdress of constellation points or lunar crescents.
+Flowing robes made of solidified starlight and cosmic energy.
+Background of nebulae, star clusters, celestial bodies, and divine light columns.
+Radiant silver, indigo, and gold magical auras.
+`.trim(),
+
+  royal: `
+Dark fantasy queen or emperor aesthetic.
+Towering dramatic crown with gemstones and arcane runes.
+Sweeping royal robes with intricate embroidery and supernatural shimmer.
+Throne room, fortress, or war-torn kingdom in background.
+Commanding regal pose radiating immense power.
+Deep crimson, midnight gold, and obsidian color palette.
+`.trim(),
+
+  streetwear: `
+Urban arcane warrior aesthetic.
+High-end streetwear layered with glowing magical armor pieces and enchanted accessories.
+Graffiti murals with living runes in the background.
+Energy aura in neon colors surrounding the character.
+Confident and powerful street-level pose with supernatural presence.
+`.trim(),
+
+  futuristic: `
+Sci-fi mage or cyberpunk sorcerer aesthetic.
+Sleek bioluminescent bodysuit fused with holographic arcane patterns.
+Glowing implants, energy conduits, or futuristic staff/weapon.
+Megacity ruins or space station interior as atmospheric backdrop.
+Electric blue, violet, and chrome color palette with neon magical effects.
+`.trim(),
+
+  nature: `
+Ancient forest guardian or druid queen aesthetic.
+Armor crafted from living wood, stone, and blooming flora.
+Bioluminescent plants, glowing spirit creatures, and ancient tree spirits in background.
+Warm earth tones layered with magical bioluminescent greens and golds.
+Vines, roots, and petals swirling with magical wind energy.
+`.trim(),
 }
 
-function countWords(text: string) {
-  return stripFormatting(text).split(/\s+/).filter(Boolean).length
+function getThemeDirection(style?: string) {
+  const styleKey = (style || '').toLowerCase().replace(/\s+/g, '-')
+  return (
+    STYLE_DIRECTIONS[styleKey] ||
+    `${normalizeDetail(style || 'Dark high fantasy cinematic styling')}. Otherworldly, dramatic, atmospheric, and visually spectacular.`
+  )
 }
 
-async function repairMirrorReply(
-  model: ReturnType<GoogleGenerativeAI['getGenerativeModel']>,
-  rawReply: string,
-  latestUserMessage: string,
-  isDone: boolean,
+function buildAvatarPrompt(
+  answers: string[],
+  style?: string,
+  feedback?: string,
+  mode: 'create' | 'reimagine' = 'create',
 ) {
-  const repairPrompt = isDone
-    ? `Rewrite this into one complete closing message. Keep the same voice, remove markdown styling, and make it feel finished.
+  const trimmedAnswers = answers
+    .map((a) => normalizeDetail(a))
+    .filter(Boolean)
+    .slice(0, 8)
 
-Original reply:
-${rawReply}
+  const details = trimmedAnswers
+    .map((a, i) => `${i + 1}. ${a}`)
+    .join('\n')
 
-Return only the rewritten closing, followed by a new line in this format:
-[CHIPS: reflecting now | I can see you | ready to enter | continue]
+  const themeDirection = getThemeDirection(style)
+
+  const modeDirection =
+    mode === 'reimagine'
+      ? `
+This is a reimagined version of an existing avatar.
+Keep the same core person and identity recognizable.
+Clearly apply the requested changes.
+Do not return a near duplicate.
+Change outfit details, pose, lighting, composition, accessories, magical effects, or atmosphere so the edit is visibly dramatic and noticeable.
 `
-    : `Rewrite this into one complete follow-up question. It must:
-- stay in the same voice
-- respond to the user's latest answer
-- ask exactly one clear question
-- focus on visual appearance, clothing, features, color, texture, or setting
-- contain exactly one question mark
-- be 20 words or fewer
-- remove markdown styling and decorative symbols
-- sound complete, not cut off
-
-User's latest answer:
-${latestUserMessage}
-
-Original reply:
-${rawReply}
-
-Return only the rewritten question, followed by a new line in this format:
-[CHIPS: chip1 | chip2 | chip3 | chip4]
+      : `
+Create this avatar from scratch with maximum visual impact and fantasy world-building.
 `
 
-  const repaired = await model.generateContent(repairPrompt)
-  return repaired.response.text().trim()
+  const feedbackLine = feedback?.trim()
+    ? `Required visible changes: ${normalizeDetail(feedback)}.`
+    : ''
+
+  return [
+    `Create a single full body character portrait in the style of premium high fantasy digital game art.`,
+    `Base render style: ${BASE_RENDER_STYLE}`,
+    `Theme direction: ${themeDirection}`,
+    `Important: maintain consistent high-fantasy rendering quality. Outfit, magical effects, atmosphere, setting, and color palette should shift dramatically based on the selected theme. The character must always feel like a legendary figure from an epic fantasy world.`,
+    modeDirection,
+    `The character must be fully visible from head to toe with a powerful, dynamic silhouette.`,
+    `Use a vertical portrait composition. Explosive dramatic lighting. Swirling magical particle effects. Rich layered background with environmental detail. Cinematic game art quality.`,
+    `Do not add text, watermarks, or logos.`,
+    details ? `Character details based on their self-description:\n${details}` : '',
+    feedbackLine,
+  ]
+    .filter(Boolean)
+    .join('\n\n')
+}
+
+async function generateWithGptImage(
+  openai: OpenAI,
+  prompt: string,
+  userId?: string,
+) {
+  const response = await openai.images.generate({
+    model: 'gpt-image-1',
+    prompt,
+    size: '1024x1536',
+    quality: 'low',
+    output_format: 'jpeg',
+    user: userId || undefined,
+  } as any)
+
+  const image = response.data?.[0]
+  if (!image?.b64_json) throw new Error('gpt-image-1 returned no image data.')
+
+  return {
+    imageUrl: `data:image/jpeg;base64,${image.b64_json}`,
+    revisedPrompt: (image as any).revised_prompt || prompt,
+  }
+}
+
+async function generateWithShortApiKey(
+  prompt: string,
+  userId?: string,
+) {
+  const shortApiKey = process.env.SHORTAPI_KEY
+  if (!shortApiKey) throw new Error('Missing SHORTAPI_KEY')
+  const openai = new OpenAI({ apiKey: shortApiKey })
+  const response = await openai.images.generate({
+    model: 'gpt-image-1',
+    prompt,
+    size: '1024x1536',
+    quality: 'low',
+    output_format: 'jpeg',
+    user: userId || undefined,
+  })
+  const image = response.data?.[0]
+  if (!image?.b64_json) throw new Error('gpt-image-1 (fallback) returned no image data.')
+  return {
+    imageUrl: `data:image/jpeg;base64,${image.b64_json}`,
+    revisedPrompt: (image as any).revised_prompt || prompt,
+  }
 }
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json()
-    const {
-      messages = [],
-      answers = [],
-      exchangeNumber = 0,
+    const { answers, feedback, userId, style, mode } = await req.json()
+
+    const openaiKey = process.env.OPENAI_API_KEY
+    if (!openaiKey) {
+      return NextResponse.json({ error: 'Missing OPENAI_API_KEY' }, { status: 500 })
+    }
+
+    const orderedAnswers = Object.entries(answers || {})
+      .sort(([a], [b]) => Number(a) - Number(b))
+      .map(([, answer]) => normalizeDetail(String(answer)))
+      .filter(Boolean)
+
+    if (orderedAnswers.length === 0) {
+      return NextResponse.json({ error: 'No answers provided.' }, { status: 400 })
+    }
+
+    const generationMode: 'create' | 'reimagine' =
+      mode === 'reimagine' ? 'reimagine' : 'create'
+
+    const imagePrompt = buildAvatarPrompt(
+      orderedAnswers,
       style,
-      styleDescription,
-      mirrorVoice = 'friend',
-      mirrorVoicePrompt,
-      isReturning = false,
-      minExchanges = 3,
-      maxExchanges = 8,
-    } = body
-
-    const apiKey = process.env.GEMINI_API_KEY
-    if (!apiKey) {
-      return NextResponse.json({ error: 'Missing GEMINI_API_KEY' }, { status: 500 })
-    }
-
-    const voiceInstruction =
-      mirrorVoicePrompt || VOICE_PROMPTS[mirrorVoice] || VOICE_PROMPTS.friend
-
-    const hasEnough = exchangeNumber >= minExchanges
-    const mustClose = exchangeNumber >= maxExchanges
-    const isFirstTurn = exchangeNumber === 0
-
-    const systemPrompt = `
-${voiceInstruction}
-
-Your role: You are a Soul Mirror helping someone describe their avatar's physical appearance, clothing, visible features, and visual presence for Dear Stranger.
-
-${isReturning ? `IMPORTANT: This person is returning after 90 days. Open with a warm returning greeting in your voice style.` : ''}
-
-${isFirstTurn ? `
-Your first message must:
-- Be centered on this exact question: "In another world, how do you look? Describe your appearance in as much detail as you can."
-- You may add a brief lead-in in your voice style, but do not rewrite or replace that core question.
-- The question must clearly be about physical appearance, not personality, identity, or emotions.
-- Contain exactly one question.
-- Keep the full question to 20 words or fewer.
-` : `
-You are continuing an existing conversation.
-- Do not reintroduce yourself.
-- Do not repeat your opening.
-- Ask only the single best next follow-up question.
-`}
-
-After that:
-- Start asking the real question quickly.
-- Do not spend the whole message on reaction, hype, or poetic filler.
-- Focus first on physical appearance.
-- Prioritize face, skin, eyes, hair, body, clothing, accessories, and other visible features.
-- Only ask about vibe, aura, energy, or setting after strong visual details are established.
-- Ask targeted follow-up questions only if you still need visual detail for the avatar.
-- Ask one thing at a time.
-- Every turn must contain exactly one question.
-- Every question must be 20 words or fewer.
-- Never stack questions.
-- Use only one question mark total in the whole response.
-- Do not use decorative symbols, bullet points, or markdown emphasis.
-- Make sure each follow-up clearly responds to what the person just said.
-- Do not ignore vivid details they already gave you.
-- If they already shared a lot, narrow in on the single most useful missing visual detail.
-- Keep continuity so the conversation feels like one thoughtful exchange.
-- Keep the user grounded in describing what can actually be seen.
-
-${hasEnough ? `
-Assessment: you now have ${exchangeNumber} exchanges.
-- If you have enough visual detail for a strong ${style || 'avatar'} portrait, write a warm closing and end with exactly [DONE].
-- If not, ask one more focused visual question.
-` : ''}
-
-${mustClose ? `You must close now. Write your closing and end with [DONE].` : ''}
-
-After your question or closing, always add this on a new line:
-[CHIPS: chip1 | chip2 | chip3 | chip4]
-
-Chips must be short, 2-5 words each, directly relevant to what you just asked, and feel like natural things the person might actually say.
-
-Keep responses concise.
-`.trim()
-
-    const genAI = new GoogleGenerativeAI(apiKey)
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash',
-      systemInstruction: systemPrompt,
-    })
-
-    const rawHistory = Array.isArray(messages) ? [...messages] : []
-
-    const latestUserMessage =
-      answers[answers.length - 1] ||
-      (rawHistory.length > 0 && rawHistory[rawHistory.length - 1]?.role === 'user'
-        ? rawHistory[rawHistory.length - 1].text
-        : 'Continue.')
-
-    const historyForChat =
-      rawHistory.length > 0 && rawHistory[rawHistory.length - 1]?.role === 'user'
-        ? rawHistory.slice(0, -1)
-        : rawHistory
-
-    const normalizedHistory: { role: 'user' | 'model'; parts: { text: string }[] }[] = []
-    let foldedLatestUserMessage = latestUserMessage
-
-    if (historyForChat.length > 0 && historyForChat[0]?.role === 'ai') {
-      const openingPrompt = historyForChat[0].text
-      const openingReply =
-        historyForChat.length > 1 && historyForChat[1]?.role === 'user'
-          ? historyForChat[1].text
-          : null
-
-      if (openingReply) {
-        normalizedHistory.push({
-          role: 'user',
-          parts: [
-            {
-              text: `The Soul Mirror asked: ${openingPrompt}\nMy answer: ${openingReply}`,
-            },
-          ],
-        })
-      } else if (foldedLatestUserMessage) {
-        foldedLatestUserMessage = `The Soul Mirror asked: ${openingPrompt}\nMy answer: ${foldedLatestUserMessage}`
-      }
-    }
-
-    const remainingHistoryStart =
-      historyForChat.length > 1 &&
-      historyForChat[0]?.role === 'ai' &&
-      historyForChat[1]?.role === 'user'
-        ? 2
-        : historyForChat.length > 0 && historyForChat[0]?.role === 'ai'
-          ? 1
-          : 0
-
-    const conversationHistory = normalizedHistory.concat(
-      historyForChat
-        .slice(remainingHistoryStart)
-        .map((message: { role: string; text: string }) => ({
-          role: message.role === 'ai' ? 'model' : 'user',
-          parts: [{ text: message.text }],
-        })),
+      feedback,
+      generationMode,
     )
 
-    const chat = model.startChat({
-      history: conversationHistory,
-      generationConfig: {
-        maxOutputTokens: 400,
-        temperature:
-          mirrorVoice === 'genz'
-            ? 1.0
-            : mirrorVoice === 'poetic'
-              ? 0.95
-              : 0.8,
-      },
-    })
+    const openai = new OpenAI({ apiKey: openaiKey })
 
-    const result = await chat.sendMessage(
-      conversationHistory.length === 0 && answers.length === 0
-        ? 'Begin. Ask your opening question.'
-        : foldedLatestUserMessage,
-    )
-
-    let raw = result.response.text().trim()
-    let isDone = raw.includes('[DONE]') || mustClose
-
-    if (
-      looksIncomplete(raw, isDone) ||
-      (!isDone && countWords(raw.replace(/$begin:math:display$CHIPS\:\[\\s\\S\]\*\?$end:math:display$/g, '')) > 20)
-    ) {
-      raw = await repairMirrorReply(model, raw, foldedLatestUserMessage, isDone)
-      isDone = raw.includes('[DONE]') || mustClose
+    try {
+      const result = await generateWithGptImage(openai, imagePrompt, userId)
+      return NextResponse.json({
+        imageUrl: result.imageUrl,
+        prompt: result.revisedPrompt,
+      })
+    } catch (primaryError) {
+      console.warn('gpt-image-1 failed, falling back to SHORTAPI_KEY:', primaryError)
+      const fallback = await generateWithShortApiKey(imagePrompt, userId)
+      return NextResponse.json({
+        imageUrl: fallback.imageUrl,
+        prompt: fallback.revisedPrompt,
+      })
     }
-
-    const chipsMatch = raw.match(/$begin:math:display$CHIPS\:\\s\*\(\.\+\?\)$end:math:display$/)
-    const chips: string[] = chipsMatch
-      ? chipsMatch[1]
-          .split('|')
-          .map((chip: string) => chip.trim())
-          .filter(Boolean)
-          .slice(0, 4)
-      : []
-
-    const cleaned = stripFormatting(
-      raw.replace('[DONE]', '').replace(/$begin:math:display$CHIPS\:\[\\s\\S\]\*\?$end:math:display$/g, '').trim(),
+  } catch (error) {
+    console.error('generate-avatar error:', error)
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Failed to generate avatar.' },
+      { status: 500 },
     )
-
-    return NextResponse.json({
-      question: cleaned,
-      done: isDone,
-      chips,
-    })
-  } catch (err) {
-    console.error('Soul mirror error:', err)
-    return NextResponse.json({ error: 'Mirror went quiet.' }, { status: 500 })
   }
 }

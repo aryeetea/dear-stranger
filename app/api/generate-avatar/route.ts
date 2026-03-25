@@ -129,31 +129,27 @@ async function generateWithGptImage(
   }
 }
 
-async function generateWithDalle(
-  openai: OpenAI,
+async function generateWithShortApiKey(
   prompt: string,
   userId?: string,
 ) {
+  const shortApiKey = process.env.SHORTAPI_KEY
+  if (!shortApiKey) throw new Error('Missing SHORTAPI_KEY')
+  const openai = new OpenAI({ apiKey: shortApiKey })
   const response = await openai.images.generate({
-    model: 'dall-e-3',
+    model: 'gpt-image-1',
     prompt,
-    n: 1,
-    size: '1024x1792',
-    quality: 'standard',
-    style: 'natural',
-    response_format: 'b64_json',
+    size: '1024x1536',
+    quality: 'low',
+    output_format: 'jpeg',
     user: userId || undefined,
   })
-
   const image = response.data?.[0]
-  if (image?.b64_json) {
-    return {
-      imageUrl: `data:image/png;base64,${image.b64_json}`,
-      revisedPrompt: image.revised_prompt || prompt,
-    }
+  if (!image?.b64_json) throw new Error('gpt-image-1 (fallback) returned no image data.')
+  return {
+    imageUrl: `data:image/jpeg;base64,${image.b64_json}`,
+    revisedPrompt: (image as any).revised_prompt || prompt,
   }
-
-  throw new Error('dall-e-3 returned no image data.')
 }
 
 export async function POST(req: Request) {
@@ -193,8 +189,8 @@ export async function POST(req: Request) {
         prompt: result.revisedPrompt,
       })
     } catch (primaryError) {
-      console.warn('gpt-image-1 failed, falling back to dall-e-3:', primaryError)
-      const fallback = await generateWithDalle(openai, imagePrompt, userId)
+      console.warn('gpt-image-1 failed, falling back to SHORTAPI_KEY:', primaryError)
+      const fallback = await generateWithShortApiKey(imagePrompt, userId)
       return NextResponse.json({
         imageUrl: fallback.imageUrl,
         prompt: fallback.revisedPrompt,
