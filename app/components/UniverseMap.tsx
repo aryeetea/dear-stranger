@@ -829,6 +829,7 @@ export default function UniverseMap({
   const animFrameRef = useRef<number>(0)
   const shootingStarsRef = useRef<ShootingStar[]>([])
   const starIdRef = useRef(0)
+  const lastPinchDistRef = useRef<number | null>(null)
 
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
   const [profile, setProfile] = useState<ProfileState | null>(null)
@@ -1031,6 +1032,74 @@ export default function UniverseMap({
     }) || null
   }, [])
 
+  // ── Touch events (non-passive) for mobile pan + pinch-zoom ──
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 1) {
+        const t = e.touches[0]
+        isDraggingRef.current = true
+        hasDraggedRef.current = false
+        dragStartRef.current = { x: t.clientX - offsetRef.current.x, y: t.clientY - offsetRef.current.y }
+        lastPinchDistRef.current = null
+      } else if (e.touches.length === 2) {
+        const dx = e.touches[1].clientX - e.touches[0].clientX
+        const dy = e.touches[1].clientY - e.touches[0].clientY
+        lastPinchDistRef.current = Math.sqrt(dx * dx + dy * dy)
+        isDraggingRef.current = false
+      }
+      e.preventDefault()
+    }
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (e.touches.length === 1 && isDraggingRef.current) {
+        const t = e.touches[0]
+        const dx = Math.abs(t.clientX - (dragStartRef.current.x + offsetRef.current.x))
+        const dy = Math.abs(t.clientY - (dragStartRef.current.y + offsetRef.current.y))
+        if (dx > 4 || dy > 4) {
+          hasDraggedRef.current = true
+          offsetRef.current = { x: t.clientX - dragStartRef.current.x, y: t.clientY - dragStartRef.current.y }
+        }
+      } else if (e.touches.length === 2 && lastPinchDistRef.current !== null) {
+        const dx = e.touches[1].clientX - e.touches[0].clientX
+        const dy = e.touches[1].clientY - e.touches[0].clientY
+        const dist = Math.sqrt(dx * dx + dy * dy)
+        scaleRef.current = Math.min(3.5, Math.max(0.25, scaleRef.current * (dist / lastPinchDistRef.current)))
+        lastPinchDistRef.current = dist
+      }
+      e.preventDefault()
+    }
+
+    const onTouchEnd = (e: TouchEvent) => {
+      if (e.touches.length === 0) {
+        if (!hasDraggedRef.current && e.changedTouches.length >= 1) {
+          const t = e.changedTouches[0]
+          const star = getStarAt(t.clientX, t.clientY)
+          if (star) { setStarPreview(star); isDraggingRef.current = false; return }
+          const hub = getHubAt(t.clientX, t.clientY)
+          if (hub) {
+            setProfile({ hub, screenX: t.clientX, screenY: t.clientY, telescopeMode: hub.hubStyle === 'telescope' })
+          } else {
+            setProfile(null)
+          }
+        }
+        isDraggingRef.current = false
+        lastPinchDistRef.current = null
+      }
+    }
+
+    canvas.addEventListener('touchstart', onTouchStart, { passive: false })
+    canvas.addEventListener('touchmove', onTouchMove, { passive: false })
+    canvas.addEventListener('touchend', onTouchEnd)
+    return () => {
+      canvas.removeEventListener('touchstart', onTouchStart)
+      canvas.removeEventListener('touchmove', onTouchMove)
+      canvas.removeEventListener('touchend', onTouchEnd)
+    }
+  }, [getHubAt, getStarAt])
+
   const handleMouseDown = (e: React.MouseEvent) => {
     isDraggingRef.current = true; hasDraggedRef.current = false
     dragStartRef.current = { x: e.clientX - offsetRef.current.x, y: e.clientY - offsetRef.current.y }
@@ -1144,9 +1213,10 @@ export default function UniverseMap({
             style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60, padding: '20px', background: 'rgba(0,0,5,0.6)', backdropFilter: 'blur(4px)' }}
             onClick={() => setProfile(null)}>
             <motion.div onClick={e => e.stopPropagation()}
+              className="universe-hub-card"
               style={{ background: 'rgba(8,10,28,0.95)', border: '1px solid rgba(230,199,110,0.22)', borderRadius: '16px', width: 'min(780px, 95vw)', minHeight: '380px', display: 'flex', overflow: 'hidden', boxShadow: '0 0 80px rgba(0,0,0,0.9)', backdropFilter: 'blur(20px)', position: 'relative' }}>
               {/* Avatar panel */}
-              <div style={{ width: '42%', minHeight: '380px', background: 'linear-gradient(135deg, rgba(20,25,60,0.9), rgba(10,15,40,0.95))', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden', flexShrink: 0 }}>
+              <div className="universe-hub-avatar-col" style={{ width: '42%', minHeight: '380px', background: 'linear-gradient(135deg, rgba(20,25,60,0.9), rgba(10,15,40,0.95))', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden', flexShrink: 0 }}>
                 {profile.hub.avatarUrl ? (
                   <img src={profile.hub.avatarUrl} alt="Avatar"
                     style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center', position: 'absolute', inset: 0 }} />
@@ -1213,16 +1283,18 @@ export default function UniverseMap({
         style={{ position: 'fixed', bottom: '32px', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: '4px', background: 'rgba(8,10,28,0.86)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', backdropFilter: 'blur(20px)', padding: '8px 12px', boxShadow: '0 4px 40px rgba(0,0,0,0.6)', zIndex: 50 }}>
         {navItems.map((item, i) => (
           <button key={item.label}
+            className="universe-nav-btn"
             onClick={() => { setActiveNav(i); if (i === 1) onWriteLetter?.(); if (i === 2) onObservatory?.(); if (i === 3) onProfile?.() }}
             onMouseEnter={() => setHoveredNav(i)} onMouseLeave={() => setHoveredNav(null)}
             style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px', padding: '10px 18px', background: activeNav === i ? 'rgba(230,199,110,0.1)' : hoveredNav === i ? 'rgba(255,255,255,0.06)' : 'transparent', border: 'none', borderRadius: '10px', cursor: 'pointer', minWidth: '64px' }}>
             <span style={{ fontSize: '18px', lineHeight: 1, color: activeNav === i ? '#e6c76e' : 'rgba(255,255,255,0.75)', filter: activeNav === i ? 'drop-shadow(0 0 6px rgba(230,199,110,0.5))' : 'none' }}>{item.icon}</span>
-            <span style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.18em', textTransform: 'uppercase', color: activeNav === i ? '#e6c76e' : 'rgba(255,255,255,0.6)', whiteSpace: 'nowrap' }}>{item.label}</span>
+            <span className="universe-nav-label" style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.18em', textTransform: 'uppercase', color: activeNav === i ? '#e6c76e' : 'rgba(255,255,255,0.6)', whiteSpace: 'nowrap' }}>{item.label}</span>
           </button>
         ))}
       </motion.nav>
 
       <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.4, duration: 0.8 }}
+        className="universe-hint"
         style={{ position: 'fixed', top: '28px', left: '50%', transform: 'translateX(-50%)', fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '12px', color: 'rgba(255,255,255,0.5)', letterSpacing: '0.08em', pointerEvents: 'none', whiteSpace: 'nowrap', zIndex: 50 }}>
         drag to explore · scroll to zoom · catch shooting stars
       </motion.p>

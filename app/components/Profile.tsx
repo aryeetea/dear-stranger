@@ -202,10 +202,10 @@ export default function Profile({
         ← Universe
       </motion.button>
 
-      <div style={{ display: 'flex', minHeight: '100vh', position: 'relative', zIndex: 2 }}>
+      <div className="profile-layout">
         {/* LEFT — Avatar */}
         <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6 }}
-          style={{ width: '42%', flexShrink: 0, position: 'relative', overflow: 'hidden' }}>
+          className="profile-avatar-col">
           <div style={{ position: 'absolute', inset: 0, zIndex: 3, pointerEvents: 'none', background: 'linear-gradient(to right, transparent 65%, rgba(0,0,5,0.97) 100%), linear-gradient(to bottom, rgba(0,0,5,0.3) 0%, transparent 15%, transparent 85%, rgba(0,0,5,0.6) 100%)' }} />
           {regenLoading && (
             <div style={{ position: 'absolute', inset: 0, zIndex: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,5,0.7)', backdropFilter: 'blur(8px)' }}>
@@ -217,9 +217,9 @@ export default function Profile({
             </div>
           )}
           {currentAvatarUrl ? (
-            <img src={currentAvatarUrl} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center', display: 'block', minHeight: '100vh' }} />
+            <img src={currentAvatarUrl} alt="Avatar" className="profile-avatar-fill" />
           ) : (
-            <div style={{ width: '100%', height: '100%', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(180deg, rgba(20,25,60,0.8), rgba(5,8,20,0.9))' }}>
+            <div className="profile-avatar-fill" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(180deg, rgba(20,25,60,0.8), rgba(5,8,20,0.9))' }}>
               <div style={{ width: '100px', height: '100px', borderRadius: '50%', border: '1px solid rgba(201,168,76,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '40px' }}>✦</div>
             </div>
           )}
@@ -227,7 +227,7 @@ export default function Profile({
 
         {/* RIGHT — Info */}
         <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6, delay: 0.1 }}
-          style={{ flex: 1, padding: 'clamp(60px,8vh,100px) clamp(28px,5vw,60px) 80px', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+          className="profile-info-col">
 
           <div style={{ marginBottom: '40px' }}>
             <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.5em', color: 'rgba(201,168,76,0.6)', textTransform: 'uppercase', marginBottom: '6px' }}>Soul Mirror</p>

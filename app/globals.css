@@ -56,3 +56,70 @@ input::placeholder {
   color: rgba(240, 210, 150, 0.65);
   font-style: italic;
 }
+
+/* Profile responsive layout */
+.profile-layout {
+  display: flex;
+  min-height: 100vh;
+  position: relative;
+  z-index: 2;
+}
+.profile-avatar-col {
+  width: 42%;
+  flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+}
+.profile-avatar-fill {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+  display: block;
+  min-height: 100vh;
+}
+.profile-info-col {
+  flex: 1;
+  padding: clamp(60px, 8vh, 100px) clamp(28px, 5vw, 60px) 80px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+@media (max-width: 767px) {
+  body { overflow: auto; }
+  .profile-layout { flex-direction: column; }
+  .profile-avatar-col { width: 100%; height: min(60vw, 320px); }
+  .profile-avatar-fill { min-height: 0; height: 100%; }
+  .profile-info-col { padding: 28px 20px 60px; overflow-y: visible; }
+}
+
+/* UniverseMap hub profile card */
+.universe-hub-card { /* base: display:flex set inline */ }
+.universe-hub-avatar-col { /* base: width/min-height set inline */ }
+
+/* UniverseMap nav + hint */
+.universe-nav-btn { /* base styles inline */ }
+.universe-nav-label { /* base styles inline */ }
+.universe-hint { /* base styles inline */ }
+
+@media (max-width: 600px) {
+  .universe-hub-card { flex-direction: column !important; }
+  .universe-hub-avatar-col {
+    width: 100% !important;
+    height: 200px !important;
+    min-height: 0 !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .universe-nav-btn { padding: 8px 10px !important; min-width: 48px !important; }
+  .universe-nav-label { font-size: 7px !important; letter-spacing: 0.08em !important; }
+  .universe-hint {
+    font-size: 10px !important;
+    white-space: normal !important;
+    text-align: center;
+    left: 16px !important;
+    right: 16px !important;
+    transform: none !important;
+  }
+}
