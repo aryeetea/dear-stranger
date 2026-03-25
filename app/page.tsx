@@ -333,18 +333,13 @@ export default function Home() {
     const hubNameAnswer = (userHubName || answers[keys[keys.length - 1]] || 'Your Hub').trim()
 
 
-    // Move fallback values above their use
-    const fallbackBio = 'A wanderer who arrived here quietly, carrying something unspoken.'
-    const fallbackAskAbout = 'Silence, slow mornings, and letters that take their time.'
-    // Always include bio and askAbout for avatar generation, just like Profile reimagine
-    const conversationAnswers: Record<number, string> = {
-      0: userBio?.trim() || fallbackBio,
-      1: userAskAbout?.trim() || fallbackAskAbout,
-    }
+    // Only use the user's explicit avatar description for avatar generation
+    // Assume the first answer is the avatar description (from freeform or guided)
+    const avatarDescription = answers[0]?.trim() || ''
     const chosenHubStyle = selectedHubStyle || 'portal'
     const chosenHubColor = selectedHubColor || 'gold'
-    const chosenBio = userBio?.trim() || fallbackBio
-    const chosenAskAbout = userAskAbout?.trim() || fallbackAskAbout
+    const chosenBio = userBio?.trim() || 'A wanderer who arrived here quietly, carrying something unspoken.'
+    const chosenAskAbout = userAskAbout?.trim() || 'Silence, slow mornings, and letters that take their time.'
 
     const resumeState: SoulMirrorResumeState = {
       phase: 'welcome',
@@ -363,96 +358,93 @@ export default function Home() {
       setScreen('generating')
       setGeneratingStatus('Crafting your soul mirror...')
 
-      let session = await getSession()
-      const isAnonymousSession = Boolean(
-        (session?.user as { is_anonymous?: boolean } | undefined)?.is_anonymous,
-      )
+      try {
+        onboardingInFlightRef.current = true
+        setScreen('generating')
+        setGeneratingStatus('Crafting your soul mirror...')
 
-      if (pendingCredentials) {
-        if (isAnonymousSession) {
-          await signOut()
-        }
-
-        await signUpAndCreateHub(
-          pendingCredentials.email,
-          pendingCredentials.password,
-          hubNameAnswer,
-          chosenBio,
-          chosenAskAbout,
+        let session = await getSession()
+        const isAnonymousSession = Boolean(
+          (session?.user as { is_anonymous?: boolean } | undefined)?.is_anonymous,
         )
 
-        session = await getSession()
+        if (pendingCredentials) {
+          if (isAnonymousSession) {
+            await signOut()
+          }
 
-        if (!session) {
-          await signIn(pendingCredentials.email, pendingCredentials.password)
+          await signUpAndCreateHub(
+            pendingCredentials.email,
+            pendingCredentials.password,
+            hubNameAnswer,
+            chosenBio,
+            chosenAskAbout,
+          )
+
+          session = await getSession()
+
+          if (!session) {
+            await signIn(pendingCredentials.email, pendingCredentials.password)
+            session = await getSession()
+          }
+
+          setPendingCredentials(null)
+          setIsGuest(false)
+        } else if (session) {
+          await createHubForCurrentUser(hubNameAnswer, chosenBio, chosenAskAbout)
+
+          const guest = await isGuestUser()
+          setIsGuest(guest)
+        } else {
+          await signInAndCreateHub(hubNameAnswer, chosenBio, chosenAskAbout)
           session = await getSession()
         }
 
-        setPendingCredentials(null)
-        setIsGuest(false)
-      } else if (session) {
-        await createHubForCurrentUser(hubNameAnswer, chosenBio, chosenAskAbout)
+        setHubName(hubNameAnswer)
+        setHubStyle(chosenHubStyle)
+        setHubColor(chosenHubColor)
+        setHubBio(chosenBio)
+        setHubAskAbout(chosenAskAbout)
 
-        const guest = await isGuestUser()
-        setIsGuest(guest)
-      } else {
-        await signInAndCreateHub(hubNameAnswer, chosenBio, chosenAskAbout)
-        session = await getSession()
-        setIsGuest(true)
-      }
+        const userId = session?.user?.id
 
-      setHubName(hubNameAnswer)
-      setHubStyle(chosenHubStyle)
-      setHubColor(chosenHubColor)
-      setHubBio(chosenBio)
-      setHubAskAbout(chosenAskAbout)
+        setGeneratingStatus('Placing your hub in the universe...')
 
-      const userId = session?.user?.id
+        await withTimeout(
+          updateHub({
+            bio: chosenBio,
+            ask_about: chosenAskAbout,
+            hub_style: chosenHubStyle,
+            backdrop_id: chosenHubColor,
+          }),
+          12000,
+          'Saving your hub took too long. Please try again.',
+        )
 
-      setGeneratingStatus('Placing your hub in the universe...')
+        setHubAvatarUrl('')
+        setOnboardingResumeState(null)
+        setScreen('universe')
 
-      await withTimeout(
-        updateHub({
-          bio: chosenBio,
-          ask_about: chosenAskAbout,
-          hub_style: chosenHubStyle,
-          backdrop_id: chosenHubColor,
-        }),
-        12000,
-        'Saving your hub took too long. Please try again.',
-      )
-
-      setHubAvatarUrl('')
-      setOnboardingResumeState(null)
-      setScreen('universe')
-
-      void (async () => {
-        try {
-          const avatarUrl = await requestAvatarImage(
-            conversationAnswers,
-            userId,
-            selectedStyle?.label,
-          )
-
-          if (!avatarUrl || !userId) return
-
-          const permanentUrl = await uploadAvatarToStorage(avatarUrl, userId)
-          setHubAvatarUrl(permanentUrl)
-          await updateHub({ avatar_url: permanentUrl, avatar_prompt_pending: null })
-        } catch (avatarError) {
-          console.error('Avatar generation failed after hub creation:', avatarError)
-          // Save the user's description so we can generate it later once the issue is fixed
-          const pendingDescription = Object.values(conversationAnswers).filter(Boolean).join(' — ')
+        void (async () => {
           try {
-            await updateHub({ avatar_prompt_pending: pendingDescription })
-          } catch {}
-        }
-      })()
-    } catch (err) {
-      console.error('Error during onboarding:', err)
-
-      if (
-        err instanceof Error &&
+            // Only use the user's explicit avatar description for avatar generation
+            if (!avatarDescription || !userId) return
+            const avatarUrl = await requestAvatarImage({ 0: avatarDescription }, userId, selectedStyle?.label)
+            if (!avatarUrl) return
+            const permanentUrl = await uploadAvatarToStorage(avatarUrl, userId)
+            setHubAvatarUrl(permanentUrl)
+            await updateHub({ avatar_url: permanentUrl, avatar_prompt_pending: null })
+          } catch (avatarError) {
+            console.error('Avatar generation failed after hub creation:', avatarError)
+            // Save the user's description so we can generate it later once the issue is fixed
+            if (avatarDescription) {
+              try {
+                await updateHub({ avatar_prompt_pending: avatarDescription })
+              } catch {}
+            }
+          }
+        })()
+      } catch (err) {
         err.message === 'That hub name is already taken. Choose another one.'
       ) {
         setOnboardingResumeState({ ...resumeState, phase: 'hubname' })
