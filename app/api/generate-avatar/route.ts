@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import OpenAI from 'openai'
+import { fal } from '@fal-ai/client'
 
 export const maxDuration = 60
 
@@ -187,26 +188,26 @@ async function generateWithGptImage(
   }
 }
 
-async function generateWithShortApiKey(
-  prompt: string,
-  userId?: string,
-) {
-  const shortApiKey = process.env.SHORTAPI_KEY
-  if (!shortApiKey) throw new Error('Missing SHORTAPI_KEY')
-  const openai = new OpenAI({ apiKey: shortApiKey })
-  const response = await openai.images.generate({
-    model: 'gpt-image-1',
-    prompt,
-    size: '1024x1536',
-    quality: 'low',
-    output_format: 'jpeg',
-    user: userId || undefined,
-  })
-  const image = response.data?.[0]
-  if (!image?.b64_json) throw new Error('gpt-image-1 (fallback) returned no image data.')
+async function generateWithSeedream(prompt: string) {
+  const falKey = process.env.FAL_KEY
+  if (!falKey) throw new Error('Missing FAL_KEY')
+  fal.config({ credentials: falKey })
+  const result = await fal.subscribe('fal-ai/seedream-3', {
+    input: {
+      prompt,
+      image_size: { width: 1024, height: 1536 },
+      num_images: 1,
+    },
+  }) as { data: { images: { url: string }[] } }
+  const imageUrl = result.data?.images?.[0]?.url
+  if (!imageUrl) throw new Error('Seedream returned no image URL.')
+  const imageResp = await fetch(imageUrl)
+  if (!imageResp.ok) throw new Error('Failed to fetch Seedream image.')
+  const buffer = await imageResp.arrayBuffer()
+  const b64 = Buffer.from(buffer).toString('base64')
   return {
-    imageUrl: `data:image/jpeg;base64,${image.b64_json}`,
-    revisedPrompt: (image as any).revised_prompt || prompt,
+    imageUrl: `data:image/jpeg;base64,${b64}`,
+    revisedPrompt: prompt,
   }
 }
 
@@ -247,11 +248,11 @@ export async function POST(req: Request) {
         prompt: result.revisedPrompt,
       })
     } catch (primaryError) {
-      console.warn('gpt-image-1 failed, falling back to SHORTAPI_KEY:', primaryError)
-      const fallback = await generateWithShortApiKey(imagePrompt, userId)
+      console.warn('gpt-image-1 failed, falling back to Seedream via fal.ai:', primaryError)
+      const seedream = await generateWithSeedream(imagePrompt)
       return NextResponse.json({
-        imageUrl: fallback.imageUrl,
-        prompt: fallback.revisedPrompt,
+        imageUrl: seedream.imageUrl,
+        prompt: seedream.revisedPrompt,
       })
     }
   } catch (error) {

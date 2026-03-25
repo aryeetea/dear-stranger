@@ -120,9 +120,11 @@ export function LoginScreen({
 export function SignupScreen({
   onSuccess,
   setPendingCredentials,
+  onGuestEnter,
 }: {
   onSuccess: () => void
   setPendingCredentials: (creds: { email: string; password: string } | null) => void
+  onGuestEnter: () => void
 }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -210,6 +212,26 @@ export function SignupScreen({
         onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
         {loading ? 'Preparing...' : 'Continue to Soul Mirror ✦'}
       </button>
+
+      <div style={{ textAlign: 'center', marginTop: '-10px', marginBottom: '10px' }}>
+        <span
+          onClick={onGuestEnter}
+          style={{
+            cursor: 'pointer',
+            textDecoration: 'underline',
+            color: 'rgba(255,255,255,0.85)',
+            fontFamily: "'IM Fell English', serif",
+            fontStyle: 'italic',
+            fontSize: '13px',
+            letterSpacing: '0.04em',
+            transition: 'color 0.2s',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.color = '#e6c76e' }}
+          onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.85)' }}
+        >
+          Enter as guest
+        </span>
+      </div>
     </motion.div>
   )
 }

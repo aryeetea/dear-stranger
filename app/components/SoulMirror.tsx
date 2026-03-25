@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { HUB_COLOR_THEMES, HUB_STYLES, type HubColor, type HubStyle } from './UniverseMap'
 
 const MIN_EXCHANGES = 5
-const MAX_EXCHANGES = 9
+const MAX_EXCHANGES = 10
 
 const MIRROR_VOICES = [
   { id: 'friend', label: 'Supportive Friend', desc: 'Warm, gentle, encouraging. Like talking to someone who always has your back.', icon: '🤍', prompt: 'You are a warm, gentle, encouraging friend. You speak with care and genuine interest. Never clinical, never performative — just real.' },
@@ -51,7 +51,7 @@ export interface SoulMirrorResumeState {
   askAbout?: string
 }
 
-type Phase = 'voice' | 'style' | 'chat' | 'bio' | 'askabout' | 'hubstyle' | 'hubname' | 'welcome'
+type Phase = 'mode' | 'voice' | 'style' | 'chat' | 'freeform' | 'bio' | 'askabout' | 'hubstyle' | 'hubname' | 'welcome'
 
 interface SoulMirrorProps {
   isReturning?: boolean
@@ -70,9 +70,11 @@ interface SoulMirrorProps {
 }
 
 export default function SoulMirror({ isReturning = false, errorMessage = '', resumeState = null, onComplete }: SoulMirrorProps) {
-  const [phase, setPhase] = useState<Phase>(resumeState?.phase || 'voice')
+  const [phase, setPhase] = useState<Phase>(resumeState?.phase || 'mode')
   const [selectedVoice, setSelectedVoice] = useState<MirrorVoice | null>(resumeState?.selectedVoice || null)
   const [selectedStyle, setSelectedStyle] = useState<StyleOption | null>(resumeState?.selectedStyle || null)
+  const [avatarMode, setAvatarMode] = useState<'guided' | 'freeform'>('guided')
+  const [freeformText, setFreeformText] = useState('')
   const [selectedHubStyle, setSelectedHubStyle] = useState<HubStyle>(resumeState?.selectedHubStyle || 'portal')
   const [selectedHubColor, setSelectedHubColor] = useState<HubColor>(resumeState?.selectedHubColor || 'gold')
   const [messages, setMessages] = useState<{ role: 'ai' | 'user'; text: string; isClosing?: boolean; chips?: string[] }[]>([])
@@ -135,10 +137,29 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
     await fetchAIMessage(newMessages, newAnswers)
   }
 
+  function handleFreeformComplete() {
+    const answersRecord: Record<number, string> = { 0: freeformText }
+    onComplete?.(
+      answersRecord,
+      selectedStyle || undefined,
+      selectedHubStyle,
+      selectedHubColor,
+      selectedVoice || undefined,
+      bio.trim(),
+      askAbout.trim(),
+      hubName.trim(),
+    )
+  }
+
   function handleEnter() {
     const answersRecord: Record<number, string> = {}
-    userAnswers.forEach((a, i) => { answersRecord[i] = a })
-    answersRecord[userAnswers.length] = hubName.trim()
+    if (avatarMode === 'freeform') {
+      answersRecord[0] = freeformText
+      answersRecord[1] = hubName.trim()
+    } else {
+      userAnswers.forEach((a, i) => { answersRecord[i] = a })
+      answersRecord[userAnswers.length] = hubName.trim()
+    }
     onComplete?.(
       answersRecord,
       selectedStyle || undefined,
@@ -189,8 +210,29 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
       )}
 
       <AnimatePresence mode="wait">
+        {phase === 'mode' && (
+          <motion.div key="mode" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.4 }}
+            style={{ ...cardStyle, width: 'min(520px, 95vw)', padding: 'clamp(36px,5vw,52px)' }}>
+            <GoldLines />
+            <SectionHeader step="Avatar Creation" title="How do you want to describe your avatar?" sub="Choose your preferred way to create your Soul Mirror avatar." />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '18px', marginBottom: '24px' }}>
+              <button
+                onClick={() => { setAvatarMode('guided'); setPhase('voice') }}
+                style={{ padding: '18px', borderRadius: '10px', border: '1px solid rgba(230,199,110,0.3)', background: avatarMode === 'guided' ? 'rgba(230,199,110,0.09)' : 'rgba(255,255,255,0.04)', color: '#e6c76e', fontFamily: "'Cinzel', serif", fontSize: '13px', letterSpacing: '0.18em', textTransform: 'uppercase', cursor: 'pointer', fontWeight: 500 }}
+              >
+                Guided Questions (step-by-step)
+              </button>
+              <button
+                onClick={() => { setAvatarMode('freeform'); setPhase('freeform') }}
+                style={{ padding: '18px', borderRadius: '10px', border: '1px solid rgba(230,199,110,0.3)', background: avatarMode === 'freeform' ? 'rgba(230,199,110,0.09)' : 'rgba(255,255,255,0.04)', color: '#e6c76e', fontFamily: "'Cinzel', serif", fontSize: '13px', letterSpacing: '0.18em', textTransform: 'uppercase', cursor: 'pointer', fontWeight: 500 }}
+              >
+                Freeform Description (write your own)
+              </button>
+            </div>
+          </motion.div>
+        )}
 
-        {phase === 'voice' && (
+        {phase === 'voice' && avatarMode === 'guided' && (
           <motion.div key="voice" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.4 }}
             style={{ ...cardStyle, width: 'min(720px, 95vw)', padding: 'clamp(28px,5vw,44px)' }}>
             <GoldLines />
@@ -213,7 +255,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
           </motion.div>
         )}
 
-        {phase === 'style' && (
+        {phase === 'style' && avatarMode === 'guided' && (
           <motion.div key="style" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.4 }}
             style={{ ...cardStyle, width: 'min(680px, 95vw)', padding: 'clamp(28px,5vw,44px)' }}>
             <GoldLines />
@@ -234,9 +276,10 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
           </motion.div>
         )}
 
-        {phase === 'chat' && (
+        {phase === 'chat' && avatarMode === 'guided' && (
           <motion.div key="chat" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.4 }}
             style={{ ...cardStyle, width: 'min(580px, 95vw)', height: 'min(720px, 92vh)', display: 'flex', flexDirection: 'column' }}>
+            {/* ...existing guided chat JSX (copied from below) ... */}
             <div style={{ position: 'absolute', top: 0, left: '20%', right: '20%', height: '1px', background: 'linear-gradient(90deg, transparent, rgba(230,199,110,0.45), transparent)' }} />
 
             <div style={{ padding: '16px 22px 12px', borderBottom: '1px solid rgba(255,255,255,0.07)', flexShrink: 0 }}>
@@ -329,6 +372,37 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
           </motion.div>
         )}
 
+        {phase === 'freeform' && avatarMode === 'freeform' && (
+          <motion.div key="freeform" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.4 }}
+            style={{ ...cardStyle, width: 'min(580px, 95vw)', padding: 'clamp(36px,5vw,52px)' }}>
+            <GoldLines />
+            <SectionHeader step="Soul Mirror" title="Describe your avatar in your own words" sub="Write as much or as little as you like. You can switch to guided mode anytime." />
+            <textarea
+              value={freeformText}
+              onChange={e => setFreeformText(e.target.value)}
+              placeholder="In another world, how do you look? Describe your appearance in as much detail as you can."
+              rows={8}
+              style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '8px', color: 'rgba(255,255,255,0.9)', fontFamily: "'Cormorant Garamond', serif", fontSize: '16px', lineHeight: 1.8, padding: '14px 16px', outline: 'none', resize: 'none', caretColor: '#e6c76e', marginBottom: '20px' }}
+              onFocus={e => { e.target.style.borderColor = 'rgba(230,199,110,0.4)' }}
+              onBlur={e => { e.target.style.borderColor = 'rgba(255,255,255,0.12)' }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <button onClick={() => setPhase('mode')} style={backBtn}>← Back</button>
+              <button onClick={() => setPhase('bio')} style={continueBtn} disabled={!freeformText.trim()}>
+                Continue ✦
+              </button>
+            </div>
+            <div style={{ marginTop: '18px', textAlign: 'center' }}>
+              <button
+                onClick={() => { setAvatarMode('guided'); setPhase('voice') }}
+                style={{ background: 'none', border: 'none', color: '#e6c76e', fontFamily: "'Cinzel', serif", fontSize: '11px', letterSpacing: '0.13em', textTransform: 'uppercase', cursor: 'pointer', textDecoration: 'underline', marginTop: '8px' }}
+              >
+                Switch to Guided Questions
+              </button>
+            </div>
+          </motion.div>
+        )}
+
         {phase === 'bio' && (
           <motion.div key="bio" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.4 }}
             style={{ ...cardStyle, width: 'min(520px, 95vw)', padding: 'clamp(36px,5vw,52px)' }}>
@@ -344,7 +418,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
               onFocus={e => { e.target.style.borderColor = 'rgba(230,199,110,0.4)' }}
               onBlur={e => { e.target.style.borderColor = 'rgba(255,255,255,0.12)' }} />
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <button onClick={() => setPhase('chat')} style={backBtn}>← Back</button>
+              <button onClick={() => setPhase(avatarMode === 'freeform' ? 'freeform' : 'chat')} style={backBtn}>← Back</button>
               <button onClick={() => setPhase('askabout')} style={continueBtn}>
                 {bio.trim() ? 'Continue ✦' : 'Skip for now ✦'}
               </button>

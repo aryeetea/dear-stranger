@@ -129,53 +129,6 @@ export default function EntryScreen({
               Enter the Universe
             </button>
 
-            <button
-              onClick={onSignup}
-              onMouseEnter={e => {
-                e.currentTarget.style.background = 'rgba(230,199,110,0.07)'
-                e.currentTarget.style.borderColor = 'rgba(230,199,110,0.4)'
-                e.currentTarget.style.color = 'rgba(230,199,110,0.85)'
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.background = 'transparent'
-                e.currentTarget.style.borderColor = 'rgba(230,199,110,0.2)'
-                e.currentTarget.style.color = 'rgba(230,199,110,0.5)'
-              }}
-              style={{
-                padding: '10px 32px',
-                background: 'transparent',
-                border: '1px solid rgba(230,199,110,0.2)',
-                color: 'rgba(230,199,110,0.5)',
-                fontFamily: "'Cinzel', serif",
-                fontSize: '10px',
-                letterSpacing: '0.3em',
-                textTransform: 'uppercase',
-                cursor: 'pointer',
-                transition: 'all 0.3s ease',
-              }}
-            >
-              Create an Account
-            </button>
-
-            <button
-              onClick={onLogin}
-              onMouseEnter={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.55)' }}
-              onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.28)' }}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: 'rgba(255,255,255,0.28)',
-                fontFamily: "'Cinzel', serif",
-                fontSize: '9px',
-                letterSpacing: '0.35em',
-                textTransform: 'uppercase',
-                cursor: 'pointer',
-                transition: 'color 0.3s ease',
-                padding: '4px 8px',
-              }}
-            >
-              Sign In
-            </button>
           </motion.div>
         )}
       </AnimatePresence>

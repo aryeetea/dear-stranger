@@ -109,15 +109,7 @@ function sanitizeChips(chips: unknown, done: boolean) {
         })
     : []
 
-  const fallbacks = done ? FALLBACK_DONE_CHIPS : FALLBACK_CHIPS
-  for (const fallback of fallbacks) {
-    if (cleaned.length >= 4) break
-    if (!seen.has(fallback.toLowerCase())) {
-      cleaned.push(fallback)
-      seen.add(fallback.toLowerCase())
-    }
-  }
-
+  // No fallback chips; only return cleaned chips from model
   return cleaned.slice(0, 4)
 }
 
@@ -214,9 +206,16 @@ export async function POST(req: Request) {
     const minExchanges = Math.max(1, Number(body?.minExchanges) || 5)
     const maxExchanges = Math.max(minExchanges, Number(body?.maxExchanges) || 9)
 
-    const openaiKey = process.env.OPENAI_API_KEY
+
+    let openaiKey = process.env.OPENAI_API_KEY
     if (!openaiKey) {
-      return NextResponse.json({ error: 'Missing OPENAI_API_KEY' }, { status: 500 })
+      openaiKey = process.env.SHORTAPI_KEY
+      if (!openaiKey) {
+        console.error('Missing OPENAI_API_KEY and SHORTAPI_KEY')
+        return NextResponse.json({ error: 'Missing OPENAI_API_KEY and SHORTAPI_KEY' }, { status: 500 })
+      } else {
+        console.warn('Falling back to SHORTAPI_KEY for OpenAI API access')
+      }
     }
 
     const hasEnough = exchangeNumber >= minExchanges
@@ -272,47 +271,57 @@ Return JSON only using the provided schema.
       isReturning,
     })
 
-    const openai = new OpenAI({ apiKey: openaiKey })
-    const response = await openai.responses.create({
-      model: 'gpt-5.4',
-      instructions,
-      input,
-      max_output_tokens: 220,
-      temperature: getTemperature(mirrorVoice),
-      text: {
-        format: {
+    let parsed
+    try {
+      const openai = new OpenAI({ apiKey: openaiKey })
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4o',
+        messages: [
+          { role: 'system', content: instructions },
+          { role: 'user', content: input },
+        ],
+        max_tokens: 220,
+        temperature: getTemperature(mirrorVoice),
+        response_format: {
           type: 'json_schema',
-          name: 'soul_mirror_reply',
-          strict: true,
-          schema: {
-            type: 'object',
-            additionalProperties: false,
-            properties: {
-              question: { type: 'string' },
-              done: { type: 'boolean' },
-              chips: {
-                type: 'array',
-                items: { type: 'string' },
-                minItems: 4,
-                maxItems: 4,
+          json_schema: {
+            name: 'soul_mirror_reply',
+            strict: true,
+            schema: {
+              type: 'object',
+              additionalProperties: false,
+              properties: {
+                question: { type: 'string' },
+                done: { type: 'boolean' },
+                chips: {
+                  type: 'array',
+                  items: { type: 'string' },
+                },
               },
+              required: ['question', 'done', 'chips'],
             },
-            required: ['question', 'done', 'chips'],
           },
         },
-      },
-    })
+      })
+      parsed = JSON.parse(completion.choices[0]?.message?.content || '{}') as {
+        question?: string
+        done?: boolean
+        chips?: string[]
+      }
+    } catch (modelError) {
+      console.error('OpenAI model error:', modelError)
+      return NextResponse.json({ error: 'Soul Mirror model error.' }, { status: 500 })
+    }
 
-    const parsed = JSON.parse(response.output_text || '{}') as {
-      question?: string
-      done?: boolean
-      chips?: string[]
+    if (!parsed.question || !Array.isArray(parsed.chips) || parsed.chips.length < 4) {
+      console.error('Soul Mirror invalid model response, parsed:', parsed)
+      return NextResponse.json({ error: 'Soul Mirror did not return a valid question or chips.' }, { status: 500 })
     }
 
     const done = mustClose || (hasEnough && parsed.done === true)
 
     return NextResponse.json({
-      question: sanitizeQuestion(String(parsed.question || ''), done),
+      question: sanitizeQuestion(String(parsed.question), done),
       done,
       chips: sanitizeChips(parsed.chips, done),
     })

@@ -150,6 +150,41 @@ export default function Home() {
   const screenRef = useRef<Screen>('loading')
   const onboardingInFlightRef = useRef(false)
 
+  // Show guest entry option on onboarding
+  function GuestEntryOption() {
+    return (
+      <div style={{ marginTop: 18, textAlign: 'center' }}>
+        <span
+          onClick={() => {
+            setIsGuest(true);
+            setScreen('onboarding');
+          }}
+          style={{
+            fontFamily: "'Cinzel', serif",
+            fontSize: '12px',
+            color: '#fff',
+            letterSpacing: '0.18em',
+            textTransform: 'uppercase',
+            cursor: 'pointer',
+            textDecoration: 'none',
+            fontWeight: 400,
+            background: 'none',
+            borderRadius: '6px',
+            padding: '4px 10px',
+            boxShadow: 'none',
+            transition: 'color 0.2s',
+            display: 'inline-block',
+            opacity: 0.7,
+          }}
+          onMouseEnter={e => { e.currentTarget.style.opacity = '1' }}
+          onMouseLeave={e => { e.currentTarget.style.opacity = '0.7' }}
+        >
+          Enter as guest
+        </span>
+      </div>
+    )
+  }
+
   function clearHubState(resetResume = true) {
     setHubName('')
     setHubBio('')
@@ -263,24 +298,10 @@ export default function Home() {
         console.log('[authStateChange] SIGNED_OUT, go to entry')
         return
       }
-
-      if (
-        event === 'SIGNED_IN' ||
-        event === 'TOKEN_REFRESHED' ||
-        event === 'INITIAL_SESSION'
-      ) {
-        if (onboardingInFlightRef.current || screenRef.current === 'generating') return
-
-        try {
-          await routeFromSession()
-        } catch (err) {
-          console.error('auth state sync failed:', err)
-        }
-      }
     })
 
     return () => {
-      ignore = true;
+      ignore = true
       if (fallbackTimer) clearTimeout(fallbackTimer)
       authListener.subscription.unsubscribe()
     }
@@ -776,6 +797,10 @@ export default function Home() {
             setScreen('onboarding')
           }}
           setPendingCredentials={setPendingCredentials}
+          onGuestEnter={() => {
+            setIsGuest(true)
+            setScreen('onboarding')
+          }}
         />
       </div>
     )
@@ -833,13 +858,19 @@ export default function Home() {
           lettersSent={lettersSent}
           onClose={() => setScribeOpen(false)}
           onSend={async (letter) => {
+            if (isGuest) {
+              alert('You must create an account or sign in to send letters.');
+              setScribeOpen(false);
+              setShowGuestWall(true);
+              return;
+            }
             try {
-              const allHubs = await getAllHubs()
-              const recipient = allHubs.find((hub) => hub.hub_name === letter.to)
-              const isUniverseLetter = !letter.to
+              const allHubs = await getAllHubs();
+              const recipient = allHubs.find((hub) => hub.hub_name === letter.to);
+              const isUniverseLetter = !letter.to;
 
               if (!isUniverseLetter && !recipient) {
-                throw new Error('Recipient not found')
+                throw new Error('Recipient not found');
               }
 
               await sendLetter(
@@ -849,12 +880,12 @@ export default function Home() {
                 isUniverseLetter,
                 letter.subject,
                 letter.fontId,
-              )
+              );
 
-              setLettersSent((prev) => prev + 1)
-              setScribeOpen(false)
+              setLettersSent((prev) => prev + 1);
+              setScribeOpen(false);
             } catch (err) {
-              console.error('Failed to send letter:', err)
+              console.error('Failed to send letter:', err);
             }
           }}
         />
