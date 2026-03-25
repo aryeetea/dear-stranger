@@ -154,13 +154,16 @@ export default function Profile({
       setRegenFeedback('')
       setRegenLoading(false)
 
-      // ── Upload to Storage in the background, then swap to permanent URL ──
+      // ── Upload to Storage in the background ──
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
       const permanentUrl = await uploadAvatarToStorage(data.imageUrl, user.id)
-      setCurrentAvatarUrl(permanentUrl)
-      await updateHub({ avatar_url: permanentUrl, regen_count: newCount, avatar_prompt_pending: null })
-      onUpdateHub?.({ avatarUrl: permanentUrl })
+      // Append cache-buster so the browser fetches the new image on next load
+      const freshUrl = `${permanentUrl}?t=${Date.now()}`
+      // Keep showing the fresh base64 locally — don't swap to the same-path URL
+      // (browser would serve cached old image). Update DB + parent with busted URL.
+      await updateHub({ avatar_url: freshUrl, regen_count: newCount, avatar_prompt_pending: null })
+      onUpdateHub?.({ avatarUrl: freshUrl })
     } catch (err) {
       console.error('Regen failed:', err)
       try {
