@@ -108,10 +108,10 @@ Vines, roots, and petals swirling with magical wind energy.
 
 function getThemeDirection(style?: string) {
   const styleKey = (style || '').toLowerCase().replace(/\s+/g, '-')
-  return (
-    STYLE_DIRECTIONS[styleKey] ||
-    `${normalizeDetail(style || 'Dark high fantasy cinematic styling')}. Otherworldly, dramatic, atmospheric, and visually spectacular.`
-  )
+  if (STYLE_DIRECTIONS[styleKey]) {
+    return `Suggested style: ${STYLE_DIRECTIONS[styleKey]}\n\nNote: This style is a suggestion only. Please allow for full creative freedom and do not treat these directions as restrictions.`
+  }
+  return `${normalizeDetail(style || 'Dark high fantasy cinematic styling')}. Otherworldly, dramatic, atmospheric, and visually spectacular.\n\nNote: The style is a suggestion only—feel free to interpret creatively.`
 }
 
 function buildAvatarPrompt(
@@ -129,7 +129,13 @@ function buildAvatarPrompt(
     .map((a, i) => `${i + 1}. ${a}`)
     .join('\n')
 
-  const themeDirection = getThemeDirection(style)
+  // If style is 'none' or 'skip', skip style suggestion
+  let themeDirection = ''
+  if (style && style.toLowerCase() !== 'none' && style.toLowerCase() !== 'skip') {
+    themeDirection = getThemeDirection(style)
+  } else {
+    themeDirection = 'No specific style or theme is required. Please use your full creative freedom.'
+  }
 
   const modeDirection =
     mode === 'reimagine'
@@ -152,7 +158,8 @@ Create this avatar from scratch with maximum visual impact and fantasy world-bui
     `Create a single full body character portrait in the style of premium high fantasy digital game art.`,
     `Base render style: ${BASE_RENDER_STYLE}`,
     `Theme direction: ${themeDirection}`,
-    `Important: maintain consistent high-fantasy rendering quality. Outfit, magical effects, atmosphere, setting, and color palette should shift dramatically based on the selected theme. The character must always feel like a legendary figure from an epic fantasy world.`,
+    `Important: Styles and directions are suggestions only—please allow for full creative freedom and do not treat any style or theme as a restriction. The goal is to inspire, not to limit. If you do not want to choose a style, you may skip this part and the model will have full creative freedom.`,
+    `Your answers must be as detailed and descriptive as possible. The more detail you provide, the better and more personalized the result will be.`,
     modeDirection,
     `The character must be fully visible from head to toe with a powerful, dynamic silhouette.`,
     `Use a vertical portrait composition. Explosive dramatic lighting. Swirling magical particle effects. Rich layered background with environmental detail. Cinematic game art quality.`,
