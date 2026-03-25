@@ -69,11 +69,12 @@ input::placeholder {
   flex-shrink: 0;
   position: relative;
   overflow: hidden;
+  background: #000005;
 }
 .profile-avatar-fill {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   object-position: top center;
   display: block;
   min-height: 100vh;
