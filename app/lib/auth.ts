@@ -127,6 +127,17 @@ export async function signInWithGoogle() {
   if (error) throw error
 }
 
+export async function signInWithDiscord() {
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: 'discord',
+    options: {
+      redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined,
+    },
+  })
+
+  if (error) throw error
+}
+
 export async function createHubForCurrentUser(
   hubName: string,
   bio: string,
