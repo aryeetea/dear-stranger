@@ -276,9 +276,9 @@ Core rules:
 
 Closing rules:
 - If you are closing, write a warm final mirror message instead of a question.
-- The closing message must end with a line — in your exact voice and tone — that conveys you can now clearly see the person's vision. Make it feel natural and true to your character, not generic. For example: a warm friend might say "I can totally see your vision." A Gen Z voice might say "ok i genuinely see your vision, no cap." A poetic voice might say "Your form has risen from the mist — I see you now." A wise elder might say "Your presence has taken shape before me." A playful voice might say "Oh I can see it so clearly, this is so exciting!" Match your voice.
-- Only mark done true if there is enough visual detail for a strong avatar portrait.
-- ${mustClose ? 'You must close now.' : hasEnough ? 'You may close now if the description feels complete.' : 'Do not close yet.'}
+- The closing message MUST end — as its very last sentence — with a short phrase in your exact voice that clearly conveys you can now see their vision. This ending is required, not optional. Match your voice character: friend → "I can totally see your vision." | Gen Z → "ok i see your vision, no cap." | poetic → "I see you now." | elder → "Your presence has taken shape before me." | playful → "I can see it so clearly!" Adapt the wording naturally but the meaning must be there, at the end.
+- Only mark done true if the collected answers contain concrete visual detail across at least: face/skin, eyes or hair, clothing or body, and overall color palette or mood. If key visual elements are still vague or missing, do not close — keep asking.
+- ${mustClose ? 'You must close now — this is the final allowable turn. Close even if the description is sparse.' : hasEnough ? 'You may close only if you have solid visual detail on face, hair, clothing, and presence. If anything important is still vague or missing, keep asking.' : 'Do not close yet — you need more visual detail before the portrait can take shape.'}
 
 Return JSON only using the provided schema.
 `.trim()
