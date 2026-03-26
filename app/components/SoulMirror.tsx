@@ -113,6 +113,8 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
   const [phase, setPhase] = useState<Phase>(resumeState?.phase || 'mode')
   const [selectedVoice, setSelectedVoice] = useState<MirrorVoice | null>(resumeState?.selectedVoice || null)
   const [selectedStyle, setSelectedStyle] = useState<StyleOption | null>(resumeState?.selectedStyle || null)
+  const [customStyle, setCustomStyle] = useState('')
+  const [showCustomStyle, setShowCustomStyle] = useState(false)
   const [avatarMode, setAvatarMode] = useState<'guided' | 'freeform'>('guided')
   const [freeformText, setFreeformText] = useState('')
   const [selectedHubStyle, setSelectedHubStyle] = useState<HubStyle>(resumeState?.selectedHubStyle || 'portal')
@@ -131,14 +133,24 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages, loading])
 
+
+  // Fallback style for 'No preference'
+  const NO_PREFERENCE_STYLE = { id: 'no-preference', label: 'No preference', desc: 'Let the mirror decide.', base: '#181818', gradient: 'radial-gradient(ellipse 70% 50% at 30% 20%, rgba(90,90,90,0.25) 0%, transparent 65%)' }
+
   useEffect(() => {
-    if (phase !== 'chat' || !selectedStyle || !selectedVoice || hasInitialized.current) return
+    if (phase !== 'chat' || !selectedVoice || hasInitialized.current) return
     hasInitialized.current = true
     void fetchAIMessage([], [])
   }, [phase, selectedStyle, selectedVoice])
 
+
   async function fetchAIMessage(history: typeof messages, answers: string[]) {
-    if (!selectedStyle || !selectedVoice) return
+    // If a preset style is selected use it; if user typed a custom style use that; otherwise just use voice and answers
+    const stylePayload = selectedStyle
+      ? { style: selectedStyle.label, styleDescription: selectedStyle.desc }
+      : customStyle.trim()
+        ? { style: customStyle.trim(), styleDescription: customStyle.trim() }
+        : undefined
     try {
       setLoading(true); setError('')
       const res = await fetch('/api/soul-mirror-question', {
@@ -148,13 +160,12 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
           messages: history,
           answers,
           exchangeNumber: answers.length,
-          style: selectedStyle.label,
-          styleDescription: selectedStyle.desc,
-          mirrorVoice: selectedVoice.id,
-          mirrorVoicePrompt: selectedVoice.prompt,
+          mirrorVoice: selectedVoice?.id,
+          mirrorVoicePrompt: selectedVoice?.prompt,
           isReturning,
           minExchanges: MIN_EXCHANGES,
           maxExchanges: MAX_EXCHANGES,
+          ...(stylePayload || {}),
         }),
       })
       const data = await res.json()
@@ -319,10 +330,10 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
             style={{ ...cardStyle, width: 'min(680px, 95vw)', padding: 'clamp(28px,5vw,44px)' }}>
             <GoldLines />
             <SectionHeader step="Soul Mirror · Step 2 of 6" title="Choose your avatar style" sub="This shapes how your Soul Mirror portrait is designed." />
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: '12px', marginBottom: '24px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: '12px', marginBottom: '16px' }}>
               {STYLE_OPTIONS.map(style => (
                 <motion.button key={style.id} whileHover={{ y: -2 }} whileTap={{ scale: 0.97 }}
-                  onClick={() => { setSelectedStyle(style); setPhase('chat') }}
+                  onClick={() => { setSelectedStyle(style); setShowCustomStyle(false); setPhase('chat') }}
                   style={{ textAlign: 'left', padding: '16px', borderRadius: '12px', border: '1px solid rgba(230,199,110,0.2)', background: 'rgba(255,255,255,0.04)', cursor: 'pointer', transition: 'all 0.2s' }}
                   onMouseEnter={e => { e.currentTarget.style.background = 'rgba(230,199,110,0.09)'; e.currentTarget.style.borderColor = 'rgba(230,199,110,0.4)' }}
                   onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor = 'rgba(230,199,110,0.2)' }}>
@@ -330,15 +341,35 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
                   <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '15px', color: 'rgba(255,255,255,0.62)', lineHeight: 1.5 }}>{style.desc}</p>
                 </motion.button>
               ))}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
               <motion.button whileHover={{ y: -2 }} whileTap={{ scale: 0.97 }}
-                onClick={() => { setSelectedStyle(null); setPhase('chat') }}
-                style={{ textAlign: 'left', padding: '16px', borderRadius: '12px', border: '1px dashed rgba(255,255,255,0.18)', background: 'rgba(255,255,255,0.02)', cursor: 'pointer', transition: 'all 0.2s' }}
-                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.35)' }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.18)' }}>
-                <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.18em', color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', marginBottom: '8px' }}>No preference</p>
-                <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '15px', color: 'rgba(255,255,255,0.38)', lineHeight: 1.5 }}>Let the mirror decide. The portrait will follow what you describe.</p>
+                onClick={() => { setShowCustomStyle(s => !s); setSelectedStyle(null) }}
+                style={{ padding: '14px 28px', borderRadius: '12px', border: '1px dashed rgba(255,255,255,0.22)', background: showCustomStyle ? 'rgba(230,199,110,0.07)' : 'rgba(255,255,255,0.02)', cursor: 'pointer', transition: 'all 0.2s' }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(230,199,110,0.1)'; e.currentTarget.style.borderColor = 'rgba(230,199,110,0.45)' }}
+                onMouseLeave={e => { e.currentTarget.style.background = showCustomStyle ? 'rgba(230,199,110,0.07)' : 'rgba(255,255,255,0.02)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.22)' }}>
+                <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.18em', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', marginBottom: '4px' }}>Other / Describe your own</p>
+                <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '14px', color: 'rgba(255,255,255,0.35)', lineHeight: 1.5, margin: 0 }}>None of these fit? Write your own style.</p>
               </motion.button>
             </div>
+            {showCustomStyle && (
+              <div style={{ marginBottom: '20px' }}>
+                <textarea
+                  value={customStyle}
+                  onChange={e => setCustomStyle(e.target.value)}
+                  placeholder="e.g. dark academia, soft grunge, cottagecore royalty..."
+                  rows={3}
+                  style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(230,199,110,0.3)', borderRadius: '10px', color: 'rgba(255,255,255,0.9)', fontFamily: "'Cormorant Garamond', serif", fontSize: '15px', lineHeight: 1.6, padding: '12px 14px', resize: 'none', outline: 'none', caretColor: '#e6c76e', boxSizing: 'border-box' }}
+                />
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
+                  <button
+                    onClick={() => { if (customStyle.trim()) setPhase('chat') }}
+                    disabled={!customStyle.trim()}
+                    style={{ padding: '10px 24px', borderRadius: '8px', border: '1px solid rgba(230,199,110,0.45)', background: customStyle.trim() ? 'rgba(230,199,110,0.13)' : 'rgba(255,255,255,0.03)', color: customStyle.trim() ? '#e6c76e' : 'rgba(255,255,255,0.3)', fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase', cursor: customStyle.trim() ? 'pointer' : 'default' }}
+                  >Continue ✦</button>
+                </div>
+              </div>
+            )}
             <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
               <button onClick={() => setPhase('voice')} style={backBtn}>← Back</button>
             </div>
