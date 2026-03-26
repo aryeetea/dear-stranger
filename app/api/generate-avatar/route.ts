@@ -56,7 +56,7 @@ function buildAvatarPrompt(
 
   const feedbackLine = feedback?.trim() ? normalizeDetail(feedback) : ''
 
-  const styleDesc = style ? STYLE_DESCRIPTORS[style] : undefined
+  const styleDesc = style ? STYLE_DESCRIPTORS[style.toLowerCase()] : undefined
   const styleLine = styleDesc
     ? `Cinematic, highly detailed digital painting, soft glow lighting, semi-realistic, polished ${styleDesc}.`
     : 'Cinematic, highly detailed digital painting, soft glow lighting, semi-realistic, polished fantasy illustration style.'

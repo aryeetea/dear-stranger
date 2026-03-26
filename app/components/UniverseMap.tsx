@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { getAllHubs, getUniverseLetters } from '../lib/auth'
 // ── HUB STYLE TYPES ──
-export type HubStyle = 'portal' | 'lantern' | 'ruin' | 'hourglass' | 'telescope' | 'greenhouse' | 'lotus' | 'forge' | 'tower' | 'ship'
+export type HubStyle = 'portal' | 'lantern' | 'ruin' | 'hourglass' | 'telescope' | 'greenhouse' | 'lotus' | 'cottage' | 'forge' | 'tower' | 'ship'
 export type HubColor = 'gold' | 'sage' | 'rose' | 'azure' | 'amber' | 'violet' | 'teal' | 'sand' | 'steel' | 'crimson' | 'forest'
 export type HubDecoration = 'none' | 'moon' | 'rings' | 'fireflies' | 'petals' | 'snowflakes' | 'comet'
 export type HubGlowIntensity = 'dim' | 'normal' | 'blazing'
@@ -17,6 +17,7 @@ export const HUB_STYLES: { id: HubStyle; label: string; desc: string; icon: stri
   { id: 'telescope', label: 'Starwatch Shrine', desc: 'A celestial shrine with a lens of focused light', icon: '✧' },
   { id: 'greenhouse', label: 'Greenhouse Bubble', desc: 'A glass dome brimming with quiet life', icon: '✦' },
   { id: 'lotus', label: 'Lotus Bloom', desc: 'A luminous lotus opening softly over still water', icon: '🪷' },
+  { id: 'cottage', label: 'Cozy Cottage', desc: 'A warm little house glowing softly in the dark', icon: '🏡' },
   { id: 'forge', label: 'Cosmic Forge', desc: 'A blazing forge hammering stars into shape', icon: '⚒' },
   { id: 'tower', label: 'Watcher Tower', desc: 'A lone beacon tower surveying the cosmos', icon: '🗼' },
   { id: 'ship', label: 'Void Vessel', desc: 'A sailing ship drifting through star-filled seas', icon: '⛵' },
@@ -1050,6 +1051,7 @@ function drawHub(ctx: CanvasRenderingContext2D, hub: Hub, sx: number, sy: number
     case 'telescope': drawTelescope(ctx, sx, sy, s, colors, t, hub.online, !!hub.isMe, hub.avatarImage); break
     case 'greenhouse': drawGreenhouse(ctx, sx, sy, s, colors, t, hub.online, !!hub.isMe, hub.avatarImage); break
     case 'lotus': drawLotus(ctx, sx, sy, s, colors, t, hub.online, !!hub.isMe, hub.avatarImage); break
+    case 'cottage': drawCottage(ctx, sx, sy, s, colors, t, hub.online, !!hub.isMe, hub.avatarImage); break
     case 'forge': drawForge(ctx, sx, sy, s, colors, t, hub.online, !!hub.isMe, hub.avatarImage); break
     case 'tower': drawTower(ctx, sx, sy, s, colors, t, hub.online, !!hub.isMe, hub.avatarImage); break
     case 'ship': drawShip(ctx, sx, sy, s, colors, t, hub.online, !!hub.isMe, hub.avatarImage); break
@@ -1210,7 +1212,7 @@ export default function UniverseMap({
         const angle = (i / Math.max(realHubs.length, 1)) * Math.PI * 2 + 0.3
         const dist = 180 + (i * 73) % 320
         const avatarImg = hub.avatar_url ? await loadImage(hub.avatar_url) : undefined
-        const styles: HubStyle[] = ['portal', 'lantern', 'ruin', 'hourglass', 'telescope', 'greenhouse', 'lotus', 'forge', 'tower', 'ship']
+        const styles: HubStyle[] = ['portal', 'lantern', 'ruin', 'hourglass', 'telescope', 'greenhouse', 'lotus', 'cottage', 'forge', 'tower', 'ship']
         return {
           x: Math.cos(angle) * dist, y: Math.sin(angle) * dist,
           name: hub.hub_name, bio: hub.bio || '', askAbout: hub.ask_about || '',
