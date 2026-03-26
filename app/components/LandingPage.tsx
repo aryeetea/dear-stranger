@@ -63,14 +63,17 @@ export default function LandingPage({ onEnter, onLogin }: { onEnter?: () => void
   }, [])
 
   const paragraphs: { text: string; italic?: boolean }[] = [
-    { text: "I don't know who you are. I don't know what you're carrying tonight — the conversation that didn't happen, the feeling you couldn't quite name, the thought that has been circling since last Tuesday." },
-    { text: 'But you found this place. And that, I think, means something.', italic: true },
-    { text: 'This is Dear Stranger. A universe of slow letters. There is no feed here, no algorithm, no follower count. Only letters — carried across the void by light — from one soul to another you may never meet.' },
-    { text: 'Before you enter, the Soul Mirror will ask you a few quiet questions. From your words, it will draw your form among the stars: a small hub of light that is yours alone. No username. No profile photo. The mirror draws you from the inside.' },
-    { text: 'Then you can write.', italic: true },
-    { text: 'Write to no one in particular and your words will drift through the universe as a shooting star until someone finds them. Or find a hub whose name speaks to you, and address your letter directly. Longer letters take longer to arrive. The universe asks that you be patient with the people you reach toward.' },
-    { text: 'There are no likes here. No seen receipts. No quick replies. If something moves you, write back — that is the only currency this place knows.' },
-    { text: 'I cannot promise you will be understood. I can only promise you will be heard.', italic: true },
+    { text: "Welcome. I'm glad you found this." },
+    { text: 'Dear Stranger is a place for slow letters — the kind you actually meant to write. No feed, no trending topics, no follower counts. Just words, and the quiet space between sending and receiving.' },
+    { text: 'Here is how it works:', italic: true },
+    { text: 'When you first arrive, the Soul Mirror will build your form. You can choose to answer a set of guided questions — nothing too serious, just enough to know you a little — or you can describe yourself in your own words. Either way, what you give it shapes the hub of light that represents you in this universe. No real name. No photo. Just your words, and what the mirror makes of them.' },
+    { text: 'One thing worth knowing before you begin: you only get two chances. The first is now. The second is one reimagine, available once. After that, your form is sealed for ninety days. So take your time with the description — it matters more than it might seem.', italic: true },
+    { text: 'Once your hub exists, you can write. You can send a letter to the open universe and let it drift until a stranger finds it, or you can visit the Observatory, find a hub whose name or light speaks to you, and address your letter directly. Longer letters take a little longer to arrive — that is intentional. This place is not built for speed.' },
+    { text: 'There are no likes here. No read receipts. No quick reactions. If a letter moves you, you write one back. That is the only way to respond, and honestly, it is the better way.' },
+    { text: 'A few things this place asks of you:', italic: true },
+    { text: 'Be honest. Be kind. Do not use this space to harm anyone — no harassment, no cruelty, no letters designed to wound. You can be anonymous here, but anonymity is not a license to be unkind. It is a gift. Use it well.' },
+    { text: 'Your hub name, your words, and your light are yours. We will never sell them or show them to an algorithm. What you write here stays within the universe you are about to enter.' },
+    { text: 'I cannot promise every letter will be answered. I can only promise this is a real place, built for real words, between real people.', italic: true },
   ]
 
   return (
@@ -161,7 +164,7 @@ export default function LandingPage({ onEnter, onLogin }: { onEnter?: () => void
           style={{ marginBottom: '40px' }}
         >
           <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: 'clamp(15px, 1.8vw, 18px)', color: '#1a1208', marginBottom: '24px' }}>
-            Come in.
+            If you are still here, you belong here. Come in.
           </p>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div style={{ width: '28px', height: '1px', background: 'rgba(120,88,24,0.28)' }} />
