@@ -1051,6 +1051,14 @@ export default function UniverseMap({
     }
   }, [hubDecoration, hubGlowIntensity])
 
+  // ── Patch bio/askAbout in-place when they change ──
+  useEffect(() => {
+    if (hubsRef.current.length > 0 && hubsRef.current[0].isMe) {
+      hubsRef.current[0].bio = hubBio || 'This is your place in the universe.'
+      hubsRef.current[0].askAbout = hubAskAbout || ''
+    }
+  }, [hubBio, hubAskAbout])
+
   const getHubAt = useCallback((mx: number, my: number): Hub | null => {
     const scale = scaleRef.current; const offset = offsetRef.current
     let found: Hub | null = null

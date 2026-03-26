@@ -135,6 +135,7 @@ export default function Home() {
   const [hubDecoration, setHubDecoration] = useState<HubDecoration>('none')
   const [hubGlowIntensity, setHubGlowIntensity] = useState<HubGlowIntensity>('normal')
   const [hubRegenCount, setHubRegenCount] = useState(0)
+  const [hubCreatedAt, setHubCreatedAt] = useState('')
   const [lettersSent, setLettersSent] = useState(0)
   const [generatingStatus, setGeneratingStatus] = useState('')
   const [scribeOpen, setScribeOpen] = useState(false)
@@ -201,6 +202,7 @@ export default function Home() {
     setHubGlowIntensity('normal')
     setLettersSent(0)
     setHubRegenCount(0)
+    setHubCreatedAt('')
     setHubAvatarPending(null)
     setIsGuest(false)
     if (resetResume) setOnboardingResumeState(null)
@@ -269,6 +271,7 @@ export default function Home() {
         setHubGlowIntensity((hub.glow_intensity as HubGlowIntensity) || 'normal')
         setLettersSent(hub.letters_sent || 0)
         setHubRegenCount(hub.regen_count || 0)
+        setHubCreatedAt((hub as any).created_at || '')
         setOnboardingError('')
         setOnboardingResumeState(null)
 
@@ -429,6 +432,7 @@ export default function Home() {
         setHubColor(chosenHubColor)
         setHubBio(chosenBio)
         setHubAskAbout(chosenAskAbout)
+        setHubCreatedAt(new Date().toISOString())
 
         const userId = session?.user?.id
 
@@ -793,6 +797,7 @@ export default function Home() {
               setHubGlowIntensity((hub.glow_intensity as HubGlowIntensity) || 'normal')
               setLettersSent(hub.letters_sent || 0)
               setHubRegenCount(hub.regen_count || 0)
+              setHubCreatedAt((hub as any).created_at || '')
               setIsGuest(false)
               setScreen('universe')
               return
@@ -959,6 +964,7 @@ export default function Home() {
           avatarUrl={hubAvatarUrl}
           avatarPromptPending={hubAvatarPending}
           regenCount={hubRegenCount}
+          hubCreatedAt={hubCreatedAt}
           hubStyle={hubStyle}
           hubColor={hubColor}
           hubDecoration={hubDecoration}

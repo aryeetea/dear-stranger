@@ -10,13 +10,33 @@ const MAX_REGEN_ATTEMPTS = 3
 
 type DeleteStep = 'idle' | 'exporting' | 'exported' | 'deleting' | 'deleted'
 
+// regen_count is encoded as: cycleNumber * 10 + localRegenCount
+// This lets us detect which cycle the regens belong to using a single DB integer.
+const CYCLE_DAYS = 90
+
+function getMirrorCycle(createdAt?: string) {
+  if (!createdAt) return { cycleNumber: 0, daysLeft: CYCLE_DAYS, refreshProgress: 0 }
+  const createdMs = new Date(createdAt).getTime()
+  const nowMs = Date.now()
+  const daysSinceCreation = Math.max(0, (nowMs - createdMs) / (1000 * 60 * 60 * 24))
+  const cycleNumber = Math.floor(daysSinceCreation / CYCLE_DAYS)
+  const daysInCycle = daysSinceCreation % CYCLE_DAYS
+  return {
+    cycleNumber,
+    daysLeft: Math.max(1, Math.ceil(CYCLE_DAYS - daysInCycle)),
+    refreshProgress: Math.min(100, (daysInCycle / CYCLE_DAYS) * 100),
+  }
+}
+
 export default function Profile({
   hubName, bio, askAbout, avatarUrl: initialAvatarUrl, avatarPromptPending, regenCount: initialRegenCount,
+  hubCreatedAt,
   hubStyle: initialHubStyle = 'portal', hubColor: initialHubColor = 'gold',
   hubDecoration: initialHubDecoration = 'none', hubGlowIntensity: initialHubGlowIntensity = 'normal',
   onClose, onUpdateHub,
 }: {
   hubName?: string; bio?: string; askAbout?: string; avatarUrl?: string; avatarPromptPending?: string | null; regenCount?: number
+  hubCreatedAt?: string
   hubStyle?: HubStyle; hubColor?: HubColor
   hubDecoration?: HubDecoration; hubGlowIntensity?: HubGlowIntensity
   onClose?: () => void
@@ -28,7 +48,7 @@ export default function Profile({
   const [currentAvatarUrl, setCurrentAvatarUrl] = useState(initialAvatarUrl || '')
   // Track last prop value to only update if it changes
   const [lastAvatarProp, setLastAvatarProp] = useState(initialAvatarUrl || '')
-  // ── regen count loaded from DB, not reset on reload ──
+  // regen_count is encoded: cycleNumber*10 + localRegenCount
   const [regenCount, setRegenCount] = useState(initialRegenCount ?? 0)
   const [regenLoading, setRegenLoading] = useState(false)
   const [regenFeedback, setRegenFeedback] = useState('')
@@ -96,8 +116,29 @@ export default function Profile({
     loadRegenCount()
   }, [])
 
-  const attemptsLeft = MAX_REGEN_ATTEMPTS - regenCount
-  const refreshProgress = 0
+  // ── Auto-reset regen count when a new 90-day cycle begins ──
+  useEffect(() => {
+    if (!hubCreatedAt) return
+    const local = regenCount % 10
+    if (local < MAX_REGEN_ATTEMPTS) return // still have attempts, nothing to reset
+    const cycle = Math.floor(
+      Math.max(0, Date.now() - new Date(hubCreatedAt).getTime()) / (1000 * 60 * 60 * 24 * CYCLE_DAYS)
+    )
+    const storedCycle = Math.floor(regenCount / 10)
+    if (cycle > storedCycle) {
+      const newCount = cycle * 10
+      setRegenCount(newCount)
+      void updateHub({ regen_count: newCount }).catch(() => {})
+    }
+  }, [hubCreatedAt, regenCount])
+
+  // Decode the encoded regen_count
+  const localRegenCount = regenCount % 10
+  const regenCycle = Math.floor(regenCount / 10)
+  const attemptsLeft = MAX_REGEN_ATTEMPTS - localRegenCount
+
+  // Compute real cycle info from hub creation date
+  const { cycleNumber, daysLeft, refreshProgress } = getMirrorCycle(hubCreatedAt)
 
   async function handleLeave() {
     if (!leavingConfirm) { setLeavingConfirm(true); setTimeout(() => setLeavingConfirm(false), 4000); return }
@@ -135,7 +176,7 @@ export default function Profile({
   }
 
   async function regenerateAvatar() {
-    if (regenCount >= MAX_REGEN_ATTEMPTS || regenLoading) return
+    if (localRegenCount >= MAX_REGEN_ATTEMPTS || regenLoading) return
     setRegenError('')
     try {
       setRegenLoading(true); setShowRegenInput(false)
@@ -153,7 +194,8 @@ export default function Profile({
       if (!data.imageUrl) throw new Error('No avatar image came back from the mirror.')
 
       // ── Show the new image immediately — don't wait for storage upload ──
-      const newCount = regenCount + 1
+      // Encode: cycleNumber * 10 + (localRegenCount + 1)
+      const newCount = cycleNumber * 10 + (localRegenCount + 1)
       setCurrentAvatarUrl(data.imageUrl)
       setRegenCount(newCount)
       setRegenFeedback('')
@@ -285,7 +327,7 @@ export default function Profile({
                       strokeDashoffset={`${2 * Math.PI * 15 * (1 - refreshProgress / 100)}`}
                       strokeLinecap="round" style={{ opacity: 0.6 }} />
                   </svg>
-                  <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Cinzel', serif", fontSize: '7px', color: 'rgba(201,168,76,0.7)' }}>90d</div>
+                  <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Cinzel', serif", fontSize: '7px', color: 'rgba(201,168,76,0.7)' }}>{daysLeft}d</div>
                 </div>
                 <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.2em', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase' }}>Soul Cycle</p>
               </div>
@@ -297,7 +339,7 @@ export default function Profile({
                   ✦ Reimagine · {attemptsLeft} left
                 </button>
               ) : (
-                <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.15em', color: 'rgba(255,255,255,0.25)', textTransform: 'uppercase' }}>Your form is sealed · 90 days until the mirror opens</p>
+                <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.15em', color: 'rgba(255,255,255,0.25)', textTransform: 'uppercase' }}>Your form is sealed · {daysLeft} {daysLeft === 1 ? 'day' : 'days'} until the mirror opens</p>
               )}
             </div>
 

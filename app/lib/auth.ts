@@ -14,6 +14,7 @@ type HubRecord = {
   regen_count?: number | null
   letters_sent?: number | null
   email?: string | null
+  created_at?: string | null
 }
 
 type LetterRecord = {
@@ -479,6 +480,7 @@ export async function sendLetter(
         paper_id: paperId,
         is_universe_letter: isUniverseLetter,
         arrives_at: arrivesAt.toISOString(),
+        status: 'transit',
         subject,
         font_id: fontId,
       },
@@ -499,10 +501,19 @@ export async function getMyLetters() {
 
     const now = new Date().toISOString()
 
+    // Auto-arrive received letters whose travel time has elapsed
     await supabase
       .from('letters')
       .update({ status: 'arrived' })
       .eq('recipient_id', user.id)
+      .eq('status', 'transit')
+      .lt('arrives_at', now)
+
+    // Auto-arrive sent letters too so the sender sees them move out of transit
+    await supabase
+      .from('letters')
+      .update({ status: 'arrived' })
+      .eq('sender_id', user.id)
       .eq('status', 'transit')
       .lt('arrives_at', now)
 
