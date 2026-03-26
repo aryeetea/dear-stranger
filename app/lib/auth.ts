@@ -479,10 +479,17 @@ export async function sendLetter(
   if (!trimmedBody) throw new Error('Letter body cannot be empty')
 
   // Universe letters are instant — they float freely as shooting stars immediately.
-  // Direct letters travel 1–7 days.
+  // Direct letters travel based on length: shorter letters arrive sooner.
   const arrivesAt = new Date()
   if (!isUniverseLetter) {
-    const travelDays = Math.floor(Math.random() * 7) + 1
+    const len = trimmedBody.length
+    let minDays: number, maxDays: number
+    if (len < 200)        { minDays = 1; maxDays = 1 }
+    else if (len < 500)   { minDays = 1; maxDays = 2 }
+    else if (len < 1000)  { minDays = 2; maxDays = 3 }
+    else if (len < 2000)  { minDays = 3; maxDays = 5 }
+    else                  { minDays = 5; maxDays = 7 }
+    const travelDays = minDays + Math.floor(Math.random() * (maxDays - minDays + 1))
     arrivesAt.setDate(arrivesAt.getDate() + travelDays)
   }
   const initialStatus = isUniverseLetter ? 'arrived' : 'transit'
