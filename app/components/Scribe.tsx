@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { playLetterSend } from '../../lib/sounds'
 
 const SCRIBE_STARS = Array.from({ length: 20 }, (_, i) => ({
   width: `${(i % 3) * 0.45 + 0.3}px`,
@@ -466,6 +467,7 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
     setSubjectError(false)
     setView('envelope')
     setReleasing(true)
+    playLetterSend()
     await new Promise(r => setTimeout(r, 2200))
     setSent(true)
     setTimeout(() => {
