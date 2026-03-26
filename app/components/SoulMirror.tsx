@@ -4,8 +4,8 @@ import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { HUB_COLOR_THEMES, HUB_STYLES, type HubColor, type HubStyle } from './UniverseMap'
 
-const MIN_EXCHANGES = 10
-const MAX_EXCHANGES = 30
+const MIN_EXCHANGES = 5
+const MAX_EXCHANGES = 20
 
 const MIRROR_VOICES = [
   { id: 'friend', label: 'Supportive Friend', desc: 'Warm, gentle, encouraging. Like talking to someone who always has your back.', icon: '🤍', prompt: 'You are a warm, gentle, encouraging friend. You speak with care and genuine interest. Never clinical, never performative — just real.' },
@@ -235,9 +235,9 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
 
   const SectionHeader = ({ step, title, sub }: { step: string; title: string; sub: string }) => (
     <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-      <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.5em', color: 'rgba(201,168,76,0.5)', textTransform: 'uppercase', marginBottom: '6px' }}>{step}</p>
+      <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.5em', color: 'rgba(201,168,76,0.5)', textTransform: 'uppercase', marginBottom: '6px' }}>{step}</p>
       <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: 'clamp(18px, 2.8vw, 26px)', color: 'rgba(255,255,255,0.92)', lineHeight: 1.5, marginBottom: '8px' }}>{title}</p>
-      <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '15px', color: 'rgba(255,255,255,0.5)', lineHeight: 1.6 }}>{sub}</p>
+      <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '16px', color: 'rgba(255,255,255,0.5)', lineHeight: 1.6 }}>{sub}</p>
     </div>
   )
 
@@ -256,7 +256,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
           <motion.div key="mode" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.4 }}
             style={{ width: 'min(820px, 95vw)' }}>
             <div style={{ textAlign: 'center', marginBottom: '36px' }}>
-              <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.55em', color: 'rgba(201,168,76,0.55)', textTransform: 'uppercase', marginBottom: '14px' }}>Soul Mirror</p>
+              <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.55em', color: 'rgba(201,168,76,0.55)', textTransform: 'uppercase', marginBottom: '14px' }}>Soul Mirror</p>
               <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: 'clamp(22px,3.5vw,30px)', color: 'rgba(255,255,255,0.93)', lineHeight: 1.4, marginBottom: '12px' }}>Before we begin</p>
               <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '16px', color: 'rgba(255,255,255,0.5)', lineHeight: 1.7 }}>Your Soul Mirror shapes how you appear in this universe. Choose how you'd like to describe yourself.</p>
             </div>
@@ -307,7 +307,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
                   onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor = 'rgba(230,199,110,0.2)' }}>
                   <p style={{ fontSize: '20px', marginBottom: '8px' }}>{voice.icon}</p>
                   <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.18em', color: '#e6c76e', textTransform: 'uppercase', marginBottom: '7px' }}>{voice.label}</p>
-                  <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '14px', color: 'rgba(255,255,255,0.62)', lineHeight: 1.55 }}>{voice.desc}</p>
+                  <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '15px', color: 'rgba(255,255,255,0.62)', lineHeight: 1.55 }}>{voice.desc}</p>
                 </motion.button>
               ))}
             </div>
@@ -327,7 +327,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
                   onMouseEnter={e => { e.currentTarget.style.background = 'rgba(230,199,110,0.09)'; e.currentTarget.style.borderColor = 'rgba(230,199,110,0.4)' }}
                   onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor = 'rgba(230,199,110,0.2)' }}>
                   <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.18em', color: '#e6c76e', textTransform: 'uppercase', marginBottom: '8px' }}>{style.label}</p>
-                  <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '14px', color: 'rgba(255,255,255,0.62)', lineHeight: 1.5 }}>{style.desc}</p>
+                  <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '15px', color: 'rgba(255,255,255,0.62)', lineHeight: 1.5 }}>{style.desc}</p>
                 </motion.button>
               ))}
               <motion.button whileHover={{ y: -2 }} whileTap={{ scale: 0.97 }}
@@ -336,7 +336,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
                 onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.35)' }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.18)' }}>
                 <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.18em', color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', marginBottom: '8px' }}>No preference</p>
-                <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '14px', color: 'rgba(255,255,255,0.38)', lineHeight: 1.5 }}>Let the mirror decide. The portrait will follow what you describe.</p>
+                <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '15px', color: 'rgba(255,255,255,0.38)', lineHeight: 1.5 }}>Let the mirror decide. The portrait will follow what you describe.</p>
               </motion.button>
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
@@ -360,13 +360,16 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
                   </p>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-                  <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.2em', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>{chatDone ? 'complete' : `${userAnswers.length} / ${MIN_EXCHANGES}+`}</p>
+                  <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.2em', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>{chatDone ? 'complete' : `${userAnswers.length} / ${MIN_EXCHANGES}+`}</p>
                   <div style={{ width: '80px', height: '2px', background: 'rgba(255,255,255,0.1)', borderRadius: '2px', overflow: 'hidden' }}>
                     <motion.div animate={{ width: chatDone ? '100%' : `${progressPct}%` }} transition={{ duration: 0.4 }}
                       style={{ height: '100%', background: '#e6c76e', borderRadius: '2px' }} />
                   </div>
                 </div>
               </div>
+              <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '12px', color: 'rgba(255,255,255,0.3)', lineHeight: 1.5, marginTop: '6px' }}>
+                The mirror asks between 5–20 questions and decides when it sees you clearly. The more detail you share, the better your portrait.
+              </p>
             </div>
 
             <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px 8px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -376,7 +379,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
                     style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
                     <div style={{ maxWidth: '84%', padding: '12px 16px', borderRadius: msg.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px', background: msg.isClosing ? 'rgba(230,199,110,0.1)' : msg.role === 'user' ? 'rgba(230,199,110,0.13)' : 'rgba(255,255,255,0.06)', border: msg.isClosing ? '1px solid rgba(230,199,110,0.4)' : msg.role === 'user' ? '1px solid rgba(230,199,110,0.25)' : '1px solid rgba(255,255,255,0.09)' }}>
                       {msg.role === 'ai' && (
-                        <p style={{ fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.2em', color: msg.isClosing ? '#e6c76e' : 'rgba(230,199,110,0.75)', textTransform: 'uppercase', marginBottom: '6px' }}>
+                        <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.2em', color: msg.isClosing ? '#e6c76e' : 'rgba(230,199,110,0.75)', textTransform: 'uppercase', marginBottom: '6px' }}>
                           {msg.isClosing ? 'Mirror · I can see you now' : `${selectedVoice?.label || 'Mirror'}`}
                         </p>
                       )}
@@ -400,7 +403,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
 
             {!chatDone && !loading && currentChips.length > 0 && (
               <div style={{ padding: '10px 16px 0', flexShrink: 0 }}>
-                <p style={{ fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.25em', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', marginBottom: '8px' }}>tap to use</p>
+                <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.25em', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', marginBottom: '8px' }}>tap to use</p>
                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                   {currentChips.map((chip, i) => (
                     <motion.button key={`${messages.length}-${i}`} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.04 }}
@@ -425,7 +428,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
                 <>
                   <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
                     <textarea value={inputValue} onChange={e => setInputValue(e.target.value)}
-                      placeholder="Describe yourself in as much detail as you like..." rows={2}
+                      placeholder="Describe yourself — your appearance, gender, features, skin tone, hair, how you carry yourself, colors, textures..." rows={2}
                       disabled={loading || chatDone}
                       onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void handleSend() } }}
                       style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', color: 'rgba(255,255,255,0.9)', fontFamily: "'Cormorant Garamond', serif", fontSize: '15px', lineHeight: 1.6, padding: '10px 14px', resize: 'none', outline: 'none', caretColor: '#e6c76e' }}
@@ -434,7 +437,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
                     <button onClick={() => void handleSend()} disabled={!inputValue.trim() || loading}
                       style={{ width: '42px', height: '42px', borderRadius: '10px', background: inputValue.trim() ? 'rgba(230,199,110,0.18)' : 'rgba(255,255,255,0.04)', border: `1px solid ${inputValue.trim() ? 'rgba(230,199,110,0.45)' : 'rgba(255,255,255,0.08)'}`, color: inputValue.trim() ? '#e6c76e' : 'rgba(255,255,255,0.35)', fontSize: '16px', cursor: inputValue.trim() ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>✦</button>
                   </div>
-                  <p style={{ fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.15em', color: 'rgba(255,255,255,0.3)', textAlign: 'center', marginTop: '8px', textTransform: 'uppercase' }}>Enter to send · Shift+Enter for new line</p>
+                  <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.15em', color: 'rgba(255,255,255,0.3)', textAlign: 'center', marginTop: '8px', textTransform: 'uppercase' }}>Enter to send · Shift+Enter for new line</p>
                 </>
               )}
             </div>
@@ -449,7 +452,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
             <textarea
               value={freeformText}
               onChange={e => setFreeformText(e.target.value)}
-              placeholder="In another world, how do you look? Describe your appearance in as much detail as you can."
+              placeholder="In another world, how do you look? Include your gender, features, skin tone, hair, clothing, build, and anything that makes you distinctly you."
               rows={8}
               style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '8px', color: 'rgba(255,255,255,0.9)', fontFamily: "'Cormorant Garamond', serif", fontSize: '16px', lineHeight: 1.8, padding: '14px 16px', outline: 'none', resize: 'none', caretColor: '#e6c76e', marginBottom: '20px' }}
               onFocus={e => { e.target.style.borderColor = 'rgba(230,199,110,0.4)' }}
@@ -477,9 +480,9 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
             style={{ ...cardStyle, width: 'min(520px, 95vw)', padding: 'clamp(36px,5vw,52px)' }}>
             <GoldLines />
             <div style={{ marginBottom: '24px' }}>
-              <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.5em', color: '#e6c76e', textTransform: 'uppercase', marginBottom: '10px' }}>Step 4 of 6</p>
+              <p style={{ fontFamily: "'Cinzel', serif", fontSize: '11px', letterSpacing: '0.5em', color: '#e6c76e', textTransform: 'uppercase', marginBottom: '10px' }}>Step 4 of 6</p>
               <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: 'clamp(16px,2.5vw,22px)', color: 'rgba(255,255,255,0.9)', lineHeight: 1.6, marginBottom: '8px' }}>Tell the universe who you are</p>
-              <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '14px', color: 'rgba(255,255,255,0.45)', lineHeight: 1.6 }}>This appears on your hub card when others visit. You can always edit it in your profile.</p>
+              <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '15px', color: 'rgba(255,255,255,0.45)', lineHeight: 1.6 }}>This appears on your hub card when others visit. You can always edit it in your profile.</p>
             </div>
             <textarea value={bio} onChange={e => setBio(e.target.value)}
               placeholder={`Hi, I'm ${hubName || 'a stranger'}. I'm here because...`} rows={5}
@@ -500,9 +503,9 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
             style={{ ...cardStyle, width: 'min(520px, 95vw)', padding: 'clamp(36px,5vw,52px)' }}>
             <GoldLines />
             <div style={{ marginBottom: '24px' }}>
-              <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.5em', color: '#e6c76e', textTransform: 'uppercase', marginBottom: '10px' }}>Step 5 of 6</p>
+              <p style={{ fontFamily: "'Cinzel', serif", fontSize: '11px', letterSpacing: '0.5em', color: '#e6c76e', textTransform: 'uppercase', marginBottom: '10px' }}>Step 5 of 6</p>
               <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: 'clamp(16px,2.5vw,22px)', color: 'rgba(255,255,255,0.9)', lineHeight: 1.6, marginBottom: '8px' }}>What should strangers ask you about?</p>
-              <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '14px', color: 'rgba(255,255,255,0.45)', lineHeight: 1.6 }}>This gives people an easy, human way to begin writing to you.</p>
+              <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '15px', color: 'rgba(255,255,255,0.45)', lineHeight: 1.6 }}>This gives people an easy, human way to begin writing to you.</p>
             </div>
             <textarea value={askAbout} onChange={e => setAskAbout(e.target.value)}
               placeholder="Music that changed you, your major, grief, astrology, poetry, home, healing, your latest hyperfixation..."
@@ -536,13 +539,13 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
                     {isSelected && <div style={{ position: 'absolute', top: '10px', right: '12px', width: '16px', height: '16px', borderRadius: '50%', background: '#c9a84c', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', color: '#000', fontWeight: 'bold' }}>✓</div>}
                     <p style={{ fontSize: '20px', marginBottom: '8px' }}>{style.icon}</p>
                     <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.18em', color: isSelected ? '#e6c76e' : 'rgba(255,255,255,0.7)', textTransform: 'uppercase', marginBottom: '6px' }}>{style.label}</p>
-                    <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '13px', color: 'rgba(255,255,255,0.5)', lineHeight: 1.5 }}>{style.desc}</p>
+                    <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '14px', color: 'rgba(255,255,255,0.5)', lineHeight: 1.5 }}>{style.desc}</p>
                   </motion.button>
                 )
               })}
             </div>
             <div style={{ marginBottom: '28px' }}>
-              <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.28em', color: '#e6c76e', textTransform: 'uppercase', marginBottom: '12px', textAlign: 'center' }}>Choose a color</p>
+              <p style={{ fontFamily: "'Cinzel', serif", fontSize: '11px', letterSpacing: '0.28em', color: '#e6c76e', textTransform: 'uppercase', marginBottom: '12px', textAlign: 'center' }}>Choose a color</p>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(84px, 1fr))', gap: '10px' }}>
                 {HUB_COLOR_THEMES.map(theme => {
                   const isSelected = selectedHubColor === theme.id
@@ -572,9 +575,9 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
           <motion.div key="hubname" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.4 }}
             style={{ ...cardStyle, padding: 'clamp(40px,6vw,64px)', width: 'min(480px, 95vw)', textAlign: 'center' }}>
             <GoldLines />
-            <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.5em', color: '#e6c76e', textTransform: 'uppercase', marginBottom: '16px' }}>Almost there</p>
+              <p style={{ fontFamily: "'Cinzel', serif", fontSize: '11px', letterSpacing: '0.5em', color: '#e6c76e', textTransform: 'uppercase', marginBottom: '16px' }}>Almost there</p>
             <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: 'clamp(18px,3vw,24px)', color: 'rgba(255,255,255,0.92)', lineHeight: 1.6, marginBottom: '8px' }}>What would you name your place in the universe?</p>
-            <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '14px', color: 'rgba(255,255,255,0.4)', marginBottom: '28px' }}>This is how others will find you on the map.</p>
+            <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '15px', color: 'rgba(255,255,255,0.4)', marginBottom: '28px' }}>This is how others will find you on the map.</p>
             <input autoFocus value={hubName} onChange={e => setHubName(e.target.value)} placeholder="Your hub name..."
               onKeyDown={e => { if (e.key === 'Enter' && hubName.trim()) setPhase('welcome') }}
               style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.94)', fontFamily: "'Cormorant Garamond', serif", fontSize: '22px', padding: '10px 4px', outline: 'none', textAlign: 'center', letterSpacing: '0.08em', caretColor: '#e6c76e', marginBottom: '28px' }}
@@ -597,7 +600,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
             style={{ ...cardStyle, width: 'min(620px, 95vw)', padding: 'clamp(36px,5vw,52px)', maxHeight: '90vh', overflowY: 'auto' }}>
             <GoldLines />
             <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-              <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.5em', color: '#e6c76e', textTransform: 'uppercase', marginBottom: '12px' }}>Welcome, {hubName || 'Stranger'}</p>
+              <p style={{ fontFamily: "'Cinzel', serif", fontSize: '11px', letterSpacing: '0.5em', color: '#e6c76e', textTransform: 'uppercase', marginBottom: '12px' }}>Welcome, {hubName || 'Stranger'}</p>
               <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: 'clamp(16px,2.5vw,22px)', color: 'rgba(255,255,255,0.9)', lineHeight: 1.6 }}>Before you enter, read this slowly.</p>
               <div style={{ height: '1px', background: 'linear-gradient(90deg, transparent, rgba(230,199,110,0.3), transparent)', marginTop: '18px' }} />
             </div>
@@ -607,8 +610,8 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
                   style={{ display: 'flex', gap: '18px', alignItems: 'flex-start' }}>
                   <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'rgba(230,199,110,0.1)', border: '1px solid rgba(230,199,110,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', flexShrink: 0, marginTop: '2px' }}>{rule.icon}</div>
                   <div>
-                    <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.22em', color: '#e6c76e', textTransform: 'uppercase', marginBottom: '6px' }}>{rule.title}</p>
-                    <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(255,255,255,0.75)', lineHeight: 1.75 }}>{rule.desc}</p>
+                    <p style={{ fontFamily: "'Cinzel', serif", fontSize: '11px', letterSpacing: '0.22em', color: '#e6c76e', textTransform: 'uppercase', marginBottom: '6px' }}>{rule.title}</p>
+                    <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '15px', color: 'rgba(255,255,255,0.75)', lineHeight: 1.75 }}>{rule.desc}</p>
                   </div>
                 </motion.div>
               ))}
@@ -628,7 +631,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
 }
 
 const backBtn: React.CSSProperties = {
-  fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.25em',
+  fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.25em',
   color: 'rgba(255,255,255,0.35)', padding: '8px 14px',
   border: '1px solid rgba(255,255,255,0.1)', background: 'transparent',
   cursor: 'pointer', textTransform: 'uppercase', borderRadius: '4px',

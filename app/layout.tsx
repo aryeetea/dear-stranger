@@ -3,6 +3,7 @@ import "./globals.css";
 import { Analytics } from "@vercel/analytics/next"
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import ServiceWorkerRegister from "./components/ServiceWorkerRegister";
+import FontSizeControls from "./components/FontSizeControls";
 
 export const metadata: Metadata = {
   title: "Dear Stranger",
@@ -39,6 +40,7 @@ export default function RootLayout({
       </head>
       <body suppressHydrationWarning>
         {children}
+        <FontSizeControls />
         <ServiceWorkerRegister />
         <Analytics />
         <SpeedInsights />

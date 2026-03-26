@@ -25,21 +25,32 @@ function buildAvatarPrompt(
 
   const details = trimmedAnswers.join(', ')
 
-  const modeNote =
-    mode === 'reimagine'
-      ? `This is a reimagined version. Keep the character's core identity recognizable, but make the requested changes clearly visible through the outfit, pose, lighting, or atmosphere.`
-      : ''
+  const feedbackLine = feedback?.trim() ? normalizeDetail(feedback) : ''
 
-  const feedbackLine = feedback?.trim()
-    ? `Specific changes requested: ${normalizeDetail(feedback)}.`
-    : ''
+  if (mode === 'reimagine') {
+    if (feedbackLine) {
+      return [
+        `Create a full body character portrait exactly as described: ${feedbackLine}. Follow this description precisely — it is the primary directive.`,
+        details ? `Original character reference context: ${details}.` : '',
+        `Rendering: painterly digital illustration, cinematic quality, full body visible head to toe, vertical composition, face clearly lit and readable, rich atmospheric background that complements the character, no text, no watermark, no logo.`,
+      ]
+        .filter(Boolean)
+        .join('\n\n')
+    }
+    return [
+      details
+        ? `Create a reimagined full body character portrait. The character is described as: ${details}. Match the person's appearance, skin tone, hair, clothing, body, and features closely.`
+        : `Create a full body character portrait of a mysterious figure in a cinematic illustrated style.`,
+      `Rendering: painterly digital illustration, cinematic quality, full body visible head to toe, vertical composition, face clearly lit and readable, rich atmospheric background that complements the character, no text, no watermark, no logo.`,
+    ]
+      .filter(Boolean)
+      .join('\n\n')
+  }
 
   return [
     details
       ? `Create a full body character portrait. The character is described as: ${details}. Match the person's appearance, skin tone, hair, clothing, body, and features closely to the description provided.`
       : `Create a full body character portrait of a mysterious figure in a cinematic illustrated style.`,
-    modeNote,
-    feedbackLine,
     `Rendering: painterly digital illustration, cinematic quality, full body visible head to toe, vertical composition, face clearly lit and readable, rich atmospheric background that complements the character, no text, no watermark, no logo.`,
   ]
     .filter(Boolean)
