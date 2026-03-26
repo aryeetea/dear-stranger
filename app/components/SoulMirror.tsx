@@ -89,6 +89,7 @@ export interface SoulMirrorResumeState {
   hubName?: string
   bio?: string
   askAbout?: string
+  decoration?: string
 }
 
 type Phase = 'mode' | 'voice' | 'style' | 'chat' | 'freeform' | 'bio' | 'askabout' | 'hubstyle' | 'hubname' | 'welcome'
