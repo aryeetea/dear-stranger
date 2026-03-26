@@ -137,6 +137,17 @@ input::placeholder {
 .universe-nav-label { /* base styles inline */ }
 .universe-hint { /* base styles inline */ }
 
+/* Prevent nav from overflowing the viewport on any screen width */
+.universe-nav {
+  max-width: calc(100vw - 24px);
+  overflow-x: auto;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+.universe-nav::-webkit-scrollbar {
+  display: none; /* Chrome/Safari/WebKit */
+}
+
 @media (max-width: 600px) {
   .universe-hub-card { flex-direction: column !important; }
   .universe-hub-avatar-col {
@@ -268,6 +279,34 @@ button, a, [role="button"] {
   body { overflow: auto; }
 }
 
+/* ── Galaxy Fold closed / very narrow (< 320px) ────────────── */
+@media (max-width: 319px) {
+  .universe-nav {
+    gap: 2px !important;
+    padding: 6px 8px !important;
+  }
+  .universe-nav-btn {
+    padding: 6px 6px !important;
+    min-width: 38px !important;
+    gap: 3px !important;
+  }
+  .universe-nav-label {
+    font-size: 6px !important;
+    letter-spacing: 0.04em !important;
+  }
+}
+
+/* ── Mid-range desktop (1024px – 1439px) ───────────────────── */
+@media (min-width: 1024px) and (max-width: 1439px) {
+  .universe-nav-btn {
+    padding: 11px 20px !important;
+    min-width: 68px !important;
+  }
+  .universe-nav-label {
+    font-size: 8.5px !important;
+  }
+}
+
 /* ── Large desktop (≥ 1440px) ──────────────────────────────── */
 @media (min-width: 1440px) {
   .universe-nav-btn {
@@ -279,5 +318,26 @@ button, a, [role="button"] {
   }
   .profile-info-col {
     padding: 80px 80px 100px !important;
+  }
+}
+
+/* ── 4K / Ultra-wide (≥ 2560px) ────────────────────────────── */
+@media (min-width: 2560px) {
+  .universe-nav {
+    border-radius: 20px !important;
+    padding: 10px 20px !important;
+    gap: 8px !important;
+  }
+  .universe-nav-btn {
+    padding: 14px 28px !important;
+    min-width: 90px !important;
+    gap: 8px !important;
+  }
+  .universe-nav-label {
+    font-size: 11px !important;
+    letter-spacing: 0.22em !important;
+  }
+  .universe-hint {
+    font-size: 15px !important;
   }
 }
