@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { HUB_COLOR_THEMES, HUB_STYLES, type HubColor, type HubStyle } from './UniverseMap'
+import { HUB_COLOR_THEMES, HUB_STYLES, HUB_DECORATIONS, type HubColor, type HubStyle, type HubDecoration } from './UniverseMap'
 
 const MIN_EXCHANGES = 5
 const MAX_EXCHANGES = 20
@@ -107,6 +107,7 @@ interface SoulMirrorProps {
     bio?: string,
     askAbout?: string,
     hubNameFromOnboarding?: string,
+    hubDecoration?: HubDecoration,
   ) => void
 }
 
@@ -120,6 +121,8 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
   const [freeformText, setFreeformText] = useState('')
   const [selectedHubStyle, setSelectedHubStyle] = useState<HubStyle>(resumeState?.selectedHubStyle || 'portal')
   const [selectedHubColor, setSelectedHubColor] = useState<HubColor>(resumeState?.selectedHubColor || 'gold')
+  const [selectedDecoration, setSelectedDecoration] = useState<HubDecoration>('none')
+  const [openSection, setOpenSection] = useState<'style' | 'color' | 'decoration' | null>(null)
   const [messages, setMessages] = useState<{ role: 'ai' | 'user'; text: string; isClosing?: boolean; chips?: string[] }[]>([])
   const [userAnswers, setUserAnswers] = useState<string[]>(resumeState?.userAnswers || [])
   const [inputValue, setInputValue] = useState('')
@@ -200,6 +203,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
       bio.trim(),
       askAbout.trim(),
       hubName.trim(),
+      selectedDecoration,
     )
   }
 
@@ -221,6 +225,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
       bio.trim(),
       askAbout.trim(),
       hubName.trim(),
+      selectedDecoration,
     )
   }
 
@@ -564,55 +569,115 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
 
         {phase === 'hubstyle' && (
           <motion.div key="hubstyle" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.4 }}
-            style={{ ...cardStyle, width: 'min(540px, 98vw)', padding: 'clamp(18px,3vw,28px)' }}>
+            style={{ ...cardStyle, width: 'min(480px, 98vw)', padding: 'clamp(18px,3vw,28px)' }}>
             <GoldLines />
-            <SectionHeader step="Soul Mirror · Step 6 of 6" title="How does your hub appear in the universe?" sub="Pick a style, color, and decoration. Compact, but expressive." />
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '18px', justifyContent: 'center' }}>
-              {HUB_STYLES.map(style => {
-                const isSelected = selectedHubStyle === style.id
-                return (
-                  <motion.button key={style.id} whileHover={{ y: -2 }} whileTap={{ scale: 0.97 }}
-                    onClick={() => setSelectedHubStyle(style.id)}
-                    style={{ width: 64, height: 64, borderRadius: '10px', border: isSelected ? '2px solid #e6c76e' : '1px solid rgba(230,199,110,0.18)', background: isSelected ? 'rgba(230,199,110,0.10)' : 'rgba(255,255,255,0.03)', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', margin: 0, position: 'relative', transition: 'all 0.2s' }}
-                    onMouseEnter={e => { if (!isSelected) { e.currentTarget.style.background = 'rgba(230,199,110,0.08)'; e.currentTarget.style.borderColor = '#e6c76e' } }}
-                    onMouseLeave={e => { if (!isSelected) { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor = 'rgba(230,199,110,0.18)' } }}>
-                    {isSelected && <div style={{ position: 'absolute', top: 4, right: 4, width: 16, height: 16, borderRadius: '50%', background: '#e6c76e', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#000', fontWeight: 'bold' }}>✓</div>}
-                    <span style={{ fontSize: 26, marginBottom: 2 }}>{style.icon}</span>
-                    <span style={{ fontFamily: "'Cinzel', serif", fontSize: 9, letterSpacing: '0.13em', color: isSelected ? '#e6c76e' : 'rgba(255,255,255,0.7)', textTransform: 'uppercase', textAlign: 'center' }}>{style.label}</span>
-                  </motion.button>
-                )
-              })}
+            <SectionHeader step="Soul Mirror · Step 6 of 6" title="How does your hub appear in the universe?" sub="Tap a section to choose." />
+
+            {/* Hub Style accordion tab */}
+            <div style={{ marginBottom: '8px', border: '1px solid rgba(230,199,110,0.15)', borderRadius: '8px', overflow: 'hidden' }}>
+              <button
+                onClick={() => setOpenSection(prev => prev === 'style' ? null : 'style')}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 16px', background: openSection === 'style' ? 'rgba(230,199,110,0.07)' : 'transparent', border: 'none', cursor: 'pointer' }}
+              >
+                <span style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.25em', textTransform: 'uppercase', color: '#e6c76e' }}>Hub Style</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '15px' }}>{HUB_STYLES.find(s => s.id === selectedHubStyle)?.icon}</span>
+                  <span style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.15em', color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase' }}>{HUB_STYLES.find(s => s.id === selectedHubStyle)?.label}</span>
+                  <span style={{ color: 'rgba(230,199,110,0.5)', fontSize: '11px', display: 'inline-block', transition: 'transform 0.2s', transform: openSection === 'style' ? 'rotate(180deg)' : 'rotate(0deg)' }}>▾</span>
+                </div>
+              </button>
+              <AnimatePresence>
+                {openSection === 'style' && (
+                  <motion.div key="style-body" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.22 }} style={{ overflow: 'hidden' }}>
+                    <div style={{ padding: '12px 12px 16px', display: 'flex', flexWrap: 'wrap', gap: '7px', justifyContent: 'center' }}>
+                      {HUB_STYLES.map(s => {
+                        const isSel = selectedHubStyle === s.id
+                        return (
+                          <motion.button key={s.id} whileTap={{ scale: 0.95 }}
+                            onClick={() => { setSelectedHubStyle(s.id); setOpenSection(null) }}
+                            style={{ width: 60, height: 60, borderRadius: '10px', border: isSel ? '2px solid #e6c76e' : '1px solid rgba(230,199,110,0.18)', background: isSel ? 'rgba(230,199,110,0.10)' : 'rgba(255,255,255,0.03)', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', margin: 0, position: 'relative', transition: 'all 0.15s' }}
+                            onMouseEnter={e => { if (!isSel) { e.currentTarget.style.background = 'rgba(230,199,110,0.08)'; e.currentTarget.style.borderColor = 'rgba(230,199,110,0.5)' } }}
+                            onMouseLeave={e => { if (!isSel) { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor = 'rgba(230,199,110,0.18)' } }}>
+                            {isSel && <div style={{ position: 'absolute', top: 3, right: 3, width: 14, height: 14, borderRadius: '50%', background: '#e6c76e', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: '#000', fontWeight: 'bold' }}>✓</div>}
+                            <span style={{ fontSize: 22, marginBottom: 2 }}>{s.icon}</span>
+                            <span style={{ fontFamily: "'Cinzel', serif", fontSize: 8, letterSpacing: '0.1em', color: isSel ? '#e6c76e' : 'rgba(255,255,255,0.6)', textTransform: 'uppercase', textAlign: 'center', lineHeight: 1.2 }}>{s.label}</span>
+                          </motion.button>
+                        )
+                      })}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '18px', justifyContent: 'center' }}>
-              {HUB_COLOR_THEMES.map(theme => {
-                const isSelected = selectedHubColor === theme.id
-                return (
-                  <motion.button
-                    key={theme.id}
-                    whileHover={{ y: -2 }}
-                    whileTap={{ scale: 0.97 }}
-                    onClick={() => setSelectedHubColor(theme.id)}
-                    style={{ width: 44, height: 44, borderRadius: '50%', border: isSelected ? '2px solid #e6c76e' : '1px solid rgba(255,255,255,0.12)', background: `radial-gradient(circle at 35% 35%, rgba(255,255,255,0.85), ${theme.ring})`, boxShadow: isSelected ? `0 0 12px #e6c76e` : `0 0 8px rgba(${theme.glow},0.18)`, margin: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
-                  >
-                    <span style={{ fontFamily: "'Cinzel', serif", fontSize: 8, letterSpacing: '0.13em', textTransform: 'uppercase', color: isSelected ? '#e6c76e' : 'rgba(255,255,255,0.68)' }}>{theme.label}</span>
-                  </motion.button>
-                )
-              })}
+
+            {/* Color accordion tab */}
+            <div style={{ marginBottom: '8px', border: '1px solid rgba(230,199,110,0.15)', borderRadius: '8px', overflow: 'hidden' }}>
+              <button
+                onClick={() => setOpenSection(prev => prev === 'color' ? null : 'color')}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 16px', background: openSection === 'color' ? 'rgba(230,199,110,0.07)' : 'transparent', border: 'none', cursor: 'pointer' }}
+              >
+                <span style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.25em', textTransform: 'uppercase', color: '#e6c76e' }}>Color</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {(() => { const t = HUB_COLOR_THEMES.find(c => c.id === selectedHubColor); return t ? <div style={{ width: 18, height: 18, borderRadius: '50%', background: `radial-gradient(circle at 35% 35%, rgba(255,255,255,0.8), ${t.ring})`, border: '1px solid rgba(255,255,255,0.2)' }} /> : null })()}
+                  <span style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.15em', color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase' }}>{HUB_COLOR_THEMES.find(c => c.id === selectedHubColor)?.label}</span>
+                  <span style={{ color: 'rgba(230,199,110,0.5)', fontSize: '11px', display: 'inline-block', transition: 'transform 0.2s', transform: openSection === 'color' ? 'rotate(180deg)' : 'rotate(0deg)' }}>▾</span>
+                </div>
+              </button>
+              <AnimatePresence>
+                {openSection === 'color' && (
+                  <motion.div key="color-body" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.22 }} style={{ overflow: 'hidden' }}>
+                    <div style={{ padding: '12px 12px 16px', display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center' }}>
+                      {HUB_COLOR_THEMES.map(theme => {
+                        const isSel = selectedHubColor === theme.id
+                        return (
+                          <motion.button key={theme.id} whileTap={{ scale: 0.93 }}
+                            onClick={() => { setSelectedHubColor(theme.id); setOpenSection(null) }}
+                            style={{ width: 44, height: 44, borderRadius: '50%', border: isSel ? '2px solid #e6c76e' : '1px solid rgba(255,255,255,0.12)', background: `radial-gradient(circle at 35% 35%, rgba(255,255,255,0.85), ${theme.ring})`, boxShadow: isSel ? `0 0 12px #e6c76e` : `0 0 8px rgba(${theme.glow},0.18)`, margin: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                          >
+                            <span style={{ fontFamily: "'Cinzel', serif", fontSize: 7, letterSpacing: '0.1em', textTransform: 'uppercase', color: isSel ? '#e6c76e' : 'rgba(255,255,255,0.68)' }}>{theme.label}</span>
+                          </motion.button>
+                        )
+                      })}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '18px', justifyContent: 'center' }}>
-              {/* Decorations: import from UniverseMap */}
-              {require('./UniverseMap').HUB_DECORATIONS.map((dec: any) => {
-                const isSelected = (resumeState?.decoration || 'none') === dec.id
-                return (
-                  <motion.button key={dec.id} whileHover={{ y: -2 }} whileTap={{ scale: 0.97 }}
-                    onClick={() => {/* set decoration in parent state if needed */}}
-                    style={{ width: 44, height: 44, borderRadius: '50%', border: isSelected ? '2px solid #e6c76e' : '1px solid rgba(255,255,255,0.12)', background: isSelected ? 'rgba(230,199,110,0.10)' : 'rgba(255,255,255,0.03)', margin: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 22 }}
-                  >
-                    <span>{dec.icon}</span>
-                  </motion.button>
-                )
-              })}
+
+            {/* Decoration accordion tab */}
+            <div style={{ marginBottom: '18px', border: '1px solid rgba(230,199,110,0.15)', borderRadius: '8px', overflow: 'hidden' }}>
+              <button
+                onClick={() => setOpenSection(prev => prev === 'decoration' ? null : 'decoration')}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 16px', background: openSection === 'decoration' ? 'rgba(230,199,110,0.07)' : 'transparent', border: 'none', cursor: 'pointer' }}
+              >
+                <span style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.25em', textTransform: 'uppercase', color: '#e6c76e' }}>Decoration</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '16px' }}>{HUB_DECORATIONS.find(d => d.id === selectedDecoration)?.icon}</span>
+                  <span style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.15em', color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase' }}>{selectedDecoration === 'none' ? 'None' : HUB_DECORATIONS.find(d => d.id === selectedDecoration)?.label}</span>
+                  <span style={{ color: 'rgba(230,199,110,0.5)', fontSize: '11px', display: 'inline-block', transition: 'transform 0.2s', transform: openSection === 'decoration' ? 'rotate(180deg)' : 'rotate(0deg)' }}>▾</span>
+                </div>
+              </button>
+              <AnimatePresence>
+                {openSection === 'decoration' && (
+                  <motion.div key="decoration-body" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.22 }} style={{ overflow: 'hidden' }}>
+                    <div style={{ padding: '12px 12px 16px', display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center' }}>
+                      {HUB_DECORATIONS.map(dec => {
+                        const isSel = selectedDecoration === dec.id
+                        return (
+                          <motion.button key={dec.id} whileTap={{ scale: 0.93 }}
+                            onClick={() => { setSelectedDecoration(dec.id); setOpenSection(null) }}
+                            style={{ width: 44, height: 44, borderRadius: '50%', border: isSel ? '2px solid #e6c76e' : '1px solid rgba(255,255,255,0.12)', background: isSel ? 'rgba(230,199,110,0.10)' : 'rgba(255,255,255,0.03)', margin: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: dec.id === 'none' ? 14 : 20 }}
+                          >
+                            <span>{dec.icon}</span>
+                          </motion.button>
+                        )
+                      })}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
+
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <button onClick={() => setPhase('askabout')} style={backBtn}>← Back</button>
               <button onClick={() => setPhase('hubname')} style={continueBtn}>Name Your Hub ✦</button>

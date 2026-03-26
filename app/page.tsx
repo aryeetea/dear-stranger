@@ -312,6 +312,7 @@ export default function Home() {
     userBio?: string,
     userAskAbout?: string,
     userHubName?: string,
+    hubDecoration?: HubDecoration,
   ) {
     setOnboardingError('')
 
@@ -327,6 +328,7 @@ export default function Home() {
     const avatarDescription = answers[0]?.trim() || ''
     const chosenHubStyle = selectedHubStyle || 'portal'
     const chosenHubColor = selectedHubColor || 'gold'
+    const chosenDecoration: HubDecoration = hubDecoration || 'none'
     const chosenBio = userBio?.trim() || 'A wanderer who arrived here quietly, carrying something unspoken.'
     const chosenAskAbout = userAskAbout?.trim() || 'Silence, slow mornings, and letters that take their time.'
 
@@ -381,6 +383,7 @@ export default function Home() {
         setHubName(hubNameAnswer)
         setHubStyle(chosenHubStyle)
         setHubColor(chosenHubColor)
+        setHubDecoration(chosenDecoration)
         setHubBio(chosenBio)
         setHubAskAbout(chosenAskAbout)
         setHubCreatedAt(new Date().toISOString())
@@ -395,6 +398,7 @@ export default function Home() {
             ask_about: chosenAskAbout,
             hub_style: chosenHubStyle,
             backdrop_id: chosenHubColor,
+            decoration: chosenDecoration,
           }),
           12000,
           'Saving your hub took too long. Please try again.',
