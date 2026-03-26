@@ -68,7 +68,7 @@ interface ShootingStar {
   id: number; x: number; y: number
   vx: number; vy: number; alpha: number
   tail: { x: number; y: number }[]
-  letterId: string; senderName: string; preview: string
+  letterId: string; senderId: string; senderName: string; preview: string; body: string
   age: number; maxAge: number; clicked: boolean
 }
 
@@ -1133,7 +1133,7 @@ export default function UniverseMap({
   useEffect(() => { if (navResetSignal > 0) setActiveNav(0) }, [navResetSignal])
 
   // Spawn a shooting star from a universe letter
-  function spawnShootingStar(letter?: { id: string; senderName: string; preview: string }) {
+  function spawnShootingStar(letter?: { id: string; senderId: string; senderName: string; preview: string; body: string }) {
     const canvas = canvasRef.current
     if (!canvas) return
     const edge = Math.floor(Math.random() * 4)
@@ -1152,8 +1152,9 @@ export default function UniverseMap({
       vx: ((targetX - x) / dist) * speed,
       vy: ((targetY - y) / dist) * speed,
       alpha: 0.9, tail: [],
-      letterId: letter?.id || '', senderName: letter?.senderName || 'A Stranger',
+      letterId: letter?.id || '', senderId: letter?.senderId || '', senderName: letter?.senderName || 'A Stranger',
       preview: letter?.preview || 'A letter drifts through the universe...',
+      body: letter?.body || 'A letter drifts through the universe...',
       age: 0, maxAge: dist / speed,
       clicked: false,
     }
@@ -1162,12 +1163,12 @@ export default function UniverseMap({
 
   useEffect(() => {
     let cancelled = false
-    let universeLetters: { id: string; senderName: string; preview: string }[] = []
+    let universeLetters: { id: string; senderId: string; senderName: string; preview: string; body: string }[] = []
 
     async function refreshUniverseLetters() {
       const letters = await getUniverseLetters()
       if (!cancelled) {
-        universeLetters = letters.filter(letter => letter.preview.trim().length > 0)
+        universeLetters = letters.filter(letter => letter.body.trim().length > 0)
       }
     }
 
