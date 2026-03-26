@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import OpenAI from 'openai'
-import { fal } from '@fal-ai/client'
 
 export const maxDuration = 60
 
@@ -144,44 +143,6 @@ async function generateWithDallE3(openai: OpenAI, prompt: string) {
   }
 }
 
-async function generateWithSeedream(prompt: string) {
-  const falKey = process.env.FAL_KEY
-  if (!falKey) throw new Error('Missing FAL_KEY')
-
-  fal.config({ credentials: falKey })
-
-  const result = (await fal.subscribe(
-    'fal-ai/bytedance/seedream/v3/text-to-image',
-    {
-      input: {
-        prompt,
-        image_size: { width: 1024, height: 1536 },
-        num_images: 1,
-        guidance_scale: 7.5,
-      },
-    },
-  )) as { data?: { images?: Array<{ url?: string }> } }
-
-  const imageUrl = result.data?.images?.[0]?.url
-  if (!imageUrl) {
-    throw new Error('Seedream returned no image URL.')
-  }
-
-  const imageResp = await fetch(imageUrl)
-  if (!imageResp.ok) {
-    throw new Error(`Failed to fetch Seedream image: ${imageResp.status}`)
-  }
-
-  const buffer = await imageResp.arrayBuffer()
-  const b64 = Buffer.from(buffer).toString('base64')
-
-  return {
-    imageUrl: `data:image/jpeg;base64,${b64}`,
-    revisedPrompt: prompt,
-    provider: 'seedream-v3',
-  }
-}
-
 export async function POST(req: Request) {
   try {
     const body = await req.json()
@@ -238,23 +199,12 @@ export async function POST(req: Request) {
     } catch (gptError) {
       console.warn('gpt-image-1 failed, trying dall-e-3:', gptError)
 
-      try {
-        const result = await generateWithDallE3(openai, imagePrompt)
-        return NextResponse.json({
-          imageUrl: result.imageUrl,
-          prompt: result.revisedPrompt,
-          provider: result.provider,
-        })
-      } catch (dalleError) {
-        console.warn('dall-e-3 failed, trying Seedream:', dalleError)
-
-        const result = await generateWithSeedream(imagePrompt)
-        return NextResponse.json({
-          imageUrl: result.imageUrl,
-          prompt: result.revisedPrompt,
-          provider: result.provider,
-        })
-      }
+      const result = await generateWithDallE3(openai, imagePrompt)
+      return NextResponse.json({
+        imageUrl: result.imageUrl,
+        prompt: result.revisedPrompt,
+        provider: result.provider,
+      })
     }
   } catch (error) {
     console.error('generate-avatar error:', error)
