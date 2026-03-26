@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import EntryScreen from './components/EntryScreen'
+import LandingPage from './components/LandingPage'
 import SoulMirror from './components/SoulMirror'
 import type { MirrorVoice, SoulMirrorResumeState, StyleOption } from './components/SoulMirror'
 import UniverseMap from './components/UniverseMap'
@@ -28,6 +29,7 @@ import {
 import { playChime, startAmbient, stopAmbient, setAmbientMuted } from '../lib/sounds'
 
 type Screen =
+  | 'landing'
   | 'entry'
   | 'login'
   | 'signup'
@@ -281,8 +283,8 @@ export default function Home() {
 
       if (!session) {
         clearHubState()
-        setScreen('entry')
-        console.log('[routeFromSession] no session, go to entry')
+        setScreen('landing')
+        console.log('[routeFromSession] no session, go to landing')
         return
       }
 
@@ -321,8 +323,8 @@ export default function Home() {
     } catch (err) {
       console.error('[routeFromSession] error:', err)
       clearHubState()
-      setScreen('entry')
-      console.log('[routeFromSession] fallback to entry')
+      setScreen('landing')
+      console.log('[routeFromSession] fallback to landing')
     }
   }
 
@@ -338,8 +340,8 @@ export default function Home() {
           await signOut()
         } catch {}
         clearHubState()
-        setScreen('entry')
-        console.log('[checkSession] fallback to entry')
+        setScreen('landing')
+        console.log('[checkSession] fallback to landing')
       }
     }
 
@@ -349,8 +351,8 @@ export default function Home() {
     fallbackTimer = setTimeout(() => {
       if (screenRef.current === 'loading') {
         clearHubState()
-        setScreen('entry')
-        console.log('[fallbackTimer] loading >10s, go to entry')
+        setScreen('landing')
+        console.log('[fallbackTimer] loading >10s, go to landing')
       }
     }, 10000)
 
@@ -361,8 +363,8 @@ export default function Home() {
         clearHubState()
         setPendingCredentials(null)
         setOnboardingError('')
-        setScreen('entry')
-        console.log('[authStateChange] SIGNED_OUT, go to entry')
+        setScreen('landing')
+        console.log('[authStateChange] SIGNED_OUT, go to landing')
         return
       }
     })
@@ -734,6 +736,21 @@ export default function Home() {
 
   return (
     <>
+      {screen === 'landing' && (
+        <LandingPage
+          onEnter={() => {
+            setOnboardingError('')
+            setPendingCredentials(null)
+            setScreen('signup')
+          }}
+          onLogin={() => {
+            setOnboardingError('')
+            setPendingCredentials(null)
+            setScreen('login')
+          }}
+        />
+      )}
+
       {screen === 'entry' && (
         <EntryScreen
           onEnter={() => {

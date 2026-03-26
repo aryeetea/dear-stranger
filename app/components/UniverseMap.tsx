@@ -1487,24 +1487,33 @@ export default function UniverseMap({
         {starPreview && (
           <motion.div key="star-preview" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
             onClick={() => setStarPreview(null)}
-            style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 80, background: 'rgba(0,0,5,0.7)', backdropFilter: 'blur(6px)' }}>
+            style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 80, background: 'rgba(0,0,5,0.75)', backdropFilter: 'blur(8px)' }}>
             <motion.div onClick={e => e.stopPropagation()}
-              style={{ background: 'rgba(8,10,28,0.95)', border: '1px solid rgba(201,168,76,0.4)', borderRadius: '12px', padding: '36px 40px', width: 'min(480px, 90vw)', boxShadow: '0 0 60px rgba(201,168,76,0.15)', position: 'relative' }}>
+              style={{ background: 'rgba(8,10,28,0.97)', border: '1px solid rgba(201,168,76,0.35)', borderRadius: '12px', padding: '32px 36px 28px', width: 'min(520px, 92vw)', maxHeight: '80vh', display: 'flex', flexDirection: 'column', boxShadow: '0 0 80px rgba(201,168,76,0.12)', position: 'relative' }}>
               <div style={{ position: 'absolute', top: 0, left: '20%', right: '20%', height: '1px', background: 'linear-gradient(90deg, transparent, rgba(201,168,76,0.5), transparent)' }} />
-              <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.4em', color: 'rgba(201,168,76,0.6)', textTransform: 'uppercase', marginBottom: '8px' }}>✦ Universe Letter</p>
-              <p style={{ fontFamily: "'Cinzel', serif", fontSize: '11px', letterSpacing: '0.2em', color: 'rgba(255,255,255,0.7)', marginBottom: '20px' }}>From · {starPreview.senderName}</p>
-              <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '18px', color: 'rgba(255,255,255,0.88)', lineHeight: 1.7, marginBottom: '28px' }}>
-                "{starPreview.preview}"
-              </p>
-              <div style={{ display: 'flex', gap: '10px' }}>
+              <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.4em', color: 'rgba(201,168,76,0.6)', textTransform: 'uppercase', marginBottom: '6px', flexShrink: 0 }}>✦ Universe Letter</p>
+              <p style={{ fontFamily: "'Cinzel', serif", fontSize: '11px', letterSpacing: '0.2em', color: 'rgba(255,255,255,0.6)', marginBottom: '20px', flexShrink: 0 }}>From · {starPreview.senderName}</p>
+              {/* Scrollable letter body */}
+              <div style={{ overflowY: 'auto', flex: 1, marginBottom: '24px', paddingRight: '6px', scrollbarWidth: 'thin', scrollbarColor: 'rgba(201,168,76,0.2) transparent' }}>
+                <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '17px', color: 'rgba(255,255,255,0.88)', lineHeight: 1.8 }}>
+                  &ldquo;{starPreview.body}&rdquo;
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: '10px', flexShrink: 0, flexWrap: 'wrap' }}>
                 <button onClick={() => setStarPreview(null)}
-                  style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.25em', color: 'rgba(255,255,255,0.5)', padding: '10px 18px', border: '1px solid rgba(255,255,255,0.15)', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase', borderRadius: '4px' }}>
+                  style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.25em', color: 'rgba(255,255,255,0.45)', padding: '10px 16px', border: '1px solid rgba(255,255,255,0.12)', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase', borderRadius: '4px', transition: 'opacity 0.2s' }}>
                   Let it pass
                 </button>
                 <button onClick={() => { setStarPreview(null); onWriteLetter?.() }}
-                  style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.25em', color: '#c9a84c', padding: '10px 18px', border: '1px solid rgba(201,168,76,0.4)', background: 'rgba(201,168,76,0.08)', cursor: 'pointer', textTransform: 'uppercase', borderRadius: '4px' }}>
+                  style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.25em', color: 'rgba(255,255,255,0.6)', padding: '10px 16px', border: '1px solid rgba(255,255,255,0.15)', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase', borderRadius: '4px', transition: 'opacity 0.2s' }}>
                   Reply into the universe ✦
                 </button>
+                {starPreview.senderId && (
+                  <button onClick={() => { setStarPreview(null); onWriteLetter?.(starPreview.senderName) }}
+                    style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.25em', color: '#c9a84c', padding: '10px 16px', border: '1px solid rgba(201,168,76,0.45)', background: 'rgba(201,168,76,0.07)', cursor: 'pointer', textTransform: 'uppercase', borderRadius: '4px', transition: 'all 0.2s' }}>
+                    Write to this stranger ✦
+                  </button>
+                )}
               </div>
             </motion.div>
           </motion.div>
