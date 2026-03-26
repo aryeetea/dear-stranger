@@ -67,7 +67,7 @@ const FONTS = [
   { id: 'roboto-slab', label: 'Roboto Slab', family: "'Roboto Slab', serif", preview: 'A letter across the stars' },
   { id: 'lora', label: 'Lora', family: "'Lora', serif", preview: 'A letter across the stars' },
   { id: 'quicksand', label: 'Quicksand', family: "'Quicksand', sans-serif", preview: 'A letter across the stars' },
-  { id: 'source-sans', label: 'Source Sans Pro', family: "'Source Sans Pro', sans-serif", preview: 'A letter across the stars' },
+  { id: 'source-sans', label: 'Source Sans', family: "'Source Sans 3', sans-serif", preview: 'A letter across the stars' },
   { id: 'cinzel', label: 'Cinzel', family: "'Cinzel', serif", preview: 'A LETTER ACROSS THE STARS' },
   { id: 'roboto', label: 'Roboto', family: "'Roboto', sans-serif", preview: 'A letter across the stars' },
   { id: 'lato', label: 'Lato', family: "'Lato', sans-serif", preview: 'A letter across the stars' },
@@ -139,6 +139,61 @@ function EnvelopeSVG({ color = '#c8a050' }: { color?: string }) {
       <line x1="2" y1="20" x2="60" y2="46" stroke="rgba(0,0,0,0.1)" strokeWidth="0.8"/>
       <line x1="118" y1="20" x2="60" y2="46" stroke="rgba(0,0,0,0.1)" strokeWidth="0.8"/>
     </svg>
+  )
+}
+
+function PlainWhite({ children, paperBg }: { children: React.ReactNode; paperBg?: string }) {
+  return (
+    <div style={{ position:'relative', background: paperBg || '#ffffff', boxShadow:'0 20px 80px rgba(0,0,0,0.55)', overflow:'hidden' }}>
+      <div style={{ position:'absolute', inset:0, borderLeft:'4px solid rgba(220,60,60,0.25)', pointerEvents:'none', zIndex:1 }}/>
+      {[...Array(22)].map((_,i)=><div key={i} style={{ position:'absolute', left:'52px', right:'20px', top:`${48+i*28}px`, height:'1px', background:'rgba(100,160,220,0.18)' }}/>)}
+      <div style={{ padding:'32px 28px 40px 60px', position:'relative', zIndex:2 }}>{children}</div>
+    </div>
+  )
+}
+
+function Starfield({ children, paperBg }: { children: React.ReactNode; paperBg?: string }) {
+  return (
+    <div style={{ position:'relative', background: paperBg || 'linear-gradient(160deg, #181c2a 0%, #232946 100%)', boxShadow:'0 20px 80px rgba(0,0,0,0.85)', overflow:'hidden' }}>
+      <div style={{ position:'absolute', inset:0, pointerEvents:'none', zIndex:1 }}>
+        {[...Array(60)].map((_,i)=>{
+          const x=((i*73+17)%100); const y=((i*53+11)%100); const sz=(i%4)*0.4+0.3; const op=(i%5)*0.04+0.08
+          return <div key={i} style={{ position:'absolute', left:`${x}%`, top:`${y}%`, width:`${sz}px`, height:`${sz}px`, borderRadius:'50%', background:`rgba(255,255,255,${op})` }}/>
+        })}
+      </div>
+      <div style={{ position:'absolute', inset:'14px', border:'1px solid rgba(180,160,255,0.12)', pointerEvents:'none', zIndex:2 }}/>
+      <div style={{ padding:'40px', position:'relative', zIndex:3 }}>{children}</div>
+    </div>
+  )
+}
+
+function VellumPaper({ children, paperBg }: { children: React.ReactNode; paperBg?: string }) {
+  return (
+    <div style={{ position:'relative', background: paperBg || 'linear-gradient(160deg, #f9f7f3 0%, #ece9e6 100%)', boxShadow:'0 20px 80px rgba(0,0,0,0.45)', overflow:'hidden' }}>
+      <div style={{ position:'absolute', inset:0, pointerEvents:'none', backgroundImage:`url("data:image/svg+xml,%3Csvg viewBox='0 0 150 150' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.06'/%3E%3C/svg%3E")`, backgroundSize:'150px', zIndex:1 }}/>
+      <div style={{ position:'absolute', inset:'16px', border:'1px solid rgba(160,140,120,0.2)', pointerEvents:'none', zIndex:2 }}/>
+      <div style={{ padding:'40px', position:'relative', zIndex:3 }}>{children}</div>
+    </div>
+  )
+}
+
+function BlueRuled({ children, paperBg }: { children: React.ReactNode; paperBg?: string }) {
+  return (
+    <div style={{ position:'relative', background: paperBg || 'linear-gradient(180deg, #eaf6ff 0%, #dbefff 100%)', boxShadow:'0 20px 80px rgba(0,0,0,0.5)', overflow:'hidden' }}>
+      {[...Array(22)].map((_,i)=><div key={i} style={{ position:'absolute', left:'20px', right:'20px', top:`${48+i*28}px`, height:'1px', background:'rgba(80,140,220,0.22)' }}/>)}
+      <div style={{ position:'absolute', left:'48px', top:0, bottom:0, width:'2px', background:'rgba(210,80,80,0.28)', pointerEvents:'none', zIndex:2 }}/>
+      <div style={{ padding:'32px 28px 40px 60px', position:'relative', zIndex:3 }}>{children}</div>
+    </div>
+  )
+}
+
+function KraftPaper({ children, paperBg }: { children: React.ReactNode; paperBg?: string }) {
+  return (
+    <div style={{ position:'relative', background: paperBg || 'linear-gradient(155deg, #e2c9a0 0%, #cbb484 100%)', boxShadow:'0 20px 80px rgba(0,0,0,0.65)', overflow:'hidden' }}>
+      <div style={{ position:'absolute', inset:0, pointerEvents:'none', backgroundImage:`url("data:image/svg+xml,%3Csvg viewBox='0 0 120 120' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0.4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.1'/%3E%3C/svg%3E")`, backgroundSize:'120px', zIndex:1 }}/>
+      {[...Array(20)].map((_,i)=><div key={i} style={{ position:'absolute', left:'32px', right:'32px', top:`${56+i*28}px`, height:'1px', background:'rgba(100,60,10,0.13)' }}/>)}
+      <div style={{ padding:'40px', position:'relative', zIndex:2 }}>{children}</div>
+    </div>
   )
 }
 
@@ -331,12 +386,19 @@ const PAPER_INK: Record<string, { main: string; secondary: string; accent: strin
   postage: { main: '#100c18', secondary: 'rgba(25,18,40,0.72)', accent: '#6040a0' },
   sakura: { main: '#18080e', secondary: 'rgba(40,15,20,0.72)', accent: '#8b2050' },
   aged: { main: '#160c04', secondary: 'rgba(30,14,4,0.74)', accent: '#7a4010' },
+  plain: { main: '#181818', secondary: 'rgba(30,30,30,0.72)', accent: '#2060c0' },
+  starfield: { main: '#e8e4f8', secondary: 'rgba(220,215,245,0.78)', accent: '#a090e0' },
+  vellum: { main: '#1c1008', secondary: 'rgba(38,22,10,0.72)', accent: '#6a4820' },
+  'blue-ruled': { main: '#0a0c1a', secondary: 'rgba(18,22,40,0.72)', accent: '#2860b0' },
+  kraft: { main: '#1e0e04', secondary: 'rgba(40,18,6,0.74)', accent: '#7a4010' },
 }
 
 const PAPER_ENVELOPE_COLOR: Record<string, string> = {
   ornate: '#e0c870', floral: '#f0b8cc', notepad: '#b0c8e0',
   scrapbook: '#c0a868', ribbon: '#e8a0a0', postage: '#c8c0b0',
   sakura: '#f0b8cc', aged: '#b89050',
+  plain: '#c8c8c8', starfield: '#4a4870', vellum: '#d8d0c0',
+  'blue-ruled': '#a0c4e0', kraft: '#c0924a',
 }
 
 function LetterContent({ fontFamily, ink, recipient, senderName, date, body, setBody, textareaRef }: {
@@ -424,6 +486,11 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
       case 'postage': return <PostageLetter paperBg={pbg}>{content}</PostageLetter>
       case 'sakura': return <CherryBlossom paperBg={pbg}>{content}</CherryBlossom>
       case 'aged': return <AgedDistressed paperBg={pbg}>{content}</AgedDistressed>
+      case 'plain': return <PlainWhite paperBg={pbg}>{content}</PlainWhite>
+      case 'starfield': return <Starfield paperBg={pbg}>{content}</Starfield>
+      case 'vellum': return <VellumPaper paperBg={pbg}>{content}</VellumPaper>
+      case 'blue-ruled': return <BlueRuled paperBg={pbg}>{content}</BlueRuled>
+      case 'kraft': return <KraftPaper paperBg={pbg}>{content}</KraftPaper>
       default: return <OrnateStationery paperBg={pbg}>{content}</OrnateStationery>
     }
   }
