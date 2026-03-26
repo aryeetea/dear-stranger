@@ -4,8 +4,8 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { getAllHubs, getUniverseLetters } from '../lib/auth'
 // ── HUB STYLE TYPES ──
-export type HubStyle = 'portal' | 'lantern' | 'ruin' | 'hourglass' | 'telescope' | 'greenhouse' | 'lotus'
-export type HubColor = 'gold' | 'sage' | 'rose' | 'azure' | 'amber' | 'violet' | 'teal' | 'sand'
+export type HubStyle = 'portal' | 'lantern' | 'ruin' | 'hourglass' | 'telescope' | 'greenhouse' | 'lotus' | 'forge' | 'tower' | 'ship'
+export type HubColor = 'gold' | 'sage' | 'rose' | 'azure' | 'amber' | 'violet' | 'teal' | 'sand' | 'steel' | 'crimson' | 'forest'
 export type HubDecoration = 'none' | 'moon' | 'rings' | 'fireflies' | 'petals' | 'snowflakes' | 'comet'
 export type HubGlowIntensity = 'dim' | 'normal' | 'blazing'
 
@@ -17,6 +17,9 @@ export const HUB_STYLES: { id: HubStyle; label: string; desc: string; icon: stri
   { id: 'telescope', label: 'Starwatch Shrine', desc: 'A celestial shrine with a lens of focused light', icon: '✧' },
   { id: 'greenhouse', label: 'Greenhouse Bubble', desc: 'A glass dome brimming with quiet life', icon: '✦' },
   { id: 'lotus', label: 'Lotus Bloom', desc: 'A luminous lotus opening softly over still water', icon: '🪷' },
+  { id: 'forge', label: 'Cosmic Forge', desc: 'A blazing forge hammering stars into shape', icon: '⚒' },
+  { id: 'tower', label: 'Watcher Tower', desc: 'A lone beacon tower surveying the cosmos', icon: '🗼' },
+  { id: 'ship', label: 'Void Vessel', desc: 'A sailing ship drifting through star-filled seas', icon: '⛵' },
 ]
 
 export const HUB_DECORATIONS: { id: HubDecoration; label: string; icon: string }[] = [
@@ -44,6 +47,9 @@ export const HUB_COLOR_THEMES: { id: HubColor; label: string; ring: string; glow
   { id: 'violet', label: 'Violet', ring: '#8f5aaa', glow: '140,60,180', inner: '#4a1a6a' },
   { id: 'teal', label: 'Teal', ring: '#5a8faa', glow: '60,130,180', inner: '#1a4a6a' },
   { id: 'sand', label: 'Sand', ring: '#aa8f6f', glow: '180,140,80', inner: '#6a5a30' },
+  { id: 'steel', label: 'Steel', ring: '#6a7d8f', glow: '90,115,135', inner: '#28363f' },
+  { id: 'crimson', label: 'Crimson', ring: '#a53a3a', glow: '165,58,58', inner: '#401a1a' },
+  { id: 'forest', label: 'Forest', ring: '#3a7a4a', glow: '58,122,74', inner: '#1a3a22' },
 ]
 
 interface Hub {
@@ -659,6 +665,265 @@ function drawCottage(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: n
   }
 }
 
+function drawForge(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: number, colors: (typeof HUB_COLOR_THEMES)[number], t: number, online: boolean, isMe: boolean, avatarImage?: HTMLImageElement) {
+  const r = 26 * s
+  const pulse = 0.92 + 0.08 * Math.sin(t * 1.4)
+
+  // Outer heat glow
+  const heatGlow = ctx.createRadialGradient(cx, cy, r * 0.3, cx, cy, r * 2.8)
+  heatGlow.addColorStop(0, `rgba(${colors.glow},0.3)`)
+  heatGlow.addColorStop(0.4, `rgba(${colors.glow},0.12)`)
+  heatGlow.addColorStop(1, `rgba(${colors.glow},0)`)
+  ctx.beginPath(); ctx.arc(cx, cy, r * 2.8, 0, Math.PI * 2)
+  ctx.fillStyle = heatGlow; ctx.fill()
+
+  // Anvil base (trapezoid bottom)
+  const baseW = r * 1.5; const baseH = r * 0.38; const baseY = cy + r * 0.55
+  ctx.beginPath()
+  ctx.moveTo(cx - baseW / 2, baseY + baseH)
+  ctx.lineTo(cx + baseW / 2, baseY + baseH)
+  ctx.lineTo(cx + baseW * 0.38, baseY)
+  ctx.lineTo(cx - baseW * 0.38, baseY)
+  ctx.closePath()
+  const baseGrad = ctx.createLinearGradient(cx - baseW / 2, baseY, cx + baseW / 2, baseY)
+  baseGrad.addColorStop(0, `rgba(${colors.glow},0.55)`)
+  baseGrad.addColorStop(0.5, `rgba(${colors.glow},0.8)`)
+  baseGrad.addColorStop(1, `rgba(${colors.glow},0.55)`)
+  ctx.fillStyle = baseGrad; ctx.fill()
+  ctx.strokeStyle = `rgba(${colors.glow},0.85)`; ctx.lineWidth = 1.2 * s; ctx.stroke()
+
+  // Anvil horn (left spike)
+  ctx.beginPath()
+  ctx.moveTo(cx - baseW * 0.38, baseY + baseH * 0.5)
+  ctx.lineTo(cx - baseW * 0.7, baseY + baseH * 0.2)
+  ctx.lineTo(cx - baseW * 0.38, baseY)
+  ctx.closePath()
+  ctx.fillStyle = `rgba(${colors.glow},0.65)`; ctx.fill()
+  ctx.strokeStyle = `rgba(${colors.glow},0.8)`; ctx.lineWidth = 1 * s; ctx.stroke()
+
+  // Anvil top surface
+  const tableW = r * 1.2; const tableY = cy + r * 0.1
+  ctx.beginPath()
+  ctx.moveTo(cx - tableW / 2, tableY + r * 0.28)
+  ctx.lineTo(cx + tableW / 2, tableY + r * 0.28)
+  ctx.lineTo(cx + tableW * 0.42, tableY)
+  ctx.lineTo(cx - tableW * 0.42, tableY)
+  ctx.closePath()
+  const topGrad = ctx.createLinearGradient(cx, tableY, cx, tableY + r * 0.28)
+  topGrad.addColorStop(0, `rgba(${colors.glow},0.9)`)
+  topGrad.addColorStop(1, `rgba(${colors.glow},0.6)`)
+  ctx.fillStyle = topGrad; ctx.fill()
+  ctx.strokeStyle = `rgba(${colors.glow},1)`; ctx.lineWidth = 1.3 * s; ctx.stroke()
+
+  // Glowing ingot on top (avatar or glow orb)
+  const ingotY = tableY - r * 0.06
+  if (avatarImage?.complete && avatarImage.naturalWidth > 0) {
+    ctx.save()
+    ctx.beginPath(); ctx.ellipse(cx, ingotY, r * 0.44, r * 0.34, 0, 0, Math.PI * 2); ctx.clip()
+    ctx.drawImage(avatarImage, cx - r * 0.44, ingotY - r * 0.34, r * 0.88, r * 0.68)
+    ctx.restore()
+  } else {
+    const ingotGlow = ctx.createRadialGradient(cx, ingotY, 0, cx, ingotY, r * 0.48)
+    ingotGlow.addColorStop(0, `rgba(255,240,180,${0.7 * pulse})`)
+    ingotGlow.addColorStop(0.5, `rgba(${colors.glow},${0.55 * pulse})`)
+    ingotGlow.addColorStop(1, `rgba(${colors.glow},0.08)`)
+    ctx.beginPath(); ctx.ellipse(cx, ingotY, r * 0.44, r * 0.34, 0, 0, Math.PI * 2)
+    ctx.fillStyle = ingotGlow; ctx.fill()
+  }
+  ctx.beginPath(); ctx.ellipse(cx, ingotY, r * 0.46, r * 0.36, 0, 0, Math.PI * 2)
+  ctx.strokeStyle = `rgba(255,220,100,${0.6 * pulse})`; ctx.lineWidth = 1.2 * s; ctx.stroke()
+
+  // Sparks flying up
+  for (let i = 0; i < 8; i++) {
+    const age = ((t * 0.7 + i * 0.4) % 2.0)
+    const sx2 = cx + Math.sin(i * 2.1 + t * 0.3) * r * 0.35
+    const sy2 = tableY - age * r * 1.1
+    const alpha = (1 - age / 2.0) * 0.85
+    const sparkR = (1.4 - age * 0.5) * s
+    if (sparkR > 0) {
+      ctx.beginPath(); ctx.arc(sx2, sy2, sparkR, 0, Math.PI * 2)
+      ctx.fillStyle = `rgba(255,${180 + i * 9},60,${alpha})`; ctx.fill()
+    }
+  }
+
+  if (!isMe) {
+    ctx.beginPath(); ctx.arc(cx + tableW * 0.42, tableY - 3 * s, 3 * s, 0, Math.PI * 2)
+    ctx.fillStyle = online ? '#7ecf7e' : 'rgba(255,255,255,0.2)'; ctx.fill()
+  }
+}
+
+function drawTower(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: number, colors: (typeof HUB_COLOR_THEMES)[number], t: number, online: boolean, isMe: boolean, avatarImage?: HTMLImageElement) {
+  const r = 26 * s
+  const beaconPulse = 0.7 + 0.3 * Math.sin(t * 1.8)
+
+  // Ground shadow
+  const shadow = ctx.createRadialGradient(cx, cy + r * 1.1, 0, cx, cy + r * 1.1, r * 1.9)
+  shadow.addColorStop(0, `rgba(${colors.glow},0.18)`)
+  shadow.addColorStop(1, `rgba(${colors.glow},0)`)
+  ctx.beginPath(); ctx.ellipse(cx, cy + r * 1.1, r * 1.6, r * 0.35, 0, 0, Math.PI * 2)
+  ctx.fillStyle = shadow; ctx.fill()
+
+  // Tower body
+  const tW = r * 0.72; const tH = r * 1.85
+  const tX = cx - tW / 2; const tY = cy - r * 0.75
+  const wallGrad = ctx.createLinearGradient(tX, tY, tX + tW, tY)
+  wallGrad.addColorStop(0, `rgba(${colors.glow},0.28)`)
+  wallGrad.addColorStop(0.45, `rgba(${colors.glow},0.55)`)
+  wallGrad.addColorStop(1, `rgba(${colors.glow},0.28)`)
+  ctx.beginPath(); ctx.rect(tX, tY, tW, tH)
+  ctx.fillStyle = wallGrad; ctx.fill()
+  ctx.strokeStyle = `rgba(${colors.glow},0.65)`; ctx.lineWidth = 1.2 * s; ctx.stroke()
+
+  // Battlements (crenellations at top)
+  const merW = tW * 0.22; const merH = r * 0.22
+  for (let i = 0; i < 3; i++) {
+    ctx.beginPath()
+    ctx.rect(tX + i * (tW * 0.38) + tW * 0.02, tY - merH, merW, merH)
+    ctx.fillStyle = `rgba(${colors.glow},0.55)`; ctx.fill()
+    ctx.strokeStyle = `rgba(${colors.glow},0.65)`; ctx.lineWidth = 1 * s; ctx.stroke()
+  }
+
+  // Windows (2 small arrow slits)
+  for (let i = 0; i < 2; i++) {
+    const wY = tY + tH * (0.28 + i * 0.32)
+    ctx.beginPath()
+    ctx.moveTo(cx - 2.5 * s, wY)
+    ctx.lineTo(cx, wY - 5 * s)
+    ctx.lineTo(cx + 2.5 * s, wY)
+    ctx.lineTo(cx + 2.5 * s, wY + 5 * s)
+    ctx.lineTo(cx, wY + 5 * s)
+    ctx.lineTo(cx - 2.5 * s, wY + 5 * s)
+    ctx.closePath()
+    const winAlpha = 0.5 + 0.25 * Math.sin(t * 1.1 + i * 1.3)
+    ctx.fillStyle = `rgba(255,235,150,${winAlpha})`; ctx.fill()
+    ctx.strokeStyle = `rgba(${colors.glow},0.5)`; ctx.lineWidth = 0.7 * s; ctx.stroke()
+  }
+
+  // Avatar in middle window
+  if (avatarImage?.complete && avatarImage.naturalWidth > 0) {
+    ctx.save()
+    ctx.beginPath(); ctx.rect(cx - tW * 0.36, tY + tH * 0.4, tW * 0.72, tH * 0.28); ctx.clip()
+    ctx.drawImage(avatarImage, cx - tW * 0.36, tY + tH * 0.4, tW * 0.72, tH * 0.28)
+    ctx.restore()
+    ctx.beginPath(); ctx.rect(cx - tW * 0.36, tY + tH * 0.4, tW * 0.72, tH * 0.28)
+    ctx.strokeStyle = `rgba(${colors.glow},0.5)`; ctx.lineWidth = 0.8 * s; ctx.stroke()
+  }
+
+  // Beacon at top
+  const bY = tY - merH - 5 * s
+  const beaconGlow = ctx.createRadialGradient(cx, bY, 0, cx, bY, r * 1.2 * beaconPulse)
+  beaconGlow.addColorStop(0, `rgba(${colors.glow},${0.65 * beaconPulse})`)
+  beaconGlow.addColorStop(0.4, `rgba(${colors.glow},${0.25 * beaconPulse})`)
+  beaconGlow.addColorStop(1, `rgba(${colors.glow},0)`)
+  ctx.beginPath(); ctx.arc(cx, bY, r * 1.2 * beaconPulse, 0, Math.PI * 2)
+  ctx.fillStyle = beaconGlow; ctx.fill()
+  ctx.beginPath(); ctx.arc(cx, bY, 4.5 * s, 0, Math.PI * 2)
+  ctx.fillStyle = `rgba(${colors.glow},${0.9 * beaconPulse})`; ctx.fill()
+
+  // Beacon rays
+  for (let i = 0; i < 6; i++) {
+    const angle = (i / 6) * Math.PI * 2 + t * 0.5
+    const x1 = cx + Math.cos(angle) * 6 * s
+    const y1 = bY + Math.sin(angle) * 6 * s
+    const x2 = cx + Math.cos(angle) * r * 1.0 * beaconPulse
+    const y2 = bY + Math.sin(angle) * r * 1.0 * beaconPulse
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2)
+    ctx.strokeStyle = `rgba(${colors.glow},${0.18 * beaconPulse})`; ctx.lineWidth = 1.2 * s; ctx.stroke()
+  }
+
+  if (!isMe) {
+    ctx.beginPath(); ctx.arc(cx + tW * 0.6, tY, 3 * s, 0, Math.PI * 2)
+    ctx.fillStyle = online ? '#7ecf7e' : 'rgba(255,255,255,0.2)'; ctx.fill()
+  }
+}
+
+function drawShip(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: number, colors: (typeof HUB_COLOR_THEMES)[number], t: number, online: boolean, isMe: boolean, avatarImage?: HTMLImageElement) {
+  const r = 26 * s
+  const bob = Math.sin(t * 0.6) * 2.2 * s
+  const sway = Math.sin(t * 0.4) * 0.04
+
+  ctx.save(); ctx.translate(cx, cy + bob); ctx.rotate(sway)
+  const lx = 0; const ly = 0
+
+  // Sea glow beneath
+  const seaGlow = ctx.createRadialGradient(lx, ly + r * 0.85, 0, lx, ly + r * 0.85, r * 2.2)
+  seaGlow.addColorStop(0, `rgba(${colors.glow},0.2)`)
+  seaGlow.addColorStop(1, `rgba(${colors.glow},0)`)
+  ctx.beginPath(); ctx.ellipse(lx, ly + r * 0.85, r * 2, r * 0.45, 0, 0, Math.PI * 2)
+  ctx.fillStyle = seaGlow; ctx.fill()
+
+  // Hull
+  ctx.beginPath()
+  ctx.moveTo(lx - r * 0.88, ly + r * 0.1)
+  ctx.quadraticCurveTo(lx - r * 0.95, ly + r * 0.65, lx - r * 0.4, ly + r * 0.88)
+  ctx.lineTo(lx + r * 0.4, ly + r * 0.88)
+  ctx.quadraticCurveTo(lx + r * 0.95, ly + r * 0.65, lx + r * 0.88, ly + r * 0.1)
+  ctx.lineTo(lx - r * 0.88, ly + r * 0.1)
+  ctx.closePath()
+  const hullGrad = ctx.createLinearGradient(lx - r, ly, lx + r, ly)
+  hullGrad.addColorStop(0, `rgba(${colors.glow},0.38)`)
+  hullGrad.addColorStop(0.5, `rgba(${colors.glow},0.65)`)
+  hullGrad.addColorStop(1, `rgba(${colors.glow},0.38)`)
+  ctx.fillStyle = hullGrad; ctx.fill()
+  ctx.strokeStyle = `rgba(${colors.glow},0.8)`; ctx.lineWidth = 1.3 * s; ctx.stroke()
+
+  // Deck line
+  ctx.beginPath()
+  ctx.moveTo(lx - r * 0.82, ly + r * 0.1)
+  ctx.lineTo(lx + r * 0.82, ly + r * 0.1)
+  ctx.strokeStyle = `rgba(${colors.glow},0.55)`; ctx.lineWidth = 0.9 * s; ctx.stroke()
+
+  // Mast
+  const mastX = lx - r * 0.06; const mastTop = ly - r * 1.05; const mastBottom = ly + r * 0.08
+  ctx.beginPath(); ctx.moveTo(mastX, mastBottom); ctx.lineTo(mastX, mastTop)
+  ctx.strokeStyle = `rgba(${colors.glow},0.75)`; ctx.lineWidth = 2 * s; ctx.stroke()
+
+  // Main sail
+  const sailBulge = 0.25 + 0.1 * Math.sin(t * 0.5)
+  ctx.beginPath()
+  ctx.moveTo(mastX, mastTop)
+  ctx.quadraticCurveTo(mastX + r * (0.5 + sailBulge), ly - r * 0.52, mastX, ly + r * 0.08)
+  const sailGrad = ctx.createLinearGradient(mastX, mastTop, mastX + r * 0.6, ly)
+  sailGrad.addColorStop(0, `rgba(${colors.glow},0.65)`)
+  sailGrad.addColorStop(1, `rgba(${colors.glow},0.28)`)
+  ctx.fillStyle = sailGrad; ctx.fill()
+  ctx.strokeStyle = `rgba(${colors.glow},0.55)`; ctx.lineWidth = 0.8 * s; ctx.stroke()
+
+  // Foresail (smaller front)
+  ctx.beginPath()
+  ctx.moveTo(mastX, mastTop + (mastBottom - mastTop) * 0.3)
+  ctx.quadraticCurveTo(mastX - r * (0.35 + sailBulge * 0.6), ly - r * 0.28, mastX, ly + r * 0.08)
+  const foresailGrad = ctx.createLinearGradient(mastX, mastTop, mastX - r * 0.45, ly)
+  foresailGrad.addColorStop(0, `rgba(${colors.glow},0.45)`)
+  foresailGrad.addColorStop(1, `rgba(${colors.glow},0.18)`)
+  ctx.fillStyle = foresailGrad; ctx.fill()
+  ctx.strokeStyle = `rgba(${colors.glow},0.4)`; ctx.lineWidth = 0.7 * s; ctx.stroke()
+
+  // Avatar in sail center
+  if (avatarImage?.complete && avatarImage.naturalWidth > 0) {
+    ctx.save()
+    ctx.beginPath(); ctx.arc(mastX + r * 0.22, ly - r * 0.45, r * 0.32, 0, Math.PI * 2); ctx.clip()
+    ctx.drawImage(avatarImage, mastX + r * 0.22 - r * 0.32, ly - r * 0.45 - r * 0.32, r * 0.64, r * 0.64)
+    ctx.restore()
+  }
+
+  // Stars (navigational dots around the ship)
+  for (let i = 0; i < 6; i++) {
+    const ang = (i / 6) * Math.PI * 2 + t * 0.25
+    const px = lx + Math.cos(ang) * r * 1.5
+    const py = ly - r * 0.1 + Math.sin(ang) * r * 0.9
+    ctx.beginPath(); ctx.arc(px, py, 1.5 * s, 0, Math.PI * 2)
+    ctx.fillStyle = `rgba(255,255,220,${0.25 + 0.3 * Math.abs(Math.sin(t * 0.7 + i))})`; ctx.fill()
+  }
+
+  ctx.restore()
+
+  if (!isMe) {
+    ctx.beginPath(); ctx.arc(cx + r * 0.82, cy + bob - r * 0.55, 3 * s, 0, Math.PI * 2)
+    ctx.fillStyle = online ? '#7ecf7e' : 'rgba(255,255,255,0.2)'; ctx.fill()
+  }
+}
+
 function drawDecoration(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: number, colors: (typeof HUB_COLOR_THEMES)[number], t: number, decoration: HubDecoration) {
   if (decoration === 'none') return
   const r = 34 * s
@@ -785,6 +1050,9 @@ function drawHub(ctx: CanvasRenderingContext2D, hub: Hub, sx: number, sy: number
     case 'telescope': drawTelescope(ctx, sx, sy, s, colors, t, hub.online, !!hub.isMe, hub.avatarImage); break
     case 'greenhouse': drawGreenhouse(ctx, sx, sy, s, colors, t, hub.online, !!hub.isMe, hub.avatarImage); break
     case 'lotus': drawLotus(ctx, sx, sy, s, colors, t, hub.online, !!hub.isMe, hub.avatarImage); break
+    case 'forge': drawForge(ctx, sx, sy, s, colors, t, hub.online, !!hub.isMe, hub.avatarImage); break
+    case 'tower': drawTower(ctx, sx, sy, s, colors, t, hub.online, !!hub.isMe, hub.avatarImage); break
+    case 'ship': drawShip(ctx, sx, sy, s, colors, t, hub.online, !!hub.isMe, hub.avatarImage); break
     default: drawPortal(ctx, sx, sy, s, colors, t, hub.online, !!hub.isMe, hub.avatarImage)
   }
 
@@ -942,7 +1210,7 @@ export default function UniverseMap({
         const angle = (i / Math.max(realHubs.length, 1)) * Math.PI * 2 + 0.3
         const dist = 180 + (i * 73) % 320
         const avatarImg = hub.avatar_url ? await loadImage(hub.avatar_url) : undefined
-        const styles: HubStyle[] = ['portal', 'lantern', 'ruin', 'hourglass', 'telescope', 'greenhouse', 'lotus']
+        const styles: HubStyle[] = ['portal', 'lantern', 'ruin', 'hourglass', 'telescope', 'greenhouse', 'lotus', 'forge', 'tower', 'ship']
         return {
           x: Math.cos(angle) * dist, y: Math.sin(angle) * dist,
           name: hub.hub_name, bio: hub.bio || '', askAbout: hub.ask_about || '',
