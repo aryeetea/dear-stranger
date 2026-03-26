@@ -90,20 +90,11 @@ async function requestAvatarImage(
   try {
     let token: string | undefined
 
-    // Always refresh to guarantee a non-expired access token
-    try {
-      const { data, error } = await supabase.auth.refreshSession()
-      if (!error && data.session?.access_token) {
-        token = data.session.access_token
-      }
-    } catch {}
+    // getSession() auto-refreshes the token when it's close to expiry —
+    // never call refreshSession() explicitly as Supabase rate-limits it.
+    const { data: { session } } = await supabase.auth.getSession()
+    token = session?.access_token
 
-    // Fall back to cached session if refresh failed
-    if (!token) {
-      const { data: { session } } = await supabase.auth.getSession()
-      token = session?.access_token
-    }
-    
     const response = await fetch('/api/generate-avatar', {
       method: 'POST',
       headers: {
