@@ -38,6 +38,7 @@ const BASE_RENDER =
 const RENDERING_INSTRUCTION =
   'Composition: full body visible head to toe, vertical portrait orientation, face clearly lit and readable. ' +
   'Background: rich atmospheric environment that complements the character. ' +
+  'IMPORTANT: depict exactly ONE single character only — do not add duplicate figures, mirror images, side-by-side poses, multiple versions, or any additional people unless the description explicitly mentions a companion or second character. ' +
   'No text, no watermark, no logo, no flat shading, no cel-shading, no cartoon outlines.'
 
 const STYLE_DESCRIPTORS: Record<string, string> = {
