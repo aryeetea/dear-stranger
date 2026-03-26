@@ -30,15 +30,26 @@ function normalizeDetail(value: string) {
     .trim()
 }
 
+const BASE_RENDER =
+  'Semi-realistic 3D render with 2.5D depth — NOT flat illustration, NOT anime, NOT cartoon. ' +
+  'Style: high-quality CG character art with volumetric lighting, subsurface skin scattering, fine hair strands, realistic fabric texture, and cinematic depth of field. ' +
+  'Think Unreal Engine 5 MetaHuman quality meets cinematic concept art — photorealistic proportions, soft dramatic lighting, rich detail.'
+
+const RENDERING_INSTRUCTION =
+  'Composition: full body visible head to toe, vertical portrait orientation, face clearly lit and readable. ' +
+  'Background: rich atmospheric environment that complements the character. ' +
+  'No text, no watermark, no logo, no flat shading, no cel-shading, no cartoon outlines.'
+
 const STYLE_DESCRIPTORS: Record<string, string> = {
-  fantasy: 'fantasy illustration style — magical, ethereal, mythical, otherworldly',
-  modern: 'modern realistic style — clean, stylish, contemporary',
-  'fantasy-modern': 'fantasy-modern hybrid style — blend of magical and contemporary',
-  celestial: 'celestial style — stars, moonlight, cosmic, divine energy',
-  royal: 'royal style — elegant, luxurious, noble, powerful',
-  streetwear: 'streetwear style — bold, urban, expressive, trendy',
-  futuristic: 'futuristic style — sleek, sci-fi, glowing, advanced technology',
-  nature: 'nature-inspired style — earthy, floral, organic, peaceful',
+  fantasy: 'Fantasy theme: magical environment, ethereal glow, otherworldly atmosphere — but the CHARACTER remains semi-realistic 3D, not illustrated.',
+  modern: 'Modern theme: clean contemporary setting, stylish urban or studio environment — character is semi-realistic 3D.',
+  'fantasy-modern': 'Fantasy-modern theme: blend of magical and contemporary — glowing runes meet city neon, but character is semi-realistic 3D.',
+  celestial: 'Celestial theme: cosmic starfield, moonlit atmosphere, divine radiant energy — character is semi-realistic 3D with luminous skin.',
+  royal: 'Royal theme: opulent palace or throne room setting, luxurious fabrics, candlelight — character is semi-realistic 3D.',
+  streetwear: 'Streetwear theme: bold urban environment, graffiti or city backdrop, dramatic rim lighting — character is semi-realistic 3D.',
+  futuristic: 'Futuristic theme: sleek sci-fi environment, holographic elements, neon-lit corridors — character is semi-realistic 3D with glowing tech details.',
+  'nature inspired': 'Nature-inspired theme: lush forest, flowing water, golden-hour light through leaves — character is semi-realistic 3D with organic detail.',
+  nature: 'Nature-inspired theme: lush forest, flowing water, golden-hour light through leaves — character is semi-realistic 3D with organic detail.',
 }
 
 function buildAvatarPrompt(
@@ -57,27 +68,27 @@ function buildAvatarPrompt(
   const feedbackLine = feedback?.trim() ? normalizeDetail(feedback) : ''
 
   const styleDesc = style ? STYLE_DESCRIPTORS[style.toLowerCase()] : undefined
-  const styleLine = styleDesc
-    ? `Cinematic, highly detailed digital painting, soft glow lighting, semi-realistic, polished ${styleDesc}.`
-    : 'Cinematic, highly detailed digital painting, soft glow lighting, semi-realistic, polished fantasy illustration style.'
+  const styleThemeLine = styleDesc || 'Fantasy theme: magical environment, ethereal glow — but the character remains semi-realistic 3D, not illustrated.'
 
   if (mode === 'reimagine') {
     if (feedbackLine) {
       return [
-        `Create a full body character portrait EXACTLY as described: ${feedbackLine}. You must follow the user's description precisely — do not add, remove, or change any details. This is your only directive.`,
-        details ? `Original character reference context: ${details}.` : '',
-        styleLine,
-        'Rendering: full body visible head to toe, vertical composition, face clearly lit and readable, rich atmospheric background that complements the character, no text, no watermark, no logo.',
+        `Create a full body character portrait EXACTLY as described: ${feedbackLine}. Follow the description precisely — do not add, remove, or change any details.`,
+        details ? `Original character reference: ${details}.` : '',
+        BASE_RENDER,
+        styleThemeLine,
+        RENDERING_INSTRUCTION,
       ]
         .filter(Boolean)
         .join('\n\n')
     }
     return [
       details
-        ? `Create a reimagined full body character portrait. The character is described as: ${details}. Match the person's appearance, skin tone, hair, clothing, body, and features as closely as possible to the description provided. Do not invent or omit any details.`
-        : `Create a full body character portrait of a mysterious figure in a cinematic illustrated style.`,
-      styleLine,
-      'Rendering: full body visible head to toe, vertical composition, face clearly lit and readable, rich atmospheric background that complements the character, no text, no watermark, no logo.',
+        ? `Reimagine this full body character portrait. Character description: ${details}. Match skin tone, hair, face, clothing, and body accurately. Do not invent or omit details.`
+        : `Create a full body character portrait of a mysterious figure.`,
+      BASE_RENDER,
+      styleThemeLine,
+      RENDERING_INSTRUCTION,
     ]
       .filter(Boolean)
       .join('\n\n')
@@ -85,10 +96,11 @@ function buildAvatarPrompt(
 
   return [
     details
-      ? `Create a full body character portrait. The character is described as: ${details}. Match the person's appearance, skin tone, hair, clothing, body, and features closely to the description provided.`
-      : `Create a full body character portrait of a mysterious figure in a cinematic illustrated style.`,
-    styleLine,
-    'Rendering: full body visible head to toe, vertical composition, face clearly lit and readable, rich atmospheric background that complements the character, no text, no watermark, no logo.',
+      ? `Create a full body character portrait. Character description: ${details}. Match skin tone, hair, face, clothing, and body accurately.`
+      : `Create a full body character portrait of a mysterious figure.`,
+    BASE_RENDER,
+    styleThemeLine,
+    RENDERING_INSTRUCTION,
   ]
     .filter(Boolean)
     .join('\n\n')
