@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 
 function StarField() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -50,10 +50,16 @@ function GoldRule({ opacity = 0.28 }: { opacity?: number }) {
 }
 
 export default function LandingPage({ onEnter, onLogin }: { onEnter?: () => void; onLogin?: () => void }) {
-  const [visible, setVisible] = useState(false)
+  // phase 0 = nothing, 1 = letter arrives, 2 = salutation, 3 = body, 4 = buttons
+  const [phase, setPhase] = useState(0)
   useEffect(() => {
-    const t = setTimeout(() => setVisible(true), 350)
-    return () => clearTimeout(t)
+    const timers = [
+      setTimeout(() => setPhase(1), 500),
+      setTimeout(() => setPhase(2), 1800),
+      setTimeout(() => setPhase(3), 2600),
+      setTimeout(() => setPhase(4), 3800),
+    ]
+    return () => timers.forEach(clearTimeout)
   }, [])
 
   const paragraphs: { text: string; italic?: boolean }[] = [
@@ -97,9 +103,9 @@ export default function LandingPage({ onEnter, onLogin }: { onEnter?: () => void
       />
 
       <motion.article
-        initial={{ opacity: 0, y: 36 }}
-        animate={visible ? { opacity: 1, y: 0 } : {}}
-        transition={{ duration: 1.7, ease: [0.22, 1, 0.36, 1] }}
+        initial={{ opacity: 0, y: 80, scale: 0.9, filter: 'blur(6px)' }}
+        animate={phase >= 1 ? { opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' } : {}}
+        transition={{ duration: 2.2, ease: [0.16, 1, 0.3, 1] }}
         style={{
           position: 'relative',
           zIndex: 2,
@@ -118,14 +124,22 @@ export default function LandingPage({ onEnter, onLogin }: { onEnter?: () => void
           </p>
         </div>
 
-        <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: 'clamp(26px, 4.5vw, 38px)', color: '#1a1208', marginBottom: '28px', lineHeight: 1.2 }}>
+        <motion.p
+          initial={{ opacity: 0, x: -12 }}
+          animate={phase >= 2 ? { opacity: 1, x: 0 } : {}}
+          transition={{ duration: 1.2, ease: 'easeOut' }}
+          style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: 'clamp(26px, 4.5vw, 38px)', color: '#1a1208', marginBottom: '28px', lineHeight: 1.2 }}
+        >
           Dear Stranger,
-        </p>
+        </motion.p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '18px', marginBottom: '32px' }}>
           {paragraphs.map(({ text, italic }, i) => (
-            <p
+            <motion.p
               key={i}
+              initial={{ opacity: 0, y: 10 }}
+              animate={phase >= 3 ? { opacity: 1, y: 0 } : {}}
+              transition={{ duration: 1.1, delay: i * 0.1, ease: 'easeOut' }}
               style={{
                 fontFamily: "'IM Fell English', serif",
                 fontStyle: italic ? 'italic' : 'normal',
@@ -136,11 +150,16 @@ export default function LandingPage({ onEnter, onLogin }: { onEnter?: () => void
               }}
             >
               {text}
-            </p>
+            </motion.p>
           ))}
         </div>
 
-        <div style={{ marginBottom: '40px' }}>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={phase >= 3 ? { opacity: 1 } : {}}
+          transition={{ duration: 1.2, delay: paragraphs.length * 0.1 + 0.2, ease: 'easeOut' }}
+          style={{ marginBottom: '40px' }}
+        >
           <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: 'clamp(15px, 1.8vw, 18px)', color: '#1a1208', marginBottom: '24px' }}>
             Come in.
           </p>
@@ -150,13 +169,18 @@ export default function LandingPage({ onEnter, onLogin }: { onEnter?: () => void
               Dear Stranger ✦
             </span>
           </div>
-        </div>
+        </motion.div>
 
         <div style={{ marginBottom: '28px' }}>
           <GoldRule opacity={0.2} />
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={phase >= 4 ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 1, ease: 'easeOut' }}
+          style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}
+        >
           <button
             onClick={onEnter}
             style={{
@@ -209,11 +233,16 @@ export default function LandingPage({ onEnter, onLogin }: { onEnter?: () => void
           >
             Already have a hub? Sign in
           </button>
-        </div>
+        </motion.div>
 
-        <p style={{ fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.32em', color: 'rgba(100,72,18,0.28)', textTransform: 'uppercase', textAlign: 'center', marginTop: '32px', marginBottom: 0 }}>
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={phase >= 4 ? { opacity: 1 } : {}}
+          transition={{ duration: 1, delay: 0.4, ease: 'easeOut' }}
+          style={{ fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.32em', color: 'rgba(100,72,18,0.28)', textTransform: 'uppercase', textAlign: 'center', marginTop: '32px', marginBottom: 0 }}
+        >
           Dear Stranger &nbsp;&middot;&nbsp; 2026
-        </p>
+        </motion.p>
       </motion.article>
     </div>
   )
