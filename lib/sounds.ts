@@ -9,6 +9,155 @@ function getCtx(): AudioContext | null {
   return audioCtx
 }
 
+// ── Ambient ──────────────────────────────────────────────────────────────────
+
+interface AmbientNodes {
+  masterGain: GainNode
+  stop: () => void
+}
+
+let ambientNodes: AmbientNodes | null = null
+
+/**
+ * Start a subtle cosmic ambient soundscape:
+ *  - Deep sine drone (~55 Hz) slowly breathing via LFO
+ *  - Mid-range filtered noise pad (space wind)
+ *  - Soft harmonic overtones
+ * All very quiet; total output ≈ 0.08 amplitude.
+ */
+export function startAmbient(): void {
+  if (ambientNodes) return // already running
+  const ctx = getCtx()
+  if (!ctx) return
+
+  const master = ctx.createGain()
+  master.gain.setValueAtTime(0, ctx.currentTime)
+  master.gain.linearRampToValueAtTime(0.08, ctx.currentTime + 4) // fade in over 4s
+  master.connect(ctx.destination)
+
+  const stopFns: (() => void)[] = []
+
+  // 1. Deep drone — fundamental at 55 Hz + octave at 110 Hz
+  const droneFreqs = [55, 110, 165]
+  droneFreqs.forEach((freq, i) => {
+    const osc = ctx.createOscillator()
+    const oscGain = ctx.createGain()
+    osc.type = 'sine'
+    osc.frequency.value = freq
+    oscGain.gain.value = 0.35 / (i + 1)
+
+    // Slow breathing LFO on each drone
+    const lfo = ctx.createOscillator()
+    const lfoGain = ctx.createGain()
+    lfo.type = 'sine'
+    lfo.frequency.value = 0.04 + i * 0.017  // very slow: ~1 cycle per 25s
+    lfoGain.gain.value = 0.12
+    lfo.connect(lfoGain)
+    lfoGain.connect(oscGain.gain)
+
+    osc.connect(oscGain)
+    oscGain.connect(master)
+    osc.start()
+    lfo.start()
+    stopFns.push(() => { osc.stop(); lfo.stop() })
+  })
+
+  // 2. Space wind — filtered white noise
+  ;(function spawnWindNode() {
+    const bufferSize = ctx.sampleRate * 4
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate)
+    const data = buffer.getChannelData(0)
+    for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1
+
+    const noise = ctx.createBufferSource()
+    noise.buffer = buffer
+    noise.loop = true
+
+    const lo = ctx.createBiquadFilter()
+    lo.type = 'lowpass'
+    lo.frequency.value = 320
+    lo.Q.value = 0.5
+
+    const hi = ctx.createBiquadFilter()
+    hi.type = 'highpass'
+    hi.frequency.value = 60
+
+    const noiseGain = ctx.createGain()
+    noiseGain.gain.value = 0.18
+
+    // Slow LFO on wind volume for breathing texture
+    const windLfo = ctx.createOscillator()
+    const windLfoGain = ctx.createGain()
+    windLfo.type = 'sine'
+    windLfo.frequency.value = 0.06
+    windLfoGain.gain.value = 0.08
+    windLfo.connect(windLfoGain)
+    windLfoGain.connect(noiseGain.gain)
+
+    noise.connect(lo)
+    lo.connect(hi)
+    hi.connect(noiseGain)
+    noiseGain.connect(master)
+    noise.start()
+    windLfo.start()
+    stopFns.push(() => { noise.stop(); windLfo.stop() })
+  })()
+
+  // 3. Occasional distant shimmer — very faint high harmonic pulses
+  const shimCtx = ctx  // non-null within this closure
+  let shimmerTimer: ReturnType<typeof setTimeout>
+  function scheduleShimmer() {
+    const delay = 6000 + Math.random() * 12000 // every 6-18s
+    shimmerTimer = setTimeout(() => {
+      if (!ambientNodes) return
+      const freq = [880, 1046, 1318, 1568][Math.floor(Math.random() * 4)]
+      const osc = shimCtx.createOscillator()
+      const g = shimCtx.createGain()
+      const now = shimCtx.currentTime
+      osc.type = 'sine'
+      osc.frequency.value = freq
+      g.gain.setValueAtTime(0, now)
+      g.gain.linearRampToValueAtTime(0.04, now + 0.8)
+      g.gain.exponentialRampToValueAtTime(0.001, now + 4)
+      osc.connect(g)
+      g.connect(master)
+      osc.start(now)
+      osc.stop(now + 4)
+      scheduleShimmer()
+    }, delay)
+  }
+  scheduleShimmer()
+
+  ambientNodes = {
+    masterGain: master,
+    stop: () => {
+      clearTimeout(shimmerTimer)
+      stopFns.forEach(fn => { try { fn() } catch { /* already stopped */ } })
+      master.gain.setValueAtTime(master.gain.value, ctx.currentTime)
+      master.gain.linearRampToValueAtTime(0, ctx.currentTime + 2)
+      setTimeout(() => { master.disconnect() }, 2200)
+      ambientNodes = null
+    },
+  }
+}
+
+export function stopAmbient(): void {
+  ambientNodes?.stop()
+}
+
+export function setAmbientMuted(muted: boolean): void {
+  if (!ambientNodes) return
+  const ctx = getCtx()
+  if (!ctx) return
+  const now = ctx.currentTime
+  ambientNodes.masterGain.gain.setValueAtTime(ambientNodes.masterGain.gain.value, now)
+  ambientNodes.masterGain.gain.linearRampToValueAtTime(muted ? 0 : 0.08, now + 0.8)
+}
+
+export function isAmbientRunning(): boolean {
+  return ambientNodes !== null
+}
+
 /** Whoosh + paper rustle — played when a letter is released */
 export function playLetterSend(): void {
   const ctx = getCtx()

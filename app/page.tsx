@@ -25,7 +25,7 @@ import {
   uploadAvatarToStorage,
   getMyLetters,
 } from './lib/auth'
-import { playChime } from '../lib/sounds'
+import { playChime, startAmbient, stopAmbient, setAmbientMuted } from '../lib/sounds'
 
 type Screen =
   | 'entry'
@@ -154,6 +154,10 @@ export default function Home() {
   const [scribeRecipient, setScribeRecipient] = useState<string | undefined>()
   const [observatoryOpen, setObservatoryOpen] = useState(false)
   const [navResetSignal, setNavResetSignal] = useState(0)
+  const [ambientMuted, setAmbientMutedState] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return localStorage.getItem('ds_ambient_muted') === '1'
+  })
   const [profileOpen, setProfileOpen] = useState(false)
   const [pendingCredentials, setPendingCredentials] = useState<{
     email: string
@@ -208,6 +212,25 @@ export default function Home() {
       }
     })()
   }, [screen, hubAvatarPending, hubAvatarUrl])
+
+  // Start/stop cosmic ambient based on screen
+  useEffect(() => {
+    if (screen === 'universe') {
+      startAmbient()
+      if (ambientMuted) setAmbientMuted(true)
+    } else {
+      stopAmbient()
+    }
+    return () => { if (screen === 'universe') stopAmbient() }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [screen])
+
+  function toggleAmbient() {
+    const next = !ambientMuted
+    setAmbientMutedState(next)
+    setAmbientMuted(next)
+    if (typeof window !== 'undefined') localStorage.setItem('ds_ambient_muted', next ? '1' : '0')
+  }
 
   // Poll for newly arrived letters every 60s while on universe screen
   const knownArrivedCountRef = useRef<number | null>(null)
@@ -756,6 +779,23 @@ export default function Home() {
       )}
 
       {screen === 'universe' && <NotificationBanner />}
+
+      {screen === 'universe' && (
+        <button
+          onClick={toggleAmbient}
+          title={ambientMuted ? 'Unmute ambient' : 'Mute ambient'}
+          style={{
+            position: 'fixed', top: '24px', left: '24px', zIndex: 60,
+            background: 'rgba(8,10,28,0.7)', border: '1px solid rgba(255,255,255,0.12)',
+            borderRadius: '50%', width: '34px', height: '34px', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            backdropFilter: 'blur(10px)', color: ambientMuted ? 'rgba(255,255,255,0.3)' : 'rgba(201,168,76,0.8)',
+            fontSize: '14px', transition: 'color 0.3s, border-color 0.3s',
+          }}
+        >
+          {ambientMuted ? '🔇' : '🔊'}
+        </button>
+      )}
 
       {screen === 'universe' && avatarGenerating && (
         <div style={{
