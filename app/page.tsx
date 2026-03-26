@@ -89,11 +89,12 @@ async function requestAvatarImage(
 
   try {
     const { data: { session } } = await supabase.auth.getSession()
+    const token = session?.access_token ?? (await supabase.auth.refreshSession().then(r => r.data.session?.access_token))
     const response = await fetch('/api/generate-avatar', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}),
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
       },
       body: JSON.stringify({ answers, userId, style }),
       signal: controller.signal,
@@ -363,6 +364,9 @@ export default function Home() {
             hubNameAnswer,
             chosenBio,
             chosenAskAbout,
+            chosenHubStyle,
+            chosenHubColor,
+            chosenDecoration,
           )
 
           session = await getSession()
@@ -374,7 +378,7 @@ export default function Home() {
 
           setPendingCredentials(null)
         } else if (session) {
-          await createHubForCurrentUser(hubNameAnswer, chosenBio, chosenAskAbout)
+          await createHubForCurrentUser(hubNameAnswer, chosenBio, chosenAskAbout, chosenHubStyle, chosenHubColor, chosenDecoration)
         } else {
           setScreen('entry')
           return

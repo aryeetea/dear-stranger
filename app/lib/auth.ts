@@ -76,6 +76,9 @@ export async function signUpAndCreateHub(
   hubName: string,
   bio: string,
   askAbout: string,
+  hubStyle?: string,
+  backdropId?: string,
+  decoration?: string,
 ) {
   await assertHubNameAvailable(hubName)
 
@@ -94,6 +97,9 @@ export async function signUpAndCreateHub(
       bio,
       ask_about: askAbout,
       email,
+      hub_style: hubStyle || 'portal',
+      backdrop_id: backdropId || 'gold',
+      decoration: decoration || 'none',
     },
   ])
 
@@ -125,6 +131,9 @@ export async function createHubForCurrentUser(
   hubName: string,
   bio: string,
   askAbout: string,
+  hubStyle?: string,
+  backdropId?: string,
+  decoration?: string,
 ) {
   const {
     data: { user },
@@ -156,6 +165,9 @@ export async function createHubForCurrentUser(
         bio,
         ask_about: askAbout,
         email,
+        hub_style: hubStyle || 'portal',
+        backdrop_id: backdropId || 'gold',
+        decoration: decoration || 'none',
       },
     ])
     .select()
