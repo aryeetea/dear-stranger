@@ -203,8 +203,8 @@ export async function POST(req: Request) {
     const mirrorVoicePrompt =
       typeof body?.mirrorVoicePrompt === 'string' ? body.mirrorVoicePrompt.trim() : ''
     const isReturning = Boolean(body?.isReturning)
-    const minExchanges = Math.max(1, Number(body?.minExchanges) || 5)
-    const maxExchanges = Math.max(minExchanges, Number(body?.maxExchanges) || 9)
+    const minExchanges = Math.max(1, Number(body?.minExchanges) || 10)
+    const maxExchanges = Math.max(minExchanges, Number(body?.maxExchanges) || 29)
 
 
     let openaiKey = process.env.OPENAI_API_KEY
@@ -276,6 +276,7 @@ Core rules:
 
 Closing rules:
 - If you are closing, write a warm final mirror message instead of a question.
+- The closing message must end with a line — in your exact voice and tone — that conveys you can now clearly see the person's vision. Make it feel natural and true to your character, not generic. For example: a warm friend might say "I can totally see your vision." A Gen Z voice might say "ok i genuinely see your vision, no cap." A poetic voice might say "Your form has risen from the mist — I see you now." A wise elder might say "Your presence has taken shape before me." A playful voice might say "Oh I can see it so clearly, this is so exciting!" Match your voice.
 - Only mark done true if there is enough visual detail for a strong avatar portrait.
 - ${mustClose ? 'You must close now.' : hasEnough ? 'You may close now if the description feels complete.' : 'Do not close yet.'}
 

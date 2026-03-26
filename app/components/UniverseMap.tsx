@@ -89,6 +89,29 @@ function getColor(colorTheme?: string | null) {
   return HUB_COLOR_THEMES.find(theme => theme.id === colorTheme) || HUB_COLOR_THEMES[0]
 }
 
+// Push hubs apart so none overlap or crowd too closely.
+// My hub is fixed at (0,0) and acts as a repulsion anchor too.
+function separateHubs(hubs: { x: number; y: number }[], minDist = 95, iterations = 80) {
+  for (let iter = 0; iter < iterations; iter++) {
+    for (let i = 0; i < hubs.length; i++) {
+      for (let j = i + 1; j < hubs.length; j++) {
+        const dx = hubs[j].x - hubs[i].x
+        const dy = hubs[j].y - hubs[i].y
+        const dist = Math.sqrt(dx * dx + dy * dy)
+        if (dist < minDist && dist > 0.001) {
+          const overlap = (minDist - dist) / 2
+          const nx = dx / dist
+          const ny = dy / dist
+          hubs[i].x -= nx * overlap
+          hubs[i].y -= ny * overlap
+          hubs[j].x += nx * overlap
+          hubs[j].y += ny * overlap
+        }
+      }
+    }
+  }
+}
+
 // ── DRAW FUNCTIONS PER STYLE ──
 
 function drawPortal(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: number, colors: (typeof HUB_COLOR_THEMES)[number], t: number, online: boolean, isMe: boolean, avatarImage?: HTMLImageElement) {
@@ -941,6 +964,11 @@ export default function UniverseMap({
           glowIntensity: (hub.glow_intensity as HubGlowIntensity) || 'normal',
         } as Hub
       }))
+
+      // Spread hubs so they don't cluster or overlap — treat my hub at (0,0) as a fixed anchor
+      const allPositions = [{ x: 0, y: 0 }, ...otherHubs]
+      separateHubs(allPositions)
+      otherHubs.forEach((hub, i) => { hub.x = allPositions[i + 1].x; hub.y = allPositions[i + 1].y })
 
       hubsRef.current = [{
         x: 0, y: 0, name: hubName || 'Your Hub',

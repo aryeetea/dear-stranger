@@ -4,8 +4,8 @@ import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { HUB_COLOR_THEMES, HUB_STYLES, type HubColor, type HubStyle } from './UniverseMap'
 
-const MIN_EXCHANGES = 5
-const MAX_EXCHANGES = 10
+const MIN_EXCHANGES = 10
+const MAX_EXCHANGES = 30
 
 const MIRROR_VOICES = [
   { id: 'friend', label: 'Supportive Friend', desc: 'Warm, gentle, encouraging. Like talking to someone who always has your back.', icon: '🤍', prompt: 'You are a warm, gentle, encouraging friend. You speak with care and genuine interest. Never clinical, never performative — just real.' },
@@ -36,6 +36,46 @@ const RULES = [
   { icon: '◉', title: 'Your hub style and voice are yours', desc: 'During onboarding you choose how your hub looks and how the mirror speaks to you. You can update your bio and ask-about anytime from your profile — but your hub form should feel chosen, not constantly rebuilt.' },
   { icon: '🌍', title: 'This space is for everyone — but it started for students', desc: 'Dear Stranger was built with college students in mind — the 2am questions, the distance from home, the strange intimacy of sharing a campus with thousands of strangers. But if you found your way here, you are welcome.' },
 ]
+
+const STYLE_BACKGROUNDS: Record<string, { base: string; gradient: string }> = {
+  fantasy: {
+    base: '#030008',
+    gradient: 'radial-gradient(ellipse 70% 50% at 30% 20%, rgba(90,20,150,0.45) 0%, transparent 65%), radial-gradient(ellipse 55% 65% at 75% 80%, rgba(50,10,100,0.4) 0%, transparent 65%)',
+  },
+  modern: {
+    base: '#000510',
+    gradient: 'radial-gradient(ellipse 65% 45% at 20% 35%, rgba(15,45,100,0.45) 0%, transparent 65%), radial-gradient(ellipse 55% 55% at 80% 65%, rgba(10,25,70,0.35) 0%, transparent 65%)',
+  },
+  'fantasy-modern': {
+    base: '#020010',
+    gradient: 'radial-gradient(ellipse 65% 50% at 25% 25%, rgba(70,20,110,0.4) 0%, transparent 65%), radial-gradient(ellipse 55% 60% at 78% 78%, rgba(10,40,90,0.35) 0%, transparent 65%)',
+  },
+  celestial: {
+    base: '#010008',
+    gradient: 'radial-gradient(ellipse 80% 60% at 50% 15%, rgba(30,10,100,0.6) 0%, transparent 65%), radial-gradient(ellipse 50% 70% at 85% 85%, rgba(100,30,140,0.35) 0%, transparent 65%)',
+  },
+  royal: {
+    base: '#060001',
+    gradient: 'radial-gradient(ellipse 70% 50% at 25% 30%, rgba(100,10,50,0.45) 0%, transparent 65%), radial-gradient(ellipse 60% 60% at 75% 72%, rgba(70,5,30,0.5) 0%, transparent 65%)',
+  },
+  streetwear: {
+    base: '#020202',
+    gradient: 'radial-gradient(ellipse 60% 50% at 15% 40%, rgba(25,5,40,0.7) 0%, transparent 65%), radial-gradient(ellipse 55% 60% at 85% 60%, rgba(90,0,130,0.3) 0%, transparent 65%)',
+  },
+  futuristic: {
+    base: '#000608',
+    gradient: 'radial-gradient(ellipse 70% 50% at 40% 15%, rgba(0,50,100,0.55) 0%, transparent 65%), radial-gradient(ellipse 60% 70% at 72% 85%, rgba(0,90,130,0.35) 0%, transparent 65%)',
+  },
+  nature: {
+    base: '#010601',
+    gradient: 'radial-gradient(ellipse 70% 50% at 20% 25%, rgba(10,60,20,0.5) 0%, transparent 65%), radial-gradient(ellipse 55% 65% at 80% 75%, rgba(30,70,10,0.35) 0%, transparent 65%)',
+  },
+}
+
+const DEFAULT_BG = {
+  base: '#000005',
+  gradient: 'radial-gradient(ellipse 60% 40% at 20% 30%, rgba(40,20,80,0.25) 0%, transparent 70%), radial-gradient(ellipse 50% 60% at 80% 70%, rgba(10,30,80,0.2) 0%, transparent 70%)',
+}
 
 export interface StyleOption { id: string; label: string; desc: string }
 export interface MirrorVoice { id: string; label: string; desc: string; icon: string; prompt: string }
@@ -172,6 +212,8 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
     )
   }
 
+  const currentBg = selectedStyle ? (STYLE_BACKGROUNDS[selectedStyle.id] ?? DEFAULT_BG) : DEFAULT_BG
+
   const progressPct = Math.min(100, (userAnswers.length / MIN_EXCHANGES) * 100)
   const lastAiMsg = [...messages].reverse().find(m => m.role === 'ai' && !m.isClosing)
   const currentChips = lastAiMsg?.chips || []
@@ -200,8 +242,8 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
   )
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: '#000005', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '20px', overflowY: 'auto' }}>
-      <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', background: 'radial-gradient(ellipse 60% 40% at 20% 30%, rgba(40,20,80,0.25) 0%, transparent 70%), radial-gradient(ellipse 50% 60% at 80% 70%, rgba(10,30,80,0.2) 0%, transparent 70%)' }} />
+    <div style={{ position: 'fixed', inset: 0, background: currentBg.base, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '20px', overflowY: 'auto', transition: 'background 1s ease' }}>
+      <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', background: currentBg.gradient, transition: 'background 1s ease' }} />
 
       {errorMessage && (
         <div style={{ position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)', width: 'min(620px, calc(100vw - 40px))', padding: '12px 16px', background: 'rgba(60,15,20,0.88)', border: '1px solid rgba(220,120,120,0.35)', borderRadius: '10px', zIndex: 60, boxShadow: '0 14px 40px rgba(0,0,0,0.35)' }}>
@@ -288,16 +330,17 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
                   <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '14px', color: 'rgba(255,255,255,0.62)', lineHeight: 1.5 }}>{style.desc}</p>
                 </motion.button>
               ))}
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <button onClick={() => setPhase('voice')} style={backBtn}>← Back</button>
-              <button
+              <motion.button whileHover={{ y: -2 }} whileTap={{ scale: 0.97 }}
                 onClick={() => { setSelectedStyle(null); setPhase('chat') }}
-                style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.42)', fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.2em', textTransform: 'uppercase', cursor: 'pointer' }}
-                onMouseEnter={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.72)' }}
-                onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.42)' }}>
-                Skip — let the mirror decide ✦
-              </button>
+                style={{ textAlign: 'left', padding: '16px', borderRadius: '12px', border: '1px dashed rgba(255,255,255,0.18)', background: 'rgba(255,255,255,0.02)', cursor: 'pointer', transition: 'all 0.2s' }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.35)' }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.18)' }}>
+                <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.18em', color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', marginBottom: '8px' }}>No preference</p>
+                <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '14px', color: 'rgba(255,255,255,0.38)', lineHeight: 1.5 }}>Let the mirror decide. The portrait will follow what you describe.</p>
+              </motion.button>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+              <button onClick={() => setPhase('voice')} style={backBtn}>← Back</button>
             </div>
           </motion.div>
         )}
