@@ -155,6 +155,7 @@ export default function Home() {
   const [hubCreatedAt, setHubCreatedAt] = useState('')
   const [lettersSent, setLettersSent] = useState(0)
   const [generatingStatus, setGeneratingStatus] = useState('')
+  const [avatarGenerating, setAvatarGenerating] = useState(false)
   const [scribeOpen, setScribeOpen] = useState(false)
   const [scribeRecipient, setScribeRecipient] = useState<string | undefined>()
   const [observatoryOpen, setObservatoryOpen] = useState(false)
@@ -199,6 +200,7 @@ export default function Home() {
       try {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
+        setAvatarGenerating(true)
         const avatarUrl = await requestAvatarImage({ 0: hubAvatarPending }, user.id)
         if (!avatarUrl) return
         const permanentUrl = await uploadAvatarToStorage(avatarUrl, user.id)
@@ -207,6 +209,8 @@ export default function Home() {
         await updateHub({ avatar_url: permanentUrl, avatar_prompt_pending: null })
       } catch (err) {
         console.error('Avatar auto-retry failed:', err)
+      } finally {
+        setAvatarGenerating(false)
       }
     })()
   }, [screen, hubAvatarPending, hubAvatarUrl])
@@ -430,6 +434,7 @@ export default function Home() {
           try {
             // Only use the user's explicit avatar description for avatar generation
             if (!avatarDescription || !userId) return
+            setAvatarGenerating(true)
             const avatarUrl = await requestAvatarImage({ 0: avatarDescription }, userId, selectedStyle?.label)
             if (!avatarUrl) return
             const permanentUrl = await uploadAvatarToStorage(avatarUrl, userId)
@@ -445,6 +450,8 @@ export default function Home() {
                 await updateHub({ avatar_prompt_pending: avatarDescription })
               } catch {}
             }
+          } finally {
+            setAvatarGenerating(false)
           }
         })()
       } catch (err) {
@@ -696,6 +703,44 @@ export default function Home() {
           onProfile={() => setProfileOpen(true)}
           navResetSignal={navResetSignal}
         />
+      )}
+
+      {screen === 'universe' && avatarGenerating && (
+        <div style={{
+          position: 'fixed',
+          bottom: '88px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 200,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          background: 'rgba(6,4,20,0.88)',
+          border: '1px solid rgba(201,168,76,0.3)',
+          borderRadius: '999px',
+          padding: '10px 20px',
+          backdropFilter: 'blur(12px)',
+          boxShadow: '0 0 24px rgba(201,168,76,0.12)',
+        }}>
+          <div style={{
+            width: '16px',
+            height: '16px',
+            borderRadius: '50%',
+            border: '1.5px solid rgba(201,168,76,0.25)',
+            borderTopColor: 'rgba(201,168,76,0.9)',
+            animation: 'avatar-spin 0.9s linear infinite',
+            flexShrink: 0,
+          }} />
+          <span style={{
+            fontFamily: "'Cinzel', serif",
+            fontSize: '10px',
+            letterSpacing: '0.18em',
+            color: 'rgba(201,168,76,0.8)',
+            textTransform: 'uppercase',
+            whiteSpace: 'nowrap',
+          }}>Weaving your form...</span>
+          <style>{`@keyframes avatar-spin { to { transform: rotate(360deg); } }`}</style>
+        </div>
       )}
 
       {scribeOpen && (
