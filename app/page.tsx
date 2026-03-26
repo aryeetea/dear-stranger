@@ -695,6 +695,7 @@ export default function Home() {
           hubColor={hubColor}
           hubDecoration={hubDecoration}
           hubGlowIntensity={hubGlowIntensity}
+          avatarGenerating={avatarGenerating}
           onWriteLetter={(name) => {
             setScribeRecipient(name)
             setScribeOpen(true)

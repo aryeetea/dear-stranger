@@ -1103,13 +1103,13 @@ function drawShootingStar(ctx: CanvasRenderingContext2D, star: ShootingStar) {
 export default function UniverseMap({
   hubName, hubBio, hubAskAbout, hubAvatarUrl, hubStyle = 'portal', hubColor = 'gold',
   hubDecoration = 'none', hubGlowIntensity = 'normal',
-  onWriteLetter, onObservatory, onProfile, navResetSignal = 0,
+  onWriteLetter, onObservatory, onProfile, navResetSignal = 0, avatarGenerating = false,
 }: {
   hubName?: string; hubBio?: string; hubAskAbout?: string; hubAvatarUrl?: string; hubStyle?: HubStyle; hubColor?: HubColor
   hubDecoration?: HubDecoration; hubGlowIntensity?: HubGlowIntensity
   onWriteLetter?: (recipientName?: string) => void
   onObservatory?: () => void; onProfile?: () => void
-  navResetSignal?: number
+  navResetSignal?: number; avatarGenerating?: boolean
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const hubsRef = useRef<Hub[]>([])
@@ -1528,7 +1528,15 @@ export default function UniverseMap({
                   <img src={profile.hub.avatarUrl} alt="Avatar"
                     style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center', position: 'absolute', inset: 0 }} />
                 ) : (
-                  <div style={{ fontSize: '48px', color: 'rgba(201,168,76,0.5)' }}>✦</div>
+                  profile.hub.isMe && avatarGenerating ? (
+                    <motion.div
+                      animate={{ opacity: [0.35, 1, 0.35], scale: [0.9, 1.15, 0.9], rotate: [0, 180, 360] }}
+                      transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
+                      style={{ fontSize: '48px', color: 'rgba(201,168,76,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    >✦</motion.div>
+                  ) : (
+                    <div style={{ fontSize: '48px', color: 'rgba(201,168,76,0.5)' }}>✦</div>
+                  )
                 )}
                 <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to right, transparent 60%, rgba(8,10,28,0.95) 100%)' }} />
                 {profile.telescopeMode && (
@@ -1594,9 +1602,22 @@ export default function UniverseMap({
             className="universe-nav-btn"
             onClick={() => { setActiveNav(i); if (i === 1) onWriteLetter?.(); if (i === 2) onObservatory?.(); if (i === 3) onProfile?.() }}
             onMouseEnter={() => setHoveredNav(i)} onMouseLeave={() => setHoveredNav(null)}
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px', padding: '10px 18px', background: activeNav === i ? 'rgba(230,199,110,0.1)' : hoveredNav === i ? 'rgba(255,255,255,0.06)' : 'transparent', border: 'none', borderRadius: '10px', cursor: 'pointer', minWidth: '64px' }}>
-            <span style={{ fontSize: '18px', lineHeight: 1, color: activeNav === i ? '#e6c76e' : 'rgba(255,255,255,0.75)', filter: activeNav === i ? 'drop-shadow(0 0 6px rgba(230,199,110,0.5))' : 'none' }}>{item.icon}</span>
-            <span className="universe-nav-label" style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.18em', textTransform: 'uppercase', color: activeNav === i ? '#e6c76e' : 'rgba(255,255,255,0.6)', whiteSpace: 'nowrap' }}>{item.label}</span>
+            style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px', padding: '10px 18px', background: 'transparent', border: 'none', borderRadius: '10px', cursor: 'pointer', minWidth: '64px' }}>
+            {activeNav === i && (
+              <motion.div
+                layoutId="nav-active-pill"
+                transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+                style={{ position: 'absolute', inset: 0, borderRadius: '10px', background: 'rgba(230,199,110,0.12)', boxShadow: '0 0 12px rgba(230,199,110,0.08)' }}
+              />
+            )}
+            {hoveredNav === i && activeNav !== i && (
+              <motion.div
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                style={{ position: 'absolute', inset: 0, borderRadius: '10px', background: 'rgba(255,255,255,0.06)' }}
+              />
+            )}
+            <span style={{ position: 'relative', fontSize: '18px', lineHeight: 1, color: activeNav === i ? '#e6c76e' : 'rgba(255,255,255,0.75)', filter: activeNav === i ? 'drop-shadow(0 0 6px rgba(230,199,110,0.5))' : 'none', transition: 'color 0.2s, filter 0.2s' }}>{item.icon}</span>
+            <span className="universe-nav-label" style={{ position: 'relative', fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.18em', textTransform: 'uppercase', color: activeNav === i ? '#e6c76e' : 'rgba(255,255,255,0.6)', whiteSpace: 'nowrap', transition: 'color 0.2s' }}>{item.label}</span>
           </button>
         ))}
       </motion.nav>
