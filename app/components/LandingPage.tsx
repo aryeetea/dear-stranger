@@ -64,14 +64,14 @@ export default function LandingPage({ onEnter, onLogin }: { onEnter?: () => void
 
   const paragraphs: { text: string; italic?: boolean }[] = [
     { text: "Welcome. I'm glad you found this." },
-    { text: 'Dear Stranger is a place for slow letters — the kind you actually meant to write. No feed, no trending topics, no follower counts. Just words, and the quiet space between sending and receiving.' },
+    { text: 'Dear Stranger is a place for slow letters — the kind you actually meant to write. No feed, no trending topics, no follower counts. Just words, and the space between sending and receiving.' },
     { text: 'Here is how it works:', italic: true },
-    { text: 'When you first arrive, the Soul Mirror will build your form. You can choose to answer a set of guided questions — nothing too serious, just enough to know you a little — or you can describe yourself in your own words. Either way, what you give it shapes the hub of light that represents you in this universe. No real name. No photo. Just your words, and what the mirror makes of them.' },
-    { text: 'One thing worth knowing before you begin: you only get two chances. The first is now. The second is one reimagine, available once. After that, your form is sealed for ninety days. So take your time with the description — it matters more than it might seem.', italic: true },
-    { text: 'Once your hub exists, you can write. You can send a letter to the open universe and let it drift until a stranger finds it, or you can visit the Observatory, find a hub whose name or light speaks to you, and address your letter directly. Longer letters take a little longer to arrive — that is intentional. This place is not built for speed.' },
+    { text: 'When you first arrive, the Soul Mirror will build your avatar. You can choose to answer a set of guided questions — nothing too serious, just enough to know what you are envisioning, or you can describe yourself in your own words. Either way, what you give it shapes your avatar and your hub that represents you in this universe. No real name. No photo. Just your words, and what the mirror makes of them.' },
+    { text: 'One thing you should know before you begin: you only get two chances. The first is now. The second is one reimagine, available only once. After that, your avatar is sealed for ninety days. So take your time with the description — it matters more than it might seem.', italic: true },
+    { text: 'Once your hub exists, you can write. You can send a letter to the open universe and let it drift until a stranger finds it, or you can visit the Starmap, find a hub whose name or light speaks to you, and address your letter directly. Longer letters take a little longer to arrive — that is intentional. This place is not built for speed.' },
     { text: 'There are no likes here. No read receipts. No quick reactions. If a letter moves you, you write one back. That is the only way to respond, and honestly, it is the better way.' },
     { text: 'A few things this place asks of you:', italic: true },
-    { text: 'Be honest. Be kind. Do not use this space to harm anyone — no harassment, no cruelty, no letters designed to wound. You can be anonymous here, but anonymity is not a license to be unkind. It is a gift. Use it well.' },
+    { text: 'Be honest. Be kind. Do not use this space to harm anyone — no harassment, no cruelty, no letters designed to hurt anyone. You can be anonymous here, but anonymity is not a license to be unkind. It is a gift. Use it well.' },
     { text: 'Your hub name, your words, and your light are yours. We will never sell them or show them to an algorithm. What you write here stays within the universe you are about to enter.' },
     { text: 'I cannot promise every letter will be answered. I can only promise this is a real place, built for real words, between real people.', italic: true },
   ]
