@@ -367,22 +367,42 @@ export default function Home() {
         let session = await getSession()
 
         if (pendingCredentials) {
-          await signUpAndCreateHub(
-            pendingCredentials.email,
-            pendingCredentials.password,
-            hubNameAnswer,
-            chosenBio,
-            chosenAskAbout,
-            chosenHubStyle,
-            chosenHubColor,
-            chosenDecoration,
-          )
+          let signUpFailed = false
+          try {
+            await signUpAndCreateHub(
+              pendingCredentials.email,
+              pendingCredentials.password,
+              hubNameAnswer,
+              chosenBio,
+              chosenAskAbout,
+              chosenHubStyle,
+              chosenHubColor,
+              chosenDecoration,
+            )
+          } catch (signUpErr) {
+            // Auth user may already exist from a previous partial attempt — sign in instead
+            const msg = signUpErr instanceof Error ? signUpErr.message.toLowerCase() : ''
+            if (msg.includes('already registered') || msg.includes('already exists') || msg.includes('user already')) {
+              signUpFailed = true
+            } else {
+              throw signUpErr
+            }
+          }
+
+          if (signUpFailed) {
+            await signIn(pendingCredentials.email, pendingCredentials.password)
+          }
 
           session = await getSession()
 
           if (!session) {
             await signIn(pendingCredentials.email, pendingCredentials.password)
             session = await getSession()
+          }
+
+          // Ensure the hub row exists (safe to call even if it was already created)
+          if (session) {
+            await createHubForCurrentUser(hubNameAnswer, chosenBio, chosenAskAbout, chosenHubStyle, chosenHubColor, chosenDecoration)
           }
 
           setPendingCredentials(null)
