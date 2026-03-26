@@ -89,29 +89,19 @@ async function requestAvatarImage(
 
   try {
     let token: string | undefined
-    
-    // Try to get cached session token first
-    const { data: { session } } = await supabase.auth.getSession()
-    if (session?.access_token) {
-      token = session.access_token
-    } else {
-      // If no cached token, try to refresh
-      try {
-        const { data, error } = await supabase.auth.refreshSession()
-        if (!error && data.session?.access_token) {
-          token = data.session.access_token
-        }
-      } catch {
-        // Refresh failed, try getUser which validates token server-side
-        try {
-          const { data: { user } } = await supabase.auth.getUser()
-          if (user) {
-            // If getUser succeeds, try getSession again to get fresh token
-            const { data: { session: freshSession } } = await supabase.auth.getSession()
-            token = freshSession?.access_token
-          }
-        } catch {}
+
+    // Always refresh to guarantee a non-expired access token
+    try {
+      const { data, error } = await supabase.auth.refreshSession()
+      if (!error && data.session?.access_token) {
+        token = data.session.access_token
       }
+    } catch {}
+
+    // Fall back to cached session if refresh failed
+    if (!token) {
+      const { data: { session } } = await supabase.auth.getSession()
+      token = session?.access_token
     }
     
     const response = await fetch('/api/generate-avatar', {

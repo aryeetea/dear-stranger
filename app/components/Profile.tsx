@@ -185,12 +185,20 @@ export default function Profile({
       const requestBody = !hasExistingAvatar && avatarPromptPending
         ? { answers: { 0: avatarPromptPending }, feedback: regenFeedback || undefined, mode: 'create' }
         : { answers: { 0: bioState, 1: askState }, feedback: regenFeedback, mode: 'reimagine', previousImageUrl: currentAvatarUrl || undefined }
-      const { data: { session } } = await supabase.auth.getSession()
+      let avatarToken: string | undefined
+      try {
+        const { data, error } = await supabase.auth.refreshSession()
+        if (!error && data.session?.access_token) avatarToken = data.session.access_token
+      } catch {}
+      if (!avatarToken) {
+        const { data: { session } } = await supabase.auth.getSession()
+        avatarToken = session?.access_token
+      }
       const res = await fetch('/api/generate-avatar', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}),
+          ...(avatarToken ? { 'Authorization': `Bearer ${avatarToken}` } : {}),
         },
         body: JSON.stringify(requestBody),
       })
