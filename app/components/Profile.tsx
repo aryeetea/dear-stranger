@@ -6,7 +6,7 @@ import { updateHub, signOut, deleteAccount, exportMyLetters, uploadAvatarToStora
 import { supabase } from '../../lib/supabase'
 import { HUB_COLOR_THEMES, HUB_STYLES, HUB_DECORATIONS, HUB_GLOW_LEVELS, type HubColor, type HubStyle, type HubDecoration, type HubGlowIntensity } from './UniverseMap'
 
-const MAX_REGEN_ATTEMPTS = 3
+const MAX_REGEN_ATTEMPTS = 1
 
 type DeleteStep = 'idle' | 'exporting' | 'exported' | 'deleting' | 'deleted'
 
