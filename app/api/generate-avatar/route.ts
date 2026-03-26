@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import OpenAI from 'openai'
 import { createClient } from '@supabase/supabase-js'
 
-export const maxDuration = 60
+export const maxDuration = 120
 
 // Only allow fetching images from our own Supabase storage to prevent SSRF
 function isAllowedImageUrl(url: string): boolean {
