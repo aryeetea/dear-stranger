@@ -4,9 +4,9 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { getAllHubs, getUniverseLetters } from '../lib/auth'
 // ── HUB STYLE TYPES ──
-export type HubStyle = 'portal' | 'lantern' | 'ruin' | 'hourglass' | 'telescope' | 'greenhouse' | 'lotus' | 'cottage' | 'crystal' | 'cube' | 'star' | 'tree' | 'pyramid' | 'orb' | 'book' | 'shell'
-export type HubColor = 'gold' | 'sage' | 'rose' | 'azure' | 'amber' | 'violet' | 'teal' | 'sand' | 'blue' | 'green' | 'charcoal' | 'crimson'
-export type HubDecoration = 'none' | 'moon' | 'rings' | 'fireflies' | 'petals' | 'snowflakes' | 'comet' | 'rainbow' | 'sparkles' | 'leaves' | 'waves' | 'hearts' | 'music' | 'stars'
+export type HubStyle = 'portal' | 'lantern' | 'ruin' | 'hourglass' | 'telescope' | 'greenhouse'
+export type HubColor = 'gold' | 'sage' | 'rose' | 'azure' | 'amber' | 'violet' | 'teal' | 'sand'
+export type HubDecoration = 'none' | 'moon' | 'rings' | 'fireflies' | 'petals' | 'snowflakes' | 'comet'
 export type HubGlowIntensity = 'dim' | 'normal' | 'blazing'
 
 export const HUB_STYLES: { id: HubStyle; label: string; desc: string; icon: string }[] = [
@@ -16,16 +16,6 @@ export const HUB_STYLES: { id: HubStyle; label: string; desc: string; icon: stri
   { id: 'hourglass', label: 'Prism Bloom', desc: 'A faceted crystal flower suspended in light', icon: '◇' },
   { id: 'telescope', label: 'Starwatch Shrine', desc: 'A celestial shrine with a lens of focused light', icon: '✧' },
   { id: 'greenhouse', label: 'Greenhouse Bubble', desc: 'A glass dome brimming with quiet life', icon: '✦' },
-  { id: 'lotus', label: 'Lotus Bloom', desc: 'A luminous lotus opening softly over still water', icon: '🪷' },
-  { id: 'cottage', label: 'Cozy Cottage', desc: 'A warm little house glowing softly in the dark', icon: '🏡' },
-  { id: 'crystal', label: 'Crystal Cluster', desc: 'A cluster of glowing crystals', icon: '🔮' },
-  { id: 'cube', label: 'Mystic Cube', desc: 'A floating geometric cube', icon: '🧊' },
-  { id: 'star', label: 'Radiant Star', desc: 'A shining star hub', icon: '⭐' },
-  { id: 'tree', label: 'Tree of Life', desc: 'A small glowing tree', icon: '🌳' },
-  { id: 'pyramid', label: 'Pyramid', desc: 'A mysterious glowing pyramid', icon: '🔺' },
-  { id: 'orb', label: 'Celestial Orb', desc: 'A floating orb of light', icon: '⚪' },
-  { id: 'book', label: 'Open Book', desc: 'A book of stories', icon: '📖' },
-  { id: 'shell', label: 'Seashell', desc: 'A spiral shell from the cosmic sea', icon: '🐚' },
 ]
 
 export const HUB_DECORATIONS: { id: HubDecoration; label: string; icon: string }[] = [
@@ -36,13 +26,6 @@ export const HUB_DECORATIONS: { id: HubDecoration; label: string; icon: string }
   { id: 'petals', label: 'Petals', icon: '🌸' },
   { id: 'snowflakes', label: 'Snowflakes', icon: '❄' },
   { id: 'comet', label: 'Comet', icon: '☄' },
-  { id: 'rainbow', label: 'Rainbow', icon: '🌈' },
-  { id: 'sparkles', label: 'Sparkles', icon: '✨' },
-  { id: 'leaves', label: 'Leaves', icon: '🍃' },
-  { id: 'waves', label: 'Waves', icon: '🌊' },
-  { id: 'hearts', label: 'Hearts', icon: '💖' },
-  { id: 'music', label: 'Music Notes', icon: '🎶' },
-  { id: 'stars', label: 'Stars', icon: '🌟' },
 ]
 
 export const HUB_GLOW_LEVELS: { id: HubGlowIntensity; label: string; desc: string }[] = [
@@ -60,11 +43,6 @@ export const HUB_COLOR_THEMES: { id: HubColor; label: string; ring: string; glow
   { id: 'violet', label: 'Violet', ring: '#8f5aaa', glow: '140,60,180', inner: '#4a1a6a' },
   { id: 'teal', label: 'Teal', ring: '#5a8faa', glow: '60,130,180', inner: '#1a4a6a' },
   { id: 'sand', label: 'Sand', ring: '#aa8f6f', glow: '180,140,80', inner: '#6a5a30' },
-  // Added more color options for variety (especially for male users)
-  { id: 'blue', label: 'Blue', ring: '#3a6ea5', glow: '58,110,165', inner: '#1a2a40' },
-  { id: 'green', label: 'Green', ring: '#3aa56e', glow: '58,165,110', inner: '#1a402a' },
-  { id: 'charcoal', label: 'Charcoal', ring: '#444950', glow: '68,73,80', inner: '#23262a' },
-  { id: 'crimson', label: 'Crimson', ring: '#a53a3a', glow: '165,58,58', inner: '#401a1a' },
 ]
 
 interface Hub {
@@ -805,8 +783,6 @@ function drawHub(ctx: CanvasRenderingContext2D, hub: Hub, sx: number, sy: number
     case 'hourglass': drawHourglass(ctx, sx, sy, s, colors, t, hub.online, !!hub.isMe, hub.avatarImage); break
     case 'telescope': drawTelescope(ctx, sx, sy, s, colors, t, hub.online, !!hub.isMe, hub.avatarImage); break
     case 'greenhouse': drawGreenhouse(ctx, sx, sy, s, colors, t, hub.online, !!hub.isMe, hub.avatarImage); break
-    case 'lotus': drawLotus(ctx, sx, sy, s, colors, t, hub.online, !!hub.isMe, hub.avatarImage); break
-    case 'cottage': drawCottage(ctx, sx, sy, s, colors, t, hub.online, !!hub.isMe, hub.avatarImage); break
     default: drawPortal(ctx, sx, sy, s, colors, t, hub.online, !!hub.isMe, hub.avatarImage)
   }
 
@@ -964,7 +940,7 @@ export default function UniverseMap({
         const angle = (i / Math.max(realHubs.length, 1)) * Math.PI * 2 + 0.3
         const dist = 180 + (i * 73) % 320
         const avatarImg = hub.avatar_url ? await loadImage(hub.avatar_url) : undefined
-        const styles: HubStyle[] = ['portal', 'lantern', 'ruin', 'hourglass', 'telescope', 'greenhouse', 'lotus']
+        const styles: HubStyle[] = ['portal', 'lantern', 'ruin', 'hourglass', 'telescope', 'greenhouse']
         return {
           x: Math.cos(angle) * dist, y: Math.sin(angle) * dist,
           name: hub.hub_name, bio: hub.bio || '', askAbout: hub.ask_about || '',
