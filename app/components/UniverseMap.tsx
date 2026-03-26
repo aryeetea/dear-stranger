@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { getAllHubs, getUniverseLetters } from '../lib/auth'
 // ── HUB STYLE TYPES ──
-export type HubStyle = 'portal' | 'lantern' | 'ruin' | 'hourglass' | 'telescope' | 'greenhouse' | 'lotus' | 'cottage'
+export type HubStyle = 'portal' | 'lantern' | 'ruin' | 'hourglass' | 'telescope' | 'greenhouse' | 'lotus' | 'cottage' | 'crystal' | 'cube' | 'star' | 'tree' | 'pyramid' | 'orb' | 'book' | 'shell'
 export type HubColor = 'gold' | 'sage' | 'rose' | 'azure' | 'amber' | 'violet' | 'teal' | 'sand' | 'blue' | 'green' | 'charcoal' | 'crimson'
 export type HubDecoration = 'none' | 'moon' | 'rings' | 'fireflies' | 'petals' | 'snowflakes' | 'comet'
 export type HubGlowIntensity = 'dim' | 'normal' | 'blazing'
@@ -18,6 +18,14 @@ export const HUB_STYLES: { id: HubStyle; label: string; desc: string; icon: stri
   { id: 'greenhouse', label: 'Greenhouse Bubble', desc: 'A glass dome brimming with quiet life', icon: '✦' },
   { id: 'lotus', label: 'Lotus Bloom', desc: 'A luminous lotus opening softly over still water', icon: '🪷' },
   { id: 'cottage', label: 'Cozy Cottage', desc: 'A warm little house glowing softly in the dark', icon: '🏡' },
+  { id: 'crystal', label: 'Crystal Cluster', desc: 'A cluster of glowing crystals', icon: '🔮' },
+  { id: 'cube', label: 'Mystic Cube', desc: 'A floating geometric cube', icon: '🧊' },
+  { id: 'star', label: 'Radiant Star', desc: 'A shining star hub', icon: '⭐' },
+  { id: 'tree', label: 'Tree of Life', desc: 'A small glowing tree', icon: '🌳' },
+  { id: 'pyramid', label: 'Pyramid', desc: 'A mysterious glowing pyramid', icon: '🔺' },
+  { id: 'orb', label: 'Celestial Orb', desc: 'A floating orb of light', icon: '⚪' },
+  { id: 'book', label: 'Open Book', desc: 'A book of stories', icon: '📖' },
+  { id: 'shell', label: 'Seashell', desc: 'A spiral shell from the cosmic sea', icon: '🐚' },
 ]
 
 export const HUB_DECORATIONS: { id: HubDecoration; label: string; icon: string }[] = [
@@ -28,6 +36,13 @@ export const HUB_DECORATIONS: { id: HubDecoration; label: string; icon: string }
   { id: 'petals', label: 'Petals', icon: '🌸' },
   { id: 'snowflakes', label: 'Snowflakes', icon: '❄' },
   { id: 'comet', label: 'Comet', icon: '☄' },
+  { id: 'rainbow', label: 'Rainbow', icon: '🌈' },
+  { id: 'sparkles', label: 'Sparkles', icon: '✨' },
+  { id: 'leaves', label: 'Leaves', icon: '🍃' },
+  { id: 'waves', label: 'Waves', icon: '🌊' },
+  { id: 'hearts', label: 'Hearts', icon: '💖' },
+  { id: 'music', label: 'Music Notes', icon: '🎶' },
+  { id: 'stars', label: 'Stars', icon: '🌟' },
 ]
 
 export const HUB_GLOW_LEVELS: { id: HubGlowIntensity; label: string; desc: string }[] = [

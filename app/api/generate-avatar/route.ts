@@ -27,21 +27,26 @@ function buildAvatarPrompt(
 
   const feedbackLine = feedback?.trim() ? normalizeDetail(feedback) : ''
 
+  const styleLine =
+    'Cinematic, highly detailed digital painting, soft glow lighting, semi-realistic, polished fantasy illustration style.'
+
   if (mode === 'reimagine') {
     if (feedbackLine) {
       return [
-        `Create a full body character portrait exactly as described: ${feedbackLine}. Follow this description precisely — it is the primary directive.`,
+        `Create a full body character portrait EXACTLY as described: ${feedbackLine}. You must follow the user's description precisely — do not add, remove, or change any details. This is your only directive.`,
         details ? `Original character reference context: ${details}.` : '',
-        `Rendering: painterly digital illustration, cinematic quality, full body visible head to toe, vertical composition, face clearly lit and readable, rich atmospheric background that complements the character, no text, no watermark, no logo.`,
+        styleLine,
+        'Rendering: full body visible head to toe, vertical composition, face clearly lit and readable, rich atmospheric background that complements the character, no text, no watermark, no logo.',
       ]
         .filter(Boolean)
         .join('\n\n')
     }
     return [
       details
-        ? `Create a reimagined full body character portrait. The character is described as: ${details}. Match the person's appearance, skin tone, hair, clothing, body, and features closely.`
+        ? `Create a reimagined full body character portrait. The character is described as: ${details}. Match the person's appearance, skin tone, hair, clothing, body, and features as closely as possible to the description provided. Do not invent or omit any details.`
         : `Create a full body character portrait of a mysterious figure in a cinematic illustrated style.`,
-      `Rendering: painterly digital illustration, cinematic quality, full body visible head to toe, vertical composition, face clearly lit and readable, rich atmospheric background that complements the character, no text, no watermark, no logo.`,
+      styleLine,
+      'Rendering: full body visible head to toe, vertical composition, face clearly lit and readable, rich atmospheric background that complements the character, no text, no watermark, no logo.',
     ]
       .filter(Boolean)
       .join('\n\n')
@@ -51,7 +56,8 @@ function buildAvatarPrompt(
     details
       ? `Create a full body character portrait. The character is described as: ${details}. Match the person's appearance, skin tone, hair, clothing, body, and features closely to the description provided.`
       : `Create a full body character portrait of a mysterious figure in a cinematic illustrated style.`,
-    `Rendering: painterly digital illustration, cinematic quality, full body visible head to toe, vertical composition, face clearly lit and readable, rich atmospheric background that complements the character, no text, no watermark, no logo.`,
+    styleLine,
+    'Rendering: full body visible head to toe, vertical composition, face clearly lit and readable, rich atmospheric background that complements the character, no text, no watermark, no logo.',
   ]
     .filter(Boolean)
     .join('\n\n')

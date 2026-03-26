@@ -2,31 +2,29 @@
 
 import { useEffect, useState } from 'react'
 
-const ZOOM_LEVELS = [1, 1.2, 1.4] as const
-const ZOOM_LABELS = ['A', 'A+', 'A++']
-const STORAGE_KEY = 'ds-zoom-level'
+const FONT_MODES = [
+  { className: 'fontsize-default', label: 'A', desc: 'Default' },
+  { className: 'fontsize-large', label: 'A+', desc: 'Large' },
+  { className: 'fontsize-xlarge', label: 'A++', desc: 'Extra Large' },
+]
+const STORAGE_KEY = 'ds-fontsize-mode'
 
 export default function FontSizeControls() {
-  const [zoom, setZoom] = useState<number>(1)
+  const [mode, setMode] = useState('fontsize-default')
   const [open, setOpen] = useState(false)
 
   useEffect(() => {
-    const stored = parseFloat(localStorage.getItem(STORAGE_KEY) || '1')
-    const valid = (ZOOM_LEVELS as readonly number[]).includes(stored) ? stored : 1
-    setZoom(valid)
-    if (valid !== 1) {
-      ;(document.documentElement.style as any).zoom = String(valid)
-    }
+    const stored = localStorage.getItem(STORAGE_KEY) || 'fontsize-default'
+    setMode(stored)
+    document.documentElement.classList.remove('fontsize-default', 'fontsize-large', 'fontsize-xlarge')
+    document.documentElement.classList.add(stored)
   }, [])
 
-  function setLevel(level: number) {
-    setZoom(level)
-    localStorage.setItem(STORAGE_KEY, String(level))
-    if (level === 1) {
-      document.documentElement.style.removeProperty('zoom')
-    } else {
-      ;(document.documentElement.style as any).zoom = String(level)
-    }
+  function setFontMode(className: string) {
+    setMode(className)
+    localStorage.setItem(STORAGE_KEY, className)
+    document.documentElement.classList.remove('fontsize-default', 'fontsize-large', 'fontsize-xlarge')
+    document.documentElement.classList.add(className)
     setOpen(false)
   }
 
@@ -44,19 +42,19 @@ export default function FontSizeControls() {
       }}
     >
       {open &&
-        ZOOM_LEVELS.map((level, i) => (
+        FONT_MODES.map((m, i) => (
           <button
-            key={level}
-            onClick={() => setLevel(level)}
-            title={ZOOM_LABELS[i]}
+            key={m.className}
+            onClick={() => setFontMode(m.className)}
+            title={m.desc}
             style={{
               padding: '7px 16px',
               background:
-                level === zoom
+                m.className === mode
                   ? 'rgba(230,199,110,0.22)'
                   : 'rgba(4,5,15,0.88)',
-              border: `1px solid ${level === zoom ? 'rgba(230,199,110,0.65)' : 'rgba(230,199,110,0.22)'}`,
-              color: level === zoom ? '#e6c76e' : 'rgba(255,255,255,0.55)',
+              border: `1px solid ${m.className === mode ? 'rgba(230,199,110,0.65)' : 'rgba(230,199,110,0.22)'}`,
+              color: m.className === mode ? '#e6c76e' : 'rgba(255,255,255,0.55)',
               fontFamily: "'Cormorant Garamond', serif",
               fontSize: `${14 + i * 3}px`,
               borderRadius: '6px',
@@ -65,20 +63,20 @@ export default function FontSizeControls() {
               letterSpacing: '0.04em',
               transition: 'all 0.15s',
             }}
-            onMouseEnter={(e) => {
-              if (level !== zoom) {
+            onMouseEnter={e => {
+              if (m.className !== mode) {
                 e.currentTarget.style.background = 'rgba(230,199,110,0.1)'
                 e.currentTarget.style.color = 'rgba(255,255,255,0.85)'
               }
             }}
-            onMouseLeave={(e) => {
-              if (level !== zoom) {
+            onMouseLeave={e => {
+              if (m.className !== mode) {
                 e.currentTarget.style.background = 'rgba(4,5,15,0.88)'
                 e.currentTarget.style.color = 'rgba(255,255,255,0.55)'
               }
             }}
           >
-            {ZOOM_LABELS[i]}
+            {m.label}
           </button>
         ))}
 

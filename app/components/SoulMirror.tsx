@@ -367,9 +367,12 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
                   </div>
                 </div>
               </div>
-              <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '12px', color: 'rgba(255,255,255,0.3)', lineHeight: 1.5, marginTop: '6px' }}>
-                The mirror asks between 5–20 questions and decides when it sees you clearly. The more detail you share, the better your portrait.
-              </p>
+                  <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '12px', color: 'rgba(255,255,255,0.3)', lineHeight: 1.5, marginTop: '6px' }}>
+                    The mirror asks between 5–20 questions and decides when it sees you clearly. The more detail you share, the better your portrait.<br />
+                    <span style={{ color: '#e6c76e', fontSize: '11px', display: 'block', marginTop: '6px' }}>
+                      (Tip: For the best result, mention your gender somewhere in your answers — it helps the mirror see you as you wish to be seen.)
+                    </span>
+                  </p>
             </div>
 
             <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px 8px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -428,7 +431,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
                 <>
                   <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
                     <textarea value={inputValue} onChange={e => setInputValue(e.target.value)}
-                      placeholder="Describe yourself — your appearance, gender, features, skin tone, hair, how you carry yourself, colors, textures..." rows={2}
+                      placeholder="Describe yourself — your appearance, gender (if you wish), features, skin tone, hair, how you carry yourself, colors, textures..." rows={2}
                       disabled={loading || chatDone}
                       onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void handleSend() } }}
                       style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', color: 'rgba(255,255,255,0.9)', fontFamily: "'Cormorant Garamond', serif", fontSize: '15px', lineHeight: 1.6, padding: '10px 14px', resize: 'none', outline: 'none', caretColor: '#e6c76e' }}
@@ -452,12 +455,17 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
             <textarea
               value={freeformText}
               onChange={e => setFreeformText(e.target.value)}
-              placeholder="In another world, how do you look? Include your gender, features, skin tone, hair, clothing, build, and anything that makes you distinctly you."
+              placeholder="In another world, how do you look? (Tip: Mention your gender if you want the mirror to see you as you wish.) Include features, skin tone, hair, clothing, build, and anything that makes you distinctly you."
               rows={8}
-              style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '8px', color: 'rgba(255,255,255,0.9)', fontFamily: "'Cormorant Garamond', serif", fontSize: '16px', lineHeight: 1.8, padding: '14px 16px', outline: 'none', resize: 'none', caretColor: '#e6c76e', marginBottom: '20px' }}
+              style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '8px', color: 'rgba(255,255,255,0.9)', fontFamily: "'Cormorant Garamond', serif", fontSize: '16px', lineHeight: 1.8, padding: '14px 16px', outline: 'none', resize: 'none', caretColor: '#e6c76e', marginBottom: '8px' }}
               onFocus={e => { e.target.style.borderColor = 'rgba(230,199,110,0.4)' }}
               onBlur={e => { e.target.style.borderColor = 'rgba(255,255,255,0.12)' }}
             />
+            <div style={{ textAlign: 'center', marginBottom: '12px' }}>
+              <span style={{ color: '#e6c76e', fontSize: '12px' }}>
+                (Tip: For the best result, mention your gender somewhere in your description — it helps the mirror see you as you wish to be seen.)
+              </span>
+            </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <button onClick={() => setPhase('mode')} style={backBtn}>← Back</button>
               <button onClick={() => setPhase('bio')} style={continueBtn} disabled={!freeformText.trim()}>
@@ -524,45 +532,54 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
 
         {phase === 'hubstyle' && (
           <motion.div key="hubstyle" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.4 }}
-            style={{ ...cardStyle, width: 'min(720px, 95vw)', padding: 'clamp(28px,5vw,44px)' }}>
+            style={{ ...cardStyle, width: 'min(540px, 98vw)', padding: 'clamp(18px,3vw,28px)' }}>
             <GoldLines />
-            <SectionHeader step="Soul Mirror · Step 6 of 6" title="How does your hub appear in the universe?" sub="Each structure has its own animation and personality. Others see this when they explore the map." />
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px', marginBottom: '28px' }}>
+            <SectionHeader step="Soul Mirror · Step 6 of 6" title="How does your hub appear in the universe?" sub="Pick a style, color, and decoration. Compact, but expressive." />
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '18px', justifyContent: 'center' }}>
               {HUB_STYLES.map(style => {
                 const isSelected = selectedHubStyle === style.id
                 return (
                   <motion.button key={style.id} whileHover={{ y: -2 }} whileTap={{ scale: 0.97 }}
                     onClick={() => setSelectedHubStyle(style.id)}
-                    style={{ textAlign: 'left', padding: '18px 16px', borderRadius: '12px', border: isSelected ? '1px solid rgba(230,199,110,0.7)' : '1px solid rgba(230,199,110,0.2)', background: isSelected ? 'rgba(230,199,110,0.12)' : 'rgba(255,255,255,0.04)', cursor: 'pointer', transition: 'all 0.2s', position: 'relative' }}
-                    onMouseEnter={e => { if (!isSelected) { e.currentTarget.style.background = 'rgba(230,199,110,0.08)'; e.currentTarget.style.borderColor = 'rgba(230,199,110,0.35)' } }}
-                    onMouseLeave={e => { if (!isSelected) { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor = 'rgba(230,199,110,0.2)' } }}>
-                    {isSelected && <div style={{ position: 'absolute', top: '10px', right: '12px', width: '16px', height: '16px', borderRadius: '50%', background: '#c9a84c', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', color: '#000', fontWeight: 'bold' }}>✓</div>}
-                    <p style={{ fontSize: '20px', marginBottom: '8px' }}>{style.icon}</p>
-                    <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.18em', color: isSelected ? '#e6c76e' : 'rgba(255,255,255,0.7)', textTransform: 'uppercase', marginBottom: '6px' }}>{style.label}</p>
-                    <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '14px', color: 'rgba(255,255,255,0.5)', lineHeight: 1.5 }}>{style.desc}</p>
+                    style={{ width: 64, height: 64, borderRadius: '10px', border: isSelected ? '2px solid #e6c76e' : '1px solid rgba(230,199,110,0.18)', background: isSelected ? 'rgba(230,199,110,0.10)' : 'rgba(255,255,255,0.03)', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', margin: 0, position: 'relative', transition: 'all 0.2s' }}
+                    onMouseEnter={e => { if (!isSelected) { e.currentTarget.style.background = 'rgba(230,199,110,0.08)'; e.currentTarget.style.borderColor = '#e6c76e' } }}
+                    onMouseLeave={e => { if (!isSelected) { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor = 'rgba(230,199,110,0.18)' } }}>
+                    {isSelected && <div style={{ position: 'absolute', top: 4, right: 4, width: 16, height: 16, borderRadius: '50%', background: '#e6c76e', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#000', fontWeight: 'bold' }}>✓</div>}
+                    <span style={{ fontSize: 26, marginBottom: 2 }}>{style.icon}</span>
+                    <span style={{ fontFamily: "'Cinzel', serif", fontSize: 9, letterSpacing: '0.13em', color: isSelected ? '#e6c76e' : 'rgba(255,255,255,0.7)', textTransform: 'uppercase', textAlign: 'center' }}>{style.label}</span>
                   </motion.button>
                 )
               })}
             </div>
-            <div style={{ marginBottom: '28px' }}>
-              <p style={{ fontFamily: "'Cinzel', serif", fontSize: '11px', letterSpacing: '0.28em', color: '#e6c76e', textTransform: 'uppercase', marginBottom: '12px', textAlign: 'center' }}>Choose a color</p>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(84px, 1fr))', gap: '10px' }}>
-                {HUB_COLOR_THEMES.map(theme => {
-                  const isSelected = selectedHubColor === theme.id
-                  return (
-                    <motion.button
-                      key={theme.id}
-                      whileHover={{ y: -2 }}
-                      whileTap={{ scale: 0.97 }}
-                      onClick={() => setSelectedHubColor(theme.id)}
-                      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', padding: '12px 8px', borderRadius: '12px', border: isSelected ? '1px solid rgba(230,199,110,0.7)' : '1px solid rgba(255,255,255,0.12)', background: isSelected ? 'rgba(230,199,110,0.1)' : 'rgba(255,255,255,0.03)', cursor: 'pointer' }}
-                    >
-                      <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: `radial-gradient(circle at 35% 35%, rgba(255,255,255,0.85), ${theme.ring})`, boxShadow: `0 0 18px rgba(${theme.glow},0.28)`, border: '1px solid rgba(255,255,255,0.2)' }} />
-                      <span style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.16em', textTransform: 'uppercase', color: isSelected ? '#e6c76e' : 'rgba(255,255,255,0.68)' }}>{theme.label}</span>
-                    </motion.button>
-                  )
-                })}
-              </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '18px', justifyContent: 'center' }}>
+              {HUB_COLOR_THEMES.map(theme => {
+                const isSelected = selectedHubColor === theme.id
+                return (
+                  <motion.button
+                    key={theme.id}
+                    whileHover={{ y: -2 }}
+                    whileTap={{ scale: 0.97 }}
+                    onClick={() => setSelectedHubColor(theme.id)}
+                    style={{ width: 44, height: 44, borderRadius: '50%', border: isSelected ? '2px solid #e6c76e' : '1px solid rgba(255,255,255,0.12)', background: `radial-gradient(circle at 35% 35%, rgba(255,255,255,0.85), ${theme.ring})`, boxShadow: isSelected ? `0 0 12px #e6c76e` : `0 0 8px rgba(${theme.glow},0.18)`, margin: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                  >
+                    <span style={{ fontFamily: "'Cinzel', serif", fontSize: 8, letterSpacing: '0.13em', textTransform: 'uppercase', color: isSelected ? '#e6c76e' : 'rgba(255,255,255,0.68)' }}>{theme.label}</span>
+                  </motion.button>
+                )
+              })}
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '18px', justifyContent: 'center' }}>
+              {/* Decorations: import from UniverseMap */}
+              {require('./UniverseMap').HUB_DECORATIONS.map((dec: any) => {
+                const isSelected = (resumeState?.decoration || 'none') === dec.id
+                return (
+                  <motion.button key={dec.id} whileHover={{ y: -2 }} whileTap={{ scale: 0.97 }}
+                    onClick={() => {/* set decoration in parent state if needed */}}
+                    style={{ width: 44, height: 44, borderRadius: '50%', border: isSelected ? '2px solid #e6c76e' : '1px solid rgba(255,255,255,0.12)', background: isSelected ? 'rgba(230,199,110,0.10)' : 'rgba(255,255,255,0.03)', margin: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 22 }}
+                  >
+                    <span>{dec.icon}</span>
+                  </motion.button>
+                )
+              })}
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <button onClick={() => setPhase('askabout')} style={backBtn}>← Back</button>
