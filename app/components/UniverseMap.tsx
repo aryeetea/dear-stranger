@@ -6,7 +6,7 @@ import { getAllHubs, getUniverseLetters } from '../lib/auth'
 // ── HUB STYLE TYPES ──
 export type HubStyle = 'portal' | 'lantern' | 'ruin' | 'hourglass' | 'telescope' | 'greenhouse' | 'lotus' | 'cottage' | 'crystal' | 'cube' | 'star' | 'tree' | 'pyramid' | 'orb' | 'book' | 'shell'
 export type HubColor = 'gold' | 'sage' | 'rose' | 'azure' | 'amber' | 'violet' | 'teal' | 'sand' | 'blue' | 'green' | 'charcoal' | 'crimson'
-export type HubDecoration = 'none' | 'moon' | 'rings' | 'fireflies' | 'petals' | 'snowflakes' | 'comet'
+export type HubDecoration = 'none' | 'moon' | 'rings' | 'fireflies' | 'petals' | 'snowflakes' | 'comet' | 'rainbow' | 'sparkles' | 'leaves' | 'waves'
 export type HubGlowIntensity = 'dim' | 'normal' | 'blazing'
 
 export const HUB_STYLES: { id: HubStyle; label: string; desc: string; icon: string }[] = [
