@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { getAllHubs, getUniverseLetters } from '../lib/auth'
+import { playShootingStarCatch, playClick } from '../../lib/sounds'
 // ── HUB STYLE TYPES ──
 export type HubStyle = 'portal' | 'lantern' | 'ruin' | 'hourglass' | 'telescope' | 'greenhouse' | 'lotus' | 'cottage' | 'forge' | 'tower' | 'ship'
 export type HubColor = 'gold' | 'sage' | 'rose' | 'azure' | 'amber' | 'violet' | 'teal' | 'sand' | 'steel' | 'crimson' | 'forest'
@@ -1384,7 +1385,7 @@ export default function UniverseMap({
         if (!hasDraggedRef.current && e.changedTouches.length >= 1) {
           const t = e.changedTouches[0]
           const star = getStarAt(t.clientX, t.clientY)
-          if (star) { setStarPreview(star); isDraggingRef.current = false; return }
+          if (star) { setStarPreview(star); playShootingStarCatch(); isDraggingRef.current = false; return }
           const hub = getHubAt(t.clientX, t.clientY)
           if (hub) {
             setProfile({ hub, screenX: t.clientX, screenY: t.clientY, telescopeMode: hub.hubStyle === 'telescope' })
@@ -1432,7 +1433,7 @@ export default function UniverseMap({
     if (!hasDraggedRef.current) {
       // Check shooting star click first
       const star = getStarAt(e.clientX, e.clientY)
-      if (star) { setStarPreview(star); isDraggingRef.current = false; return }
+      if (star) { setStarPreview(star); playShootingStarCatch(); isDraggingRef.current = false; return }
       const hub = getHubAt(e.clientX, e.clientY)
       if (hub) {
         const isTelescope = hub.hubStyle === 'telescope'
@@ -1600,7 +1601,7 @@ export default function UniverseMap({
         {navItems.map((item, i) => (
           <button key={item.label}
             className="universe-nav-btn"
-            onClick={() => { setActiveNav(i); if (i === 1) onWriteLetter?.(); if (i === 2) onObservatory?.(); if (i === 3) onProfile?.() }}
+            onClick={() => { playClick(); setActiveNav(i); if (i === 1) onWriteLetter?.(); if (i === 2) onObservatory?.(); if (i === 3) onProfile?.() }}
             onMouseEnter={() => setHoveredNav(i)} onMouseLeave={() => setHoveredNav(null)}
             style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px', padding: '10px 18px', background: 'transparent', border: 'none', borderRadius: '10px', cursor: 'pointer', minWidth: '64px' }}>
             {activeNav === i && (

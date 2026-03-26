@@ -10,6 +10,7 @@ import Scribe from './components/Scribe'
 import Observatory from './components/Observatory'
 import Profile from './components/Profile'
 import { LoginScreen, SignupScreen } from './components/AuthScreens'
+import NotificationBanner, { sendLocalNotification } from './components/NotificationBanner'
 import { supabase } from '../lib/supabase'
 import {
   signUpAndCreateHub,
@@ -22,7 +23,9 @@ import {
   updateHub,
   signIn,
   uploadAvatarToStorage,
+  getMyLetters,
 } from './lib/auth'
+import { playChime } from '../lib/sounds'
 
 type Screen =
   | 'entry'
@@ -205,6 +208,41 @@ export default function Home() {
       }
     })()
   }, [screen, hubAvatarPending, hubAvatarUrl])
+
+  // Poll for newly arrived letters every 60s while on universe screen
+  const knownArrivedCountRef = useRef<number | null>(null)
+  useEffect(() => {
+    if (screen !== 'universe') return
+    async function checkArrivals() {
+      try {
+        const data = await getMyLetters()
+        const arrivedCount = (data.arrived || []).filter((l: any) => l.direction === 'received').length
+        if (knownArrivedCountRef.current === null) {
+          knownArrivedCountRef.current = arrivedCount
+          return
+        }
+        if (arrivedCount > knownArrivedCountRef.current) {
+          const newCount = arrivedCount - knownArrivedCountRef.current
+          knownArrivedCountRef.current = arrivedCount
+          playChime()
+          sendLocalNotification(
+            'Dear Stranger',
+            newCount === 1
+              ? 'A letter has found its way to you ✦'
+              : `${newCount} letters have arrived at your hub ✦`
+          )
+        } else {
+          knownArrivedCountRef.current = arrivedCount
+        }
+      } catch { /* silent */ }
+    }
+    void checkArrivals()
+    const interval = setInterval(() => void checkArrivals(), 60_000)
+    return () => {
+      clearInterval(interval)
+      knownArrivedCountRef.current = null
+    }
+  }, [screen])
 
   async function routeFromSession() {
     function timeoutPromise<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
@@ -717,6 +755,8 @@ export default function Home() {
         />
       )}
 
+      {screen === 'universe' && <NotificationBanner />}
+
       {screen === 'universe' && avatarGenerating && (
         <div style={{
           position: 'fixed',
@@ -782,6 +822,7 @@ export default function Home() {
 
               setLettersSent((prev) => prev + 1);
               setScribeOpen(false);
+              sendLocalNotification('Dear Stranger', 'Your letter is traveling across the universe ✦');
             } catch (err) {
               console.error('Failed to send letter:', err);
             }
