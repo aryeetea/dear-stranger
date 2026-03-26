@@ -12,7 +12,6 @@ import Profile from './components/Profile'
 import { LoginScreen, SignupScreen } from './components/AuthScreens'
 import { supabase } from '../lib/supabase'
 import {
-  signInAndCreateHub,
   signUpAndCreateHub,
   signOut,
   createHubForCurrentUser,
@@ -23,7 +22,6 @@ import {
   updateHub,
   signIn,
   uploadAvatarToStorage,
-  isGuestUser,
 } from './lib/auth'
 
 type Screen =
@@ -143,8 +141,6 @@ export default function Home() {
   const [observatoryOpen, setObservatoryOpen] = useState(false)
   const [navResetSignal, setNavResetSignal] = useState(0)
   const [profileOpen, setProfileOpen] = useState(false)
-  const [isGuest, setIsGuest] = useState(false)
-  const [showGuestWall, setShowGuestWall] = useState(false)
   const [pendingCredentials, setPendingCredentials] = useState<{
     email: string
     password: string
@@ -155,41 +151,6 @@ export default function Home() {
 
   const screenRef = useRef<Screen>('loading')
   const onboardingInFlightRef = useRef(false)
-
-  // Show guest entry option on onboarding
-  function GuestEntryOption() {
-    return (
-      <div style={{ marginTop: 18, textAlign: 'center' }}>
-        <span
-          onClick={() => {
-            setIsGuest(true);
-            setScreen('onboarding');
-          }}
-          style={{
-            fontFamily: "'Cinzel', serif",
-            fontSize: '12px',
-            color: '#fff',
-            letterSpacing: '0.18em',
-            textTransform: 'uppercase',
-            cursor: 'pointer',
-            textDecoration: 'none',
-            fontWeight: 400,
-            background: 'none',
-            borderRadius: '6px',
-            padding: '4px 10px',
-            boxShadow: 'none',
-            transition: 'color 0.2s',
-            display: 'inline-block',
-            opacity: 0.7,
-          }}
-          onMouseEnter={e => { e.currentTarget.style.opacity = '1' }}
-          onMouseLeave={e => { e.currentTarget.style.opacity = '0.7' }}
-        >
-          Enter as guest
-        </span>
-      </div>
-    )
-  }
 
   function clearHubState(resetResume = true) {
     setHubName('')
@@ -204,7 +165,6 @@ export default function Home() {
     setHubRegenCount(0)
     setHubCreatedAt('')
     setHubAvatarPending(null)
-    setIsGuest(false)
     if (resetResume) setOnboardingResumeState(null)
   }
 
@@ -275,8 +235,6 @@ export default function Home() {
         setOnboardingError('')
         setOnboardingResumeState(null)
 
-        const guest = await isGuestUser()
-        setIsGuest(guest)
         setScreen('universe')
         console.log('[routeFromSession] session+hub, go to universe')
         return
@@ -391,15 +349,8 @@ export default function Home() {
         setGeneratingStatus('Crafting your soul mirror...')
 
         let session = await getSession()
-        const isAnonymousSession = Boolean(
-          (session?.user as { is_anonymous?: boolean } | undefined)?.is_anonymous,
-        )
 
         if (pendingCredentials) {
-          if (isAnonymousSession) {
-            await signOut()
-          }
-
           await signUpAndCreateHub(
             pendingCredentials.email,
             pendingCredentials.password,
@@ -416,15 +367,11 @@ export default function Home() {
           }
 
           setPendingCredentials(null)
-          setIsGuest(false)
         } else if (session) {
           await createHubForCurrentUser(hubNameAnswer, chosenBio, chosenAskAbout)
-
-          const guest = await isGuestUser()
-          setIsGuest(guest)
         } else {
-          await signInAndCreateHub(hubNameAnswer, chosenBio, chosenAskAbout)
-          session = await getSession()
+          setScreen('entry')
+          return
         }
 
         setHubName(hubNameAnswer)
@@ -494,165 +441,6 @@ export default function Home() {
     } finally {
       onboardingInFlightRef.current = false
     }
-  }
-
-  function GuestWall() {
-    return (
-      <div
-        style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(0,0,5,0.92)',
-          backdropFilter: 'blur(16px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 90,
-          padding: '20px',
-        }}
-      >
-        <div
-          style={{
-            width: 'min(440px, 95vw)',
-            background: 'rgba(10,12,30,0.95)',
-            border: '1px solid rgba(230,199,110,0.22)',
-            borderRadius: '12px',
-            padding: 'clamp(32px,5vw,48px)',
-            position: 'relative',
-          }}
-        >
-          <div
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: '20%',
-              right: '20%',
-              height: '1px',
-              background:
-                'linear-gradient(90deg, transparent, rgba(230,199,110,0.45), transparent)',
-            }}
-          />
-
-          <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-            <p
-              style={{
-                fontFamily: "'Cinzel', serif",
-                fontSize: '9px',
-                letterSpacing: '0.5em',
-                color: 'rgba(201,168,76,0.6)',
-                textTransform: 'uppercase',
-                marginBottom: '10px',
-              }}
-            >
-              Before you write
-            </p>
-
-            <p
-              style={{
-                fontFamily: "'IM Fell English', serif",
-                fontStyle: 'italic',
-                fontSize: 'clamp(17px,2.5vw,22px)',
-                color: 'rgba(255,255,255,0.9)',
-                lineHeight: 1.6,
-                marginBottom: '10px',
-              }}
-            >
-              Letters need a home to return to.
-            </p>
-
-            <p
-              style={{
-                fontFamily: "'Cormorant Garamond', serif",
-                fontSize: '15px',
-                color: 'rgba(255,255,255,0.45)',
-                lineHeight: 1.7,
-              }}
-            >
-              Create a free account so your letters can travel — and find their way back
-              to you.
-            </p>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <button
-              onClick={() => {
-                setShowGuestWall(false)
-                setScreen('signup')
-              }}
-              style={{
-                width: '100%',
-                padding: '14px',
-                background: 'transparent',
-                border: '1px solid rgba(201,168,76,0.5)',
-                color: '#c9a84c',
-                fontFamily: "'Cinzel', serif",
-                fontSize: '10px',
-                letterSpacing: '0.3em',
-                textTransform: 'uppercase',
-                cursor: 'pointer',
-                borderRadius: '4px',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'rgba(201,168,76,0.08)'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'transparent'
-              }}
-            >
-              Create an Account ✦
-            </button>
-
-            <button
-              onClick={() => {
-                setShowGuestWall(false)
-                setScreen('login')
-              }}
-              style={{
-                width: '100%',
-                padding: '12px',
-                background: 'transparent',
-                border: '1px solid rgba(255,255,255,0.12)',
-                color: 'rgba(255,255,255,0.5)',
-                fontFamily: "'Cinzel', serif",
-                fontSize: '9px',
-                letterSpacing: '0.25em',
-                textTransform: 'uppercase',
-                cursor: 'pointer',
-                borderRadius: '4px',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)'
-                e.currentTarget.style.color = 'rgba(255,255,255,0.75)'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)'
-                e.currentTarget.style.color = 'rgba(255,255,255,0.5)'
-              }}
-            >
-              Sign In Instead
-            </button>
-
-            <button
-              onClick={() => setShowGuestWall(false)}
-              style={{
-                width: '100%',
-                padding: '10px',
-                background: 'transparent',
-                border: 'none',
-                color: 'rgba(255,255,255,0.25)',
-                fontFamily: "'Cinzel', serif",
-                fontSize: '8px',
-                letterSpacing: '0.2em',
-                textTransform: 'uppercase',
-                cursor: 'pointer',
-              }}
-            >
-              Keep Exploring ←
-            </button>
-          </div>
-        </div>
-      </div>
-    )
   }
 
   if (screen === 'loading') {
@@ -798,7 +586,6 @@ export default function Home() {
               setLettersSent(hub.letters_sent || 0)
               setHubRegenCount(hub.regen_count || 0)
               setHubCreatedAt((hub as any).created_at || '')
-              setIsGuest(false)
               setScreen('universe')
               return
             }
@@ -810,11 +597,6 @@ export default function Home() {
             setOnboardingError('')
             setPendingCredentials(null)
             setScreen('signup')
-          }}
-          onGuestEnter={() => {
-            setOnboardingError('')
-            setPendingCredentials(null)
-            setScreen('onboarding')
           }}
         />
       </div>
@@ -840,10 +622,6 @@ export default function Home() {
             setScreen('onboarding')
           }}
           setPendingCredentials={setPendingCredentials}
-          onGuestEnter={() => {
-            setIsGuest(true)
-            setScreen('onboarding')
-          }}
         />
       </div>
     )
@@ -885,10 +663,6 @@ export default function Home() {
           hubDecoration={hubDecoration}
           hubGlowIntensity={hubGlowIntensity}
           onWriteLetter={(name) => {
-            if (isGuest) {
-              setShowGuestWall(true)
-              return
-            }
             setScribeRecipient(name)
             setScribeOpen(true)
           }}
@@ -898,8 +672,6 @@ export default function Home() {
         />
       )}
 
-      {showGuestWall && <GuestWall />}
-
       {scribeOpen && (
         <Scribe
           recipientName={scribeRecipient}
@@ -907,12 +679,6 @@ export default function Home() {
           lettersSent={lettersSent}
           onClose={() => { setScribeOpen(false); setNavResetSignal(s => s + 1) }}
           onSend={async (letter) => {
-            if (isGuest) {
-              alert('You must create an account or sign in to send letters.');
-              setScribeOpen(false);
-              setShowGuestWall(true);
-              return;
-            }
             try {
               const allHubs = await getAllHubs();
               const recipient = allHubs.find((hub) => hub.hub_name === letter.to);
@@ -944,11 +710,6 @@ export default function Home() {
         <Observatory
           onClose={() => { setObservatoryOpen(false); setNavResetSignal(s => s + 1) }}
           onWriteLetter={(name) => {
-            if (isGuest) {
-              setObservatoryOpen(false)
-              setShowGuestWall(true)
-              return
-            }
             setObservatoryOpen(false)
             setScribeRecipient(name)
             setScribeOpen(true)

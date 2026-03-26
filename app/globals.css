@@ -158,3 +158,126 @@ input::placeholder {
     transform: none !important;
   }
 }
+
+/* ── Responsive & Device Support ───────────────────────────── */
+
+/* Prevent iOS font inflation in landscape */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* Remove tap highlight on mobile, improve touch responsiveness */
+button, a, [role="button"] {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* ── Safe-area-aware fixed elements ─────────────────────────── */
+
+/* Universe map navigation bar */
+.universe-nav {
+  bottom: calc(32px + env(safe-area-inset-bottom, 0px)) !important;
+  padding-left: calc(12px + env(safe-area-inset-left, 0px)) !important;
+  padding-right: calc(12px + env(safe-area-inset-right, 0px)) !important;
+}
+
+/* Close / back buttons fixed to top-right */
+.fixed-close-btn-top {
+  top: calc(28px + env(safe-area-inset-top, 0px)) !important;
+  right: calc(28px + env(safe-area-inset-right, 0px)) !important;
+}
+
+/* Feedback floating trigger */
+.feedback-trigger {
+  bottom: calc(100px + env(safe-area-inset-bottom, 0px)) !important;
+  right: calc(24px + env(safe-area-inset-right, 0px)) !important;
+}
+
+/* Font size controls */
+.fontsize-controls {
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px)) !important;
+  right: calc(20px + env(safe-area-inset-right, 0px)) !important;
+}
+
+/* ── Touch devices ──────────────────────────────────────────── */
+@media (hover: none) and (pointer: coarse) {
+  /* Minimum touch target sizes */
+  .universe-nav-btn {
+    min-height: 48px !important;
+    min-width: 56px !important;
+    padding: 10px 14px !important;
+  }
+  /* Scrollable full-screen modal containers */
+  .overflow-scroll-touch {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+}
+
+/* ── Small phones (< 360px) ────────────────────────────────── */
+@media (max-width: 360px) {
+  .universe-nav-btn {
+    padding: 8px 8px !important;
+    min-width: 44px !important;
+  }
+  .universe-nav-label {
+    font-size: 6.5px !important;
+    letter-spacing: 0.06em !important;
+  }
+  .feedback-category-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ── Narrow screens (< 420px) ──────────────────────────────── */
+@media (max-width: 420px) {
+  .feedback-category-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ── Tablet portrait / landscape (768px – 1024px) ────────── */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .universe-nav-btn {
+    padding: 10px 16px !important;
+    min-width: 62px !important;
+  }
+  .universe-nav-label {
+    font-size: 8.5px !important;
+  }
+  .profile-info-col {
+    padding: 48px 40px 60px !important;
+  }
+}
+
+/* ── Landscape phone (height ≤ 500px) ───────────────────────── */
+@media (max-height: 500px) and (orientation: landscape) {
+  .universe-hint { display: none !important; }
+  .universe-nav {
+    bottom: calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+    padding: 4px 8px !important;
+  }
+  .universe-nav-btn {
+    padding: 6px 12px !important;
+    gap: 3px !important;
+  }
+  .universe-nav-label {
+    font-size: 6px !important;
+  }
+  body { overflow: auto; }
+}
+
+/* ── Large desktop (≥ 1440px) ──────────────────────────────── */
+@media (min-width: 1440px) {
+  .universe-nav-btn {
+    padding: 12px 22px !important;
+    min-width: 72px !important;
+  }
+  .universe-nav-label {
+    font-size: 9px !important;
+  }
+  .profile-info-col {
+    padding: 80px 80px 100px !important;
+  }
+}

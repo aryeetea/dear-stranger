@@ -156,6 +156,7 @@ export default function Observatory({
       <motion.button
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
         onClick={onClose}
+        className="fixed-close-btn-top"
         style={{ position: 'fixed', top: '28px', right: '28px', background: 'none', border: '1px solid rgba(255,255,255,0.22)', color: 'rgba(255,255,255,0.82)', fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.3em', padding: '8px 16px', cursor: 'pointer', textTransform: 'uppercase', zIndex: 80 }}
         onMouseEnter={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.98)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.4)'; e.currentTarget.style.background = 'rgba(255,255,255,0.04)' }}
         onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.82)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.22)'; e.currentTarget.style.background = 'none' }}

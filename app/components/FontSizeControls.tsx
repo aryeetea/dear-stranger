@@ -30,6 +30,7 @@ export default function FontSizeControls() {
 
   return (
     <div
+      className="fontsize-controls"
       style={{
         position: 'fixed',
         bottom: '24px',

@@ -1,7 +1,25 @@
 import { NextResponse } from 'next/server'
 import OpenAI from 'openai'
+import { createClient } from '@supabase/supabase-js'
 
 export const maxDuration = 60
+
+// Only allow fetching images from our own Supabase storage to prevent SSRF
+function isAllowedImageUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url)
+    const supabaseHost = process.env.NEXT_PUBLIC_SUPABASE_URL
+      ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).hostname
+      : null
+    return (
+      parsed.protocol === 'https:' &&
+      supabaseHost !== null &&
+      parsed.hostname === supabaseHost
+    )
+  } catch {
+    return false
+  }
+}
 
 type Mode = 'create' | 'reimagine'
 
@@ -12,9 +30,20 @@ function normalizeDetail(value: string) {
     .trim()
 }
 
+const STYLE_DESCRIPTORS: Record<string, string> = {
+  fantasy: 'fantasy illustration style — magical, ethereal, mythical, otherworldly',
+  modern: 'modern realistic style — clean, stylish, contemporary',
+  'fantasy-modern': 'fantasy-modern hybrid style — blend of magical and contemporary',
+  celestial: 'celestial style — stars, moonlight, cosmic, divine energy',
+  royal: 'royal style — elegant, luxurious, noble, powerful',
+  streetwear: 'streetwear style — bold, urban, expressive, trendy',
+  futuristic: 'futuristic style — sleek, sci-fi, glowing, advanced technology',
+  nature: 'nature-inspired style — earthy, floral, organic, peaceful',
+}
+
 function buildAvatarPrompt(
   answers: string[],
-  _style?: string,
+  style?: string,
   feedback?: string,
   mode: Mode = 'create',
 ) {
@@ -27,8 +56,10 @@ function buildAvatarPrompt(
 
   const feedbackLine = feedback?.trim() ? normalizeDetail(feedback) : ''
 
-  const styleLine =
-    'Cinematic, highly detailed digital painting, soft glow lighting, semi-realistic, polished fantasy illustration style.'
+  const styleDesc = style ? STYLE_DESCRIPTORS[style] : undefined
+  const styleLine = styleDesc
+    ? `Cinematic, highly detailed digital painting, soft glow lighting, semi-realistic, polished ${styleDesc}.`
+    : 'Cinematic, highly detailed digital painting, soft glow lighting, semi-realistic, polished fantasy illustration style.'
 
   if (mode === 'reimagine') {
     if (feedbackLine) {
@@ -94,6 +125,9 @@ async function generateWithGptImage(
       const buffer = Buffer.from(base64, 'base64')
       imageFile = new File([buffer], 'image.jpg', { type: mimeType })
     } else {
+      if (!isAllowedImageUrl(previousImageUrl)) {
+        throw new Error('Image URL is not from an allowed source.')
+      }
       const resp = await fetch(previousImageUrl)
       const buffer = await resp.arrayBuffer()
       imageFile = new File([buffer], 'image.jpg', { type: 'image/jpeg' })
@@ -162,6 +196,24 @@ async function generateWithDallE3(openai: OpenAI, prompt: string) {
 
 export async function POST(req: Request) {
   try {
+    // Verify the caller has a valid Supabase session
+    const authHeader = req.headers.get('authorization')
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    if (supabaseUrl && supabaseAnonKey) {
+      const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+        global: { headers: { authorization: `Bearer ${token}` } },
+      })
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      }
+    }
+
     const body = await req.json()
     const {
       answers,

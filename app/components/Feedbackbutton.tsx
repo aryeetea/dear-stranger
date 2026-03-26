@@ -72,6 +72,7 @@ export default function FeedbackButton() {
         transition={{ delay: 2, duration: 0.4 }}
         onClick={() => setOpen(true)}
         title="Report an issue or send feedback"
+        className="feedback-trigger"
         style={{
           position: 'fixed',
           bottom: '100px',
@@ -165,7 +166,7 @@ export default function FeedbackButton() {
 
                     {/* Category */}
                     <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.3em', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', marginBottom: '12px' }}>What is this about?</p>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '24px' }}>
+                    <div className="feedback-category-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '24px' }}>
                       {CATEGORIES.map(cat => {
                         const isSelected = category === cat.id
                         return (

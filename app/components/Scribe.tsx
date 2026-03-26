@@ -443,6 +443,7 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
 
       <motion.button initial={{ opacity:0 }} animate={{ opacity:1 }} transition={{ delay:0.3 }}
         onClick={view==='write'?onClose:()=>setView('write')}
+        className="fixed-close-btn-top"
         style={{ position:'fixed', top:'24px', right:'24px', background:'none', border:'1px solid rgba(255,255,255,0.18)', color:'rgba(255,255,255,0.78)', fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.3em', padding:'8px 16px', cursor:'pointer', textTransform:'uppercase', zIndex:80 }}
         onMouseEnter={e=>{e.currentTarget.style.color='rgba(255,255,255,0.96)';e.currentTarget.style.borderColor='rgba(255,255,255,0.32)';e.currentTarget.style.background='rgba(255,255,255,0.04)'}}
         onMouseLeave={e=>{e.currentTarget.style.color='rgba(255,255,255,0.78)';e.currentTarget.style.borderColor='rgba(255,255,255,0.18)';e.currentTarget.style.background='none'}}>
