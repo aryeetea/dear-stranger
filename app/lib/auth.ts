@@ -478,9 +478,14 @@ export async function sendLetter(
   const trimmedBody = body.trim()
   if (!trimmedBody) throw new Error('Letter body cannot be empty')
 
-  const travelDays = Math.floor(Math.random() * 7) + 1
+  // Universe letters are instant — they float freely as shooting stars immediately.
+  // Direct letters travel 1–7 days.
   const arrivesAt = new Date()
-  arrivesAt.setDate(arrivesAt.getDate() + travelDays)
+  if (!isUniverseLetter) {
+    const travelDays = Math.floor(Math.random() * 7) + 1
+    arrivesAt.setDate(arrivesAt.getDate() + travelDays)
+  }
+  const initialStatus = isUniverseLetter ? 'arrived' : 'transit'
 
   const { data, error } = await supabase
     .from('letters')
@@ -492,7 +497,7 @@ export async function sendLetter(
         paper_id: paperId,
         is_universe_letter: isUniverseLetter,
         arrives_at: arrivesAt.toISOString(),
-        status: 'transit',
+        status: initialStatus,
         subject,
         font_id: fontId,
       },
