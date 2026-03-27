@@ -1127,6 +1127,7 @@ export default function UniverseMap({
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
   const [profile, setProfile] = useState<ProfileState | null>(null)
   const [starPreview, setStarPreview] = useState<ShootingStar | null>(null)
+  const dismissedLetterIdsRef = useRef<Set<string>>(new Set())
   const [activeNav, setActiveNav] = useState(0)
   const [hoveredNav, setHoveredNav] = useState<number | null>(null)
 
@@ -1173,8 +1174,11 @@ export default function UniverseMap({
     }
 
     function spawnRealStar() {
-      if (universeLetters.length === 0) return
-      const letter = universeLetters[Math.floor(Math.random() * universeLetters.length)]
+      // Only one star in flight at a time
+      if (shootingStarsRef.current.length > 0) return
+      const available = universeLetters.filter(l => !dismissedLetterIdsRef.current.has(l.id))
+      if (available.length === 0) return
+      const letter = available[Math.floor(Math.random() * available.length)]
       spawnShootingStar(letter)
     }
 
@@ -1500,7 +1504,7 @@ export default function UniverseMap({
                 </p>
               </div>
               <div style={{ display: 'flex', gap: '10px', flexShrink: 0, flexWrap: 'wrap' }}>
-                <button onClick={() => setStarPreview(null)}
+                <button onClick={() => { if (starPreview.letterId) dismissedLetterIdsRef.current.add(starPreview.letterId); setStarPreview(null) }}
                   style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.25em', color: 'rgba(255,255,255,0.45)', padding: '10px 16px', border: '1px solid rgba(255,255,255,0.12)', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase', borderRadius: '4px', transition: 'opacity 0.2s' }}>
                   Let it pass
                 </button>
