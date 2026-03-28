@@ -12,6 +12,42 @@ const OBS_STARS = Array.from({ length: 30 }, (_, i) => ({
   opacity: (i % 6) * 0.05 + 0.05,
 }))
 
+// Minimal font map so we can render the sender's chosen font without importing Scribe
+const FONT_FAMILIES: Record<string, string> = {
+  'cormorant': "'Cormorant Garamond', serif",
+  'im-fell': "'IM Fell English', serif",
+  'georgia': 'Georgia, serif',
+  'times': "'Times New Roman', Times, serif",
+  'playfair': "'Playfair Display', serif",
+  'dancing': "'Dancing Script', cursive",
+  'parisienne': "'Parisienne', cursive",
+  'allura': "'Allura', cursive",
+  'sacramento': "'Sacramento', cursive",
+  'style-script': "'Style Script', cursive",
+  'satisfy': "'Satisfy', cursive",
+  'pacifico': "'Pacifico', cursive",
+  'special-elite': "'Special Elite', cursive",
+  'bellefair': "'Bellefair', serif",
+  'baskervville': "'Baskervville', serif",
+  'marcellus': "'Marcellus', serif",
+  'courier': "'Courier Prime', monospace",
+  'indie': "'Indie Flower', cursive",
+  'roboto-slab': "'Roboto Slab', serif",
+  'lora': "'Lora', serif",
+  'quicksand': "'Quicksand', sans-serif",
+  'source-sans': "'Source Sans 3', sans-serif",
+  'cinzel': "'Cinzel', serif",
+  'roboto': "'Roboto', sans-serif",
+  'lato': "'Lato', sans-serif",
+}
+
+const FONT_COLOR_MAP: Record<string, string> = {
+  'iron-gall': '#1a0e04', 'prussian': '#0c2040', 'forest': '#0c2410',
+  'burgundy': '#380614', 'amethyst': '#260c38', 'sepia': '#4a2a08',
+  'midnight': '#08081c', 'jade': '#0a2820', 'crimson': '#420808',
+  'slate': '#161620', 'teak': '#3a1c06', 'navy': '#060a28',
+}
+
 interface Letter {
   id: string
   from?: string
@@ -19,6 +55,10 @@ interface Letter {
   preview: string
   body: string
   paperId: string
+  fontId?: string
+  fontColor?: string
+  paperColor?: string
+  stampId?: string
   sentAt: string
   arrivedAt?: string
   status: 'transit' | 'arrived' | 'archive'
@@ -76,6 +116,10 @@ export default function Observatory({
             preview: l.body ? l.body.length > 90 ? `${l.body.slice(0, 90)}...` : l.body : '',
             body: l.body || '',
             paperId: l.paper_id || 'ornate',
+            fontId: l.font_id || undefined,
+            fontColor: l.font_color || undefined,
+            paperColor: l.paper_color || undefined,
+            stampId: l.stamp_id || undefined,
             sentAt: l.created_at,
             arrivedAt: l.arrives_at || undefined,
             status: l.status,
@@ -91,6 +135,10 @@ export default function Observatory({
           preview: l.subject || 'A letter for you',
           body: l.body || '',
           paperId: l.paper_id || 'ornate',
+          fontId: l.font_id || undefined,
+          fontColor: l.font_color || undefined,
+          paperColor: l.paper_color || undefined,
+          stampId: l.stamp_id || undefined,
           sentAt: l.created_at,
           arrivedAt: l.arrives_at || undefined,
           status: l.status,
@@ -318,6 +366,29 @@ function LetterEntry({ letter, index, onClick }: { letter: Letter; index: number
   )
 }
 
+// Lightweight stamp renderer for the modal — mirrors Scribe's StampSVG
+function ModalStamp({ id }: { id: string }) {
+  const s = 48
+  if (id === 'moon-seal' || id === 'rose-seal' || id === 'emerald-seal' || id === 'sapphire-seal' || id === 'obsidian-seal' || id === 'ivory-seal' || id === 'sun-seal' || id === 'star-seal') {
+    const sealColors: Record<string, [string, string]> = {
+      'moon-seal':    ['#8b1a1a', '#9a2020'],
+      'rose-seal':    ['#8b1a4a', '#9a2060'],
+      'emerald-seal': ['#1a6b30', '#207840'],
+      'sapphire-seal':['#1a3a8b', '#2040a0'],
+      'obsidian-seal':['#111118', '#1a1a28'],
+      'ivory-seal':   ['#9a8a60', '#b09a70'],
+      'sun-seal':     ['#8b6010', '#a07018'],
+      'star-seal':    ['#1a1a5a', '#22226a'],
+    }
+    const [bg, inner] = sealColors[id] || ['#8b1a1a', '#9a2020']
+    if (id === 'sun-seal') return <svg width={s} height={s} viewBox="0 0 60 60"><circle cx="30" cy="30" r="28" fill={bg}/><circle cx="30" cy="30" r="24" fill={inner}/>{[...Array(8)].map((_,i)=>{const a=(i/8)*Math.PI*2;return <line key={i} x1={30+Math.cos(a)*14} y1={30+Math.sin(a)*14} x2={30+Math.cos(a)*22} y2={30+Math.sin(a)*22} stroke="rgba(255,220,100,0.5)" strokeWidth="2" strokeLinecap="round"/>})}<circle cx="30" cy="30" r="10" fill="#c9a040"/></svg>
+    if (id === 'star-seal') return <svg width={s} height={s} viewBox="0 0 60 60"><circle cx="30" cy="30" r="28" fill={bg}/><circle cx="30" cy="30" r="24" fill={inner}/><polygon points="30,12 33,22 44,22 35,28 38,40 30,33 22,40 25,28 16,22 27,22" fill="rgba(200,200,255,0.7)"/></svg>
+    return <svg width={s} height={s} viewBox="0 0 60 60"><circle cx="30" cy="30" r="28" fill={bg}/><circle cx="30" cy="30" r="24" fill={inner}/><path d="M22 20 Q30 14 38 20 Q32 22 30 30 Q24 22 22 20Z" fill="rgba(255,220,200,0.7)"/><text x="30" y="45" textAnchor="middle" fontSize="8" fontFamily="serif" fill="rgba(255,200,180,0.7)" letterSpacing="1">SEALED</text></svg>
+  }
+  // For all other stamps, render a simple representative shape
+  return <svg width={s} height={s} viewBox="0 0 60 60"><rect x="2" y="2" width="56" height="56" fill="none" stroke="rgba(200,168,76,0.5)" strokeWidth="1.5" rx="3"/><text x="30" y="34" textAnchor="middle" fontSize="18" fill="rgba(200,168,76,0.7)">✦</text></svg>
+}
+
 function LetterModal({
   letter,
   onClose,
@@ -328,6 +399,10 @@ function LetterModal({
   onReply?: (name: string) => void
 }) {
   const colors = PAPER_COLORS[letter.paperId] || PAPER_COLORS.ornate
+  const bodyFont = (letter.fontId && FONT_FAMILIES[letter.fontId]) || "'Cormorant Garamond', serif"
+  const bodyColor = (letter.fontColor && FONT_COLOR_MAP[letter.fontColor])
+    ? `color-mix(in srgb, ${FONT_COLOR_MAP[letter.fontColor]} 85%, rgba(255,255,255,0.7))`
+    : 'rgba(255,255,255,0.94)'
   const ps: CSSProperties = {
     background: 'linear-gradient(180deg, rgba(18,16,24,0.96), rgba(10,8,14,0.98))',
     border: `1px solid ${colors.accent}45`,
@@ -360,18 +435,24 @@ function LetterModal({
           {new Date(letter.arrivedAt || letter.sentAt).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
         </p>
 
-        <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '17px', fontStyle: 'italic', opacity: 0.9, marginBottom: '16px', lineHeight: 1.8 }}>
+        <p style={{ fontFamily: bodyFont, fontSize: '17px', fontStyle: 'italic', color: bodyColor, opacity: 0.9, marginBottom: '16px', lineHeight: 1.8 }}>
           {letter.direction === 'received' ? 'Dear Stranger,' : `Dear ${letter.to},`}
         </p>
 
-        <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 'clamp(15px,2vw,18px)', lineHeight: 2, letterSpacing: '0.02em', opacity: 0.98 }}>
+        <p style={{ fontFamily: bodyFont, fontSize: 'clamp(15px,2vw,18px)', lineHeight: 2, letterSpacing: '0.02em', color: bodyColor, opacity: 0.98 }}>
           {letter.body}
         </p>
 
-        <p style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', fontSize: '15px', opacity: 0.86, marginTop: '24px', lineHeight: 1.9 }}>
+        <p style={{ fontFamily: bodyFont, fontStyle: 'italic', fontSize: '15px', color: bodyColor, opacity: 0.86, marginTop: '24px', lineHeight: 1.9 }}>
           With presence,<br />
           <span style={{ color: colors.accent, opacity: 0.95 }}>A Stranger</span>
         </p>
+
+        {letter.stampId && (
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px', opacity: 0.85 }}>
+            <ModalStamp id={letter.stampId} />
+          </div>
+        )}
 
         {letter.direction === 'received' && (
           <div style={{ marginTop: '32px', paddingTop: '20px', borderTop: `1px solid ${colors.accent}38` }}>

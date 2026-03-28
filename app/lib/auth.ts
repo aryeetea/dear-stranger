@@ -478,6 +478,9 @@ export async function sendLetter(
   isUniverseLetter = false,
   subject = 'A letter for you',
   fontId = 'cormorant',
+  fontColor?: string,
+  paperColor?: string,
+  stampId?: string,
 ) {
   const {
     data: { user },
@@ -520,6 +523,9 @@ export async function sendLetter(
         status: initialStatus,
         subject,
         font_id: fontId,
+        ...(fontColor ? { font_color: fontColor } : {}),
+        ...(paperColor ? { paper_color: paperColor } : {}),
+        ...(stampId ? { stamp_id: stampId } : {}),
       },
     ])
     .select()

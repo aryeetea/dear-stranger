@@ -28,22 +28,43 @@ const PAPERS = [
 ]
 
 const STAMPS = [
-  { id: 'moon-seal', category: 'Wax Seal', label: 'Moon Seal' },
-  { id: 'sun-seal', category: 'Wax Seal', label: 'Sun Seal' },
-  { id: 'star-seal', category: 'Wax Seal', label: 'Star Seal' },
-  { id: 'veilmore', category: 'Postmark', label: 'Veilmore' },
-  { id: 'ashpoint', category: 'Postmark', label: 'Ashpoint' },
-  { id: 'duskhollow', category: 'Postmark', label: 'Duskhollow' },
-  { id: 'compass', category: 'Illustrated', label: 'Compass' },
-  { id: 'feather', category: 'Illustrated', label: 'Feather' },
-  { id: 'key', category: 'Illustrated', label: 'Key' },
-  { id: 'eye', category: 'Illustrated', label: 'Eye' },
-  { id: 'orion', category: 'Constellation', label: 'Orion' },
-  { id: 'cassiopeia', category: 'Constellation', label: 'Cassiopeia' },
-  { id: 'lyra', category: 'Constellation', label: 'Lyra' },
-  { id: 'spiral', category: 'Abstract', label: 'Spiral' },
-  { id: 'diamond', category: 'Abstract', label: 'Diamond' },
-  { id: 'wave', category: 'Abstract', label: 'Wave' },
+  // Wax Seals
+  { id: 'moon-seal',     category: 'Wax Seal',    label: 'Moon Seal'      },
+  { id: 'sun-seal',      category: 'Wax Seal',    label: 'Sun Seal'       },
+  { id: 'star-seal',     category: 'Wax Seal',    label: 'Star Seal'      },
+  { id: 'rose-seal',     category: 'Wax Seal',    label: 'Rose Seal'      },
+  { id: 'emerald-seal',  category: 'Wax Seal',    label: 'Emerald Seal'   },
+  { id: 'sapphire-seal', category: 'Wax Seal',    label: 'Sapphire Seal'  },
+  { id: 'obsidian-seal', category: 'Wax Seal',    label: 'Obsidian Seal'  },
+  { id: 'ivory-seal',    category: 'Wax Seal',    label: 'Ivory Seal'     },
+  // Postmarks
+  { id: 'veilmore',      category: 'Postmark',    label: 'Veilmore'       },
+  { id: 'ashpoint',      category: 'Postmark',    label: 'Ashpoint'       },
+  { id: 'duskhollow',    category: 'Postmark',    label: 'Duskhollow'     },
+  { id: 'evermore',      category: 'Postmark',    label: 'Evermore'       },
+  { id: 'gloomhaven',    category: 'Postmark',    label: 'Gloomhaven'     },
+  { id: 'stardrift',     category: 'Postmark',    label: 'Stardrift'      },
+  // Illustrated
+  { id: 'compass',       category: 'Illustrated', label: 'Compass'        },
+  { id: 'feather',       category: 'Illustrated', label: 'Feather'        },
+  { id: 'key',           category: 'Illustrated', label: 'Key'            },
+  { id: 'eye',           category: 'Illustrated', label: 'Eye'            },
+  { id: 'butterfly',     category: 'Illustrated', label: 'Butterfly'      },
+  { id: 'hourglass',     category: 'Illustrated', label: 'Hourglass'      },
+  { id: 'anchor',        category: 'Illustrated', label: 'Anchor'         },
+  { id: 'rose',          category: 'Illustrated', label: 'Rose'           },
+  // Constellations
+  { id: 'orion',         category: 'Constellation', label: 'Orion'        },
+  { id: 'cassiopeia',    category: 'Constellation', label: 'Cassiopeia'   },
+  { id: 'lyra',          category: 'Constellation', label: 'Lyra'         },
+  { id: 'pleiades',      category: 'Constellation', label: 'Pleiades'     },
+  { id: 'southern-cross',category: 'Constellation', label: 'Southern Cross'},
+  // Abstract
+  { id: 'spiral',        category: 'Abstract',    label: 'Spiral'         },
+  { id: 'diamond',       category: 'Abstract',    label: 'Diamond'        },
+  { id: 'wave',          category: 'Abstract',    label: 'Wave'           },
+  { id: 'infinity',      category: 'Abstract',    label: 'Infinity'       },
+  { id: 'hexagon',       category: 'Abstract',    label: 'Hexagon'        },
 ]
 
 const FONTS = [
@@ -115,7 +136,22 @@ function StampSVG({ id, size = 60 }: { id: string; size?: number }) {
   if (id === 'moon-seal') return <svg width={s} height={s} viewBox="0 0 60 60"><circle cx="30" cy="30" r="28" fill="#8b1a1a"/><circle cx="30" cy="30" r="24" fill="#9a2020"/><path d="M22 20 Q30 14 38 20 Q32 22 30 30 Q24 22 22 20Z" fill="rgba(255,220,200,0.7)"/><text x="30" y="45" textAnchor="middle" fontSize="8" fontFamily="serif" fill="rgba(255,200,180,0.7)" letterSpacing="1">SEALED</text></svg>
   if (id === 'sun-seal') return <svg width={s} height={s} viewBox="0 0 60 60"><circle cx="30" cy="30" r="28" fill="#8b6010"/><circle cx="30" cy="30" r="24" fill="#a07018"/>{[...Array(8)].map((_,i)=>{const a=(i/8)*Math.PI*2;return <line key={i} x1={30+Math.cos(a)*14} y1={30+Math.sin(a)*14} x2={30+Math.cos(a)*22} y2={30+Math.sin(a)*22} stroke="rgba(255,220,100,0.5)" strokeWidth="2" strokeLinecap="round"/>})}<circle cx="30" cy="30" r="10" fill="#c9a040"/></svg>
   if (id === 'star-seal') return <svg width={s} height={s} viewBox="0 0 60 60"><circle cx="30" cy="30" r="28" fill="#1a1a5a"/><circle cx="30" cy="30" r="24" fill="#22226a"/><polygon points="30,12 33,22 44,22 35,28 38,40 30,33 22,40 25,28 16,22 27,22" fill="rgba(200,200,255,0.7)"/></svg>
-  if (id === 'veilmore') return <svg width={s} height={s} viewBox="0 0 80 80"><rect x="2" y="2" width="76" height="76" fill="none" stroke="rgba(80,40,20,0.7)" strokeWidth="2" rx="4"/><text x="40" y="28" textAnchor="middle" fontSize="9" fontFamily="serif" fill="rgba(60,30,10,0.8)" letterSpacing="2" fontWeight="bold">VEILMORE</text><line x1="12" y1="34" x2="68" y2="34" stroke="rgba(80,40,20,0.4)" strokeWidth="1"/><text x="40" y="48" textAnchor="middle" fontSize="7" fontFamily="serif" fill="rgba(60,30,10,0.6)">COSMIC POST</text></svg>
+  if (id === 'rose-seal') return <svg width={s} height={s} viewBox="0 0 60 60"><circle cx="30" cy="30" r="28" fill="#8b1a4a"/><circle cx="30" cy="30" r="24" fill="#9a2060"/><path d="M22 20 Q30 14 38 20 Q32 22 30 30 Q24 22 22 20Z" fill="rgba(255,200,220,0.7)"/><text x="30" y="45" textAnchor="middle" fontSize="8" fontFamily="serif" fill="rgba(255,180,210,0.7)" letterSpacing="1">SEALED</text></svg>
+  if (id === 'emerald-seal') return <svg width={s} height={s} viewBox="0 0 60 60"><circle cx="30" cy="30" r="28" fill="#1a6b30"/><circle cx="30" cy="30" r="24" fill="#207840"/><path d="M22 20 Q30 14 38 20 Q32 22 30 30 Q24 22 22 20Z" fill="rgba(180,255,200,0.7)"/><text x="30" y="45" textAnchor="middle" fontSize="8" fontFamily="serif" fill="rgba(160,240,180,0.7)" letterSpacing="1">SEALED</text></svg>
+  if (id === 'sapphire-seal') return <svg width={s} height={s} viewBox="0 0 60 60"><circle cx="30" cy="30" r="28" fill="#1a3a8b"/><circle cx="30" cy="30" r="24" fill="#2040a0"/><path d="M22 20 Q30 14 38 20 Q32 22 30 30 Q24 22 22 20Z" fill="rgba(180,200,255,0.7)"/><text x="30" y="45" textAnchor="middle" fontSize="8" fontFamily="serif" fill="rgba(160,180,255,0.7)" letterSpacing="1">SEALED</text></svg>
+  if (id === 'obsidian-seal') return <svg width={s} height={s} viewBox="0 0 60 60"><circle cx="30" cy="30" r="28" fill="#111118"/><circle cx="30" cy="30" r="24" fill="#1a1a28"/><path d="M22 20 Q30 14 38 20 Q32 22 30 30 Q24 22 22 20Z" fill="rgba(180,180,220,0.5)"/><text x="30" y="45" textAnchor="middle" fontSize="8" fontFamily="serif" fill="rgba(160,160,200,0.6)" letterSpacing="1">SEALED</text></svg>
+  if (id === 'ivory-seal') return <svg width={s} height={s} viewBox="0 0 60 60"><circle cx="30" cy="30" r="28" fill="#9a8a60"/><circle cx="30" cy="30" r="24" fill="#b09a70"/><path d="M22 20 Q30 14 38 20 Q32 22 30 30 Q24 22 22 20Z" fill="rgba(255,245,220,0.7)"/><text x="30" y="45" textAnchor="middle" fontSize="8" fontFamily="serif" fill="rgba(240,225,180,0.7)" letterSpacing="1">SEALED</text></svg>
+  if (id === 'evermore') return <svg width={s} height={s} viewBox="0 0 80 80"><rect x="2" y="2" width="76" height="76" fill="none" stroke="rgba(60,40,20,0.7)" strokeWidth="2" rx="4"/><text x="40" y="28" textAnchor="middle" fontSize="9" fontFamily="serif" fill="rgba(50,30,10,0.8)" letterSpacing="2" fontWeight="bold">EVERMORE</text><line x1="12" y1="34" x2="68" y2="34" stroke="rgba(80,40,20,0.4)" strokeWidth="1"/><text x="40" y="48" textAnchor="middle" fontSize="7" fontFamily="serif" fill="rgba(60,30,10,0.6)">COSMIC POST</text></svg>
+  if (id === 'gloomhaven') return <svg width={s} height={s} viewBox="0 0 80 80"><circle cx="40" cy="40" r="36" fill="none" stroke="rgba(30,20,50,0.7)" strokeWidth="2"/><text x="40" y="36" textAnchor="middle" fontSize="8" fontFamily="serif" fill="rgba(30,20,60,0.85)" letterSpacing="2" fontWeight="bold">GLOOMHAVEN</text><text x="40" y="52" textAnchor="middle" fontSize="7" fontFamily="serif" fill="rgba(40,20,60,0.5)">BETWEEN WORLDS</text></svg>
+  if (id === 'stardrift') return <svg width={s} height={s} viewBox="0 0 80 80"><ellipse cx="40" cy="40" rx="36" ry="28" fill="none" stroke="rgba(20,30,70,0.7)" strokeWidth="2"/><text x="40" y="36" textAnchor="middle" fontSize="8" fontFamily="serif" fill="rgba(20,30,80,0.85)" letterSpacing="2" fontWeight="bold">STARDRIFT</text><text x="40" y="54" textAnchor="middle" fontSize="6" fontFamily="serif" fill="rgba(20,30,70,0.5)">CARRIED BY LIGHT</text></svg>
+  if (id === 'butterfly') return <svg width={s} height={s} viewBox="0 0 60 60"><rect x="2" y="2" width="56" height="56" fill="rgba(220,200,240,0.12)" stroke="rgba(120,80,160,0.5)" strokeWidth="1.5" rx="2"/><path d="M30 30 Q20 18 12 22 Q8 30 20 34 Q28 36 30 30Z" fill="rgba(160,100,200,0.3)" stroke="rgba(120,80,160,0.6)" strokeWidth="1"/><path d="M30 30 Q40 18 48 22 Q52 30 40 34 Q32 36 30 30Z" fill="rgba(160,100,200,0.3)" stroke="rgba(120,80,160,0.6)" strokeWidth="1"/><path d="M30 30 Q20 38 16 46 Q22 50 28 42 Q30 36 30 30Z" fill="rgba(140,80,180,0.25)" stroke="rgba(100,60,140,0.5)" strokeWidth="1"/><path d="M30 30 Q40 38 44 46 Q38 50 32 42 Q30 36 30 30Z" fill="rgba(140,80,180,0.25)" stroke="rgba(100,60,140,0.5)" strokeWidth="1"/><line x1="30" y1="26" x2="26" y2="20" stroke="rgba(80,40,100,0.5)" strokeWidth="1" strokeLinecap="round"/><line x1="30" y1="26" x2="34" y2="20" stroke="rgba(80,40,100,0.5)" strokeWidth="1" strokeLinecap="round"/></svg>
+  if (id === 'hourglass') return <svg width={s} height={s} viewBox="0 0 60 60"><rect x="2" y="2" width="56" height="56" fill="rgba(220,200,160,0.1)" stroke="rgba(120,90,40,0.5)" strokeWidth="1.5" rx="2"/><line x1="18" y1="12" x2="42" y2="12" stroke="rgba(100,70,20,0.7)" strokeWidth="2" strokeLinecap="round"/><line x1="18" y1="48" x2="42" y2="48" stroke="rgba(100,70,20,0.7)" strokeWidth="2" strokeLinecap="round"/><path d="M18 12 L42 12 L30 30 L42 48 L18 48 L30 30 Z" fill="rgba(180,140,80,0.2)" stroke="rgba(100,70,20,0.5)" strokeWidth="1"/><path d="M20 14 L30 28" fill="none" stroke="rgba(200,160,80,0.4)" strokeWidth="1"/></svg>
+  if (id === 'anchor') return <svg width={s} height={s} viewBox="0 0 60 60"><rect x="2" y="2" width="56" height="56" fill="rgba(180,210,230,0.1)" stroke="rgba(40,80,120,0.5)" strokeWidth="1.5" rx="2"/><circle cx="30" cy="18" r="5" fill="none" stroke="rgba(30,70,120,0.7)" strokeWidth="1.8"/><line x1="30" y1="23" x2="30" y2="46" stroke="rgba(30,70,120,0.7)" strokeWidth="1.8" strokeLinecap="round"/><line x1="20" y1="34" x2="40" y2="34" stroke="rgba(30,70,120,0.6)" strokeWidth="1.5" strokeLinecap="round"/><path d="M20 46 Q22 52 30 50 Q38 52 40 46" fill="none" stroke="rgba(30,70,120,0.6)" strokeWidth="1.5" strokeLinecap="round"/></svg>
+  if (id === 'rose') return <svg width={s} height={s} viewBox="0 0 60 60"><rect x="2" y="2" width="56" height="56" fill="rgba(240,200,210,0.1)" stroke="rgba(160,60,80,0.5)" strokeWidth="1.5" rx="2"/><circle cx="30" cy="28" r="8" fill="rgba(200,80,100,0.25)" stroke="rgba(160,60,80,0.6)" strokeWidth="1"/><circle cx="30" cy="28" r="5" fill="rgba(220,100,120,0.3)"/>{[[22,22],[38,22],[20,32],[40,32],[24,40],[36,40]].map(([x,y],i)=><path key={i} d={`M${x} ${y} Q${(x+30)/2} ${(y+28)/2+2} 30 28`} fill="none" stroke="rgba(160,60,80,0.35)" strokeWidth="1"/>)}<line x1="28" y1="36" x2="26" y2="50" stroke="rgba(60,120,60,0.5)" strokeWidth="1.5" strokeLinecap="round"/><path d="M26 44 Q20 40 22 36" fill="none" stroke="rgba(60,120,60,0.45)" strokeWidth="1.2" strokeLinecap="round"/></svg>
+  if (id === 'pleiades') return <svg width={s} height={s} viewBox="0 0 60 60"><rect x="2" y="2" width="56" height="56" fill="rgba(10,10,30,0.6)" stroke="rgba(150,160,220,0.4)" strokeWidth="1.5" rx="2"/>{[[22,20],[30,18],[38,22],[26,28],[34,26],[28,34]].map(([x,y],i)=><circle key={i} cx={x} cy={y} r={i<3?2.5:1.8} fill="rgba(200,210,255,0.85)"/>)}</svg>
+  if (id === 'southern-cross') return <svg width={s} height={s} viewBox="0 0 60 60"><rect x="2" y="2" width="56" height="56" fill="rgba(10,10,30,0.6)" stroke="rgba(150,160,220,0.4)" strokeWidth="1.5" rx="2"/>{[[30,14],[30,46],[14,30],[44,30],[40,20]].map(([x,y],i)=><circle key={i} cx={x} cy={y} r={i===4?1.5:2.5} fill="rgba(200,210,255,0.85)"/>)}<polygon points="30,14 30,46" fill="none" stroke="rgba(150,160,220,0.2)" strokeWidth="0.6"/><polygon points="14,30 44,30" fill="none" stroke="rgba(150,160,220,0.2)" strokeWidth="0.6"/></svg>
+  if (id === 'infinity') return <svg width={s} height={s} viewBox="0 0 60 60"><rect x="2" y="2" width="56" height="56" fill="rgba(200,180,240,0.1)" stroke="rgba(100,80,160,0.5)" strokeWidth="1.5" rx="2"/><path d="M20 30 Q20 20 30 20 Q40 20 40 30 Q40 40 30 40 Q20 40 20 30 M40 30 Q40 20 50 20 Q60 20 60 30 M20 30 Q20 40 10 40" fill="none" stroke="rgba(100,80,160,0.7)" strokeWidth="2" strokeLinecap="round"/><path d="M12 24 Q20 18 28 24 Q36 30 44 24 Q52 18 58 28 Q52 38 44 34 Q36 30 28 36 Q20 42 12 36 Q6 30 12 24Z" fill="rgba(100,80,160,0.15)" stroke="rgba(100,80,160,0.6)" strokeWidth="1.5"/></svg>
+  if (id === 'hexagon') return <svg width={s} height={s} viewBox="0 0 60 60"><rect x="2" y="2" width="56" height="56" fill="rgba(180,220,200,0.1)" stroke="rgba(40,120,100,0.5)" strokeWidth="1.5" rx="2"/><polygon points="30,10 48,20 48,40 30,50 12,40 12,20" fill="rgba(40,120,100,0.12)" stroke="rgba(40,120,100,0.65)" strokeWidth="1.5"/><polygon points="30,18 40,24 40,36 30,42 20,36 20,24" fill="rgba(40,120,100,0.1)" stroke="rgba(40,120,100,0.4)" strokeWidth="1"/></svg>
   if (id === 'ashpoint') return <svg width={s} height={s} viewBox="0 0 80 80"><circle cx="40" cy="40" r="36" fill="none" stroke="rgba(60,30,20,0.7)" strokeWidth="2"/><text x="40" y="36" textAnchor="middle" fontSize="9" fontFamily="serif" fill="rgba(50,25,10,0.85)" letterSpacing="2" fontWeight="bold">ASHPOINT</text><text x="40" y="52" textAnchor="middle" fontSize="7" fontFamily="serif" fill="rgba(50,25,10,0.5)">BETWEEN WORLDS</text></svg>
   if (id === 'duskhollow') return <svg width={s} height={s} viewBox="0 0 80 80"><ellipse cx="40" cy="40" rx="36" ry="28" fill="none" stroke="rgba(40,20,60,0.7)" strokeWidth="2"/><text x="40" y="36" textAnchor="middle" fontSize="8" fontFamily="serif" fill="rgba(40,20,60,0.85)" letterSpacing="2" fontWeight="bold">DUSKHOLLOW</text><text x="40" y="54" textAnchor="middle" fontSize="6" fontFamily="serif" fill="rgba(40,20,60,0.5)">WHERE LETTERS REST</text></svg>
   if (id === 'compass') return <svg width={s} height={s} viewBox="0 0 60 60"><rect x="2" y="2" width="56" height="56" fill="rgba(200,170,100,0.15)" stroke="rgba(120,80,20,0.6)" strokeWidth="1.5" rx="2"/><circle cx="30" cy="28" r="16" fill="none" stroke="rgba(100,60,10,0.5)" strokeWidth="1"/><line x1="30" y1="14" x2="30" y2="42" stroke="rgba(100,60,10,0.4)" strokeWidth="1"/><line x1="16" y1="28" x2="44" y2="28" stroke="rgba(100,60,10,0.4)" strokeWidth="1"/><polygon points="30,14 28,24 32,24" fill="rgba(140,20,20,0.7)"/><circle cx="30" cy="28" r="3" fill="rgba(100,60,10,0.6)"/></svg>
@@ -428,7 +464,7 @@ function LetterContent({ fontFamily, ink, recipient, senderName, date, body, set
 export default function Scribe({ recipientName, senderName, lettersSent = 0, onClose, onSend }: {
   recipientName?: string; senderName?: string; lettersSent?: number
   onClose?: () => void
-  onSend?: (letter: { to?: string; body: string; paperId: string; subject: string; fontId: string; stampId?: string }) => void
+  onSend?: (letter: { to?: string; body: string; paperId: string; subject: string; fontId: string; colorId?: string; paperColorId?: string; stampId?: string }) => void
 }) {
   const unlockedPapers = PAPERS.filter(p => p.unlocksAt <= lettersSent)
   const [selectedPaper, setSelectedPaper] = useState(unlockedPapers[0])
@@ -471,7 +507,7 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
     await new Promise(r => setTimeout(r, 2200))
     setSent(true)
     setTimeout(() => {
-      onSend?.({ to: recipientName, body, paperId: selectedPaper.id, subject, fontId: selectedFont.id, stampId: selectedStamp })
+      onSend?.({ to: recipientName, body, paperId: selectedPaper.id, subject, fontId: selectedFont.id, colorId: selectedColor ?? undefined, paperColorId: selectedPaperColor ?? undefined, stampId: selectedStamp })
       onClose?.()
     }, 2400)
   }

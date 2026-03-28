@@ -878,6 +878,9 @@ export default function Home() {
                 isUniverseLetter,
                 letter.subject,
                 letter.fontId,
+                letter.colorId,
+                letter.paperColorId,
+                letter.stampId,
               );
 
               setLettersSent((prev) => prev + 1);
