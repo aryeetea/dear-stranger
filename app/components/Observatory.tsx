@@ -204,7 +204,34 @@ export default function Observatory({
                   {activeTab === 'archive' && 'Your archive is empty.'}
                 </p>
               </div>
-            ) : (
+            ) : activeTab === 'transit' ? (() => {
+              const sentTransit = currentLetters.filter(l => l.direction === 'sent')
+              const receivedTransit = currentLetters.filter(l => l.direction === 'received')
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                  {sentTransit.length > 0 && (
+                    <div>
+                      <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.35em', color: 'rgba(230,199,110,0.6)', textTransform: 'uppercase', marginBottom: '10px' }}>Sending</p>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        {sentTransit.map((letter, i) => (
+                          <LetterEntry key={letter.id} letter={letter} index={i} onClick={() => {}} />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {receivedTransit.length > 0 && (
+                    <div>
+                      <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.35em', color: 'rgba(230,199,110,0.6)', textTransform: 'uppercase', marginBottom: '10px' }}>Incoming</p>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        {receivedTransit.map((letter, i) => (
+                          <LetterEntry key={letter.id} letter={letter} index={i} onClick={() => {}} />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })() : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {currentLetters.map((letter, i) => (
                   <LetterEntry key={letter.id} letter={letter} index={i}
