@@ -192,16 +192,19 @@ export default function Home() {
     screenRef.current = screen
   }, [screen])
 
-  // Auto-retry avatar generation when returning to universe with a pending description
+  // Auto-retry avatar generation when returning to universe with a pending description,
+  // or as a fallback for users who have no avatar and no pending prompt (use their bio).
   useEffect(() => {
-    if (screen !== 'universe' || !hubAvatarPending || hubAvatarUrl || avatarRetryAttemptedRef.current) return
+    if (screen !== 'universe' || hubAvatarUrl || avatarRetryAttemptedRef.current) return
+    const prompt = hubAvatarPending || hubBio
+    if (!prompt) return
     avatarRetryAttemptedRef.current = true
     void (async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
         setAvatarGenerating(true)
-        const avatarUrl = await requestAvatarImage({ 0: hubAvatarPending }, user.id)
+        const avatarUrl = await requestAvatarImage({ 0: prompt }, user.id)
         if (!avatarUrl) return
         const permanentUrl = await uploadAvatarToStorage(avatarUrl, user.id)
         setHubAvatarUrl(permanentUrl)
@@ -213,7 +216,7 @@ export default function Home() {
         setAvatarGenerating(false)
       }
     })()
-  }, [screen, hubAvatarPending, hubAvatarUrl])
+  }, [screen, hubAvatarPending, hubAvatarUrl, hubBio])
 
   // Start/stop cosmic ambient based on screen
   useEffect(() => {
