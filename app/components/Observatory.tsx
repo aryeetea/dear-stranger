@@ -97,14 +97,14 @@ export default function Observatory({
           direction: 'received',
         })
 
+        const userId = data.userId
+        const mapLetter = (l: any): Letter =>
+          l.sender_id === userId ? mapSentLetter(l) : mapReceivedLetter(l)
+
         setLetters({
-          transit: (data.transit || []).map(mapSentLetter),
-          arrived: (data.arrived || []).map((l: any) =>
-            l.recipient?.hub_name ? mapReceivedLetter(l) : mapSentLetter(l)
-          ),
-          archive: (data.archive || []).map((l: any) =>
-            l.recipient?.hub_name ? mapReceivedLetter(l) : mapSentLetter(l)
-          ),
+          transit: (data.transit || []).map(mapLetter),
+          arrived: (data.arrived || []).map(mapLetter),
+          archive: (data.archive || []).map(mapLetter),
         })
       } catch (err) {
         console.error('Failed to load letters:', err)
