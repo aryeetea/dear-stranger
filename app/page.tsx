@@ -881,6 +881,7 @@ export default function Home() {
                 letter.colorId,
                 letter.paperColorId,
                 letter.stampId,
+                letter.envelopeId,
               );
 
               setLettersSent((prev) => prev + 1);

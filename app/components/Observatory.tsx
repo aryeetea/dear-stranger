@@ -59,6 +59,7 @@ interface Letter {
   fontColor?: string
   paperColor?: string
   stampId?: string
+  envelopeId?: string
   sentAt: string
   arrivedAt?: string
   status: 'transit' | 'arrived' | 'archive'
@@ -120,6 +121,7 @@ export default function Observatory({
             fontColor: l.font_color || undefined,
             paperColor: l.paper_color || undefined,
             stampId: l.stamp_id || undefined,
+            envelopeId: l.envelope_id || undefined,
             sentAt: l.created_at,
             arrivedAt: l.arrives_at || undefined,
             status: l.status,
@@ -139,6 +141,7 @@ export default function Observatory({
           fontColor: l.font_color || undefined,
           paperColor: l.paper_color || undefined,
           stampId: l.stamp_id || undefined,
+          envelopeId: l.envelope_id || undefined,
           sentAt: l.created_at,
           arrivedAt: l.arrives_at || undefined,
           status: l.status,
@@ -428,6 +431,20 @@ function ModalStamp({ id }: { id: string }) {
   return <svg width={s} height={s} viewBox="0 0 60 60"><rect x="2" y="2" width="56" height="56" fill="none" stroke="rgba(200,168,76,0.5)" strokeWidth="1.5" rx="3"/><text x="30" y="34" textAnchor="middle" fontSize="18" fill="rgba(200,168,76,0.7)">✦</text></svg>
 }
 
+// Lightweight envelope renderer for the modal
+function ModalEnvelope({ id }: { id: string }) {
+  const w = 90, h = 60
+  if (id === 'vintage') return <svg width={w} height={h} viewBox="0 0 120 80"><rect x="2" y="20" width="116" height="58" rx="2" fill="#f2e8c8" stroke="rgba(120,80,20,0.55)" strokeWidth="1.2"/><rect x="6" y="24" width="108" height="50" rx="1" fill="none" stroke="rgba(120,80,20,0.22)" strokeWidth="0.7" strokeDasharray="2 2"/><path d="M2 20 L60 56 L118 20 Z" fill="#ede0b8" stroke="rgba(120,80,20,0.45)" strokeWidth="1"/><path d="M2 78 L60 46 L118 78" fill="none" stroke="rgba(120,80,20,0.28)" strokeWidth="0.8"/><circle cx="10" cy="27" r="2.5" fill="rgba(120,80,20,0.35)"/><circle cx="110" cy="27" r="2.5" fill="rgba(120,80,20,0.35)"/></svg>
+  if (id === 'airmail') return <svg width={w} height={h} viewBox="0 0 120 80"><rect x="2" y="2" width="116" height="76" rx="2" fill="#f8f5ee" stroke="#cc3333" strokeWidth="3"/><rect x="8" y="8" width="104" height="64" rx="1" fill="none" stroke="#1144aa" strokeWidth="1.2" strokeDasharray="4 3"/><path d="M2 20 L60 54 L118 20 Z" fill="#f5f1e8" stroke="#bb3322" strokeWidth="0.8"/><text x="60" y="68" textAnchor="middle" fontSize="7" fontFamily="sans-serif" fill="#1144aa" letterSpacing="2" fontStyle="italic">PAR AVION</text></svg>
+  if (id === 'sakura') return <svg width={w} height={h} viewBox="0 0 120 80"><rect x="2" y="20" width="116" height="58" rx="2" fill="#fde8f0" stroke="rgba(200,100,140,0.45)" strokeWidth="1"/><path d="M2 20 L60 56 L118 20 Z" fill="#fde0ec" stroke="rgba(200,100,140,0.35)" strokeWidth="0.8"/><path d="M2 78 L60 46 L118 78" fill="none" stroke="rgba(200,100,140,0.28)" strokeWidth="0.7"/>{[{cx:14,cy:66},{cx:20,cy:70},{cx:8,cy:70},{cx:10,cy:63},{cx:22,cy:63}].map((p,i)=><circle key={i} cx={p.cx} cy={p.cy} r="3.5" fill="rgba(230,100,140,0.5)"/>)}</svg>
+  if (id === 'starfield') return <svg width={w} height={h} viewBox="0 0 120 80"><rect x="2" y="20" width="116" height="58" rx="2" fill="#1a1830" stroke="rgba(150,140,220,0.4)" strokeWidth="1"/><path d="M2 20 L60 56 L118 20 Z" fill="#1c1a38" stroke="rgba(150,140,220,0.32)" strokeWidth="0.8"/>{[[14,34],[28,28],[44,42],[68,30],[84,38],[100,26],[56,60],[26,62],[96,60],[110,48]].map(([cx,cy],i)=><circle key={i} cx={cx} cy={cy} r={i%3===0?1.4:0.9} fill="rgba(220,210,255,0.85)"/>)}</svg>
+  if (id === 'kraft') return <svg width={w} height={h} viewBox="0 0 120 80"><rect x="2" y="20" width="116" height="58" rx="2" fill="#c8924a" stroke="rgba(80,40,10,0.5)" strokeWidth="1.2"/><path d="M2 20 L60 56 L118 20 Z" fill="#be8840" stroke="rgba(80,40,10,0.4)" strokeWidth="1"/><path d="M2 78 L60 46 L118 78" fill="none" stroke="rgba(60,30,8,0.3)" strokeWidth="0.8"/><line x1="60" y1="22" x2="60" y2="76" stroke="rgba(80,40,10,0.22)" strokeWidth="0.9" strokeDasharray="3 2"/></svg>
+  if (id === 'romantic') return <svg width={w} height={h} viewBox="0 0 120 80"><rect x="2" y="20" width="116" height="58" rx="2" fill="#fce8ee" stroke="rgba(200,80,120,0.4)" strokeWidth="1"/><path d="M2 20 L60 56 L118 20 Z" fill="#fce0ea" stroke="rgba(180,60,100,0.32)" strokeWidth="0.8"/><path d="M60 46 C56 42 51 40 51 43.5 C51 47 55 50 60 54 C65 50 69 47 69 43.5 C69 40 64 42 60 46Z" fill="rgba(200,70,110,0.58)" stroke="rgba(180,50,90,0.35)" strokeWidth="0.7"/></svg>
+  if (id === 'wax') return <svg width={w} height={h} viewBox="0 0 120 80"><rect x="2" y="2" width="116" height="76" rx="2" fill="#f4eedd" stroke="rgba(100,80,40,0.4)" strokeWidth="1.2"/><path d="M2 2 L60 42 L118 2 Z" fill="#eee0c8" stroke="rgba(100,80,40,0.32)" strokeWidth="0.8"/><path d="M2 78 L60 38 L118 78" fill="none" stroke="rgba(100,80,40,0.2)" strokeWidth="0.7"/><circle cx="60" cy="42" r="11" fill="#8b1a1a"/><circle cx="60" cy="42" r="9" fill="#9a2020"/><text x="60" y="46" textAnchor="middle" fontSize="9" fill="rgba(255,200,180,0.8)" fontFamily="serif">✦</text></svg>
+  // classic (default)
+  return <svg width={w} height={h} viewBox="0 0 120 80"><rect x="2" y="20" width="116" height="58" rx="3" fill="rgba(230,199,110,0.15)" stroke="rgba(230,199,110,0.45)" strokeWidth="1"/><path d="M2 20 L60 56 L118 20 Z" fill="rgba(230,199,110,0.12)" stroke="rgba(230,199,110,0.35)" strokeWidth="1"/><path d="M2 78 L60 46 L118 78" fill="none" stroke="rgba(230,199,110,0.22)" strokeWidth="1"/><line x1="2" y1="20" x2="60" y2="46" stroke="rgba(230,199,110,0.15)" strokeWidth="0.8"/><line x1="118" y1="20" x2="60" y2="46" stroke="rgba(230,199,110,0.15)" strokeWidth="0.8"/></svg>
+}
+
 function LetterModal({
   letter,
   onClose,
@@ -487,9 +504,10 @@ function LetterModal({
           <span style={{ color: colors.accent, opacity: 0.95 }}>A Stranger</span>
         </p>
 
-        {letter.stampId && (
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px', opacity: 0.85 }}>
-            <ModalStamp id={letter.stampId} />
+        {(letter.stampId || letter.envelopeId) && (
+          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'flex-end', gap: '12px', marginTop: '16px', opacity: 0.85 }}>
+            {letter.envelopeId && <ModalEnvelope id={letter.envelopeId} />}
+            {letter.stampId && <ModalStamp id={letter.stampId} />}
           </div>
         )}
 

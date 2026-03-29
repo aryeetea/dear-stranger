@@ -29,6 +29,7 @@ type LetterRecord = {
   is_universe_letter?: boolean | null
   sender?: { hub_name?: string | null } | null
   recipient?: { hub_name?: string | null } | null
+  envelope_id?: string | null
 }
 
 function normalizeHubName(hubName: string) {
@@ -481,6 +482,7 @@ export async function sendLetter(
   fontColor?: string,
   paperColor?: string,
   stampId?: string,
+  envelopeId?: string,
 ) {
   const {
     data: { user },
@@ -526,6 +528,7 @@ export async function sendLetter(
         ...(fontColor ? { font_color: fontColor } : {}),
         ...(paperColor ? { paper_color: paperColor } : {}),
         ...(stampId ? { stamp_id: stampId } : {}),
+        ...(envelopeId ? { envelope_id: envelopeId } : {}),
       },
     ])
     .select()

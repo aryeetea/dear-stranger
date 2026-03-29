@@ -78,6 +78,17 @@ const STAMPS = [
   { id: 'tulip',         category: 'Cute',        label: 'Tulip'          },
 ]
 
+const ENVELOPES = [
+  { id: 'classic',   label: 'Classic',    desc: 'Clean & timeless'      },
+  { id: 'vintage',   label: 'Vintage',    desc: 'Ornate flourishes'     },
+  { id: 'airmail',   label: 'Airmail',    desc: 'Par avion'             },
+  { id: 'sakura',    label: 'Sakura',     desc: 'Cherry blossom petals' },
+  { id: 'starfield', label: 'Starfield',  desc: 'Starlit night'         },
+  { id: 'kraft',     label: 'Kraft',      desc: 'Rustic brown paper'    },
+  { id: 'romantic',  label: 'Romantic',   desc: 'Sealed with a heart'   },
+  { id: 'wax',       label: 'Wax Sealed', desc: 'Sealed in crimson wax' },
+]
+
 const FONTS = [
   { id: 'cormorant', label: 'Cormorant', family: "'Cormorant Garamond', serif", preview: 'A letter across the stars' },
   { id: 'im-fell', label: 'IM Fell', family: "'IM Fell English', serif", preview: 'A letter across the stars' },
@@ -190,16 +201,15 @@ function StampSVG({ id, size = 60 }: { id: string; size?: number }) {
   return <svg width={s} height={s} viewBox="0 0 60 60"><circle cx="30" cy="30" r="25" fill="none" stroke="rgba(200,168,76,0.4)" strokeWidth="1.5"/><text x="30" y="34" textAnchor="middle" fontSize="14" fill="rgba(200,168,76,0.6)">✦</text></svg>
 }
 
-function EnvelopeSVG({ color = '#c8a050' }: { color?: string }) {
-  return (
-    <svg width="120" height="80" viewBox="0 0 120 80">
-      <rect x="2" y="20" width="116" height="58" rx="3" fill={color} stroke="rgba(0,0,0,0.2)" strokeWidth="1"/>
-      <path d="M2 20 L60 56 L118 20 Z" fill={color} stroke="rgba(0,0,0,0.15)" strokeWidth="1"/>
-      <path d="M2 78 L60 46 L118 78" fill="none" stroke="rgba(0,0,0,0.12)" strokeWidth="1"/>
-      <line x1="2" y1="20" x2="60" y2="46" stroke="rgba(0,0,0,0.1)" strokeWidth="0.8"/>
-      <line x1="118" y1="20" x2="60" y2="46" stroke="rgba(0,0,0,0.1)" strokeWidth="0.8"/>
-    </svg>
-  )
+function EnvelopeSVG({ id = 'classic', color = '#c8a050', width: w = 120, height: h = 80 }: { id?: string; color?: string; width?: number; height?: number }) {
+  if (id === 'vintage') return <svg width={w} height={h} viewBox="0 0 120 80"><rect x="2" y="20" width="116" height="58" rx="2" fill="#f2e8c8" stroke="rgba(120,80,20,0.55)" strokeWidth="1.2"/><rect x="6" y="24" width="108" height="50" rx="1" fill="none" stroke="rgba(120,80,20,0.22)" strokeWidth="0.7" strokeDasharray="2 2"/><path d="M2 20 L60 56 L118 20 Z" fill="#ede0b8" stroke="rgba(120,80,20,0.45)" strokeWidth="1"/><path d="M2 78 L60 46 L118 78" fill="none" stroke="rgba(120,80,20,0.28)" strokeWidth="0.8"/><line x1="2" y1="20" x2="60" y2="46" stroke="rgba(120,80,20,0.18)" strokeWidth="0.7"/><line x1="118" y1="20" x2="60" y2="46" stroke="rgba(120,80,20,0.18)" strokeWidth="0.7"/><circle cx="10" cy="70" r="2.5" fill="rgba(120,80,20,0.35)"/><circle cx="110" cy="70" r="2.5" fill="rgba(120,80,20,0.35)"/><circle cx="10" cy="27" r="2.5" fill="rgba(120,80,20,0.35)"/><circle cx="110" cy="27" r="2.5" fill="rgba(120,80,20,0.35)"/><line x1="14" y1="27" x2="22" y2="27" stroke="rgba(120,80,20,0.28)" strokeWidth="0.7"/><line x1="98" y1="27" x2="106" y2="27" stroke="rgba(120,80,20,0.28)" strokeWidth="0.7"/></svg>
+  if (id === 'airmail') return <svg width={w} height={h} viewBox="0 0 120 80"><rect x="2" y="2" width="116" height="76" rx="2" fill="#f8f5ee" stroke="#cc3333" strokeWidth="3"/><rect x="8" y="8" width="104" height="64" rx="1" fill="none" stroke="#1144aa" strokeWidth="1.2" strokeDasharray="4 3"/><path d="M2 20 L60 54 L118 20 Z" fill="#f5f1e8" stroke="#bb3322" strokeWidth="0.8"/><path d="M2 78 L60 48 L118 78" fill="none" stroke="rgba(30,60,160,0.35)" strokeWidth="0.7"/><line x1="2" y1="20" x2="60" y2="46" stroke="rgba(0,0,0,0.09)" strokeWidth="0.6"/><line x1="118" y1="20" x2="60" y2="46" stroke="rgba(0,0,0,0.09)" strokeWidth="0.6"/><text x="60" y="68" textAnchor="middle" fontSize="7" fontFamily="sans-serif" fill="#1144aa" letterSpacing="2" fontStyle="italic">PAR AVION</text></svg>
+  if (id === 'sakura') return <svg width={w} height={h} viewBox="0 0 120 80"><rect x="2" y="20" width="116" height="58" rx="2" fill="#fde8f0" stroke="rgba(200,100,140,0.45)" strokeWidth="1"/><path d="M2 20 L60 56 L118 20 Z" fill="#fde0ec" stroke="rgba(200,100,140,0.35)" strokeWidth="0.8"/><path d="M2 78 L60 46 L118 78" fill="none" stroke="rgba(200,100,140,0.28)" strokeWidth="0.7"/><line x1="2" y1="20" x2="60" y2="46" stroke="rgba(200,100,140,0.18)" strokeWidth="0.6"/><line x1="118" y1="20" x2="60" y2="46" stroke="rgba(200,100,140,0.18)" strokeWidth="0.6"/>{[{cx:14,cy:66},{cx:20,cy:70},{cx:8,cy:70},{cx:10,cy:63},{cx:22,cy:63}].map((p,i)=><circle key={i} cx={p.cx} cy={p.cy} r="3.5" fill="rgba(230,100,140,0.5)"/>)}{[{cx:106,cy:66},{cx:100,cy:70},{cx:112,cy:70},{cx:110,cy:63},{cx:98,cy:63}].map((p,i)=><circle key={i} cx={p.cx} cy={p.cy} r="3.5" fill="rgba(230,100,140,0.5)"/>)}<circle cx="14" cy="66" r="1.5" fill="rgba(255,180,220,0.7)"/><circle cx="106" cy="66" r="1.5" fill="rgba(255,180,220,0.7)"/></svg>
+  if (id === 'starfield') return <svg width={w} height={h} viewBox="0 0 120 80"><rect x="2" y="20" width="116" height="58" rx="2" fill="#1a1830" stroke="rgba(150,140,220,0.4)" strokeWidth="1"/><path d="M2 20 L60 56 L118 20 Z" fill="#1c1a38" stroke="rgba(150,140,220,0.32)" strokeWidth="0.8"/><path d="M2 78 L60 46 L118 78" fill="none" stroke="rgba(150,140,220,0.22)" strokeWidth="0.7"/><line x1="2" y1="20" x2="60" y2="46" stroke="rgba(150,140,220,0.14)" strokeWidth="0.6"/><line x1="118" y1="20" x2="60" y2="46" stroke="rgba(150,140,220,0.14)" strokeWidth="0.6"/>{[[14,34],[28,28],[44,42],[68,30],[84,38],[100,26],[56,60],[26,62],[96,60],[110,48],[40,30],[80,52]].map(([cx,cy],i)=><circle key={i} cx={cx} cy={cy} r={i%3===0?1.4:0.9} fill="rgba(220,210,255,0.85)"/>)}</svg>
+  if (id === 'kraft') return <svg width={w} height={h} viewBox="0 0 120 80"><rect x="2" y="20" width="116" height="58" rx="2" fill="#c8924a" stroke="rgba(80,40,10,0.5)" strokeWidth="1.2"/>{[24,28,32,36,40,44,48,52,56,60,64,68,72].map((y,i)=><line key={i} x1="4" y1={y} x2="116" y2={y} stroke="rgba(80,40,10,0.07)" strokeWidth="0.5"/>)}<path d="M2 20 L60 56 L118 20 Z" fill="#be8840" stroke="rgba(80,40,10,0.4)" strokeWidth="1"/><path d="M2 78 L60 46 L118 78" fill="none" stroke="rgba(60,30,8,0.3)" strokeWidth="0.8"/><line x1="2" y1="20" x2="60" y2="46" stroke="rgba(60,30,8,0.18)" strokeWidth="0.6"/><line x1="118" y1="20" x2="60" y2="46" stroke="rgba(60,30,8,0.18)" strokeWidth="0.6"/><line x1="60" y1="22" x2="60" y2="76" stroke="rgba(80,40,10,0.22)" strokeWidth="0.9" strokeDasharray="3 2"/><line x1="4" y1="49" x2="116" y2="49" stroke="rgba(80,40,10,0.15)" strokeWidth="0.7"/><circle cx="60" cy="49" r="3" fill="rgba(80,40,10,0.28)"/></svg>
+  if (id === 'romantic') return <svg width={w} height={h} viewBox="0 0 120 80"><rect x="2" y="20" width="116" height="58" rx="2" fill="#fce8ee" stroke="rgba(200,80,120,0.4)" strokeWidth="1"/><path d="M2 20 L60 56 L118 20 Z" fill="#fce0ea" stroke="rgba(180,60,100,0.32)" strokeWidth="0.8"/><path d="M2 78 L60 46 L118 78" fill="none" stroke="rgba(180,60,100,0.22)" strokeWidth="0.7"/><line x1="2" y1="20" x2="60" y2="46" stroke="rgba(180,60,100,0.14)" strokeWidth="0.6"/><line x1="118" y1="20" x2="60" y2="46" stroke="rgba(180,60,100,0.14)" strokeWidth="0.6"/><path d="M60 46 C56 42 51 40 51 43.5 C51 47 55 50 60 54 C65 50 69 47 69 43.5 C69 40 64 42 60 46Z" fill="rgba(200,70,110,0.58)" stroke="rgba(180,50,90,0.35)" strokeWidth="0.7"/><path d="M20 66 C18.5 64.2 17 63 17 64.5 C17 66 18.5 67.2 20 68.5 C21.5 67.2 23 66 23 64.5 C23 63 21.5 64.2 20 66Z" fill="rgba(200,80,120,0.42)"/><path d="M100 66 C98.5 64.2 97 63 97 64.5 C97 66 98.5 67.2 100 68.5 C101.5 67.2 103 66 103 64.5 C103 63 101.5 64.2 100 66Z" fill="rgba(200,80,120,0.42)"/></svg>
+  if (id === 'wax') return <svg width={w} height={h} viewBox="0 0 120 80"><rect x="2" y="2" width="116" height="76" rx="2" fill="#f4eedd" stroke="rgba(100,80,40,0.4)" strokeWidth="1.2"/><path d="M2 2 L60 42 L118 2 Z" fill="#eee0c8" stroke="rgba(100,80,40,0.32)" strokeWidth="0.8"/><path d="M2 78 L60 38 L118 78" fill="none" stroke="rgba(100,80,40,0.2)" strokeWidth="0.7"/><line x1="2" y1="2" x2="60" y2="38" stroke="rgba(100,80,40,0.14)" strokeWidth="0.6"/><line x1="118" y1="2" x2="60" y2="38" stroke="rgba(100,80,40,0.14)" strokeWidth="0.6"/><circle cx="60" cy="42" r="11" fill="#8b1a1a"/><circle cx="60" cy="42" r="9" fill="#9a2020"/><text x="60" y="46" textAnchor="middle" fontSize="9" fill="rgba(255,200,180,0.8)" fontFamily="serif">✦</text></svg>
+  return <svg width={w} height={h} viewBox="0 0 120 80"><rect x="2" y="20" width="116" height="58" rx="3" fill={color} stroke="rgba(0,0,0,0.2)" strokeWidth="1"/><path d="M2 20 L60 56 L118 20 Z" fill={color} stroke="rgba(0,0,0,0.15)" strokeWidth="1"/><path d="M2 78 L60 46 L118 78" fill="none" stroke="rgba(0,0,0,0.12)" strokeWidth="1"/><line x1="2" y1="20" x2="60" y2="46" stroke="rgba(0,0,0,0.1)" strokeWidth="0.8"/><line x1="118" y1="20" x2="60" y2="46" stroke="rgba(0,0,0,0.1)" strokeWidth="0.8"/></svg>
 }
 
 function PlainWhite({ children, paperBg }: { children: React.ReactNode; paperBg?: string }) {
@@ -487,11 +497,12 @@ function LetterContent({ fontFamily, ink, recipient, senderName, date, body, set
 export default function Scribe({ recipientName, senderName, lettersSent = 0, onClose, onSend }: {
   recipientName?: string; senderName?: string; lettersSent?: number
   onClose?: () => void
-  onSend?: (letter: { to?: string; body: string; paperId: string; subject: string; fontId: string; colorId?: string; paperColorId?: string; stampId?: string }) => void
+  onSend?: (letter: { to?: string; body: string; paperId: string; subject: string; fontId: string; colorId?: string; paperColorId?: string; stampId?: string; envelopeId?: string }) => void
 }) {
   const unlockedPapers = PAPERS.filter(p => p.unlocksAt <= lettersSent)
   const [selectedPaper, setSelectedPaper] = useState(unlockedPapers[0])
   const [selectedFont, setSelectedFont] = useState(FONTS[0])
+  const [selectedEnvelope, setSelectedEnvelope] = useState('classic')
   const [selectedStamp, setSelectedStamp] = useState<string | undefined>()
   const [selectedColor, setSelectedColor] = useState<string | null>(null)
   const [selectedPaperColor, setSelectedPaperColor] = useState<string | null>(null)
@@ -500,7 +511,7 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
   const [body, setBody] = useState('')
   const [sent, setSent] = useState(false)
   const [releasing, setReleasing] = useState(false)
-  const [view, setView] = useState<'write'|'papers'|'fonts'|'stamps'|'colors'|'paper-color'|'envelope'>('write')
+  const [view, setView] = useState<'write'|'papers'|'fonts'|'stamps'|'colors'|'paper-color'|'envelopes'|'envelope'>('write')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const today = new Date().toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' })
@@ -530,7 +541,7 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
     await new Promise(r => setTimeout(r, 2200))
     setSent(true)
     setTimeout(() => {
-      onSend?.({ to: recipientName, body, paperId: selectedPaper.id, subject, fontId: selectedFont.id, colorId: selectedColor ?? undefined, paperColorId: selectedPaperColor ?? undefined, stampId: selectedStamp })
+      onSend?.({ to: recipientName, body, paperId: selectedPaper.id, subject, fontId: selectedFont.id, colorId: selectedColor ?? undefined, paperColorId: selectedPaperColor ?? undefined, stampId: selectedStamp, envelopeId: selectedEnvelope })
       onClose?.()
     }, 2400)
   }
@@ -749,6 +760,36 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
           </motion.div>
         )}
 
+        {view==='envelopes' && !sent && (
+          <motion.div key="envelopes" initial={{ opacity:0, y:16 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0 }} style={{ width:'min(680px, 95vw)', zIndex:2 }}>
+            <div style={{ textAlign:'center', marginBottom:'24px' }}>
+              <p style={{ fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.5em', color:'#e6c76e', textTransform:'uppercase', marginBottom:'5px' }}>Choose Your Envelope</p>
+              <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'13px', color:'rgba(255,255,255,0.8)' }}>The vessel that carries your words</p>
+            </div>
+            <div style={{ display:'flex', flexWrap:'wrap', gap:'16px', justifyContent:'center', marginBottom:'28px' }}>
+              {ENVELOPES.map(env => {
+                const isSelected = selectedEnvelope === env.id
+                return (
+                  <motion.div key={env.id} whileTap={{ scale:0.95 }} onClick={()=>setSelectedEnvelope(isSelected ? 'classic' : env.id)}
+                    style={{ cursor:'pointer', padding:'12px', background:isSelected?'rgba(230,199,110,0.12)':'rgba(255,255,255,0.03)', border:isSelected?'1px solid rgba(230,199,110,0.5)':'1px solid rgba(255,255,255,0.12)', borderRadius:'6px', display:'flex', flexDirection:'column', alignItems:'center', gap:'8px', boxShadow:isSelected?'0 0 16px rgba(230,199,110,0.2)':'none', width:'140px' }}>
+                    <EnvelopeSVG id={env.id} color={envelopeColor}/>
+                    <p style={{ fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.15em', color:isSelected?'#e6c76e':'rgba(255,255,255,0.76)', textTransform:'uppercase' }}>{env.label}</p>
+                    <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'10px', color:'rgba(255,255,255,0.5)', textAlign:'center' }}>{env.desc}</p>
+                  </motion.div>
+                )
+              })}
+            </div>
+            <div style={{ textAlign:'center' }}>
+              <button onClick={()=>setView('write')}
+                style={{ padding:'12px 32px', background:'transparent', border:'1px solid rgba(230,199,110,0.45)', color:'#e6c76e', fontFamily:"'Cinzel', serif", fontSize:'10px', letterSpacing:'0.3em', textTransform:'uppercase', cursor:'pointer', borderRadius:'2px' }}
+                onMouseEnter={e=>e.currentTarget.style.background='rgba(230,199,110,0.08)'}
+                onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                {`Seal in ${ENVELOPES.find(e=>e.id===selectedEnvelope)?.label ?? 'Classic'} envelope ✦`}
+              </button>
+            </div>
+          </motion.div>
+        )}
+
         {view==='write' && !sent && (
           <motion.div key="write" initial={{ opacity:0, y:16 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0 }} style={{ width:'min(580px, 95vw)', zIndex:2 }}>
             <div style={{ textAlign:'center', marginBottom:'14px' }}>
@@ -789,6 +830,7 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
                   { label:selectedStamp?STAMPS.find(s=>s.id===selectedStamp)?.label||'Stamp':'Stamp', action:()=>setView('stamps'), icon:'🔖' },
                   { label:selectedColor?FONT_COLORS.find(c=>c.id===selectedColor)?.label||'Ink':'Ink Color', action:()=>setView('colors'), icon:'🎨' },
                   { label:selectedPaperColor?PAPER_TONES.find(t=>t.id===selectedPaperColor)?.label||'Paper Tone':'Paper Tone', action:()=>setView('paper-color'), icon:'🗒' },
+                  { label:ENVELOPES.find(e=>e.id===selectedEnvelope)?.label||'Envelope', action:()=>setView('envelopes'), icon:'✉' },
                 ].map((btn,i)=>(
                   <button key={i} onClick={btn.action}
                     style={{ background:'none', border:'1px solid rgba(255,255,255,0.18)', color:'rgba(255,255,255,0.8)', fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.15em', textTransform:'uppercase', padding:'5px 9px', cursor:'pointer', borderRadius:'2px', whiteSpace:'nowrap' }}
@@ -812,7 +854,7 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
           <motion.div key="envelope" initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }} style={{ textAlign:'center', zIndex:2 }}>
             <motion.div initial={{ y:0, rotate:0 }} animate={{ y:[0,-20,80], rotate:[0,-3,2], opacity:[1,1,0] }} transition={{ duration:2, ease:'easeInOut' }}
               style={{ display:'inline-block', marginBottom:'24px', position:'relative' }}>
-              <EnvelopeSVG color={envelopeColor}/>
+              <EnvelopeSVG id={selectedEnvelope} color={envelopeColor}/>
               {selectedStamp&&<div style={{ position:'absolute', top:'8px', right:'8px', transform:'rotate(3deg)' }}><StampSVG id={selectedStamp} size={32}/></div>}
             </motion.div>
             <motion.p initial={{ opacity:0 }} animate={{ opacity:1 }} transition={{ delay:0.3 }}
