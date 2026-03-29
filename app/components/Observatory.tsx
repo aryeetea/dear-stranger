@@ -114,7 +114,7 @@ export default function Observatory({
             id: l.id,
             from: l.sender?.hub_name || 'You',
             to: l.recipient?.hub_name || (l.is_universe_letter ? 'The Universe' : 'Unknown Recipient'),
-            preview: l.body ? l.body.length > 90 ? `${l.body.slice(0, 90)}...` : l.body : '',
+            preview: l.subject || 'A letter for you',
             body: l.body || '',
             paperId: l.paper_id || 'ornate',
             fontId: l.font_id || undefined,
