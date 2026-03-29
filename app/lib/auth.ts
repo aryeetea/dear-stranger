@@ -324,6 +324,30 @@ export async function exportMyLetters(): Promise<string> {
   }
 }
 
+export async function getPages(limit = 60) {
+  try {
+    const { data, error } = await supabase
+      .from('pages')
+      .select('id, body, type, resonance_count, created_at')
+      .order('created_at', { ascending: false })
+      .limit(limit)
+    if (error) return []
+    return (data || []) as { id: string; body: string; type: 'entry' | 'poem'; resonance_count: number; created_at: string }[]
+  } catch {
+    return []
+  }
+}
+
+export async function submitPage(body: string, type: 'entry' | 'poem') {
+  const { error } = await supabase.from('pages').insert({ body: body.trim(), type })
+  if (error) throw new Error(error.message)
+}
+
+export async function resonatePage(id: string) {
+  const { error } = await supabase.rpc('increment_page_resonance', { page_id: id })
+  if (error) throw new Error(error.message)
+}
+
 export async function getUniverseLetters() {
   try {
     const { data, error } = await supabase

@@ -1466,7 +1466,7 @@ export default function UniverseMap({
     { label: 'Scribe', icon: '✒' },
     { label: 'Observatory', icon: '⟡' },
     { label: 'Profile', icon: '◎' },
-    { label: 'Driftstream', icon: '〰' },
+    { label: 'Pages', icon: '✍' },
   ]
 
   return (
