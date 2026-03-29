@@ -1470,8 +1470,8 @@ export default function UniverseMap({
   ]
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: '#04050f' }}>
-      <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', background: 'radial-gradient(ellipse 60% 40% at 15% 25%, rgba(50,20,100,0.28) 0%, transparent 65%), radial-gradient(ellipse 50% 55% at 82% 72%, rgba(15,28,90,0.22) 0%, transparent 65%)' }} />
+    <div style={{ position: 'fixed', inset: 0, background: '#060a18' }}>
+      <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', background: 'radial-gradient(ellipse 70% 50% at 15% 25%, rgba(80,20,160,0.38) 0%, transparent 65%), radial-gradient(ellipse 60% 60% at 82% 72%, rgba(10,40,140,0.32) 0%, transparent 65%), radial-gradient(ellipse 45% 40% at 55% 10%, rgba(0,100,155,0.22) 0%, transparent 65%), radial-gradient(ellipse 40% 38% at 30% 80%, rgba(150,20,80,0.18) 0%, transparent 65%)' }} />
 
       <canvas ref={canvasRef}
         style={{ position: 'absolute', inset: 0, cursor: tooltip?.hub?.hubStyle === 'telescope' ? 'zoom-in' : 'grab' }}

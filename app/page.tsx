@@ -61,7 +61,7 @@ function AuthBackground() {
           inset: 0,
           pointerEvents: 'none',
           background:
-            'radial-gradient(ellipse 60% 50% at 50% 50%, rgba(30,15,60,0.4) 0%, transparent 70%)',
+            'radial-gradient(ellipse 70% 55% at 50% 45%, rgba(60,20,130,0.55) 0%, rgba(10,30,110,0.28) 50%, transparent 80%)',
         }}
       />
       <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none' }}>
@@ -140,23 +140,47 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: s
 function NebulaBackground() {
   return (
     <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0, overflow: 'hidden' }}>
+      {/* Purple/violet — top-left */}
       <div style={{
-        position: 'absolute', width: '80vw', height: '65vh', borderRadius: '50%',
-        background: 'radial-gradient(ellipse, rgba(55,20,110,0.22) 0%, transparent 70%)',
-        top: '-15%', left: '-20%',
+        position: 'absolute', width: '85vw', height: '70vh', borderRadius: '50%',
+        background: 'radial-gradient(ellipse, rgba(80,20,160,0.44) 0%, transparent 68%)',
+        top: '-18%', left: '-22%',
         animation: 'nebula-drift-1 30s ease-in-out infinite alternate',
       }} />
+      {/* Deep blue — bottom-right */}
       <div style={{
-        position: 'absolute', width: '65vw', height: '75vh', borderRadius: '50%',
-        background: 'radial-gradient(ellipse, rgba(15,35,95,0.18) 0%, transparent 70%)',
-        bottom: '-25%', right: '-15%',
+        position: 'absolute', width: '70vw', height: '80vh', borderRadius: '50%',
+        background: 'radial-gradient(ellipse, rgba(10,40,140,0.42) 0%, transparent 68%)',
+        bottom: '-28%', right: '-18%',
         animation: 'nebula-drift-2 38s ease-in-out infinite alternate',
       }} />
+      {/* Magenta/pink — center-right */}
       <div style={{
-        position: 'absolute', width: '55vw', height: '55vh', borderRadius: '50%',
-        background: 'radial-gradient(ellipse, rgba(90,15,55,0.12) 0%, transparent 70%)',
-        top: '25%', right: '15%',
+        position: 'absolute', width: '60vw', height: '58vh', borderRadius: '50%',
+        background: 'radial-gradient(ellipse, rgba(160,18,90,0.30) 0%, transparent 68%)',
+        top: '22%', right: '10%',
         animation: 'nebula-drift-3 24s ease-in-out infinite alternate',
+      }} />
+      {/* Teal/cyan — top-center */}
+      <div style={{
+        position: 'absolute', width: '52vw', height: '45vh', borderRadius: '50%',
+        background: 'radial-gradient(ellipse, rgba(0,110,155,0.30) 0%, transparent 68%)',
+        top: '-8%', left: '28%',
+        animation: 'nebula-drift-2 44s ease-in-out infinite alternate',
+      }} />
+      {/* Warm red/rose — bottom-left */}
+      <div style={{
+        position: 'absolute', width: '48vw', height: '50vh', borderRadius: '50%',
+        background: 'radial-gradient(ellipse, rgba(150,28,22,0.20) 0%, transparent 68%)',
+        bottom: '-10%', left: '5%',
+        animation: 'nebula-drift-1 34s ease-in-out infinite alternate',
+      }} />
+      {/* Indigo mid — center fill */}
+      <div style={{
+        position: 'absolute', width: '60vw', height: '55vh', borderRadius: '50%',
+        background: 'radial-gradient(ellipse, rgba(30,15,100,0.28) 0%, transparent 70%)',
+        top: '35%', left: '20%',
+        animation: 'nebula-drift-3 50s ease-in-out infinite alternate',
       }} />
     </div>
   )
@@ -852,7 +876,7 @@ export default function Home() {
         style={{
           position: 'fixed',
           inset: 0,
-          background: '#000005',
+          background: '#060a18',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -878,7 +902,7 @@ export default function Home() {
         style={{
           position: 'fixed',
           inset: 0,
-          background: '#000005',
+          background: '#060a18',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -892,7 +916,7 @@ export default function Home() {
             inset: 0,
             pointerEvents: 'none',
             background:
-              'radial-gradient(ellipse 60% 40% at 20% 30%, rgba(40,20,80,0.25) 0%, transparent 70%)',
+              'radial-gradient(ellipse 60% 40% at 20% 30%, rgba(80,20,160,0.38) 0%, transparent 70%)',
           }}
         />
 
@@ -962,7 +986,7 @@ export default function Home() {
         style={{
           position: 'fixed',
           inset: 0,
-          background: '#000005',
+          background: '#060a18',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -1012,7 +1036,7 @@ export default function Home() {
         style={{
           position: 'fixed',
           inset: 0,
-          background: '#000005',
+          background: '#060a18',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',

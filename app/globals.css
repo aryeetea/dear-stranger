@@ -1,11 +1,11 @@
 @import "tailwindcss";
 
 :root {
-  --background: #04050f;
+  --background: #070c1c;
   --foreground: #ffffff;
   --gold: #c9a84c;
   --gold-light: #e6c76e;
-  --void: #000005;
+  --void: #060a18;
   --font-size-base: 17px;
   --font-size-label: 13px;
   --font-size-small: 15px;
@@ -112,7 +112,7 @@ input::placeholder {
   flex-shrink: 0;
   position: relative;
   overflow: hidden;
-  background: #000005;
+  background: #060a18;
 }
 .profile-avatar-fill {
   width: 100%;

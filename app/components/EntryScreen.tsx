@@ -31,7 +31,7 @@ export default function EntryScreen({
       style={{
         position: 'fixed',
         inset: 0,
-        background: '#000005',
+        background: '#060a18',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
