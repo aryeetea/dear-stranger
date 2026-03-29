@@ -73,8 +73,8 @@ const STYLE_BACKGROUNDS: Record<string, { base: string; gradient: string }> = {
 }
 
 const DEFAULT_BG = {
-  base: '#000005',
-  gradient: 'radial-gradient(ellipse 60% 40% at 20% 30%, rgba(40,20,80,0.25) 0%, transparent 70%), radial-gradient(ellipse 50% 60% at 80% 70%, rgba(10,30,80,0.2) 0%, transparent 70%)',
+  base: '#060a18',
+  gradient: 'radial-gradient(ellipse 72% 50% at 18% 25%, rgba(100,20,200,0.52) 0%, transparent 68%), radial-gradient(ellipse 60% 65% at 82% 75%, rgba(15,50,185,0.45) 0%, transparent 68%), radial-gradient(ellipse 48% 42% at 55% 8%, rgba(0,140,190,0.30) 0%, transparent 68%), radial-gradient(ellipse 42% 40% at 25% 80%, rgba(175,25,80,0.25) 0%, transparent 68%)',
 }
 
 export interface StyleOption { id: string; label: string; desc: string }

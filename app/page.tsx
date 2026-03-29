@@ -61,7 +61,7 @@ function AuthBackground() {
           inset: 0,
           pointerEvents: 'none',
           background:
-            'radial-gradient(ellipse 70% 55% at 50% 45%, rgba(60,20,130,0.55) 0%, rgba(10,30,110,0.28) 50%, transparent 80%)',
+            'radial-gradient(ellipse 75% 60% at 50% 45%, rgba(90,20,180,0.60) 0%, rgba(15,45,155,0.35) 50%, transparent 80%), radial-gradient(ellipse 55% 45% at 80% 20%, rgba(0,120,180,0.28) 0%, transparent 65%), radial-gradient(ellipse 45% 40% at 20% 75%, rgba(170,20,90,0.22) 0%, transparent 65%)',
         }}
       />
       <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none' }}>
@@ -140,47 +140,61 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: s
 function NebulaBackground() {
   return (
     <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0, overflow: 'hidden' }}>
-      {/* Purple/violet — top-left */}
+      {/* Deep violet core — top-left, galaxy arm */}
       <div style={{
-        position: 'absolute', width: '85vw', height: '70vh', borderRadius: '50%',
-        background: 'radial-gradient(ellipse, rgba(80,20,160,0.44) 0%, transparent 68%)',
-        top: '-18%', left: '-22%',
+        position: 'absolute', width: '95vw', height: '80vh', borderRadius: '50%',
+        background: 'radial-gradient(ellipse, rgba(100,20,200,0.60) 0%, rgba(60,10,120,0.30) 45%, transparent 70%)',
+        top: '-22%', left: '-28%',
         animation: 'nebula-drift-1 30s ease-in-out infinite alternate',
       }} />
-      {/* Deep blue — bottom-right */}
+      {/* Electric blue — bottom-right */}
       <div style={{
-        position: 'absolute', width: '70vw', height: '80vh', borderRadius: '50%',
-        background: 'radial-gradient(ellipse, rgba(10,40,140,0.42) 0%, transparent 68%)',
-        bottom: '-28%', right: '-18%',
+        position: 'absolute', width: '78vw', height: '88vh', borderRadius: '50%',
+        background: 'radial-gradient(ellipse, rgba(15,55,190,0.55) 0%, rgba(8,30,110,0.28) 45%, transparent 70%)',
+        bottom: '-30%', right: '-20%',
         animation: 'nebula-drift-2 38s ease-in-out infinite alternate',
       }} />
-      {/* Magenta/pink — center-right */}
+      {/* Hot magenta/fuchsia — center-right */}
       <div style={{
-        position: 'absolute', width: '60vw', height: '58vh', borderRadius: '50%',
-        background: 'radial-gradient(ellipse, rgba(160,18,90,0.30) 0%, transparent 68%)',
-        top: '22%', right: '10%',
+        position: 'absolute', width: '65vw', height: '62vh', borderRadius: '50%',
+        background: 'radial-gradient(ellipse, rgba(200,20,110,0.42) 0%, rgba(140,10,70,0.20) 45%, transparent 70%)',
+        top: '18%', right: '5%',
         animation: 'nebula-drift-3 24s ease-in-out infinite alternate',
       }} />
-      {/* Teal/cyan — top-center */}
+      {/* Teal/cyan nebula — top-center */}
       <div style={{
-        position: 'absolute', width: '52vw', height: '45vh', borderRadius: '50%',
-        background: 'radial-gradient(ellipse, rgba(0,110,155,0.30) 0%, transparent 68%)',
-        top: '-8%', left: '28%',
+        position: 'absolute', width: '58vw', height: '52vh', borderRadius: '50%',
+        background: 'radial-gradient(ellipse, rgba(0,155,200,0.38) 0%, rgba(0,90,140,0.18) 45%, transparent 70%)',
+        top: '-12%', left: '25%',
         animation: 'nebula-drift-2 44s ease-in-out infinite alternate',
       }} />
-      {/* Warm red/rose — bottom-left */}
+      {/* Crimson/rose — bottom-left */}
       <div style={{
-        position: 'absolute', width: '48vw', height: '50vh', borderRadius: '50%',
-        background: 'radial-gradient(ellipse, rgba(150,28,22,0.20) 0%, transparent 68%)',
-        bottom: '-10%', left: '5%',
+        position: 'absolute', width: '55vw', height: '55vh', borderRadius: '50%',
+        background: 'radial-gradient(ellipse, rgba(180,30,28,0.32) 0%, rgba(120,15,15,0.16) 45%, transparent 70%)',
+        bottom: '-12%', left: '3%',
         animation: 'nebula-drift-1 34s ease-in-out infinite alternate',
       }} />
-      {/* Indigo mid — center fill */}
+      {/* Indigo dust — center fill */}
       <div style={{
-        position: 'absolute', width: '60vw', height: '55vh', borderRadius: '50%',
-        background: 'radial-gradient(ellipse, rgba(30,15,100,0.28) 0%, transparent 70%)',
-        top: '35%', left: '20%',
+        position: 'absolute', width: '70vw', height: '65vh', borderRadius: '50%',
+        background: 'radial-gradient(ellipse, rgba(45,20,130,0.38) 0%, transparent 68%)',
+        top: '32%', left: '18%',
         animation: 'nebula-drift-3 50s ease-in-out infinite alternate',
+      }} />
+      {/* Bright blue star-cluster glow — upper right */}
+      <div style={{
+        position: 'absolute', width: '42vw', height: '38vh', borderRadius: '50%',
+        background: 'radial-gradient(ellipse, rgba(60,120,255,0.34) 0%, rgba(20,60,180,0.16) 45%, transparent 70%)',
+        top: '5%', right: '12%',
+        animation: 'nebula-drift-2 28s ease-in-out infinite alternate',
+      }} />
+      {/* Soft lavender mid-band */}
+      <div style={{
+        position: 'absolute', width: '80vw', height: '35vh', borderRadius: '50%',
+        background: 'radial-gradient(ellipse, rgba(130,60,200,0.22) 0%, transparent 68%)',
+        top: '45%', left: '10%',
+        animation: 'nebula-drift-1 55s ease-in-out infinite alternate',
       }} />
     </div>
   )

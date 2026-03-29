@@ -1465,13 +1465,13 @@ export default function UniverseMap({
     { label: 'Starmap', icon: '✦' },
     { label: 'Scribe', icon: '✒' },
     { label: 'Observatory', icon: '⟡' },
-    { label: 'Profile', icon: '◎' },
-    { label: 'Pages', icon: '✍' },
+    { label: 'Sanctum', icon: '◎' },
+    { label: 'Drift', icon: '✍' },
   ]
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: '#060a18' }}>
-      <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', background: 'radial-gradient(ellipse 70% 50% at 15% 25%, rgba(80,20,160,0.38) 0%, transparent 65%), radial-gradient(ellipse 60% 60% at 82% 72%, rgba(10,40,140,0.32) 0%, transparent 65%), radial-gradient(ellipse 45% 40% at 55% 10%, rgba(0,100,155,0.22) 0%, transparent 65%), radial-gradient(ellipse 40% 38% at 30% 80%, rgba(150,20,80,0.18) 0%, transparent 65%)' }} />
+      <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', background: 'radial-gradient(ellipse 80% 55% at 12% 22%, rgba(100,20,200,0.55) 0%, transparent 62%), radial-gradient(ellipse 65% 65% at 85% 75%, rgba(15,50,185,0.48) 0%, transparent 62%), radial-gradient(ellipse 50% 44% at 58% 8%, rgba(0,140,190,0.35) 0%, transparent 62%), radial-gradient(ellipse 45% 42% at 28% 82%, rgba(175,25,80,0.30) 0%, transparent 62%), radial-gradient(ellipse 40% 36% at 78% 20%, rgba(55,110,240,0.32) 0%, transparent 62%)' }} />
 
       <canvas ref={canvasRef}
         style={{ position: 'absolute', inset: 0, cursor: tooltip?.hub?.hubStyle === 'telescope' ? 'zoom-in' : 'grab' }}

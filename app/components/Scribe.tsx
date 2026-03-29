@@ -555,7 +555,39 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
   const [view, setView] = useState<'write'|'papers'|'fonts'|'stamps'|'colors'|'paper-color'|'envelopes'|'envelope'>('write')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [showPrompt, setShowPrompt] = useState(true)
-  const todayPrompt = DAILY_PROMPTS[Math.floor(Date.now() / 86400000) % DAILY_PROMPTS.length]
+  const promptPool = useRef<string[]>((() => {
+    const seed = Math.floor(Date.now() / 86400000)
+    const shuffled = [...DAILY_PROMPTS]
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = (seed * 9301 + i * 49297 + 233280) % (i + 1)
+      ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+    }
+    return shuffled.slice(0, 5)
+  })()).current
+  const [promptIdx, setPromptIdx] = useState(0)
+  const [promptVisible, setPromptVisible] = useState(true)
+  const todayPrompt = promptPool[promptIdx]
+
+  // Auto-advance prompt every 5s
+  useEffect(() => {
+    if (!showPrompt) return
+    const t = setInterval(() => {
+      setPromptVisible(false)
+      setTimeout(() => {
+        setPromptIdx(i => (i + 1) % promptPool.length)
+        setPromptVisible(true)
+      }, 400)
+    }, 5000)
+    return () => clearInterval(t)
+  }, [showPrompt, promptPool.length])
+
+  function cyclePrompt(dir: 1 | -1) {
+    setPromptVisible(false)
+    setTimeout(() => {
+      setPromptIdx(i => (i + dir + promptPool.length) % promptPool.length)
+      setPromptVisible(true)
+    }, 300)
+  }
 
   const today = new Date().toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' })
   const ink = PAPER_INK[selectedPaper.id] || PAPER_INK.ornate
@@ -865,21 +897,37 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
             </div>
 
             {showPrompt && (
-              <div style={{ position: 'relative', marginBottom: '10px', border: '1px solid rgba(230,199,110,0.18)', borderRadius: '3px', padding: '10px 36px 10px 14px', background: 'rgba(255,255,255,0.025)' }}>
-                <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.3em', color: 'rgba(230,199,110,0.48)', textTransform: 'uppercase', marginBottom: '5px', marginTop: 0 }}>Today’s prompt</p>
-                <p
-                  title="Click to use as subject"
-                  onClick={() => { setSubject(todayPrompt); setSubjectError(false); setShowPrompt(false) }}
-                  style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(255,255,255,0.7)', lineHeight: 1.6, cursor: 'pointer', margin: 0 }}
-                >
-                  {todayPrompt}
-                </p>
-                <button
-                  onClick={() => setShowPrompt(false)}
-                  style={{ position: 'absolute', top: '8px', right: '10px', background: 'none', border: 'none', color: 'rgba(255,255,255,0.38)', fontSize: '16px', cursor: 'pointer', lineHeight: 1, padding: '2px' }}
-                >
-                  ×
-                </button>
+              <div style={{ marginBottom: '14px', textAlign: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
+                  <button
+                    onClick={() => cyclePrompt(-1)}
+                    style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.28)', fontSize: '16px', cursor: 'pointer', padding: '0 4px', lineHeight: 1, flexShrink: 0 }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'rgba(230,199,110,0.65)' }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.28)' }}
+                  >&#8249;</button>
+                  <p
+                    title="Click to use as subject"
+                    onClick={() => { setSubject(todayPrompt); setSubjectError(false); setShowPrompt(false) }}
+                    style={{
+                      fontFamily: "'IM Fell English', serif", fontStyle: 'italic',
+                      fontSize: '13px', color: 'rgba(255,255,255,0.45)',
+                      lineHeight: 1.5, cursor: 'pointer', margin: 0,
+                      opacity: promptVisible ? 1 : 0,
+                      transition: 'opacity 0.35s ease',
+                      userSelect: 'none',
+                    }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.82)' }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.45)' }}
+                  >
+                    {todayPrompt}
+                  </p>
+                  <button
+                    onClick={() => cyclePrompt(1)}
+                    style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.28)', fontSize: '16px', cursor: 'pointer', padding: '0 4px', lineHeight: 1, flexShrink: 0 }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'rgba(230,199,110,0.65)' }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.28)' }}
+                  >&#8250;</button>
+                </div>
               </div>
             )}
 
