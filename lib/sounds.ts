@@ -26,14 +26,16 @@ let ambientNodes: AmbientNodes | null = null
  *  - Occasional long resonant bell pings
  * Fun, whimsical, not ominous. Total output ≈ 0.08 amplitude.
  */
-export function startAmbient(): void {
+export function startAmbient(muted = false): void {
   if (ambientNodes) return // already running
   const ctx = getCtx()
   if (!ctx) return
 
   const master = ctx.createGain()
   master.gain.setValueAtTime(0, ctx.currentTime)
-  master.gain.linearRampToValueAtTime(0.08, ctx.currentTime + 3) // fade in over 3s
+  if (!muted) {
+    master.gain.linearRampToValueAtTime(0.08, ctx.currentTime + 3) // fade in over 3s
+  }
   master.connect(ctx.destination)
 
   const stopFns: (() => void)[] = []
@@ -180,6 +182,7 @@ export function setAmbientMuted(muted: boolean): void {
   const ctx = getCtx()
   if (!ctx) return
   const now = ctx.currentTime
+  ambientNodes.masterGain.gain.cancelScheduledValues(now)
   ambientNodes.masterGain.gain.setValueAtTime(ambientNodes.masterGain.gain.value, now)
   ambientNodes.masterGain.gain.linearRampToValueAtTime(muted ? 0 : 0.08, now + 0.8)
 }

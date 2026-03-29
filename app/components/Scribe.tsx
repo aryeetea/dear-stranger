@@ -508,7 +508,9 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
   const [selectedPaperColor, setSelectedPaperColor] = useState<string | null>(null)
   const [subject, setSubject] = useState('')
   const [subjectError, setSubjectError] = useState(false)
-  const [body, setBody] = useState('')
+  const [pages, setPages] = useState<string[]>([''])
+  const [currentPage, setCurrentPage] = useState(0)
+  const body = pages.join('\n\n— ✦ —\n\n')
   const [sent, setSent] = useState(false)
   const [releasing, setReleasing] = useState(false)
   const [view, setView] = useState<'write'|'papers'|'fonts'|'stamps'|'colors'|'paper-color'|'envelopes'|'envelope'>('write')
@@ -547,7 +549,8 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
   }
 
   const renderPaper = () => {
-    const content = <LetterContent fontFamily={fontFamily} ink={effectiveInk} recipient={recipientName} senderName={senderName} date={today} body={body} setBody={setBody} textareaRef={textareaRef}/>
+    const setPageBody = (v: string) => setPages(prev => prev.map((p, i) => i === currentPage ? v : p))
+    const content = <LetterContent fontFamily={fontFamily} ink={effectiveInk} recipient={recipientName} senderName={senderName} date={today} body={pages[currentPage]} setBody={setPageBody} textareaRef={textareaRef}/>
     const pbg = selectedPaperColor ? (PAPER_TONES.find(t => t.id === selectedPaperColor)?.bg ?? undefined) : undefined
     switch (selectedPaper.id) {
       case 'ornate': return <OrnateStationery paperBg={pbg}>{content}</OrnateStationery>
@@ -815,6 +818,41 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
             </div>
 
             {renderPaper()}
+
+            {/* Page navigation */}
+            {(pages.length > 1 || body.trim()) && (
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginTop:'10px', padding:'8px 4px', borderTop:'1px solid rgba(255,255,255,0.08)' }}>
+                <div style={{ display:'flex', alignItems:'center', gap:'6px' }}>
+                  <button onClick={()=>{ setCurrentPage(p=>Math.max(0,p-1)); setTimeout(()=>textareaRef.current?.focus(),100) }}
+                    disabled={currentPage===0}
+                    style={{ background:'none', border:'1px solid rgba(255,255,255,0.14)', color:currentPage===0?'rgba(255,255,255,0.22)':'rgba(255,255,255,0.7)', fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.15em', padding:'4px 9px', cursor:currentPage===0?'default':'pointer', borderRadius:'2px' }}>
+                    ← Prev
+                  </button>
+                  <span style={{ fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.2em', color:'rgba(255,255,255,0.55)', whiteSpace:'nowrap' }}>
+                    Page {currentPage+1} / {pages.length}
+                  </span>
+                  <button onClick={()=>{ setCurrentPage(p=>Math.min(pages.length-1,p+1)); setTimeout(()=>textareaRef.current?.focus(),100) }}
+                    disabled={currentPage===pages.length-1}
+                    style={{ background:'none', border:'1px solid rgba(255,255,255,0.14)', color:currentPage===pages.length-1?'rgba(255,255,255,0.22)':'rgba(255,255,255,0.7)', fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.15em', padding:'4px 9px', cursor:currentPage===pages.length-1?'default':'pointer', borderRadius:'2px' }}>
+                    Next →
+                  </button>
+                </div>
+                <div style={{ display:'flex', gap:'6px' }}>
+                  {pages.length > 1 && pages[currentPage].trim() === '' && (
+                    <button onClick={()=>{ setPages(prev=>prev.filter((_,i)=>i!==currentPage)); setCurrentPage(p=>Math.max(0,p-1)) }}
+                      style={{ background:'none', border:'1px solid rgba(220,80,80,0.35)', color:'rgba(220,80,80,0.65)', fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.15em', padding:'4px 9px', cursor:'pointer', borderRadius:'2px' }}>
+                      Remove
+                    </button>
+                  )}
+                  <button onClick={()=>{ setPages(prev=>[...prev, '']); setCurrentPage(pages.length); setTimeout(()=>textareaRef.current?.focus(),100) }}
+                    style={{ background:'none', border:'1px solid rgba(230,199,110,0.35)', color:'rgba(230,199,110,0.75)', fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.15em', padding:'4px 9px', cursor:'pointer', borderRadius:'2px' }}
+                    onMouseEnter={e=>e.currentTarget.style.background='rgba(230,199,110,0.06)'}
+                    onMouseLeave={e=>e.currentTarget.style.background='none'}>
+                    + Add Page
+                  </button>
+                </div>
+              </div>
+            )}
 
             {selectedStamp && (
               <div style={{ display:'flex', justifyContent:'flex-end', marginTop:'-8px', marginBottom:'4px' }}>

@@ -255,41 +255,41 @@ export default function Observatory({
                   {activeTab === 'archive' && 'Your archive is empty.'}
                 </p>
               </div>
-            ) : activeTab === 'transit' ? (() => {
-              const sentTransit = currentLetters.filter(l => l.direction === 'sent')
-              const receivedTransit = currentLetters.filter(l => l.direction === 'received')
+            ) : (() => {
+              const sentLetters = currentLetters.filter(l => l.direction === 'sent')
+              const receivedLetters = currentLetters.filter(l => l.direction === 'received')
+              const isClickable = (l: Letter) => l.status !== 'transit'
               return (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                  {sentTransit.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+                  {receivedLetters.length > 0 && (
                     <div>
-                      <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.35em', color: 'rgba(230,199,110,0.6)', textTransform: 'uppercase', marginBottom: '10px' }}>Sending</p>
+                      <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.35em', color: 'rgba(230,199,110,0.6)', textTransform: 'uppercase', marginBottom: '10px' }}>
+                        {activeTab === 'transit' ? 'Incoming' : 'Received'}
+                      </p>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                        {sentTransit.map((letter, i) => (
-                          <LetterEntry key={letter.id} letter={letter} index={i} onClick={() => {}} />
+                        {receivedLetters.map((letter, i) => (
+                          <LetterEntry key={letter.id} letter={letter} index={i}
+                            onClick={() => isClickable(letter) && setOpenLetter(letter)} />
                         ))}
                       </div>
                     </div>
                   )}
-                  {receivedTransit.length > 0 && (
+                  {sentLetters.length > 0 && (
                     <div>
-                      <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.35em', color: 'rgba(230,199,110,0.6)', textTransform: 'uppercase', marginBottom: '10px' }}>Incoming</p>
+                      <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.35em', color: 'rgba(230,199,110,0.6)', textTransform: 'uppercase', marginBottom: '10px' }}>
+                        {activeTab === 'transit' ? 'Sending' : 'Sent'}
+                      </p>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                        {receivedTransit.map((letter, i) => (
-                          <LetterEntry key={letter.id} letter={letter} index={i} onClick={() => {}} />
+                        {sentLetters.map((letter, i) => (
+                          <LetterEntry key={letter.id} letter={letter} index={i}
+                            onClick={() => isClickable(letter) && setOpenLetter(letter)} />
                         ))}
                       </div>
                     </div>
                   )}
                 </div>
               )
-            })() : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {currentLetters.map((letter, i) => (
-                  <LetterEntry key={letter.id} letter={letter} index={i}
-                    onClick={() => letter.status !== 'transit' && setOpenLetter(letter)} />
-                ))}
-              </div>
-            )}
+            })()}
           </motion.div>
         </AnimatePresence>
       </div>
@@ -495,9 +495,18 @@ function LetterModal({
           {letter.direction === 'received' ? 'Dear Stranger,' : `Dear ${letter.to},`}
         </p>
 
-        <p style={{ fontFamily: bodyFont, fontSize: 'clamp(15px,2vw,18px)', lineHeight: 2, letterSpacing: '0.02em', color: bodyColor, opacity: 0.98 }}>
-          {letter.body}
-        </p>
+        {letter.body.split('\n\n— ✦ —\n\n').map((page, i, arr) => (
+          <div key={i}>
+            <p style={{ fontFamily: bodyFont, fontSize: 'clamp(15px,2vw,18px)', lineHeight: 2, letterSpacing: '0.02em', color: bodyColor, opacity: 0.98, whiteSpace: 'pre-wrap' }}>
+              {page}
+            </p>
+            {i < arr.length - 1 && (
+              <div style={{ textAlign: 'center', margin: '24px 0', opacity: 0.4 }}>
+                <span style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.4em', color: colors.accent }}>— ✦ —</span>
+              </div>
+            )}
+          </div>
+        ))}
 
         <p style={{ fontFamily: bodyFont, fontStyle: 'italic', fontSize: '15px', color: bodyColor, opacity: 0.86, marginTop: '24px', lineHeight: 1.9 }}>
           With presence,<br />

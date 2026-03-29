@@ -221,8 +221,7 @@ export default function Home() {
   // Start/stop cosmic ambient based on screen
   useEffect(() => {
     if (screen === 'universe') {
-      startAmbient()
-      if (ambientMuted) setAmbientMuted(true)
+      startAmbient(ambientMuted)
     } else {
       stopAmbient()
     }
