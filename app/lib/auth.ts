@@ -501,14 +501,14 @@ export async function sendLetter(
   const arrivesAt = new Date()
   if (!isUniverseLetter) {
     const len = trimmedBody.length
-    let minDays: number, maxDays: number
-    if (len < 200)        { minDays = 1; maxDays = 1 }
-    else if (len < 500)   { minDays = 1; maxDays = 2 }
-    else if (len < 1000)  { minDays = 2; maxDays = 3 }
-    else if (len < 2000)  { minDays = 3; maxDays = 5 }
-    else                  { minDays = 5; maxDays = 7 }
-    const travelDays = minDays + Math.floor(Math.random() * (maxDays - minDays + 1))
-    arrivesAt.setDate(arrivesAt.getDate() + travelDays)
+    let minHours: number, maxHours: number
+    if (len < 200)        { minHours = 2;  maxHours = 6   }  // ~2–6 hours
+    else if (len < 500)   { minHours = 6;  maxHours = 18  }  // ~6–18 hours
+    else if (len < 1000)  { minHours = 18; maxHours = 36  }  // ~18–36 hours
+    else if (len < 2000)  { minHours = 36; maxHours = 72  }  // ~1.5–3 days
+    else                  { minHours = 72; maxHours = 120 }  // ~3–5 days
+    const travelHours = minHours + Math.floor(Math.random() * (maxHours - minHours + 1))
+    arrivesAt.setTime(arrivesAt.getTime() + travelHours * 60 * 60 * 1000)
   }
   const initialStatus = isUniverseLetter ? 'arrived' : 'transit'
 
