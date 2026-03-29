@@ -192,6 +192,150 @@ function WarpFlash({ screenKey }: { screenKey: string }) {
   )
 }
 
+// ── Guest banner ─────────────────────────────────────────────
+function GuestBanner({ onCreateHub, onSignIn, onDismiss }: {
+  onCreateHub: () => void
+  onSignIn: () => void
+  onDismiss: () => void
+}) {
+  return (
+    <div style={{
+      position: 'fixed', top: 0, left: 0, right: 0, zIndex: 300,
+      background: 'rgba(6,4,20,0.92)',
+      borderBottom: '1px solid rgba(201,168,76,0.18)',
+      backdropFilter: 'blur(14px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      gap: '12px', padding: '10px 16px',
+      flexWrap: 'wrap',
+    }}>
+      <span style={{
+        fontFamily: "'IM Fell English', serif", fontStyle: 'italic',
+        fontSize: '13px', color: 'rgba(255,255,255,0.45)',
+        letterSpacing: '0.04em',
+      }}>
+        You're exploring as a guest
+      </span>
+      <span style={{ color: 'rgba(201,168,76,0.3)', fontSize: '10px' }}>✦</span>
+      <button
+        onClick={onCreateHub}
+        style={{
+          fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.26em',
+          textTransform: 'uppercase', color: '#c9a84c',
+          background: 'rgba(201,168,76,0.1)', border: '1px solid rgba(201,168,76,0.35)',
+          borderRadius: '2px', padding: '6px 14px', cursor: 'pointer',
+          transition: 'all 0.2s',
+        }}
+        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(201,168,76,0.2)'; e.currentTarget.style.borderColor = 'rgba(201,168,76,0.6)' }}
+        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(201,168,76,0.1)'; e.currentTarget.style.borderColor = 'rgba(201,168,76,0.35)' }}
+      >
+        Create a Hub
+      </button>
+      <button
+        onClick={onSignIn}
+        style={{
+          fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.26em',
+          textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)',
+          background: 'transparent', border: '1px solid rgba(255,255,255,0.12)',
+          borderRadius: '2px', padding: '6px 14px', cursor: 'pointer',
+          transition: 'all 0.2s',
+        }}
+        onMouseEnter={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.7)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.28)' }}
+        onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.4)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)' }}
+      >
+        Sign In
+      </button>
+      <button
+        onClick={onDismiss}
+        title="Dismiss"
+        style={{
+          position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)',
+          background: 'none', border: 'none', color: 'rgba(255,255,255,0.22)',
+          fontSize: '16px', cursor: 'pointer', lineHeight: 1, padding: '4px 6px',
+          transition: 'color 0.2s',
+        }}
+        onMouseEnter={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.5)' }}
+        onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.22)' }}
+      >
+        ×
+      </button>
+    </div>
+  )
+}
+
+// ── Guest nudge overlay (when guest tries a members-only action) ─
+function GuestNudge({ onCreateHub, onSignIn, onClose }: {
+  onCreateHub: () => void
+  onSignIn: () => void
+  onClose: () => void
+}) {
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 600,
+        background: 'rgba(0,0,5,0.72)', backdropFilter: 'blur(4px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          background: 'rgba(8,6,24,0.98)', border: '1px solid rgba(201,168,76,0.22)',
+          borderRadius: '4px', padding: '40px 36px', maxWidth: '360px', width: '90vw',
+          textAlign: 'center', boxShadow: '0 24px 80px rgba(0,0,0,0.8)',
+        }}
+      >
+        <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.4em', color: 'rgba(201,168,76,0.5)', textTransform: 'uppercase', marginBottom: '16px' }}>Dear Stranger</p>
+        <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '22px', color: 'rgba(255,255,255,0.85)', marginBottom: '10px', letterSpacing: '0.04em' }}>This is for hub owners</p>
+        <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(255,255,255,0.38)', marginBottom: '32px', lineHeight: 1.7 }}>
+          To send letters and make your mark in the universe, you'll need a hub of your own.
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <button
+            onClick={onCreateHub}
+            style={{
+              fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.3em',
+              textTransform: 'uppercase', color: '#f5edd8',
+              background: 'linear-gradient(135deg, #7a5a18 0%, #c9a84c 48%, #7a5a18 100%)',
+              border: 'none', padding: '14px 24px', cursor: 'pointer',
+              borderRadius: '2px', boxShadow: '0 2px 18px rgba(120,88,24,0.45)', transition: 'opacity 0.2s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.opacity = '0.88' }}
+            onMouseLeave={e => { e.currentTarget.style.opacity = '1' }}
+          >
+            Create a Hub ✦
+          </button>
+          <button
+            onClick={onSignIn}
+            style={{
+              fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.28em',
+              textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)',
+              background: 'transparent', border: '1px solid rgba(255,255,255,0.14)',
+              padding: '12px 24px', cursor: 'pointer', borderRadius: '2px', transition: 'all 0.2s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.7)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.3)' }}
+            onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.4)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.14)' }}
+          >
+            Already have a hub? Sign in
+          </button>
+          <button
+            onClick={onClose}
+            style={{
+              fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px',
+              color: 'rgba(255,255,255,0.22)', background: 'none', border: 'none',
+              cursor: 'pointer', marginTop: '4px', transition: 'color 0.2s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.45)' }}
+            onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.22)' }}
+          >
+            keep exploring
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Shooting-star animation that plays after a letter is sent ─
 function LetterDepartAnimation({ onDone }: { onDone: () => void }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -304,6 +448,9 @@ export default function Home() {
     if (typeof window === 'undefined') return false
     return localStorage.getItem('ds_ambient_muted') === '1'
   })
+  const [isGuest, setIsGuest] = useState(false)
+  const [guestBannerDismissed, setGuestBannerDismissed] = useState(false)
+  const [guestNudgeOpen, setGuestNudgeOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const [sendFlashing, setSendFlashing] = useState(false)
   const [pendingCredentials, setPendingCredentials] = useState<{
@@ -510,6 +657,8 @@ export default function Home() {
         clearHubState()
         setPendingCredentials(null)
         setOnboardingError('')
+        setIsGuest(false)
+        setGuestBannerDismissed(false)
         setScreen('landing')
         console.log('[authStateChange] SIGNED_OUT, go to landing')
         return
@@ -905,6 +1054,11 @@ export default function Home() {
             setPendingCredentials(null)
             setScreen('login')
           }}
+          onGuest={() => {
+            setIsGuest(true)
+            setGuestBannerDismissed(false)
+            setScreen('universe')
+          }}
         />
       )}
 
@@ -920,6 +1074,11 @@ export default function Home() {
             setPendingCredentials(null)
             setScreen('login')
           }}
+          onGuest={() => {
+            setIsGuest(true)
+            setGuestBannerDismissed(false)
+            setScreen('universe')
+          }}
         />
       )}
 
@@ -928,6 +1087,48 @@ export default function Home() {
           onComplete={handleOnboardingComplete}
           errorMessage={onboardingError}
           resumeState={onboardingResumeState}
+        />
+      )}
+
+      {screen === 'universe' && isGuest && !guestBannerDismissed && (
+        <GuestBanner
+          onCreateHub={() => {
+            setIsGuest(false)
+            setGuestBannerDismissed(false)
+            setOnboardingError('')
+            setPendingCredentials(null)
+            setScreen('signup')
+          }}
+          onSignIn={() => {
+            setIsGuest(false)
+            setGuestBannerDismissed(false)
+            setOnboardingError('')
+            setPendingCredentials(null)
+            setScreen('login')
+          }}
+          onDismiss={() => setGuestBannerDismissed(true)}
+        />
+      )}
+
+      {screen === 'universe' && guestNudgeOpen && (
+        <GuestNudge
+          onCreateHub={() => {
+            setGuestNudgeOpen(false)
+            setIsGuest(false)
+            setGuestBannerDismissed(false)
+            setOnboardingError('')
+            setPendingCredentials(null)
+            setScreen('signup')
+          }}
+          onSignIn={() => {
+            setGuestNudgeOpen(false)
+            setIsGuest(false)
+            setGuestBannerDismissed(false)
+            setOnboardingError('')
+            setPendingCredentials(null)
+            setScreen('login')
+          }}
+          onClose={() => setGuestNudgeOpen(false)}
         />
       )}
 
@@ -943,11 +1144,15 @@ export default function Home() {
           hubGlowIntensity={hubGlowIntensity}
           avatarGenerating={avatarGenerating}
           onWriteLetter={(name) => {
+            if (isGuest) { setGuestNudgeOpen(true); return }
             setScribeRecipient(name)
             setScribeOpen(true)
           }}
           onObservatory={() => setObservatoryOpen(true)}
-          onProfile={() => setProfileOpen(true)}
+          onProfile={() => {
+            if (isGuest) { setGuestNudgeOpen(true); return }
+            setProfileOpen(true)
+          }}
           onDriftstream={() => setPagesOpen(true)}
           navResetSignal={navResetSignal}
         />

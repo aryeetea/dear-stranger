@@ -64,7 +64,7 @@ function GoldRule({ opacity = 0.28 }: { opacity?: number }) {
   )
 }
 
-export default function LandingPage({ onEnter, onLogin }: { onEnter?: () => void; onLogin?: () => void }) {
+export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: () => void; onLogin?: () => void; onGuest?: () => void }) {
   // phase 0 = nothing, 1 = letter arrives, 2 = salutation, 3 = body, 4 = buttons
   const [phase, setPhase] = useState(0)
   useEffect(() => {
@@ -251,6 +251,27 @@ export default function LandingPage({ onEnter, onLogin }: { onEnter?: () => void
             }}
           >
             Already have a hub? Sign in
+          </button>
+
+          <button
+            onClick={onGuest}
+            style={{
+              fontFamily: "'IM Fell English', serif",
+              fontStyle: 'italic',
+              fontSize: 'clamp(11px, 1.4vw, 13px)',
+              color: 'rgba(75,52,12,0.42)',
+              background: 'transparent',
+              border: 'none',
+              padding: '8px 0',
+              cursor: 'pointer',
+              width: '100%',
+              transition: 'color 0.2s',
+              letterSpacing: '0.04em',
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = 'rgba(75,52,12,0.72)' }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(75,52,12,0.42)' }}
+          >
+            just browsing — enter as guest
           </button>
         </motion.div>
 

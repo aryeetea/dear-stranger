@@ -7,10 +7,12 @@ export default function EntryScreen({
   onEnter,
   onLogin,
   onSignup,
+  onGuest,
 }: {
   onEnter?: () => void
   onLogin?: () => void
   onSignup?: () => void
+  onGuest?: () => void
 }) {
   const [phase, setPhase] = useState(0)
 
@@ -127,6 +129,26 @@ export default function EntryScreen({
               }}
             >
               Enter the Universe
+            </button>
+
+            <button
+              onClick={onGuest}
+              onMouseEnter={e => { e.currentTarget.style.color = 'rgba(230,199,110,0.5)' }}
+              onMouseLeave={e => { e.currentTarget.style.color = 'rgba(230,199,110,0.28)' }}
+              style={{
+                padding: '8px 0',
+                background: 'transparent',
+                border: 'none',
+                color: 'rgba(230,199,110,0.28)',
+                fontFamily: "'IM Fell English', serif",
+                fontStyle: 'italic',
+                fontSize: '13px',
+                letterSpacing: '0.06em',
+                cursor: 'pointer',
+                transition: 'color 0.3s ease',
+              }}
+            >
+              just browsing — enter as guest
             </button>
 
           </motion.div>
