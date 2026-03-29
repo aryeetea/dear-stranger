@@ -510,6 +510,29 @@ function LetterContent({ fontFamily, ink, recipient, senderName, date, body, set
   )
 }
 
+const DAILY_PROMPTS = [
+  'Write to the version of yourself from three years ago',
+  'Write to someone who will never read this',
+  'Write to a stranger who is exactly like you, in a different life',
+  'Write to the night you couldn’t sleep',
+  'Write to a city you left behind',
+  'Write to the feeling you keep returning to',
+  'Write to someone you forgave without telling them',
+  'Write to the year that changed everything',
+  'Write to a fear you’ve been carrying in silence',
+  'Write to the version of tomorrow you’re afraid of',
+  'Write to the person you almost became',
+  'Write to a memory that still visits you',
+  'Write to someone who taught you something without knowing it',
+  'Write to the quietest moment of your life',
+  'Write to the part of you that hasn’t given up',
+  'Write to a future stranger who needs these exact words',
+  'Write to the last goodbye you weren’t ready for',
+  'Write to everything you’re holding at once',
+  'Write to the sound of a place that no longer exists',
+  'Write to the truth you’ve been circling around',
+]
+
 export default function Scribe({ recipientName, senderName, lettersSent = 0, onClose, onSend }: {
   recipientName?: string; senderName?: string; lettersSent?: number
   onClose?: () => void
@@ -531,6 +554,8 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
   const [releasing, setReleasing] = useState(false)
   const [view, setView] = useState<'write'|'papers'|'fonts'|'stamps'|'colors'|'paper-color'|'envelopes'|'envelope'>('write')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const [showPrompt, setShowPrompt] = useState(true)
+  const todayPrompt = DAILY_PROMPTS[Math.floor(Date.now() / 86400000) % DAILY_PROMPTS.length]
 
   const today = new Date().toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' })
   const ink = PAPER_INK[selectedPaper.id] || PAPER_INK.ornate
@@ -838,6 +863,25 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
                 </p>
               )}
             </div>
+
+            {showPrompt && (
+              <div style={{ position: 'relative', marginBottom: '10px', border: '1px solid rgba(230,199,110,0.18)', borderRadius: '3px', padding: '10px 36px 10px 14px', background: 'rgba(255,255,255,0.025)' }}>
+                <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.3em', color: 'rgba(230,199,110,0.48)', textTransform: 'uppercase', marginBottom: '5px', marginTop: 0 }}>Today’s prompt</p>
+                <p
+                  title="Click to use as subject"
+                  onClick={() => { setSubject(todayPrompt); setSubjectError(false); setShowPrompt(false) }}
+                  style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(255,255,255,0.7)', lineHeight: 1.6, cursor: 'pointer', margin: 0 }}
+                >
+                  {todayPrompt}
+                </p>
+                <button
+                  onClick={() => setShowPrompt(false)}
+                  style={{ position: 'absolute', top: '8px', right: '10px', background: 'none', border: 'none', color: 'rgba(255,255,255,0.38)', fontSize: '16px', cursor: 'pointer', lineHeight: 1, padding: '2px' }}
+                >
+                  ×
+                </button>
+              </div>
+            )}
 
             {renderPaper()}
 

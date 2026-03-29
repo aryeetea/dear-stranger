@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 
-function StarField() {
+function StarField({ count = 220, maxR = 1.0, maxAlpha = 0.4, parallaxFactor = 0 }: {
+  count?: number; maxR?: number; maxAlpha?: number; parallaxFactor?: number
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   useEffect(() => {
     const canvas = canvasRef.current
@@ -11,11 +13,11 @@ function StarField() {
     const ctx = canvas.getContext('2d')!
     const resize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight }
     resize()
-    const stars = Array.from({ length: 280 }, () => ({
+    const stars = Array.from({ length: count }, () => ({
       x: Math.random() * canvas.width,
       y: Math.random() * canvas.height,
-      r: Math.random() * 1.2 + 0.2,
-      alpha: Math.random() * 0.55 + 0.1,
+      r: Math.random() * maxR + 0.2,
+      alpha: Math.random() * maxAlpha + 0.08,
       speed: Math.random() * 0.008 + 0.002,
       phase: Math.random() * Math.PI * 2,
     }))
@@ -33,10 +35,23 @@ function StarField() {
       frame = requestAnimationFrame(draw)
     }
     draw()
+    const onMouseMove = (e: MouseEvent) => {
+      const cx = e.clientX - window.innerWidth / 2
+      const cy = e.clientY - window.innerHeight / 2
+      canvas.style.transform = `translate(${cx * parallaxFactor}px, ${cy * parallaxFactor}px)`
+    }
     window.addEventListener('resize', resize)
-    return () => { cancelAnimationFrame(frame); window.removeEventListener('resize', resize) }
-  }, [])
-  return <canvas ref={canvasRef} style={{ position: 'fixed', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }} />
+    window.addEventListener('mousemove', onMouseMove)
+    return () => {
+      cancelAnimationFrame(frame)
+      window.removeEventListener('resize', resize)
+      window.removeEventListener('mousemove', onMouseMove)
+    }
+  }, [count, maxR, maxAlpha, parallaxFactor])
+  return <canvas ref={canvasRef} style={{
+    position: 'fixed', inset: 0, width: '100%', height: '100%', pointerEvents: 'none',
+    transition: 'transform 0.12s ease-out', willChange: 'transform',
+  }} />
 }
 
 function GoldRule({ opacity = 0.28 }: { opacity?: number }) {
@@ -96,7 +111,8 @@ export default function LandingPage({ onEnter, onLogin }: { onEnter?: () => void
         ::-webkit-scrollbar-thumb { background: rgba(140,100,30,0.2); border-radius: 4px; }
       `}</style>
 
-      <StarField />
+      <StarField count={220} maxR={1.0} maxAlpha={0.38} parallaxFactor={0.006} />
+      <StarField count={50} maxR={2.4} maxAlpha={0.68} parallaxFactor={0.018} />
 
       <div
         style={{

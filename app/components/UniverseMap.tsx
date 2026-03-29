@@ -1071,6 +1071,13 @@ function drawHub(ctx: CanvasRenderingContext2D, hub: Hub, sx: number, sy: number
   ctx.fillStyle = `rgba(255,255,255,${hub.isMe ? 0.9 : 0.65})`
   ctx.textAlign = 'center'; ctx.textBaseline = 'top'
   ctx.fillText(hub.name, sx, sy + 34 * s)
+  // Visiting-hours: tiny envelope icon below name for hubs open to letters
+  if (hub.askAbout && !hub.isMe) {
+    ctx.font = `${Math.max(7, 8 * s)}px sans-serif`
+    ctx.fillStyle = `rgba(126,207,180,0.55)`
+    ctx.textAlign = 'center'
+    ctx.fillText('✉', sx, sy + 48 * s)
+  }
   ctx.textBaseline = 'alphabetic'
   ctx.restore()
 }
@@ -1104,12 +1111,12 @@ function drawShootingStar(ctx: CanvasRenderingContext2D, star: ShootingStar) {
 export default function UniverseMap({
   hubName, hubBio, hubAskAbout, hubAvatarUrl, hubStyle = 'portal', hubColor = 'gold',
   hubDecoration = 'none', hubGlowIntensity = 'normal',
-  onWriteLetter, onObservatory, onProfile, navResetSignal = 0, avatarGenerating = false,
+  onWriteLetter, onObservatory, onProfile, onDriftstream, navResetSignal = 0, avatarGenerating = false,
 }: {
   hubName?: string; hubBio?: string; hubAskAbout?: string; hubAvatarUrl?: string; hubStyle?: HubStyle; hubColor?: HubColor
   hubDecoration?: HubDecoration; hubGlowIntensity?: HubGlowIntensity
   onWriteLetter?: (recipientName?: string) => void
-  onObservatory?: () => void; onProfile?: () => void
+  onObservatory?: () => void; onProfile?: () => void; onDriftstream?: () => void
   navResetSignal?: number; avatarGenerating?: boolean
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -1459,6 +1466,7 @@ export default function UniverseMap({
     { label: 'Scribe', icon: '✒' },
     { label: 'Observatory', icon: '⟡' },
     { label: 'Profile', icon: '◎' },
+    { label: 'Driftstream', icon: '〰' },
   ]
 
   return (
@@ -1584,7 +1592,7 @@ export default function UniverseMap({
                   )}
                   {profile.hub.askAbout && (
                     <>
-                      <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.3em', color: '#e6c76e', textTransform: 'uppercase', marginBottom: '8px' }}>Ask me about</p>
+                      <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.3em', color: 'rgba(126,207,180,0.85)', textTransform: 'uppercase', marginBottom: '8px' }}>Open to letters about</p>
                       <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: 'clamp(13px,1.8vw,15px)', color: 'rgba(255,255,255,0.72)', lineHeight: 1.6 }}>{profile.hub.askAbout}</p>
                     </>
                   )}
@@ -1615,7 +1623,7 @@ export default function UniverseMap({
         {navItems.map((item, i) => (
           <button key={item.label}
             className="universe-nav-btn"
-            onClick={() => { playClick(); setActiveNav(i); if (i === 1) onWriteLetter?.(); if (i === 2) onObservatory?.(); if (i === 3) onProfile?.() }}
+            onClick={() => { playClick(); setActiveNav(i); if (i === 1) onWriteLetter?.(); if (i === 2) onObservatory?.(); if (i === 3) onProfile?.(); if (i === 4) onDriftstream?.() }}
             onMouseEnter={() => setHoveredNav(i)} onMouseLeave={() => setHoveredNav(null)}
             style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px', padding: '10px 18px', background: 'transparent', border: 'none', borderRadius: '10px', cursor: 'pointer', minWidth: '64px' }}>
             {activeNav === i && (

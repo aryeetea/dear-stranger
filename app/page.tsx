@@ -10,6 +10,7 @@ import type { HubColor, HubStyle, HubDecoration, HubGlowIntensity } from './comp
 import Scribe from './components/Scribe'
 import Observatory from './components/Observatory'
 import Profile from './components/Profile'
+import DriftStream from './components/DriftStream'
 import { LoginScreen, SignupScreen } from './components/AuthScreens'
 import NotificationBanner, { sendLocalNotification } from './components/NotificationBanner'
 import { supabase } from '../lib/supabase'
@@ -135,6 +136,148 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: s
   }
 }
 
+// ── Nebula drifting blobs (global background layer) ──────────
+function NebulaBackground() {
+  return (
+    <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0, overflow: 'hidden' }}>
+      <div style={{
+        position: 'absolute', width: '80vw', height: '65vh', borderRadius: '50%',
+        background: 'radial-gradient(ellipse, rgba(55,20,110,0.22) 0%, transparent 70%)',
+        top: '-15%', left: '-20%',
+        animation: 'nebula-drift-1 30s ease-in-out infinite alternate',
+      }} />
+      <div style={{
+        position: 'absolute', width: '65vw', height: '75vh', borderRadius: '50%',
+        background: 'radial-gradient(ellipse, rgba(15,35,95,0.18) 0%, transparent 70%)',
+        bottom: '-25%', right: '-15%',
+        animation: 'nebula-drift-2 38s ease-in-out infinite alternate',
+      }} />
+      <div style={{
+        position: 'absolute', width: '55vw', height: '55vh', borderRadius: '50%',
+        background: 'radial-gradient(ellipse, rgba(90,15,55,0.12) 0%, transparent 70%)',
+        top: '25%', right: '15%',
+        animation: 'nebula-drift-3 24s ease-in-out infinite alternate',
+      }} />
+    </div>
+  )
+}
+
+// ── Brief radial warp when the active screen changes ─────────
+function WarpFlash({ screenKey }: { screenKey: string }) {
+  const [active, setActive] = useState(false)
+  const prevKey = useRef(screenKey)
+  useEffect(() => {
+    if (prevKey.current !== screenKey) {
+      prevKey.current = screenKey
+      setActive(true)
+      const t = setTimeout(() => setActive(false), 700)
+      return () => clearTimeout(t)
+    }
+  }, [screenKey])
+  if (!active) return null
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 400, pointerEvents: 'none',
+      animation: 'warp-flash 0.7s ease-out forwards',
+    }}>
+      <div style={{
+        position: 'absolute', inset: 0,
+        background: 'radial-gradient(ellipse 50% 50% at 50% 50%, rgba(20,10,50,0.82) 0%, rgba(4,5,15,0.55) 55%, transparent 100%)',
+      }} />
+      <div style={{
+        position: 'absolute', inset: 0,
+        background: 'radial-gradient(ellipse 18% 28% at 50% 50%, rgba(201,168,76,0.12) 0%, transparent 100%)',
+      }} />
+    </div>
+  )
+}
+
+// ── Shooting-star animation that plays after a letter is sent ─
+function LetterDepartAnimation({ onDone }: { onDone: () => void }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    canvas.width = window.innerWidth
+    canvas.height = window.innerHeight
+    const ctx = canvas.getContext('2d')!
+    let progress = 0
+    const startX = canvas.width * 0.5
+    const startY = canvas.height * 0.78
+    const endX = canvas.width * 0.82
+    const endY = canvas.height * 0.08
+    const tail: { x: number; y: number }[] = []
+    let frame: number
+    const animate = () => {
+      progress += 0.022
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      if (progress >= 1) {
+        cancelAnimationFrame(frame)
+        onDone()
+        return
+      }
+      const t = 1 - Math.pow(1 - Math.min(progress, 1), 3)
+      const x = startX + (endX - startX) * t
+      const y = startY + (endY - startY) * t
+      tail.push({ x, y })
+      if (tail.length > 24) tail.shift()
+      tail.forEach((p, i) => {
+        const frac = i / tail.length
+        ctx.beginPath()
+        ctx.arc(p.x, p.y, Math.max(frac * 3.5, 0.5), 0, Math.PI * 2)
+        ctx.fillStyle = `rgba(201,168,76,${frac * 0.75})`
+        ctx.fill()
+      })
+      const glow = ctx.createRadialGradient(x, y, 0, x, y, 14)
+      glow.addColorStop(0, 'rgba(255,245,180,1)')
+      glow.addColorStop(0.35, 'rgba(201,168,76,0.7)')
+      glow.addColorStop(1, 'transparent')
+      ctx.fillStyle = glow
+      ctx.beginPath()
+      ctx.arc(x, y, 14, 0, Math.PI * 2)
+      ctx.fill()
+      frame = requestAnimationFrame(animate)
+    }
+    animate()
+    return () => cancelAnimationFrame(frame)
+  }, [onDone])
+  return (
+    <>
+      <div style={{
+        position: 'fixed', inset: 0, zIndex: 500, pointerEvents: 'none',
+        animation: 'letter-depart-bg 1.5s ease-in-out forwards',
+      }} />
+      <canvas ref={canvasRef} style={{ position: 'fixed', inset: 0, zIndex: 501, pointerEvents: 'none' }} />
+      <div style={{
+        position: 'fixed', bottom: '28%', left: '50%',
+        zIndex: 502, pointerEvents: 'none', textAlign: 'center', whiteSpace: 'nowrap',
+        animation: 'letter-depart-text 1.5s ease-in-out forwards',
+      }}>
+        <p style={{
+          fontFamily: "'IM Fell English', serif", fontStyle: 'italic',
+          fontSize: '19px', color: 'rgba(201,168,76,0.92)',
+          letterSpacing: '0.06em', margin: 0,
+        }}>
+          Your letter departs into the void…
+        </p>
+      </div>
+      <style>{`
+        @keyframes letter-depart-bg {
+          0%   { background: rgba(0,0,5,0); }
+          25%  { background: rgba(0,0,5,0.55); }
+          100% { background: rgba(0,0,5,0); }
+        }
+        @keyframes letter-depart-text {
+          0%   { opacity: 0; transform: translateX(-50%) translateY(8px); }
+          20%  { opacity: 1; transform: translateX(-50%) translateY(0); }
+          75%  { opacity: 1; transform: translateX(-50%) translateY(0); }
+          100% { opacity: 0; transform: translateX(-50%) translateY(-8px); }
+        }
+      `}</style>
+    </>
+  )
+}
+
 export default function Home() {
   const [screen, setScreen] = useState<Screen>('loading')
   const [hubName, setHubName] = useState('')
@@ -155,12 +298,14 @@ export default function Home() {
   const [scribeOpen, setScribeOpen] = useState(false)
   const [scribeRecipient, setScribeRecipient] = useState<string | undefined>()
   const [observatoryOpen, setObservatoryOpen] = useState(false)
+  const [driftstreamOpen, setDriftstreamOpen] = useState(false)
   const [navResetSignal, setNavResetSignal] = useState(0)
   const [ambientMuted, setAmbientMutedState] = useState(() => {
     if (typeof window === 'undefined') return false
     return localStorage.getItem('ds_ambient_muted') === '1'
   })
   const [profileOpen, setProfileOpen] = useState(false)
+  const [sendFlashing, setSendFlashing] = useState(false)
   const [pendingCredentials, setPendingCredentials] = useState<{
     email: string
     password: string
@@ -738,6 +883,16 @@ export default function Home() {
 
   return (
     <>
+      <NebulaBackground />
+      <WarpFlash screenKey={screen} />
+      {sendFlashing && (
+        <LetterDepartAnimation onDone={() => {
+          setSendFlashing(false)
+          setScribeOpen(false)
+          setNavResetSignal(s => s + 1)
+          sendLocalNotification('Dear Stranger', 'Your letter is traveling across the universe ✦')
+        }} />
+      )}
       {screen === 'landing' && (
         <LandingPage
           onEnter={() => {
@@ -793,6 +948,7 @@ export default function Home() {
           }}
           onObservatory={() => setObservatoryOpen(true)}
           onProfile={() => setProfileOpen(true)}
+          onDriftstream={() => setDriftstreamOpen(true)}
           navResetSignal={navResetSignal}
         />
       )}
@@ -884,12 +1040,17 @@ export default function Home() {
               );
 
               setLettersSent((prev) => prev + 1);
-              setScribeOpen(false);
-              sendLocalNotification('Dear Stranger', 'Your letter is traveling across the universe ✦');
+              setSendFlashing(true);
             } catch (err) {
               console.error('Failed to send letter:', err);
             }
           }}
+        />
+      )}
+
+      {driftstreamOpen && (
+        <DriftStream
+          onClose={() => { setDriftstreamOpen(false); setNavResetSignal(s => s + 1) }}
         />
       )}
 

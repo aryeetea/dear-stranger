@@ -333,6 +333,27 @@ button, a, [role="button"] {
   }
 }
 
+/* ── Nebula background drift animations ─────────────────────── */
+@keyframes nebula-drift-1 {
+  from { transform: translate(0, 0) scale(1); }
+  to   { transform: translate(7%, 5%) scale(1.14); }
+}
+@keyframes nebula-drift-2 {
+  from { transform: translate(0, 0) scale(1.05); }
+  to   { transform: translate(-6%, -8%) scale(1.0); }
+}
+@keyframes nebula-drift-3 {
+  from { transform: translate(0, 0) scale(1); }
+  to   { transform: translate(5%, -6%) scale(1.1); }
+}
+
+/* ── Screen warp flash ───────────────────────────────────────── */
+@keyframes warp-flash {
+  0%   { opacity: 0; transform: scale(0.92); }
+  22%  { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.12); }
+}
+
 /* ── 4K / Ultra-wide (≥ 2560px) ────────────────────────────── */
 @media (min-width: 2560px) {
   .universe-nav {
