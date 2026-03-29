@@ -471,12 +471,16 @@ const PAPER_ENVELOPE_COLOR: Record<string, string> = {
   'blue-ruled': '#a0c4e0', kraft: '#c0924a',
 }
 
-function LetterContent({ fontFamily, ink, recipient, senderName, date, body, setBody, textareaRef }: {
+function LetterContent({ fontFamily, ink, recipient, senderName, date, body, setBody, textareaRef, onPageFull, pageLimit }: {
   fontFamily: string; ink: { main: string; secondary: string; accent: string }
   recipient?: string; senderName?: string; date: string
   body: string; setBody: (v: string) => void
   textareaRef: React.RefObject<HTMLTextAreaElement | null>
+  onPageFull?: () => void
+  pageLimit: number
 }) {
+  const isFull = body.length >= pageLimit
+  const charsLeft = pageLimit - body.length
   return (
     <div>
       <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'12px', color:ink.secondary, marginBottom:'16px', textShadow: '0 1px 6px #fff8, 0 0px 1px #fff4' }}>{date}</p>
@@ -484,8 +488,20 @@ function LetterContent({ fontFamily, ink, recipient, senderName, date, body, set
         {recipient ? `Dear ${recipient},` : 'Dear Stranger,'}
       </p>
       <textarea ref={textareaRef} value={body} onChange={e=>setBody(e.target.value)}
-        placeholder="Begin your letter here..." rows={9}
-        style={{ width:'100%', background:'transparent', border:'none', outline:'none', color:ink.main, caretColor:ink.accent, fontFamily, fontSize:'16px', lineHeight:2, resize:'none', letterSpacing:'0.01em', textShadow: '0 1px 6px #fff8, 0 0px 1px #fff4' }}/>
+        placeholder="Begin your letter here..." maxLength={pageLimit}
+        style={{ width:'100%', height:'252px', background:'transparent', border:'none', outline:'none', color:ink.main, caretColor:ink.accent, fontFamily, fontSize:'16px', lineHeight:2, resize:'none', overflow:'hidden', letterSpacing:'0.01em', textShadow: '0 1px 6px #fff8, 0 0px 1px #fff4' }}/>
+      {isFull ? (
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginTop:'6px' }}>
+          <span style={{ fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.2em', color:'rgba(230,199,110,0.65)', textTransform:'uppercase' }}>Page full</span>
+          <motion.button whileTap={{ scale:0.96 }} onClick={onPageFull}
+            style={{ background:'rgba(230,199,110,0.08)', border:'1px solid rgba(230,199,110,0.55)', color:'#e6c76e', fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.2em', textTransform:'uppercase', padding:'4px 12px', cursor:'pointer', borderRadius:'2px' }}
+            animate={{ opacity:[1,0.65,1] }} transition={{ duration:1.4, repeat:Infinity }}>
+            Continue on next page →
+          </motion.button>
+        </div>
+      ) : charsLeft <= 80 ? (
+        <p style={{ textAlign:'right', fontFamily:"'Cinzel', serif", fontSize:'7px', letterSpacing:'0.2em', color:'rgba(255,255,255,0.35)', marginTop:'4px' }}>{charsLeft} chars remaining</p>
+      ) : null}
       <p style={{ fontFamily, fontStyle:'italic', fontSize:'15px', color:ink.secondary, marginTop:'10px', lineHeight:1.9, textShadow: '0 1px 6px #fff8, 0 0px 1px #fff4' }}>
         Yours across the distance,<br/>
         <span style={{ color:ink.accent }}>{senderName || 'A Stranger'}</span>
@@ -549,8 +565,14 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
   }
 
   const renderPaper = () => {
-    const setPageBody = (v: string) => setPages(prev => prev.map((p, i) => i === currentPage ? v : p))
-    const content = <LetterContent fontFamily={fontFamily} ink={effectiveInk} recipient={recipientName} senderName={senderName} date={today} body={pages[currentPage]} setBody={setPageBody} textareaRef={textareaRef}/>
+  const setPageBody = (v: string) => setPages(prev => prev.map((p, i) => i === currentPage ? v : p))
+    const PAGE_CHAR_LIMIT = 480
+    function handlePageFull() {
+      setPages(prev => [...prev, ''])
+      setCurrentPage(pages.length)
+      setTimeout(() => textareaRef.current?.focus(), 100)
+    }
+    const content = <LetterContent fontFamily={fontFamily} ink={effectiveInk} recipient={recipientName} senderName={senderName} date={today} body={pages[currentPage]} setBody={setPageBody} textareaRef={textareaRef} onPageFull={handlePageFull} pageLimit={PAGE_CHAR_LIMIT}/>
     const pbg = selectedPaperColor ? (PAPER_TONES.find(t => t.id === selectedPaperColor)?.bg ?? undefined) : undefined
     switch (selectedPaper.id) {
       case 'ornate': return <OrnateStationery paperBg={pbg}>{content}</OrnateStationery>
@@ -820,7 +842,7 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
             {renderPaper()}
 
             {/* Page navigation */}
-            {(pages.length > 1 || body.trim()) && (
+            {pages.length > 1 && (
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginTop:'10px', padding:'8px 4px', borderTop:'1px solid rgba(255,255,255,0.08)' }}>
                 <div style={{ display:'flex', alignItems:'center', gap:'6px' }}>
                   <button onClick={()=>{ setCurrentPage(p=>Math.max(0,p-1)); setTimeout(()=>textareaRef.current?.focus(),100) }}
@@ -837,20 +859,12 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
                     Next →
                   </button>
                 </div>
-                <div style={{ display:'flex', gap:'6px' }}>
-                  {pages.length > 1 && pages[currentPage].trim() === '' && (
-                    <button onClick={()=>{ setPages(prev=>prev.filter((_,i)=>i!==currentPage)); setCurrentPage(p=>Math.max(0,p-1)) }}
-                      style={{ background:'none', border:'1px solid rgba(220,80,80,0.35)', color:'rgba(220,80,80,0.65)', fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.15em', padding:'4px 9px', cursor:'pointer', borderRadius:'2px' }}>
-                      Remove
-                    </button>
-                  )}
-                  <button onClick={()=>{ setPages(prev=>[...prev, '']); setCurrentPage(pages.length); setTimeout(()=>textareaRef.current?.focus(),100) }}
-                    style={{ background:'none', border:'1px solid rgba(230,199,110,0.35)', color:'rgba(230,199,110,0.75)', fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.15em', padding:'4px 9px', cursor:'pointer', borderRadius:'2px' }}
-                    onMouseEnter={e=>e.currentTarget.style.background='rgba(230,199,110,0.06)'}
-                    onMouseLeave={e=>e.currentTarget.style.background='none'}>
-                    + Add Page
+                {pages.length > 1 && pages[currentPage].trim() === '' && (
+                  <button onClick={()=>{ setPages(prev=>prev.filter((_,i)=>i!==currentPage)); setCurrentPage(p=>Math.max(0,p-1)) }}
+                    style={{ background:'none', border:'1px solid rgba(220,80,80,0.35)', color:'rgba(220,80,80,0.65)', fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.15em', padding:'4px 9px', cursor:'pointer', borderRadius:'2px' }}>
+                    Remove Page
                   </button>
-                </div>
+                )}
               </div>
             )}
 
