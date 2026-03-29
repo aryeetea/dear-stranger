@@ -130,32 +130,47 @@ export default function Observatory({
           }
         }
 
-        const mapReceivedLetter = (l: any): Letter => ({
-          id: l.id,
-          from: l.sender?.hub_name || 'Unknown Sender',
-          to: l.recipient?.hub_name || 'You',
-          preview: l.subject || 'A letter for you',
-          body: l.body || '',
-          paperId: l.paper_id || 'ornate',
-          fontId: l.font_id || undefined,
-          fontColor: l.font_color || undefined,
-          paperColor: l.paper_color || undefined,
-          stampId: l.stamp_id || undefined,
-          envelopeId: l.envelope_id || undefined,
-          sentAt: l.created_at,
-          arrivedAt: l.arrives_at || undefined,
-          status: l.status,
-          direction: 'received',
-        })
+        const mapReceivedLetter = (l: any): Letter => {
+          const createdMs = new Date(l.created_at).getTime()
+          const arrivesMs = l.arrives_at ? new Date(l.arrives_at).getTime() : createdMs
+          const nowMs = Date.now()
+          const totalMs = arrivesMs - createdMs
+          const rawProgress = totalMs > 0 ? ((nowMs - createdMs) / totalMs) * 100 : 100
+          // Client-side: if arrives_at has passed, treat as arrived even if DB hasn't updated yet
+          const effectiveStatus = (l.status === 'transit' && l.arrives_at && nowMs >= arrivesMs) ? 'arrived' : l.status
+          return {
+            id: l.id,
+            from: l.sender?.hub_name || 'Unknown Sender',
+            to: l.recipient?.hub_name || 'You',
+            preview: l.subject || 'A letter for you',
+            body: l.body || '',
+            paperId: l.paper_id || 'ornate',
+            fontId: l.font_id || undefined,
+            fontColor: l.font_color || undefined,
+            paperColor: l.paper_color || undefined,
+            stampId: l.stamp_id || undefined,
+            envelopeId: l.envelope_id || undefined,
+            sentAt: l.created_at,
+            arrivedAt: l.arrives_at || undefined,
+            status: effectiveStatus as Letter['status'],
+            direction: 'received',
+            travelProgress: effectiveStatus === 'transit' ? clamp(Math.floor(rawProgress), 0, 100) : undefined,
+          }
+        }
 
         const userId = data.userId
         const mapLetter = (l: any): Letter =>
           l.sender_id === userId ? mapSentLetter(l) : mapReceivedLetter(l)
 
+        const allMapped = [
+          ...(data.transit || []).map(mapLetter),
+          ...(data.arrived || []).map(mapLetter),
+          ...(data.archive || []).map(mapLetter),
+        ]
         setLetters({
-          transit: (data.transit || []).map(mapLetter),
-          arrived: (data.arrived || []).map(mapLetter),
-          archive: (data.archive || []).map(mapLetter),
+          transit: allMapped.filter(l => l.status === 'transit'),
+          arrived: allMapped.filter(l => l.status === 'arrived'),
+          archive: allMapped.filter(l => l.status === 'archive'),
         })
       } catch (err) {
         console.error('Failed to load letters:', err)
