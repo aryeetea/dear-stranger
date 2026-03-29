@@ -1465,8 +1465,8 @@ export default function UniverseMap({
     { label: 'Starmap', icon: '✦' },
     { label: 'Scribe', icon: '✒' },
     { label: 'Observatory', icon: '⟡' },
-    { label: 'Sanctum', icon: '◎' },
     { label: 'Drift', icon: '✍' },
+    { label: 'Sanctum', icon: '◎' },
   ]
 
   return (
@@ -1623,7 +1623,7 @@ export default function UniverseMap({
         {navItems.map((item, i) => (
           <button key={item.label}
             className="universe-nav-btn"
-            onClick={() => { playClick(); setActiveNav(i); if (i === 1) onWriteLetter?.(); if (i === 2) onObservatory?.(); if (i === 3) onProfile?.(); if (i === 4) onDriftstream?.() }}
+            onClick={() => { playClick(); setActiveNav(i); if (i === 1) onWriteLetter?.(); if (i === 2) onObservatory?.(); if (i === 3) onDriftstream?.(); if (i === 4) onProfile?.() }}
             onMouseEnter={() => setHoveredNav(i)} onMouseLeave={() => setHoveredNav(null)}
             style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px', padding: '10px 18px', background: 'transparent', border: 'none', borderRadius: '10px', cursor: 'pointer', minWidth: '64px' }}>
             {activeNav === i && (
