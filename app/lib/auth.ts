@@ -589,7 +589,7 @@ export async function getMyLetters() {
 
     const { data, error } = await supabase
       .from('letters')
-      .select('*, sender:sender_id(hub_name), recipient:recipient_id(hub_name)')
+      .select('*, is_universe_letter, sender:sender_id(hub_name), recipient:recipient_id(hub_name)')
       .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
       .order('created_at', { ascending: false })
 

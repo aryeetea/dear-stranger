@@ -65,6 +65,7 @@ interface Letter {
   status: 'transit' | 'arrived' | 'archive'
   travelProgress?: number
   direction: 'sent' | 'received'
+  isUniverseLetter?: boolean
 }
 
 const PAPER_COLORS: Record<string, { accent: string; bg: string }> = {
@@ -127,6 +128,7 @@ export default function Observatory({
             status: l.status,
             direction: 'sent',
             travelProgress: l.status === 'transit' ? clamp(Math.floor(rawProgress), 0, 100) : undefined,
+            isUniverseLetter: l.is_universe_letter ?? false,
           }
         }
 
@@ -155,6 +157,7 @@ export default function Observatory({
             status: effectiveStatus as Letter['status'],
             direction: 'received',
             travelProgress: effectiveStatus === 'transit' ? clamp(Math.floor(rawProgress), 0, 100) : undefined,
+            isUniverseLetter: l.is_universe_letter ?? false,
           }
         }
 
@@ -507,7 +510,9 @@ function LetterModal({
         </p>
 
         <p style={{ fontFamily: bodyFont, fontSize: '17px', fontStyle: 'italic', color: bodyColor, opacity: 0.9, marginBottom: '16px', lineHeight: 1.8 }}>
-          {letter.direction === 'received' ? 'Dear Stranger,' : `Dear ${letter.to},`}
+          {letter.direction === 'received'
+            ? (letter.isUniverseLetter ? 'Dear Stranger,' : `Dear ${letter.to},`)
+            : `Dear ${letter.to},`}
         </p>
 
         {letter.body.split('\n\n— ✦ —\n\n').map((page, i, arr) => (
@@ -525,7 +530,11 @@ function LetterModal({
 
         <p style={{ fontFamily: bodyFont, fontStyle: 'italic', fontSize: '15px', color: bodyColor, opacity: 0.86, marginTop: '24px', lineHeight: 1.9 }}>
           With presence,<br />
-          <span style={{ color: colors.accent, opacity: 0.95 }}>A Stranger</span>
+          <span style={{ color: colors.accent, opacity: 0.95 }}>
+            {letter.direction === 'received' && !letter.isUniverseLetter && letter.from
+              ? letter.from
+              : 'A Stranger'}
+          </span>
         </p>
 
         {(letter.stampId || letter.envelopeId) && (
