@@ -608,6 +608,14 @@ export async function getMyLetters() {
   }
 }
 
+export async function archiveLetter(letterId: string) {
+  const { error } = await supabase
+    .from('letters')
+    .update({ status: 'archive' })
+    .eq('id', letterId)
+  if (error) throw error
+}
+
 export async function isGuestUser(): Promise<boolean> {
   try {
     const {

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type CSSProperties } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { getMyLetters } from '../lib/auth'
+import { getMyLetters, archiveLetter } from '../lib/auth'
 
 // ── Static stars — no Math.random in render ──
 const OBS_STARS = Array.from({ length: 30 }, (_, i) => ({
@@ -189,6 +189,16 @@ export default function Observatory({
   const arrived = letters.arrived
   const archive = letters.archive
 
+  async function handleArchive(letter: Letter) {
+    await archiveLetter(letter.id)
+    setOpenLetter(null)
+    setLetters(prev => ({
+      ...prev,
+      arrived: prev.arrived.filter(l => l.id !== letter.id),
+      archive: [{ ...letter, status: 'archive' as const }, ...prev.archive],
+    }))
+  }
+
   const tabs = [
     { id: 'transit' as const, label: 'In Transit', count: transit.length },
     { id: 'arrived' as const, label: 'Arrived', count: arrived.length },
@@ -315,7 +325,8 @@ export default function Observatory({
       <AnimatePresence>
         {openLetter && (
           <LetterModal letter={openLetter} onClose={() => setOpenLetter(null)}
-            onReply={name => { setOpenLetter(null); onWriteLetter?.(name) }} />
+            onReply={name => { setOpenLetter(null); onWriteLetter?.(name) }}
+            onArchive={() => handleArchive(openLetter)} />
         )}
       </AnimatePresence>
     </motion.div>
@@ -467,10 +478,12 @@ function LetterModal({
   letter,
   onClose,
   onReply,
+  onArchive,
 }: {
   letter: Letter
   onClose: () => void
   onReply?: (name: string) => void
+  onArchive?: () => void
 }) {
   const colors = PAPER_COLORS[letter.paperId] || PAPER_COLORS.ornate
   const bodyFont = (letter.fontId && FONT_FAMILIES[letter.fontId]) || "'Cormorant Garamond', serif"
@@ -545,7 +558,7 @@ function LetterModal({
         )}
 
         {letter.direction === 'received' && (
-          <div style={{ marginTop: '32px', paddingTop: '20px', borderTop: `1px solid ${colors.accent}38` }}>
+          <div style={{ marginTop: '32px', paddingTop: '20px', borderTop: `1px solid ${colors.accent}38`, display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
             <button
               onClick={() => onReply?.(letter.from || '')}
               style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.3em', color: colors.accent, padding: '10px 24px', border: `1px solid ${colors.accent}70`, borderRadius: '2px', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase', transition: 'all 0.2s' }}
@@ -553,6 +566,28 @@ function LetterModal({
               onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = `${colors.accent}70`; e.currentTarget.style.boxShadow = 'none' }}
             >
               Reply ✦
+            </button>
+            {letter.status === 'arrived' && (
+              <button
+                onClick={onArchive}
+                style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.3em', color: 'rgba(255,255,255,0.45)', padding: '10px 24px', border: '1px solid rgba(255,255,255,0.18)', borderRadius: '2px', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase', transition: 'all 0.2s' }}
+                onMouseEnter={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.72)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.35)' }}
+                onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.45)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.18)' }}
+              >
+                Archive
+              </button>
+            )}
+          </div>
+        )}
+        {letter.direction === 'sent' && letter.status === 'arrived' && (
+          <div style={{ marginTop: '32px', paddingTop: '20px', borderTop: `1px solid ${colors.accent}38` }}>
+            <button
+              onClick={onArchive}
+              style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.3em', color: 'rgba(255,255,255,0.45)', padding: '10px 24px', border: '1px solid rgba(255,255,255,0.18)', borderRadius: '2px', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase', transition: 'all 0.2s' }}
+              onMouseEnter={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.72)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.35)' }}
+              onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.45)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.18)' }}
+            >
+              Archive
             </button>
           </div>
         )}
