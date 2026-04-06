@@ -65,14 +65,16 @@ function GoldRule({ opacity = 0.28 }: { opacity?: number }) {
 }
 
 export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: () => void; onLogin?: () => void; onGuest?: () => void }) {
-  // phase 0 = nothing, 1 = letter arrives, 2 = salutation, 3 = body, 4 = buttons
+  // phase 0 = title splash, 1 = title fades + letter arrives, 2 = salutation, 3 = body, 4 = buttons
   const [phase, setPhase] = useState(0)
+  const [titleOut, setTitleOut] = useState(false)
   useEffect(() => {
     const timers = [
-      setTimeout(() => setPhase(1), 500),
-      setTimeout(() => setPhase(2), 1800),
-      setTimeout(() => setPhase(3), 2600),
-      setTimeout(() => setPhase(4), 3800),
+      setTimeout(() => setTitleOut(true), 2800),
+      setTimeout(() => setPhase(1), 3400),
+      setTimeout(() => setPhase(2), 4700),
+      setTimeout(() => setPhase(3), 5500),
+      setTimeout(() => setPhase(4), 6700),
     ]
     return () => timers.forEach(clearTimeout)
   }, [])
@@ -112,6 +114,7 @@ export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: (
     { text: 'Be honest. Be kind. Do not use this space to harm anyone — no harassment, no cruelty, no letters designed to hurt anyone. You can be anonymous here, but anonymity is not a license to be unkind. It is a gift. Use it well.' },
     { text: 'Your hub name, your words, and your light are yours. We will never sell them or show them to an algorithm. What you write here stays within the universe you are about to enter.' },
     { text: 'I cannot promise every letter will be answered. I can only promise this is a real place, built for real words, between real people.', italic: true },
+    { text: 'One more thing — Dear Stranger lives on your device too. You can add it to your home screen and open it like any other app, no app store needed. Look for the install prompt in your browser, or the "add to home screen" option in your browser menu.' },
   ]
 
   return (
@@ -136,6 +139,102 @@ export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: (
 
       <StarField count={220} maxR={1.0} maxAlpha={0.38} parallaxFactor={0.006} />
       <StarField count={50} maxR={2.4} maxAlpha={0.68} parallaxFactor={0.018} />
+
+      {/* ── Dear Stranger title splash ── */}
+      <AnimatePresence>
+        {!titleOut && (
+          <motion.div
+            key="title-splash"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0, transition: { duration: 0.9, ease: 'easeIn' } }}
+            transition={{ duration: 0.6 }}
+            style={{
+              position: 'fixed', inset: 0, zIndex: 20,
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              pointerEvents: 'none',
+            }}
+          >
+            {/* "Dear" — letters fall in */}
+            <div style={{ overflow: 'hidden', display: 'flex', gap: '0.02em' }}>
+              {'Dear'.split('').map((ch, i) => (
+                <motion.span
+                  key={i}
+                  initial={{ opacity: 0, y: 24 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 0.2 + i * 0.08, ease: [0.16, 1, 0.3, 1] }}
+                  style={{
+                    fontFamily: "'Cormorant Garamond', serif",
+                    fontSize: 'clamp(52px, 10vw, 96px)',
+                    fontWeight: 300,
+                    color: 'rgba(245,230,190,0.92)',
+                    letterSpacing: '0.12em',
+                    lineHeight: 1,
+                    display: 'inline-block',
+                    textShadow: '0 0 60px rgba(201,168,76,0.45), 0 0 120px rgba(201,168,76,0.22)',
+                  }}
+                >
+                  {ch}
+                </motion.span>
+              ))}
+            </div>
+
+            {/* "Stranger" — slightly delayed */}
+            <div style={{ overflow: 'hidden', display: 'flex', gap: '0.02em', marginTop: '0.05em' }}>
+              {'Stranger'.split('').map((ch, i) => (
+                <motion.span
+                  key={i}
+                  initial={{ opacity: 0, y: 24 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 0.55 + i * 0.07, ease: [0.16, 1, 0.3, 1] }}
+                  style={{
+                    fontFamily: "'Cormorant Garamond', serif",
+                    fontSize: 'clamp(52px, 10vw, 96px)',
+                    fontWeight: 300,
+                    color: 'rgba(245,230,190,0.92)',
+                    letterSpacing: '0.12em',
+                    lineHeight: 1,
+                    display: 'inline-block',
+                    textShadow: '0 0 60px rgba(201,168,76,0.45), 0 0 120px rgba(201,168,76,0.22)',
+                  }}
+                >
+                  {ch}
+                </motion.span>
+              ))}
+            </div>
+
+            {/* Gold rule */}
+            <motion.div
+              initial={{ scaleX: 0, opacity: 0 }}
+              animate={{ scaleX: 1, opacity: 1 }}
+              transition={{ duration: 1.1, delay: 1.6, ease: [0.16, 1, 0.3, 1] }}
+              style={{
+                originX: '50%' as unknown as number,
+                width: 'clamp(120px, 22vw, 260px)', height: '1px',
+                background: 'linear-gradient(90deg, transparent, rgba(201,168,76,0.55), transparent)',
+                marginTop: '20px',
+              }}
+            />
+
+            {/* Tagline */}
+            <motion.p
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 2.0, ease: 'easeOut' }}
+              style={{
+                fontFamily: "'IM Fell English', serif",
+                fontStyle: 'italic',
+                fontSize: 'clamp(13px, 1.8vw, 17px)',
+                color: 'rgba(220,200,155,0.5)',
+                letterSpacing: '0.1em',
+                marginTop: '18px',
+              }}
+            >
+              slow letters between strangers
+            </motion.p>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div
         style={{
