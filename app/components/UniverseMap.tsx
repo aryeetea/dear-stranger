@@ -64,12 +64,13 @@ interface Hub {
   decoration: HubDecoration; glowIntensity: HubGlowIntensity
 }
 
-interface ShootingStar {
+interface LetterEnvelope {
   id: number; x: number; y: number
-  vx: number; vy: number; alpha: number
-  tail: { x: number; y: number }[]
+  angle: number; baseRadius: number; angularVelocity: number
+  tilt: number; tiltVelocity: number; alpha: number
+  envColorIdx: number; born: number
   letterId: string; senderId: string; senderName: string; preview: string; body: string
-  age: number; maxAge: number; clicked: boolean
+  clicked: boolean
 }
 
 interface TooltipState { hub: Hub; sx: number; sy: number }
@@ -1082,30 +1083,70 @@ function drawHub(ctx: CanvasRenderingContext2D, hub: Hub, sx: number, sy: number
   ctx.restore()
 }
 
-// ── SHOOTING STAR ──
-function drawShootingStar(ctx: CanvasRenderingContext2D, star: ShootingStar) {
-  if (star.tail.length < 2) return
-  const alpha = star.alpha * (1 - star.age / star.maxAge)
-  // Tail
-  for (let i = 0; i < star.tail.length - 1; i++) {
-    const t = i / star.tail.length
-    ctx.beginPath()
-    ctx.moveTo(star.tail[i].x, star.tail[i].y)
-    ctx.lineTo(star.tail[i + 1].x, star.tail[i + 1].y)
-    ctx.strokeStyle = `rgba(201,168,76,${alpha * t * 0.6})`
-    ctx.lineWidth = (1 - t) * 3 + 0.5
-    ctx.stroke()
-  }
-  // Head glow
-  const glow = ctx.createRadialGradient(star.x, star.y, 0, star.x, star.y, 8)
-  glow.addColorStop(0, `rgba(255,240,180,${alpha})`)
-  glow.addColorStop(0.3, `rgba(201,168,76,${alpha * 0.6})`)
-  glow.addColorStop(1, `rgba(201,168,76,0)`)
-  ctx.beginPath(); ctx.arc(star.x, star.y, 8, 0, Math.PI * 2)
-  ctx.fillStyle = glow; ctx.fill()
-  // Sparkle
-  ctx.beginPath(); ctx.arc(star.x, star.y, 2.5, 0, Math.PI * 2)
-  ctx.fillStyle = `rgba(255,255,220,${alpha})`; ctx.fill()
+// ── ENVELOPE CANVAS COLORS ──
+const ENV_CANVAS_COLORS = [
+  { bg: 'rgba(18,12,36,0.94)', flap: 'rgba(38,24,68,0.97)', border: 'rgba(160,120,240,0.55)', seal: 'rgba(130,90,220,0.9)', glow: '160,120,240' },
+  { bg: 'rgba(28,18,6,0.94)',  flap: 'rgba(50,28,8,0.97)',  border: 'rgba(210,160,60,0.55)',  seal: 'rgba(190,140,40,0.9)',  glow: '210,160,60'  },
+  { bg: 'rgba(6,14,22,0.94)',  flap: 'rgba(10,26,46,0.97)', border: 'rgba(60,160,210,0.55)',  seal: 'rgba(40,140,195,0.9)', glow: '60,160,210'  },
+  { bg: 'rgba(24,8,16,0.94)',  flap: 'rgba(42,12,28,0.97)', border: 'rgba(200,80,140,0.55)',  seal: 'rgba(185,65,120,0.9)', glow: '200,80,140' },
+  { bg: 'rgba(10,10,6,0.94)',  flap: 'rgba(22,22,6,0.97)',  border: 'rgba(175,175,50,0.55)',  seal: 'rgba(155,155,35,0.9)', glow: '175,175,50'  },
+]
+
+// ── DRAW ENVELOPE ON CANVAS ──
+function drawEnvelopeCanvas(ctx: CanvasRenderingContext2D, env: LetterEnvelope) {
+  const { x, y, tilt, alpha } = env
+  const c = ENV_CANVAS_COLORS[env.envColorIdx % ENV_CANVAS_COLORS.length]
+  const w = 30, h = 21
+  ctx.save()
+  ctx.translate(x, y)
+  ctx.rotate(tilt)
+  ctx.globalAlpha = alpha
+
+  // Outer glow halo
+  const halo = ctx.createRadialGradient(0, 0, 8, 0, 0, 32)
+  halo.addColorStop(0, `rgba(${c.glow},${alpha * 0.3})`)
+  halo.addColorStop(1, `rgba(${c.glow},0)`)
+  ctx.beginPath(); ctx.ellipse(0, 0, 32, 23, 0, 0, Math.PI * 2)
+  ctx.fillStyle = halo; ctx.fill()
+
+  // Envelope body
+  ctx.beginPath()
+  ctx.roundRect(-w / 2, -h / 2, w, h, 2)
+  ctx.fillStyle = c.bg; ctx.fill()
+  ctx.strokeStyle = c.border; ctx.lineWidth = 0.9; ctx.stroke()
+
+  // Bottom V fold lines
+  ctx.beginPath()
+  ctx.moveTo(-w / 2, h / 2)
+  ctx.lineTo(0, 2)
+  ctx.lineTo(w / 2, h / 2)
+  ctx.strokeStyle = c.border.replace('0.55', '0.28'); ctx.lineWidth = 0.6; ctx.stroke()
+
+  // Side folds from corners to center-point
+  ctx.beginPath()
+  ctx.moveTo(-w / 2, -h / 2); ctx.lineTo(0, 2)
+  ctx.moveTo(w / 2, -h / 2);  ctx.lineTo(0, 2)
+  ctx.strokeStyle = c.border.replace('0.55', '0.22'); ctx.lineWidth = 0.5; ctx.stroke()
+
+  // Front flap (sealed triangle at top)
+  ctx.beginPath()
+  ctx.moveTo(-w / 2, -h / 2)
+  ctx.lineTo(0, h * 0.12)
+  ctx.lineTo(w / 2, -h / 2)
+  ctx.closePath()
+  ctx.fillStyle = c.flap; ctx.fill()
+  ctx.strokeStyle = c.border; ctx.lineWidth = 0.7; ctx.stroke()
+
+  // Wax seal at flap tip
+  ctx.beginPath(); ctx.arc(0, h * 0.12 - 2, 3.5, 0, Math.PI * 2)
+  ctx.fillStyle = c.seal; ctx.fill()
+  ctx.strokeStyle = c.border; ctx.lineWidth = 0.5; ctx.stroke()
+  ctx.fillStyle = 'rgba(255,255,255,0.75)'; ctx.font = '5px serif'
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+  ctx.fillText('✦', 0, h * 0.12 - 2)
+  ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'
+
+  ctx.restore()
 }
 
 export default function UniverseMap({
@@ -1127,7 +1168,7 @@ export default function UniverseMap({
   const hasDraggedRef = useRef(false)
   const dragStartRef = useRef({ x: 0, y: 0 })
   const animFrameRef = useRef<number>(0)
-  const shootingStarsRef = useRef<ShootingStar[]>([])
+  const envelopesRef = useRef<LetterEnvelope[]>([])
   const starIdRef = useRef(0)
   const lastPinchDistRef = useRef<number | null>(null)
 
@@ -1135,40 +1176,55 @@ export default function UniverseMap({
   const [profile, setProfile] = useState<ProfileState | null>(null)
   const profileRef = useRef<ProfileState | null>(null)
   useEffect(() => { profileRef.current = profile }, [profile])
-  const [starPreview, setStarPreview] = useState<ShootingStar | null>(null)
+  const [letterPreview, setLetterPreview] = useState<LetterEnvelope | null>(null)
+  const [letterStage, setLetterStage] = useState<'envelope' | 'opening' | 'letter'>('envelope')
   const dismissedLetterIdsRef = useRef<Set<string>>(new Set())
   const [activeNav, setActiveNav] = useState(0)
   const [hoveredNav, setHoveredNav] = useState<number | null>(null)
 
   useEffect(() => { if (navResetSignal > 0) setActiveNav(0) }, [navResetSignal])
 
-  // Spawn a shooting star from a universe letter
-  function spawnShootingStar(letter?: { id: string; senderId: string; senderName: string; preview: string; body: string }) {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const edge = Math.floor(Math.random() * 4)
-    let x = 0; let y = 0
-    if (edge === 0) { x = Math.random() * canvas.width; y = -20 }
-    else if (edge === 1) { x = canvas.width + 20; y = Math.random() * canvas.height }
-    else if (edge === 2) { x = Math.random() * canvas.width; y = canvas.height + 20 }
-    else { x = -20; y = Math.random() * canvas.height }
-    const targetX = canvas.width * 0.2 + Math.random() * canvas.width * 0.6
-    const targetY = canvas.height * 0.2 + Math.random() * canvas.height * 0.6
-    const dist = Math.sqrt((targetX - x) ** 2 + (targetY - y) ** 2)
-    const speed = 0.3 + Math.random() * 0.2 // slow — 0.3-0.5 px per frame
-    const star: ShootingStar = {
-      id: starIdRef.current++,
-      x, y,
-      vx: ((targetX - x) / dist) * speed,
-      vy: ((targetY - y) / dist) * speed,
-      alpha: 0.9, tail: [],
-      letterId: letter?.id || '', senderId: letter?.senderId || '', senderName: letter?.senderName || 'A Stranger',
+  // Spawn a letter envelope into the tornado orbit
+  function spawnLetterEnvelope(letter?: { id: string; senderId: string; senderName: string; preview: string; body: string }) {
+    if (!canvasRef.current) return
+    const id = starIdRef.current++
+    // Three orbit tracks at radii ~140, 200, 265 — assign by id mod 3
+    const track = id % 3
+    const baseRadius = 140 + track * 62
+    const env: LetterEnvelope = {
+      id,
+      angle: (id * 2.399) % (Math.PI * 2), // golden angle spread
+      baseRadius,
+      angularVelocity: -(0.0045 + (id % 7) * 0.001), // all CCW, 0.0045–0.0115
+      x: 0, y: 0,
+      tilt: Math.random() * Math.PI * 2,
+      tiltVelocity: (Math.random() - 0.5) * 0.022,
+      alpha: 0,
+      envColorIdx: id % ENV_CANVAS_COLORS.length,
+      born: Date.now(),
+      letterId: letter?.id || '',
+      senderId: letter?.senderId || '',
+      senderName: letter?.senderName || 'A Stranger',
       preview: letter?.preview || 'A letter drifts through the universe...',
       body: letter?.body || 'A letter drifts through the universe...',
-      age: 0, maxAge: dist / speed,
       clicked: false,
     }
-    shootingStarsRef.current.push(star)
+    envelopesRef.current.push(env)
+  }
+
+  function openLetter(env: LetterEnvelope) {
+    env.clicked = true
+    playShootingStarCatch()
+    setLetterPreview(env)
+    setLetterStage('envelope')
+    setTimeout(() => setLetterStage('opening'), 1200)
+    setTimeout(() => setLetterStage('letter'), 2000)
+  }
+
+  function closeLetter(dismiss: boolean) {
+    if (dismiss && letterPreview?.letterId) dismissedLetterIdsRef.current.add(letterPreview.letterId)
+    setLetterPreview(null)
+    setLetterStage('envelope')
   }
 
   useEffect(() => {
@@ -1184,11 +1240,11 @@ export default function UniverseMap({
 
     function spawnRealStar() {
       // Only one star in flight at a time
-      if (shootingStarsRef.current.length > 0) return
+      if (envelopesRef.current.length >= 3) return
       const available = universeLetters.filter(l => !dismissedLetterIdsRef.current.has(l.id))
       if (available.length === 0) return
       const letter = available[Math.floor(Math.random() * available.length)]
-      spawnShootingStar(letter)
+      spawnLetterEnvelope(letter)
     }
 
     const initial = setTimeout(() => {
@@ -1340,20 +1396,19 @@ export default function UniverseMap({
           }
         }
 
-        // Update & draw shooting stars
-        shootingStarsRef.current = shootingStarsRef.current.filter(star => {
-          if (star.clicked) return false
-          star.age++
-          if (star.age > star.maxAge + 60) return false
-          star.tail.push({ x: star.x, y: star.y })
-          if (star.tail.length > 30) star.tail.shift()
-          if (star.age <= star.maxAge) {
-            star.x += star.vx; star.y += star.vy
-          } else {
-            // Fade out hovering
-            star.alpha *= 0.98
-          }
-          drawShootingStar(ctx, star)
+        // Update & draw letter envelopes in tornado orbit
+        const ecx = canvas.width / 2
+        const ecy = canvas.height / 2
+        const nowMs = Date.now()
+        envelopesRef.current = envelopesRef.current.filter(env => {
+          if (env.clicked) return false
+          env.angle += env.angularVelocity
+          env.tilt += env.tiltVelocity
+          const radiusOsc = env.baseRadius + Math.sin(t * 0.35 + env.id * 1.1) * 24
+          env.x = ecx + Math.cos(env.angle) * radiusOsc
+          env.y = ecy + Math.sin(env.angle) * radiusOsc * 0.52
+          env.alpha = Math.min(0.88, (nowMs - env.born) / 2500)
+          drawEnvelopeCanvas(ctx, env)
           return true
         })
 
@@ -1403,9 +1458,9 @@ export default function UniverseMap({
     return found
   }, [])
 
-  const getStarAt = useCallback((mx: number, my: number): ShootingStar | null => {
-    return shootingStarsRef.current.find(star => {
-      return Math.sqrt((mx - star.x) ** 2 + (my - star.y) ** 2) < 20
+  const getEnvelopeAt = useCallback((mx: number, my: number): LetterEnvelope | null => {
+    return envelopesRef.current.find(env => {
+      return Math.sqrt((mx - env.x) ** 2 + (my - env.y) ** 2) < 26
     }) || null
   }, [])
 
@@ -1453,8 +1508,8 @@ export default function UniverseMap({
       if (e.touches.length === 0) {
         if (!hasDraggedRef.current && e.changedTouches.length >= 1) {
           const t = e.changedTouches[0]
-          const star = getStarAt(t.clientX, t.clientY)
-          if (star) { setStarPreview(star); playShootingStarCatch(); isDraggingRef.current = false; return }
+          const env = getEnvelopeAt(t.clientX, t.clientY)
+          if (env) { openLetter(env); isDraggingRef.current = false; return }
           const hub = getHubAt(t.clientX, t.clientY)
           if (hub) {
             setProfile({ hub, screenX: t.clientX, screenY: t.clientY, telescopeMode: hub.hubStyle === 'telescope' })
@@ -1475,7 +1530,7 @@ export default function UniverseMap({
       canvas.removeEventListener('touchmove', onTouchMove)
       canvas.removeEventListener('touchend', onTouchEnd)
     }
-  }, [getHubAt, getStarAt])
+  }, [getHubAt, getEnvelopeAt])
 
   const handleMouseDown = (e: React.MouseEvent) => {
     isDraggingRef.current = true; hasDraggedRef.current = false
@@ -1501,8 +1556,8 @@ export default function UniverseMap({
   const handleMouseUp = (e: React.MouseEvent) => {
     if (!hasDraggedRef.current) {
       // Check shooting star click first
-      const star = getStarAt(e.clientX, e.clientY)
-      if (star) { setStarPreview(star); playShootingStarCatch(); isDraggingRef.current = false; return }
+      const env = getEnvelopeAt(e.clientX, e.clientY)
+      if (env) { openLetter(env); isDraggingRef.current = false; return }
       const hub = getHubAt(e.clientX, e.clientY)
       if (hub) {
         const isTelescope = hub.hubStyle === 'telescope'
@@ -1551,40 +1606,147 @@ export default function UniverseMap({
         )}
       </AnimatePresence>
 
-      {/* Shooting Star Preview */}
+      {/* Letter Envelope Reading — 3 stages: envelope ➜ opening ➜ letter */}
       <AnimatePresence>
-        {starPreview && (
-          <motion.div key="star-preview" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
-            onClick={() => setStarPreview(null)}
-            style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 80, background: 'rgba(0,0,5,0.75)', backdropFilter: 'blur(8px)' }}>
-            <motion.div onClick={e => e.stopPropagation()}
-              style={{ background: 'rgba(8,10,28,0.97)', border: '1px solid rgba(201,168,76,0.35)', borderRadius: '12px', padding: '32px 36px 28px', width: 'min(520px, 92vw)', maxHeight: '80vh', display: 'flex', flexDirection: 'column', boxShadow: '0 0 80px rgba(201,168,76,0.12)', position: 'relative' }}>
-              <div style={{ position: 'absolute', top: 0, left: '20%', right: '20%', height: '1px', background: 'linear-gradient(90deg, transparent, rgba(201,168,76,0.5), transparent)' }} />
-              <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.4em', color: 'rgba(201,168,76,0.6)', textTransform: 'uppercase', marginBottom: '6px', flexShrink: 0 }}>✦ Universe Letter</p>
-              <p style={{ fontFamily: "'Cinzel', serif", fontSize: '11px', letterSpacing: '0.2em', color: 'rgba(255,255,255,0.6)', marginBottom: '20px', flexShrink: 0 }}>From · {starPreview.senderName}</p>
-              {/* Scrollable letter body */}
-              <div style={{ overflowY: 'auto', flex: 1, marginBottom: '24px', paddingRight: '6px', scrollbarWidth: 'thin', scrollbarColor: 'rgba(201,168,76,0.2) transparent' }}>
-                <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '17px', color: 'rgba(255,255,255,0.88)', lineHeight: 1.8 }}>
-                  &ldquo;{starPreview.body}&rdquo;
-                </p>
-              </div>
-              <div style={{ display: 'flex', gap: '10px', flexShrink: 0, flexWrap: 'wrap' }}>
-                <button onClick={() => { if (starPreview.letterId) dismissedLetterIdsRef.current.add(starPreview.letterId); setStarPreview(null) }}
-                  style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.25em', color: 'rgba(255,255,255,0.45)', padding: '10px 16px', border: '1px solid rgba(255,255,255,0.12)', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase', borderRadius: '4px', transition: 'opacity 0.2s' }}>
-                  Let it pass
-                </button>
-                <button onClick={() => { setStarPreview(null); onWriteLetter?.() }}
-                  style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.25em', color: 'rgba(255,255,255,0.6)', padding: '10px 16px', border: '1px solid rgba(255,255,255,0.15)', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase', borderRadius: '4px', transition: 'opacity 0.2s' }}>
-                  Reply into the universe ✦
-                </button>
-                {starPreview.senderId && (
-                  <button onClick={() => { setStarPreview(null); onWriteLetter?.(starPreview.senderName) }}
-                    style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.25em', color: '#c9a84c', padding: '10px 16px', border: '1px solid rgba(201,168,76,0.45)', background: 'rgba(201,168,76,0.07)', cursor: 'pointer', textTransform: 'uppercase', borderRadius: '4px', transition: 'all 0.2s' }}>
-                    Write to this stranger ✦
-                  </button>
-                )}
-              </div>
-            </motion.div>
+        {letterPreview && (
+          <motion.div key="letter-overlay"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }}
+            onClick={() => closeLetter(true)}
+            style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 80, background: 'rgba(0,0,5,0.85)', backdropFilter: 'blur(14px)' }}>
+
+            <AnimatePresence mode="wait">
+
+              {/* ── Stage 1: Closed envelope bounces in ── */}
+              {letterStage === 'envelope' && (() => {
+                const ec = ENV_CANVAS_COLORS[letterPreview.envColorIdx % ENV_CANVAS_COLORS.length]
+                return (
+                  <motion.div key="env-closed"
+                    initial={{ scale: 0.12, rotateZ: -22, y: 90, opacity: 0 }}
+                    animate={{ scale: 1, rotateZ: 0, y: 0, opacity: 1 }}
+                    exit={{ scale: 1.08, opacity: 0, transition: { duration: 0.3 } }}
+                    transition={{ type: 'spring', stiffness: 150, damping: 15 }}
+                    onClick={e => { e.stopPropagation(); setLetterStage('opening'); setTimeout(() => setLetterStage('letter'), 800) }}
+                    style={{ cursor: 'pointer', position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    {/* Envelope SVG */}
+                    <div style={{ filter: `drop-shadow(0 0 32px rgba(${ec.glow},0.45))`, position: 'relative' }}>
+                      <svg width="260" height="182" viewBox="0 0 260 182" style={{ display: 'block' }}>
+                        {/* Body */}
+                        <rect x="1" y="1" width="258" height="180" rx="6" fill={ec.bg} stroke={ec.border} strokeWidth="1.5"/>
+                        {/* Bottom V fold */}
+                        <path d="M1,181 L130,98 L259,181" fill="none" stroke={ec.border} strokeWidth="1" opacity="0.45"/>
+                        {/* Side folds */}
+                        <path d="M1,1 L130,98 M259,1 L130,98" fill="none" stroke={ec.border} strokeWidth="0.7" opacity="0.35"/>
+                        {/* Closed flap */}
+                        <path d="M1,1 L130,92 L259,1 Z" fill={ec.flap} stroke={ec.border} strokeWidth="1.2"/>
+                        {/* Wax seal */}
+                        <circle cx="130" cy="95" r="16" fill={ec.seal} stroke={ec.border} strokeWidth="1.2"/>
+                        <text x="130" y="101" textAnchor="middle" dominantBaseline="middle" fill="rgba(255,255,255,0.82)" fontSize="14" fontFamily="serif">✦</text>
+                      </svg>
+                    </div>
+                    <motion.p initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }}
+                      style={{ marginTop: '24px', fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.35em', color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase' }}>
+                      tap to open
+                    </motion.p>
+                  </motion.div>
+                )
+              })()}
+
+              {/* ── Stage 2: Flap opens ── */}
+              {letterStage === 'opening' && (() => {
+                const ec = ENV_CANVAS_COLORS[letterPreview.envColorIdx % ENV_CANVAS_COLORS.length]
+                return (
+                  <motion.div key="env-opening"
+                    initial={{ scale: 1 }} animate={{ scale: 1.04 }}
+                    exit={{ scale: 0.9, opacity: 0, transition: { duration: 0.3 } }}
+                    style={{ position: 'relative', filter: `drop-shadow(0 0 40px rgba(${ec.glow},0.5))` }}>
+                    <div style={{ position: 'relative', perspective: '800px' }}>
+                      <svg width="260" height="182" viewBox="0 0 260 182" style={{ display: 'block' }}>
+                        <rect x="1" y="1" width="258" height="180" rx="6" fill={ec.bg} stroke={ec.border} strokeWidth="1.5"/>
+                        <path d="M1,181 L130,98 L259,181" fill="none" stroke={ec.border} strokeWidth="1" opacity="0.45"/>
+                        <path d="M1,1 L130,98 M259,1 L130,98" fill="none" stroke={ec.border} strokeWidth="0.7" opacity="0.35"/>
+                        <circle cx="130" cy="95" r="14" fill={ec.seal} stroke={ec.border} strokeWidth="1" opacity="0.6"/>
+                        <text x="130" y="101" textAnchor="middle" dominantBaseline="middle" fill="rgba(255,255,255,0.5)" fontSize="12" fontFamily="serif">✦</text>
+                      </svg>
+                      {/* Animated flap lifts up */}
+                      <motion.div initial={{ rotateX: 0 }} animate={{ rotateX: -175 }}
+                        transition={{ duration: 0.7, ease: [0.4, 0, 0.2, 1] }}
+                        style={{ position: 'absolute', top: 0, left: 0, width: '100%', transformOrigin: 'top center', transformStyle: 'preserve-3d' }}>
+                        <svg width="260" height="95" viewBox="0 0 260 95" style={{ display: 'block' }}>
+                          <path d="M1,1 L130,92 L259,1 Z" fill={ec.flap} stroke={ec.border} strokeWidth="1.2"/>
+                        </svg>
+                      </motion.div>
+                    </div>
+                    {/* Paper peeking out */}
+                    <motion.div initial={{ y: 0, opacity: 0 }} animate={{ y: -28, opacity: 0.9 }}
+                      transition={{ delay: 0.4, duration: 0.5 }}
+                      style={{ position: 'absolute', bottom: '18px', left: '16px', right: '16px', height: '50px', background: 'linear-gradient(180deg, #fdf8f0 0%, #f5ede0 100%)', borderRadius: '3px 3px 0 0', overflow: 'hidden' }}>
+                      <div style={{ height: '1px', background: 'rgba(180,140,80,0.18)', margin: '12px 16px 0' }}/>
+                      <div style={{ height: '1px', background: 'rgba(180,140,80,0.18)', margin: '8px 16px 0' }}/>
+                    </motion.div>
+                  </motion.div>
+                )
+              })()}
+
+              {/* ── Stage 3: Letter paper ── */}
+              {letterStage === 'letter' && (
+                <motion.div key="letter-paper"
+                  initial={{ y: 50, scale: 0.88, opacity: 0 }}
+                  animate={{ y: 0, scale: 1, opacity: 1 }}
+                  exit={{ y: 30, opacity: 0 }}
+                  transition={{ type: 'spring', stiffness: 200, damping: 22 }}
+                  onClick={e => e.stopPropagation()}
+                  style={{ width: 'min(500px, 92vw)', maxHeight: '80vh', display: 'flex', flexDirection: 'column', background: 'linear-gradient(160deg, #fdf9f2 0%, #f7efe2 50%, #f2e8d8 100%)', borderRadius: '3px', boxShadow: '0 8px 64px rgba(0,0,0,0.7), 2px 3px 0 rgba(180,140,80,0.08), inset 0 0 80px rgba(200,160,80,0.06)', position: 'relative', overflow: 'hidden' }}>
+                  {/* Paper crease line at top */}
+                  <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: 'linear-gradient(180deg, rgba(180,140,80,0.15), transparent)' }} />
+                  {/* Aged paper texture lines */}
+                  {Array.from({ length: 18 }, (_, i) => (
+                    <div key={i} style={{ position: 'absolute', left: '48px', right: '32px', top: `${80 + i * 32}px`, height: '1px', background: 'rgba(180,140,80,0.12)' }} />
+                  ))}
+
+                  {/* Scrollable content */}
+                  <div style={{ padding: 'clamp(28px,5vw,44px) clamp(24px,5vw,44px)', overflowY: 'auto', flex: 1, scrollbarWidth: 'thin', scrollbarColor: 'rgba(180,140,80,0.3) transparent', position: 'relative' }}>
+                    {/* Header */}
+                    <div style={{ textAlign: 'center', marginBottom: '28px' }}>
+                      <p style={{ fontFamily: "'Pinyon Script', cursive", fontSize: '28px', color: 'rgba(100,70,30,0.55)', marginBottom: '8px', lineHeight: 1 }}>A Letter from the Universe</p>
+                      <div style={{ width: '80px', height: '1px', background: 'rgba(140,100,50,0.3)', margin: '0 auto 10px' }}/>
+                      <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '12px', color: 'rgba(100,70,30,0.7)', letterSpacing: '0.06em' }}>from the hand of &nbsp;{letterPreview.senderName}</p>
+                    </div>
+
+                    {/* Salutation */}
+                    <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(60,40,20,0.65)', marginBottom: '16px' }}>Dear Stranger,</p>
+
+                    {/* Body */}
+                    <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: 'clamp(15px,2.2vw,18px)', color: 'rgba(40,25,10,0.88)', lineHeight: 2.0, marginBottom: '28px', whiteSpace: 'pre-wrap' }}>
+                      {letterPreview.body}
+                    </p>
+
+                    {/* Sign-off */}
+                    <div style={{ textAlign: 'right', marginBottom: '8px' }}>
+                      <p style={{ fontFamily: "'Tangerine', cursive", fontSize: '32px', color: 'rgba(100,70,30,0.7)', lineHeight: 1.2 }}>~ {letterPreview.senderName}</p>
+                    </div>
+                  </div>
+
+                  {/* Action row */}
+                  <div style={{ padding: '16px clamp(24px,5vw,44px) 20px', borderTop: '1px solid rgba(180,140,80,0.18)', display: 'flex', gap: '10px', flexWrap: 'wrap', background: 'rgba(245,235,215,0.6)', backdropFilter: 'blur(4px)', flexShrink: 0 }}>
+                    <button onClick={() => closeLetter(true)}
+                      style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.25em', color: 'rgba(100,70,30,0.6)', padding: '9px 16px', border: '1px solid rgba(140,100,50,0.3)', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase', borderRadius: '3px' }}>
+                      Fold away
+                    </button>
+                    <button onClick={() => { closeLetter(false); onWriteLetter?.() }}
+                      style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.25em', color: 'rgba(80,50,15,0.75)', padding: '9px 16px', border: '1px solid rgba(140,100,50,0.35)', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase', borderRadius: '3px' }}>
+                      Reply to the universe ✦
+                    </button>
+                    {letterPreview.senderId && (
+                      <button onClick={() => { closeLetter(false); onWriteLetter?.(letterPreview.senderName) }}
+                        style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.25em', color: '#7a4a10', padding: '9px 16px', border: '1px solid rgba(140,100,50,0.5)', background: 'rgba(200,160,80,0.12)', cursor: 'pointer', textTransform: 'uppercase', borderRadius: '3px' }}>
+                        Write to this stranger ✦
+                      </button>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+
+            </AnimatePresence>
           </motion.div>
         )}
       </AnimatePresence>
@@ -1705,7 +1867,7 @@ export default function UniverseMap({
       <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.4, duration: 0.8 }}
         className="universe-hint"
         style={{ position: 'fixed', top: '28px', left: '50%', transform: 'translateX(-50%)', fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '12px', color: 'rgba(255,255,255,0.5)', letterSpacing: '0.08em', pointerEvents: 'none', whiteSpace: 'nowrap', zIndex: 50 }}>
-        drag to explore · scroll to zoom · catch shooting stars
+        drag to explore · scroll to zoom · click envelopes to read
       </motion.p>
     </div>
   )
