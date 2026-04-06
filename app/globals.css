@@ -48,9 +48,16 @@ body {
   margin: 0;
   padding: 0;
   overflow: hidden;
+  overscroll-behavior: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Make fixed-position overlay panels scroll on iOS Safari */
+.fixed-scroll-panel {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
 * {

@@ -67,8 +67,8 @@ const DRIFT_STARS = Array.from({ length: 28 }, (_, i) => ({
 // Deterministic floating positions for envelopes
 function envelopeLayout(count: number) {
   return Array.from({ length: count }, (_, i) => ({
-    left: `${((i * 67 + 12) % 78) + 3}%`,
-    top: `${((i * 83 + 21) % 70) + 8}%`,
+    left: `${((i * 67 + 12) % 58) + 3}%`,
+    top: `${((i * 83 + 21) % 62) + 6}%`,
     rotate: ((i * 37 + 5) % 26) - 13,
     delay: i * 0.08,
     envStyle: ENV_STYLES[i % ENV_STYLES.length],
@@ -184,6 +184,7 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.4 }}
+      className="fixed-scroll-panel"
       style={{
         position: 'fixed', inset: 0,
         background: 'rgba(0,0,5,0.97)',
@@ -241,7 +242,7 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
 
         {/* ── READ / floating envelopes ── */}
         {tab === 'read' && (
-          <motion.div key="read" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position: 'fixed', inset: 0 }}>
+          <motion.div key="read" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position: 'fixed', inset: 0, overflow: 'hidden' }}>
             {loading && (
               <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.38em', color: 'rgba(230,199,110,0.42)', textTransform: 'uppercase' }}>Listening to the void…</p>
@@ -492,7 +493,7 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
                   <motion.div key={f.id} whileTap={{ scale: 0.99 }} onClick={() => { setSelectedFont(f); setTab('write') }}
                     style={{ padding: '12px 18px', background: sel ? 'rgba(230,199,110,0.1)' : 'rgba(255,255,255,0.03)', border: sel ? '1px solid rgba(230,199,110,0.45)' : '1px solid rgba(255,255,255,0.08)', borderRadius: '4px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '14px' }}>
                     <span style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.2em', color: sel ? '#e6c76e' : 'rgba(255,255,255,0.75)', textTransform: 'uppercase', minWidth: '100px' }}>{f.label}</span>
-                    <span style={{ fontFamily: f.family, fontSize: '17px', color: sel ? 'rgba(255,255,255,0.94)' : 'rgba(255,255,255,0.76)', flex: 1, textAlign: 'right' }}>{f.preview}</span>
+                    <span style={{ fontFamily: f.family, fontSize: '17px', color: sel ? 'rgba(255,255,255,0.94)' : 'rgba(255,255,255,0.76)', flex: 1, textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{f.preview}</span>
                   </motion.div>
                 )
               })}

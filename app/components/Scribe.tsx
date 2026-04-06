@@ -790,6 +790,7 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
 
   return (
     <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }} transition={{ duration:0.4 }}
+      className="fixed-scroll-panel"
       style={{ position:'fixed', inset:0, background:'rgba(0,0,5,0.97)', backdropFilter:'blur(20px)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'flex-start', zIndex:70, padding:'72px 20px 40px', overflowY:'auto' }}>
 
       <div style={{ position:'fixed', inset:0, pointerEvents:'none', background:'radial-gradient(ellipse 50% 40% at 20% 30%, rgba(30,15,70,0.2) 0%, transparent 65%)' }}/>
@@ -853,7 +854,7 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
                   <motion.div key={f.id} whileTap={{scale:0.99}} onClick={()=>setSelectedFont(f)}
                     style={{ padding:'12px 18px', background:isSelected?'rgba(230,199,110,0.12)':'rgba(255,255,255,0.03)', border:isSelected?'1px solid rgba(230,199,110,0.45)':'1px solid rgba(255,255,255,0.08)', borderRadius:'4px', cursor:'pointer', display:'flex', justifyContent:'space-between', alignItems:'center', gap:'14px' }}>
                     <span style={{ fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.2em', color:isSelected?'#e6c76e':'rgba(255,255,255,0.76)', textTransform:'uppercase', minWidth:'100px' }}>{f.label}</span>
-                    <span style={{ fontFamily:f.family, fontSize:'17px', color:isSelected?'rgba(255,255,255,0.94)':'rgba(255,255,255,0.78)', flex:1, textAlign:'right' }}>{f.preview}</span>
+                    <span style={{ fontFamily:f.family, fontSize:'17px', color:isSelected?'rgba(255,255,255,0.94)':'rgba(255,255,255,0.78)', flex:1, textAlign:'right', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', minWidth:0 }}>{f.preview}</span>
                   </motion.div>
                 )
               })}

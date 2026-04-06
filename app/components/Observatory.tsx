@@ -220,6 +220,7 @@ export default function Observatory({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.4 }}
+      className="fixed-scroll-panel"
       style={{
         position: 'fixed', inset: 0,
         background: 'rgba(0,0,5,0.97)',
