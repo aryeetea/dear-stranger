@@ -360,7 +360,7 @@ export async function getUniverseLetters() {
   try {
     const { data, error } = await supabase
       .from('letters')
-      .select('id, sender_id, body, subject, sender:sender_id(hub_name)')
+      .select('id, sender_id, body, subject, paper_id, font_id, font_color, sender:sender_id(hub_name)')
       .eq('is_universe_letter', true)
       .order('created_at', { ascending: false })
       .limit(50)
@@ -374,6 +374,9 @@ export async function getUniverseLetters() {
       body: (l.body as string) || '',
       preview: l.body ? (l.body.length > 80 ? `${l.body.slice(0, 80)}...` : l.body) : '',
       subject: l.subject || 'A letter for you',
+      paperId: (l.paper_id as string) || 'void-parchment',
+      fontId: (l.font_id as string) || 'im-fell',
+      fontColor: (l.font_color as string) || undefined,
     }))
   } catch {
     return []

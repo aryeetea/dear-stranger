@@ -11,6 +11,7 @@ import Scribe from './components/Scribe'
 import Observatory from './components/Observatory'
 import Profile from './components/Profile'
 import PagesAndInk from './components/PagesAndInk'
+import DriftStream from './components/DriftStream'
 import { LoginScreen, SignupScreen } from './components/AuthScreens'
 import NotificationBanner, { sendLocalNotification } from './components/NotificationBanner'
 import { supabase } from '../lib/supabase'
@@ -481,6 +482,7 @@ export default function Home() {
   const [scribeRecipient, setScribeRecipient] = useState<string | undefined>()
   const [observatoryOpen, setObservatoryOpen] = useState(false)
   const [pagesOpen, setPagesOpen] = useState(false)
+  const [driftOpen, setDriftOpen] = useState(false)
   const [navResetSignal, setNavResetSignal] = useState(0)
   const [ambientMuted, setAmbientMutedState] = useState(() => {
     if (typeof window === 'undefined') return false
@@ -1191,7 +1193,7 @@ export default function Home() {
             if (isGuest) { setGuestNudgeOpen(true); return }
             setProfileOpen(true)
           }}
-          onDriftstream={() => setPagesOpen(true)}
+          onDriftstream={() => setDriftOpen(true)}
           navResetSignal={navResetSignal}
         />
       )}
@@ -1313,6 +1315,13 @@ export default function Home() {
       {pagesOpen && (
         <PagesAndInk
           onClose={() => { setPagesOpen(false); setNavResetSignal(s => s + 1) }}
+        />
+      )}
+
+      {driftOpen && (
+        <DriftStream
+          senderName={hubName}
+          onClose={() => { setDriftOpen(false); setNavResetSignal(s => s + 1) }}
         />
       )}
 
