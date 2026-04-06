@@ -164,11 +164,11 @@ export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: (
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.8, delay: 0.3 + i * 0.12, ease: [0.16, 1, 0.3, 1] }}
                   style={{
-                    fontFamily: "'Cormorant Garamond', serif",
+                    fontFamily: "'Dancing Script', cursive",
                     fontSize: 'clamp(52px, 10vw, 96px)',
-                    fontWeight: 300,
+                    fontWeight: 400,
                     color: 'rgba(245,230,190,0.92)',
-                    letterSpacing: '0.12em',
+                    letterSpacing: '0.06em',
                     lineHeight: 1,
                     display: 'inline-block',
                     textShadow: '0 0 60px rgba(201,168,76,0.45), 0 0 120px rgba(201,168,76,0.22)',
@@ -188,11 +188,11 @@ export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: (
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.8, delay: 0.9 + i * 0.11, ease: [0.16, 1, 0.3, 1] }}
                   style={{
-                    fontFamily: "'Cormorant Garamond', serif",
+                    fontFamily: "'Dancing Script', cursive",
                     fontSize: 'clamp(52px, 10vw, 96px)',
-                    fontWeight: 300,
+                    fontWeight: 400,
                     color: 'rgba(245,230,190,0.92)',
-                    letterSpacing: '0.12em',
+                    letterSpacing: '0.06em',
                     lineHeight: 1,
                     display: 'inline-block',
                     textShadow: '0 0 60px rgba(201,168,76,0.45), 0 0 120px rgba(201,168,76,0.22)',
@@ -260,7 +260,7 @@ export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: (
       >
         <div style={{ marginBottom: '32px' }}>
           <GoldRule opacity={0.26} />
-          <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '11px', color: 'rgba(100,72,22,0.55)', letterSpacing: '0.14em', textAlign: 'center', marginTop: '18px', marginBottom: 0 }}>
+          <p style={{ fontFamily: "'Dancing Script', cursive", fontSize: '13px', color: 'rgba(100,72,22,0.55)', letterSpacing: '0.1em', textAlign: 'center', marginTop: '18px', marginBottom: 0 }}>
             Somewhere in the universe &nbsp;&middot;&nbsp; March 2026
           </p>
         </div>
@@ -269,7 +269,7 @@ export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: (
           initial={{ opacity: 0, x: -12 }}
           animate={phase >= 2 ? { opacity: 1, x: 0 } : {}}
           transition={{ duration: 1.2, ease: 'easeOut' }}
-          style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: 'clamp(26px, 4.5vw, 38px)', color: '#1a1208', marginBottom: '28px', lineHeight: 1.2 }}
+          style={{ fontFamily: "'Dancing Script', cursive", fontSize: 'clamp(32px, 5.5vw, 48px)', color: '#1a1208', marginBottom: '28px', lineHeight: 1.2 }}
         >
           Dear Stranger,
         </motion.p>
@@ -282,11 +282,10 @@ export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: (
               animate={phase >= 3 ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 1.1, delay: i * 0.1, ease: 'easeOut' }}
               style={{
-                fontFamily: "'IM Fell English', serif",
-                fontStyle: italic ? 'italic' : 'normal',
-                fontSize: 'clamp(14px, 1.75vw, 17px)',
+                fontFamily: "'Dancing Script', cursive",
+                fontSize: 'clamp(16px, 2vw, 20px)',
                 color: italic ? '#1a1208' : 'rgba(38,24,6,0.8)',
-                lineHeight: italic ? 1.6 : 1.95,
+                lineHeight: 1.85,
                 margin: 0,
               }}
             >
@@ -301,12 +300,12 @@ export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: (
           transition={{ duration: 1.2, delay: paragraphs.length * 0.1 + 0.2, ease: 'easeOut' }}
           style={{ marginBottom: '40px' }}
         >
-          <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: 'clamp(15px, 1.8vw, 18px)', color: '#1a1208', marginBottom: '24px' }}>
+          <p style={{ fontFamily: "'Dancing Script', cursive", fontSize: 'clamp(18px, 2.2vw, 22px)', color: '#1a1208', marginBottom: '24px' }}>
             If you are still here, you belong here. Come in.
           </p>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div style={{ width: '28px', height: '1px', background: 'rgba(120,88,24,0.28)' }} />
-            <span style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(100,70,18,0.62)' }}>
+            <span style={{ fontFamily: "'Dancing Script', cursive", fontSize: '16px', color: 'rgba(100,70,18,0.62)' }}>
               Dear Stranger ✦
             </span>
           </div>
@@ -328,7 +327,7 @@ export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: (
               animate={{ opacity: voidVisible ? 1 : 0, y: 0 }}
               exit={{ opacity: 0, y: -4 }}
               transition={{ duration: 0.5 }}
-              style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: 'clamp(13px,1.6vw,15px)', color: 'rgba(70,48,12,0.7)', lineHeight: 1.7, margin: 0 }}
+              style={{ fontFamily: "'Dancing Script', cursive", fontSize: 'clamp(15px,1.8vw,18px)', color: 'rgba(70,48,12,0.7)', lineHeight: 1.7, margin: 0 }}
             >
               &ldquo;{voidLines[voidIdx]}&rdquo;
             </motion.p>
@@ -401,9 +400,8 @@ export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: (
           <button
             onClick={onGuest}
             style={{
-              fontFamily: "'IM Fell English', serif",
-              fontStyle: 'italic',
-              fontSize: 'clamp(11px, 1.4vw, 13px)',
+              fontFamily: "'Dancing Script', cursive",
+              fontSize: 'clamp(14px, 1.6vw, 16px)',
               color: 'rgba(75,52,12,0.42)',
               background: 'transparent',
               border: 'none',
