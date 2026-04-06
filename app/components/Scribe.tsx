@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { playLetterSend } from '../../lib/sounds'
+import { playLetterSend, playTypingSound, playWaxSeal } from '../../lib/sounds'
 
 const SCRIBE_STARS = Array.from({ length: 20 }, (_, i) => ({
   width: `${(i % 3) * 0.45 + 0.3}px`,
@@ -589,13 +589,14 @@ const PAPER_ENVELOPE_COLOR: Record<string, string> = {
   'midnight-scroll': '#6040a8', 'rice-paper': '#c0a870',
 }
 
-function LetterContent({ fontFamily, ink, recipient, senderName, date, body, setBody, textareaRef, onPageFull, pageLimit }: {
+function LetterContent({ fontFamily, ink, recipient, senderName, date, body, setBody, textareaRef, onPageFull, pageLimit, onKeyDown }: {
   fontFamily: string; ink: { main: string; secondary: string; accent: string }
   recipient?: string; senderName?: string; date: string
   body: string; setBody: (v: string) => void
   textareaRef: React.RefObject<HTMLTextAreaElement | null>
   onPageFull?: () => void
   pageLimit: number
+  onKeyDown?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void
 }) {
   const isFull = body.length >= pageLimit
   const charsLeft = pageLimit - body.length
@@ -605,7 +606,7 @@ function LetterContent({ fontFamily, ink, recipient, senderName, date, body, set
       <p style={{ fontFamily, fontSize:'18px', fontStyle:'italic', color:ink.secondary, marginBottom:'18px', lineHeight:1.8, textShadow: '0 1px 6px #fff8, 0 0px 1px #fff4' }}>
         {recipient ? `Dear ${recipient},` : 'Dear Stranger,'}
       </p>
-      <textarea ref={textareaRef} value={body} onChange={e=>setBody(e.target.value)}
+      <textarea ref={textareaRef} value={body} onChange={e=>setBody(e.target.value)} onKeyDown={onKeyDown}
         placeholder="Begin your letter here..." maxLength={pageLimit}
         style={{ width:'100%', height:'252px', background:'transparent', border:'none', outline:'none', color:ink.main, caretColor:ink.accent, fontFamily, fontSize:'16px', lineHeight:2, resize:'none', overflow:'hidden', letterSpacing:'0.01em', textShadow: '0 1px 6px #fff8, 0 0px 1px #fff4' }}/>
       {isFull ? (
@@ -654,7 +655,7 @@ const DAILY_PROMPTS = [
 export default function Scribe({ recipientName, senderName, lettersSent = 0, onClose, onSend }: {
   recipientName?: string; senderName?: string; lettersSent?: number
   onClose?: () => void
-  onSend?: (letter: { to?: string; body: string; paperId: string; subject: string; fontId: string; colorId?: string; paperColorId?: string; stampId?: string; envelopeId?: string }) => void
+  onSend?: (letter: { to?: string; body: string; paperId: string; subject: string; fontId: string; colorId?: string; paperColorId?: string; stampId?: string; envelopeId?: string; capsuleDays?: number }) => void
 }) {
   const unlockedPapers = PAPERS.filter(p => p.unlocksAt <= lettersSent)
   const [selectedPaper, setSelectedPaper] = useState(unlockedPapers[0])
@@ -670,7 +671,10 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
   const body = pages.join('\n\n— ✦ —\n\n')
   const [sent, setSent] = useState(false)
   const [releasing, setReleasing] = useState(false)
-  const [view, setView] = useState<'write'|'papers'|'fonts'|'stamps'|'colors'|'paper-color'|'envelopes'|'envelope'>('write')
+  const [view, setView] = useState<'write'|'papers'|'fonts'|'stamps'|'colors'|'paper-color'|'envelopes'|'envelope'|'wax-seal'>('write')
+  const [journalMode, setJournalMode] = useState(false)
+  const [capsuleDays, setCapsuleDays] = useState<30|60|90>(30)
+  const lastTypeSoundRef = useRef<number>(0)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [showPrompt, setShowPrompt] = useState(true)
   const promptPool = useRef<string[]>((() => {
@@ -728,13 +732,16 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
       return
     }
     setSubjectError(false)
+    setView('wax-seal')
+    playWaxSeal()
+    await new Promise(r => setTimeout(r, 1400))
     setView('envelope')
     setReleasing(true)
     playLetterSend()
     await new Promise(r => setTimeout(r, 2200))
     setSent(true)
     setTimeout(() => {
-      onSend?.({ to: recipientName, body, paperId: selectedPaper.id, subject, fontId: selectedFont.id, colorId: selectedColor ?? undefined, paperColorId: selectedPaperColor ?? undefined, stampId: selectedStamp, envelopeId: selectedEnvelope })
+      onSend?.({ to: journalMode ? undefined : recipientName, body, paperId: selectedPaper.id, subject, fontId: selectedFont.id, colorId: selectedColor ?? undefined, paperColorId: selectedPaperColor ?? undefined, stampId: selectedStamp, envelopeId: selectedEnvelope, capsuleDays: journalMode ? capsuleDays : undefined })
       onClose?.()
     }, 2400)
   }
@@ -747,7 +754,14 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
       setCurrentPage(pages.length)
       setTimeout(() => textareaRef.current?.focus(), 100)
     }
-    const content = <LetterContent fontFamily={fontFamily} ink={effectiveInk} recipient={recipientName} senderName={senderName} date={today} body={pages[currentPage]} setBody={setPageBody} textareaRef={textareaRef} onPageFull={handlePageFull} pageLimit={PAGE_CHAR_LIMIT}/>
+    const handleTypingKey = () => {
+      const now = Date.now()
+      if (now - lastTypeSoundRef.current > 60) {
+        playTypingSound()
+        lastTypeSoundRef.current = now
+      }
+    }
+    const content = <LetterContent fontFamily={fontFamily} ink={effectiveInk} recipient={recipientName} senderName={senderName} date={today} body={pages[currentPage]} setBody={setPageBody} textareaRef={textareaRef} onPageFull={handlePageFull} pageLimit={PAGE_CHAR_LIMIT} onKeyDown={handleTypingKey}/>
     const pbg = selectedPaperColor ? (PAPER_TONES.find(t => t.id === selectedPaperColor)?.bg ?? undefined) : undefined
     switch (selectedPaper.id) {
       case 'ornate': return <OrnateStationery paperBg={pbg}>{content}</OrnateStationery>
@@ -1089,6 +1103,31 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
               </div>
             )}
 
+            {!recipientName && (
+              <div style={{ marginTop:'8px', marginBottom:'4px', display:'flex', flexDirection:'column', alignItems:'flex-start', gap:'7px' }}>
+                <button onClick={() => setJournalMode(j => !j)}
+                  style={{ background:journalMode?'rgba(230,199,110,0.1)':'none', border:`1px solid ${journalMode?'rgba(230,199,110,0.45)':'rgba(255,255,255,0.16)'}`, color:journalMode?'#e6c76e':'rgba(255,255,255,0.65)', fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.22em', textTransform:'uppercase', padding:'5px 12px', cursor:'pointer', borderRadius:'2px', transition:'all 0.2s' }}
+                  onMouseEnter={e=>{e.currentTarget.style.borderColor='rgba(230,199,110,0.45)';e.currentTarget.style.color='#e6c76e'}}
+                  onMouseLeave={e=>{if(!journalMode){e.currentTarget.style.borderColor='rgba(255,255,255,0.16)';e.currentTarget.style.color='rgba(255,255,255,0.65)'}}}>
+                  {journalMode ? '📓 Writing to Myself' : '📓 Write to Myself'}
+                </button>
+                {journalMode && (
+                  <div style={{ display:'flex', alignItems:'center', gap:'8px', flexWrap:'wrap' }}>
+                    <span style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'11px', color:'rgba(255,255,255,0.5)' }}>Open in:</span>
+                    {([30, 60, 90] as const).map(d => (
+                      <button key={d} onClick={() => setCapsuleDays(d)}
+                        style={{ background:capsuleDays===d?'rgba(230,199,110,0.15)':'none', border:`1px solid ${capsuleDays===d?'rgba(230,199,110,0.55)':'rgba(255,255,255,0.16)'}`, color:capsuleDays===d?'#e6c76e':'rgba(255,255,255,0.65)', fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.18em', padding:'5px 10px', cursor:'pointer', borderRadius:'2px' }}>
+                        {d}d
+                      </button>
+                    ))}
+                    <span style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'11px', color:'rgba(255,255,255,0.38)' }}>
+                      · opens {new Date(Date.now() + capsuleDays * 86400000).toLocaleDateString('en-US', { month:'long', day:'numeric', year:'numeric' })}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:'12px', flexWrap:'wrap', gap:'8px' }}>
               <div style={{ display:'flex', alignItems:'center', gap:'6px', flexWrap:'wrap' }}>
                 {[
@@ -1111,9 +1150,34 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
                 style={{ padding:'11px 22px', background:'transparent', border:`1px solid ${body.trim()?'rgba(230,199,110,0.55)':'rgba(255,255,255,0.12)'}`, color:body.trim()?'#e6c76e':'rgba(255,255,255,0.42)', fontFamily:"'Cinzel', serif", fontSize:'10px', letterSpacing:'0.22em', textTransform:'uppercase', cursor:body.trim()?'pointer':'default', borderRadius:'2px', opacity:releasing?0.6:1 }}
                 onMouseEnter={e=>{if(!body.trim())return;e.currentTarget.style.background='rgba(230,199,110,0.08)';e.currentTarget.style.borderColor='#e6c76e'}}
                 onMouseLeave={e=>{e.currentTarget.style.background='transparent';e.currentTarget.style.borderColor=body.trim()?'rgba(230,199,110,0.55)':'rgba(255,255,255,0.12)'}}>
-                {releasing ? 'Sealing ✦' : recipientName ? `Send to ${recipientName} ✦` : 'Release into the Universe ✦'}
+                {releasing ? 'Sealing ✦' : recipientName ? `Send to ${recipientName} ✦` : journalMode ? 'Seal for Myself ✦' : 'Release into the Universe ✦'}
               </motion.button>
             </div>
+          </motion.div>
+        )}
+
+        {view==='wax-seal' && !sent && (
+          <motion.div key="wax-seal" initial={{ opacity:0, scale:0.95 }} animate={{ opacity:1, scale:1 }} exit={{ opacity:0 }}
+            style={{ zIndex:2, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'40px 0' }}>
+            <motion.div
+              initial={{ scaleX:0.2, scaleY:0.1, y:-8, opacity:0 }}
+              animate={{ scaleX:[0.2, 1.25, 1.0], scaleY:[0.1, 0.9, 1.0], opacity:[0, 1, 1] }}
+              transition={{ duration:0.85, times:[0, 0.5, 1], ease:'easeOut' }}
+              style={{ width:100, height:100, borderRadius:'50%', background:'radial-gradient(circle at 35% 30%, #c94030, #7b1214 60%, #4a0a10)', boxShadow:'0 8px 40px rgba(160,30,30,0.55)', position:'relative', display:'flex', alignItems:'center', justifyContent:'center' }}>
+              <motion.div
+                initial={{ scale:2.5, opacity:0 }}
+                animate={{ scale:1.0, opacity:1 }}
+                transition={{ delay:0.6, duration:0.25, ease:'easeIn' }}>
+                {selectedStamp
+                  ? <StampSVG id={selectedStamp} size={68}/>
+                  : <span style={{ fontSize:32, color:'rgba(255,220,200,0.7)' }}>✦</span>
+                }
+              </motion.div>
+            </motion.div>
+            <motion.p initial={{ opacity:0, y:6 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.9, duration:0.5 }}
+              style={{ fontFamily:"'Cinzel', serif", fontSize:'10px', letterSpacing:'0.4em', color:'#e6c76e', textTransform:'uppercase', marginTop:'28px' }}>
+              Sealing your letter...
+            </motion.p>
           </motion.div>
         )}
 
@@ -1138,11 +1202,11 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
             <motion.p initial={{ opacity:0, y:8 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.3 }} style={{ fontSize:'36px', marginBottom:'20px', color:'#e6c76e' }}>✦</motion.p>
             <motion.p initial={{ opacity:0 }} animate={{ opacity:1 }} transition={{ delay:0.5 }}
               style={{ fontFamily:"'Cinzel', serif", fontSize:'clamp(12px,2vw,16px)', letterSpacing:'0.3em', color:'#e6c76e', textTransform:'uppercase', marginBottom:'10px' }}>
-              {recipientName ? `Sent to ${recipientName}` : 'Released into the universe'}
+              {recipientName ? `Sent to ${recipientName}` : journalMode ? 'Sealed for yourself' : 'Released into the universe'}
             </motion.p>
             <motion.p initial={{ opacity:0 }} animate={{ opacity:1 }} transition={{ delay:0.8 }}
               style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'14px', color:'rgba(255,255,255,0.82)' }}>
-              {recipientName ? `traveling toward ${recipientName}...` : 'finding its way to a stranger...'}
+              {recipientName ? `traveling toward ${recipientName}...` : journalMode ? `opens ${new Date(Date.now() + capsuleDays * 86400000).toLocaleDateString('en-US', { month:'long', day:'numeric', year:'numeric' })}` : 'finding its way to a stranger...'}
             </motion.p>
           </motion.div>
         )}

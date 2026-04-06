@@ -77,6 +77,29 @@ export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: (
     return () => timers.forEach(clearTimeout)
   }, [])
 
+  const voidLines = [
+    'somewhere out there, someone is writing to you right now.',
+    'i keep forgetting to say the things that matter most.',
+    'some distances cannot be measured in miles.',
+    'the letter i never sent still lives in my chest.',
+    'you are not as forgotten as you think.',
+    'we are all strangers until we aren’t.',
+    'there is a version of you in every life i almost lived.',
+    'i hope you know someone is rooting for you, somewhere.',
+    'time heals nothing. writing helps.',
+    'the universe keeps letters, even the ones you burned.',
+  ]
+  const [voidIdx, setVoidIdx] = useState(0)
+  const [voidVisible, setVoidVisible] = useState(true)
+  useEffect(() => {
+    const t = setInterval(() => {
+      setVoidVisible(false)
+      setTimeout(() => { setVoidIdx(i => (i + 1) % voidLines.length); setVoidVisible(true) }, 500)
+    }, 7000)
+    return () => clearInterval(t)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const paragraphs: { text: string; italic?: boolean }[] = [
     { text: "Welcome. I'm glad you found this." },
     { text: 'Dear Stranger is a place for slow letters — the kind you actually meant to write. No feed, no trending topics, no follower counts. Just words, and the space between sending and receiving.' },
@@ -96,7 +119,7 @@ export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: (
       style={{
         position: 'fixed',
         inset: 0,
-        background: '#06040e',
+        background: 'transparent',
         overflowY: 'auto',
         overflowX: 'hidden',
         display: 'flex',
@@ -188,6 +211,29 @@ export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: (
               Dear Stranger ✦
             </span>
           </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={phase >= 3 ? { opacity: 1 } : {}}
+          transition={{ duration: 1.2, delay: paragraphs.length * 0.1 + 0.5, ease: 'easeOut' }}
+          style={{ margin: '28px 0 24px', textAlign: 'center' }}
+        >
+          <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.4em', color: 'rgba(100,72,22,0.42)', textTransform: 'uppercase', marginBottom: '12px' }}>
+            FROM THE UNIVERSE
+          </p>
+          <AnimatePresence mode="wait">
+            <motion.p
+              key={voidIdx}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: voidVisible ? 1 : 0, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.5 }}
+              style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: 'clamp(13px,1.6vw,15px)', color: 'rgba(70,48,12,0.7)', lineHeight: 1.7, margin: 0 }}
+            >
+              &ldquo;{voidLines[voidIdx]}&rdquo;
+            </motion.p>
+          </AnimatePresence>
         </motion.div>
 
         <div style={{ marginBottom: '28px' }}>

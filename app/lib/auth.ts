@@ -521,6 +521,7 @@ export async function sendLetter(
   paperColor?: string,
   stampId?: string,
   envelopeId?: string,
+  customArrivesAt?: Date,
 ) {
   const {
     data: { user },
@@ -537,8 +538,8 @@ export async function sendLetter(
 
   // Universe letters are instant — they float freely as shooting stars immediately.
   // Direct letters travel based on length: shorter letters arrive sooner.
-  const arrivesAt = new Date()
-  if (!isUniverseLetter) {
+  const arrivesAt = customArrivesAt ? new Date(customArrivesAt.getTime()) : new Date()
+  if (!isUniverseLetter && !customArrivesAt) {
     const len = trimmedBody.length
     let minHours: number, maxHours: number
     if (len < 200)        { minHours = 2;  maxHours = 6   }  // ~2–6 hours

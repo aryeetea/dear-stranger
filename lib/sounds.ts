@@ -310,3 +310,102 @@ export function playShootingStarCatch(): void {
   noiseGain.connect(ctx.destination)
   noise.start(now)
 }
+
+/** Soft quill-scratch tick — played while typing a letter (throttle externally) */
+export function playTypingSound(): void {
+  const ctx = getCtx()
+  if (!ctx) return
+  const now = ctx.currentTime
+
+  // Very short bandpass noise burst — like a quill scratch on parchment
+  const bufSize = Math.floor(ctx.sampleRate * 0.045)
+  const buffer = ctx.createBuffer(1, bufSize, ctx.sampleRate)
+  const data = buffer.getChannelData(0)
+  for (let i = 0; i < bufSize; i++) {
+    data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufSize, 2)
+  }
+  const src = ctx.createBufferSource()
+  src.buffer = buffer
+
+  const filter = ctx.createBiquadFilter()
+  filter.type = 'bandpass'
+  filter.frequency.value = 1200 + Math.random() * 400
+  filter.Q.value = 1.4
+
+  const gain = ctx.createGain()
+  gain.gain.setValueAtTime(0.038, now)
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04)
+
+  src.connect(filter)
+  filter.connect(gain)
+  gain.connect(ctx.destination)
+  src.start(now)
+}
+
+/** Wax seal ceremony — sizzle drip then a firm thud stamp */
+export function playWaxSeal(): void {
+  const ctx = getCtx()
+  if (!ctx) return
+  const now = ctx.currentTime
+
+  // Phase 1: hot wax sizzle (0 – 0.7s) — filtered noise
+  const sizzleSize = Math.floor(ctx.sampleRate * 0.7)
+  const sizzleBuf = ctx.createBuffer(1, sizzleSize, ctx.sampleRate)
+  const sizzleData = sizzleBuf.getChannelData(0)
+  for (let i = 0; i < sizzleSize; i++) {
+    sizzleData[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / sizzleSize, 0.4)
+  }
+  const sizzle = ctx.createBufferSource()
+  sizzle.buffer = sizzleBuf
+  const sizzleFilt = ctx.createBiquadFilter()
+  sizzleFilt.type = 'bandpass'
+  sizzleFilt.frequency.setValueAtTime(2200, now)
+  sizzleFilt.frequency.exponentialRampToValueAtTime(700, now + 0.7)
+  sizzleFilt.Q.value = 0.5
+  const sizzleGain = ctx.createGain()
+  sizzleGain.gain.setValueAtTime(0, now)
+  sizzleGain.gain.linearRampToValueAtTime(0.28, now + 0.06)
+  sizzleGain.gain.exponentialRampToValueAtTime(0.001, now + 0.7)
+  sizzle.connect(sizzleFilt)
+  sizzleFilt.connect(sizzleGain)
+  sizzleGain.connect(ctx.destination)
+  sizzle.start(now)
+  sizzle.stop(now + 0.7)
+
+  // Phase 2: stamp thud (0.55s) — low sine thump
+  const thumpT = now + 0.55
+  const thump = ctx.createOscillator()
+  const thumpGain = ctx.createGain()
+  thump.type = 'sine'
+  thump.frequency.setValueAtTime(80, thumpT)
+  thump.frequency.exponentialRampToValueAtTime(28, thumpT + 0.18)
+  thumpGain.gain.setValueAtTime(0, thumpT)
+  thumpGain.gain.linearRampToValueAtTime(0.55, thumpT + 0.012)
+  thumpGain.gain.exponentialRampToValueAtTime(0.001, thumpT + 0.28)
+  thump.connect(thumpGain)
+  thumpGain.connect(ctx.destination)
+  thump.start(thumpT)
+  thump.stop(thumpT + 0.3)
+
+  // Phase 3: short high crack on stamp impact
+  const crackSize = Math.floor(ctx.sampleRate * 0.08)
+  const crackBuf = ctx.createBuffer(1, crackSize, ctx.sampleRate)
+  const crackData = crackBuf.getChannelData(0)
+  for (let i = 0; i < crackSize; i++) {
+    crackData[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / crackSize, 3)
+  }
+  const crack = ctx.createBufferSource()
+  crack.buffer = crackBuf
+  const crackFilt = ctx.createBiquadFilter()
+  crackFilt.type = 'highpass'
+  crackFilt.frequency.value = 3500
+  const crackGain = ctx.createGain()
+  crackGain.gain.setValueAtTime(0, thumpT)
+  crackGain.gain.linearRampToValueAtTime(0.22, thumpT + 0.008)
+  crackGain.gain.exponentialRampToValueAtTime(0.001, thumpT + 0.07)
+  crack.connect(crackFilt)
+  crackFilt.connect(crackGain)
+  crackGain.connect(ctx.destination)
+  crack.start(thumpT)
+  crack.stop(thumpT + 0.09)
+}

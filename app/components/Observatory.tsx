@@ -3,6 +3,7 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { getMyLetters, archiveLetter } from '../lib/auth'
+import { playWaxSeal } from '../../lib/sounds'
 
 // ── Static stars — no Math.random in render ──
 const OBS_STARS = Array.from({ length: 30 }, (_, i) => ({
@@ -342,6 +343,10 @@ function LetterEntry({ letter, index, onClick }: { letter: Letter; index: number
   const colors = PAPER_COLORS[letter.paperId] || PAPER_COLORS.ornate
   const isTransit = letter.status === 'transit'
 
+  const ageDays = (Date.now() - new Date(letter.sentAt).getTime()) / 86400000
+  const agePct = letter.status === 'archive' ? Math.min(Math.max((ageDays - 7) / 23, 0), 1) : 0
+  const ageFilter = agePct > 0 ? `sepia(${Math.round(agePct * 55)}%) saturate(${(1 - agePct * 0.3).toFixed(2)}) brightness(${(1 - agePct * 0.08).toFixed(2)})` : undefined
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -361,6 +366,7 @@ function LetterEntry({ letter, index, onClick }: { letter: Letter; index: number
         position: 'relative',
         overflow: 'hidden',
         boxShadow: isTransit ? `0 2px 8px ${colors.accent}22` : `0 1px 6px #0002`,
+        filter: ageFilter,
       }}
       whileHover={!isTransit ? ({ backgroundColor: 'rgba(255,255,255,0.07)' } as never) : {}}
     >
@@ -516,6 +522,16 @@ function LetterModal({
     color: 'rgba(255,255,255,0.94)',
   }
 
+  const isReceivedLetter = letter.direction === 'received' && (letter.status === 'arrived' || letter.status === 'archive')
+  const [openPhase, setOpenPhase] = useState<'envelope'|'letter'>(isReceivedLetter ? 'envelope' : 'letter')
+  useEffect(() => {
+    if (!isReceivedLetter) return
+    playWaxSeal()
+    const t = setTimeout(() => setOpenPhase('letter'), 1600)
+    return () => clearTimeout(t)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -524,7 +540,38 @@ function LetterModal({
       onClick={onClose}
       style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,5,0.85)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 90, padding: '20px' }}
     >
-      <motion.div
+      {openPhase === 'envelope' && isReceivedLetter && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.85 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.9 }}
+          onClick={e => e.stopPropagation()}
+          style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '28px' }}>
+          <motion.div
+            animate={{ y: [0, -6, 0] }}
+            transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
+            style={{ opacity: 0.9 }}>
+            <svg width="160" height="110" viewBox="0 0 120 80">
+              <rect x="2" y="20" width="116" height="58" rx="3" fill={`${colors.accent}18`} stroke={`${colors.accent}60`} strokeWidth="1.2"/>
+              <motion.path
+                d="M2 20 L60 56 L118 20 Z"
+                initial={{ d: 'M2 20 L60 56 L118 20 Z' }}
+                animate={{ d: ['M2 20 L60 56 L118 20 Z', 'M2 20 L60 6 L118 20 Z'] }}
+                transition={{ duration: 1.2, ease: 'easeInOut' }}
+                fill={`${colors.accent}15`} stroke={`${colors.accent}45`} strokeWidth="1"/>
+              <path d="M2 78 L60 46 L118 78" fill="none" stroke={`${colors.accent}30`} strokeWidth="1"/>
+            </svg>
+          </motion.div>
+          <motion.p
+            animate={{ opacity: [0.6, 1, 0.6] }}
+            transition={{ duration: 1.5, repeat: Infinity }}
+            style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.4em', color: colors.accent, textTransform: 'uppercase' }}>
+            Breaking the seal...
+          </motion.p>
+        </motion.div>
+      )}
+      {(openPhase === 'letter' || !isReceivedLetter) && (
+        <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 16 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 8 }}
@@ -622,7 +669,8 @@ function LetterModal({
         >
           ×
         </button>
-      </motion.div>
+        </motion.div>
+      )}
     </motion.div>
   )
 }

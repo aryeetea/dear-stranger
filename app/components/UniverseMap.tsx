@@ -1133,6 +1133,8 @@ export default function UniverseMap({
 
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
   const [profile, setProfile] = useState<ProfileState | null>(null)
+  const profileRef = useRef<ProfileState | null>(null)
+  useEffect(() => { profileRef.current = profile }, [profile])
   const [starPreview, setStarPreview] = useState<ShootingStar | null>(null)
   const dismissedLetterIdsRef = useRef<Set<string>>(new Set())
   const [activeNav, setActiveNav] = useState(0)
@@ -1280,8 +1282,63 @@ export default function UniverseMap({
           if (sx < -200 || sx > canvas.width + 200 || sy < -200 || sy > canvas.height + 200) return
           const floatY = Math.sin(t * hub.floatSpeed + hub.floatOffset) * 4
           const s = hub.size * scale
+
+          // Feature 6: heartbeat ripple rings for online hubs
+          if (hub.online && !hub.isMe) {
+            const hubColors = getColor(hub.colorTheme)
+            const baseR = 32 * s
+            for (let ring = 0; ring < 2; ring++) {
+              const rippleT = ((t * 0.45 + hub.floatOffset + ring * 0.5) % 1)
+              const ringR = baseR * (1 + 2.2 * rippleT)
+              const ringA = (1 - rippleT) * 0.22
+              ctx.beginPath()
+              ctx.arc(sx, sy + floatY, ringR, 0, Math.PI * 2)
+              ctx.strokeStyle = `rgba(${hubColors.glow},${ringA})`
+              ctx.lineWidth = 1.5 * s
+              ctx.stroke()
+            }
+          }
+
           drawHub(ctx, hub, sx, sy + floatY, s, t)
         })
+
+        // Feature 5: constellation line from myHub to selected hub
+        const selProfile = profileRef.current
+        if (selProfile) {
+          const myHub = hubsRef.current.find(h => h.isMe)
+          const targetHub = hubsRef.current.find(h => h.name === selProfile.hub.name)
+          if (myHub && targetHub) {
+            const mx = offset.x + myHub.x * scale
+            const my = offset.y + myHub.y * scale + Math.sin(t * myHub.floatSpeed + myHub.floatOffset) * 4
+            const tx = offset.x + targetHub.x * scale
+            const ty = offset.y + targetHub.y * scale + Math.sin(t * targetHub.floatSpeed + targetHub.floatOffset) * 4
+            const lineAlpha = 0.28 + 0.12 * Math.sin(t * 1.2)
+            const grad = ctx.createLinearGradient(mx, my, tx, ty)
+            grad.addColorStop(0, `rgba(201,168,76,${lineAlpha})`)
+            grad.addColorStop(0.5, `rgba(201,168,76,${(lineAlpha * 0.7).toFixed(2)})`)
+            grad.addColorStop(1, `rgba(201,168,76,${(lineAlpha * 0.4).toFixed(2)})`)
+            ctx.save()
+            ctx.setLineDash([4, 7])
+            ctx.beginPath()
+            ctx.moveTo(mx, my)
+            ctx.lineTo(tx, ty)
+            ctx.strokeStyle = grad
+            ctx.lineWidth = 1
+            ctx.stroke()
+            ctx.setLineDash([])
+            for (let i = 1; i <= 5; i++) {
+              const frac = i / 6
+              const px = mx + (tx - mx) * frac
+              const py = my + (ty - my) * frac
+              const starA = 0.3 + 0.4 * Math.abs(Math.sin(t * 0.8 + i))
+              ctx.beginPath()
+              ctx.arc(px, py, 1.5, 0, Math.PI * 2)
+              ctx.fillStyle = `rgba(201,168,76,${starA.toFixed(2)})`
+              ctx.fill()
+            }
+            ctx.restore()
+          }
+        }
 
         // Update & draw shooting stars
         shootingStarsRef.current = shootingStarsRef.current.filter(star => {
@@ -1470,7 +1527,7 @@ export default function UniverseMap({
   ]
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: '#06040e' }}>
+    <div style={{ position: 'fixed', inset: 0, background: 'transparent' }}>
       <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', background: 'radial-gradient(ellipse 80% 55% at 12% 22%, rgba(100,20,200,0.55) 0%, transparent 62%), radial-gradient(ellipse 65% 65% at 85% 75%, rgba(15,50,185,0.48) 0%, transparent 62%), radial-gradient(ellipse 50% 44% at 58% 8%, rgba(0,140,190,0.35) 0%, transparent 62%), radial-gradient(ellipse 45% 42% at 28% 82%, rgba(175,25,80,0.30) 0%, transparent 62%), radial-gradient(ellipse 40% 36% at 78% 20%, rgba(55,110,240,0.32) 0%, transparent 62%)' }} />
 
       <canvas ref={canvasRef}

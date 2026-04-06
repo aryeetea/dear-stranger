@@ -1261,26 +1261,45 @@ export default function Home() {
           onClose={() => { setScribeOpen(false); setNavResetSignal(s => s + 1) }}
           onSend={async (letter) => {
             try {
-              const allHubs = await getAllHubs();
-              const recipient = allHubs.find((hub) => hub.hub_name === letter.to);
-              const isUniverseLetter = !letter.to;
+              if (letter.capsuleDays) {
+                const myHub = await getMyHub()
+                if (!myHub) throw new Error('Could not get own hub')
+                const customArrivesAt = new Date(Date.now() + letter.capsuleDays * 24 * 60 * 60 * 1000)
+                await sendLetter(
+                  myHub.id,
+                  letter.body,
+                  letter.paperId,
+                  false,
+                  letter.subject,
+                  letter.fontId,
+                  letter.colorId,
+                  letter.paperColorId,
+                  letter.stampId,
+                  letter.envelopeId,
+                  customArrivesAt,
+                )
+              } else {
+                const allHubs = await getAllHubs();
+                const recipient = allHubs.find((hub) => hub.hub_name === letter.to);
+                const isUniverseLetter = !letter.to;
 
-              if (!isUniverseLetter && !recipient) {
-                throw new Error('Recipient not found');
+                if (!isUniverseLetter && !recipient) {
+                  throw new Error('Recipient not found');
+                }
+
+                await sendLetter(
+                  recipient?.id || null,
+                  letter.body,
+                  letter.paperId,
+                  isUniverseLetter,
+                  letter.subject,
+                  letter.fontId,
+                  letter.colorId,
+                  letter.paperColorId,
+                  letter.stampId,
+                  letter.envelopeId,
+                );
               }
-
-              await sendLetter(
-                recipient?.id || null,
-                letter.body,
-                letter.paperId,
-                isUniverseLetter,
-                letter.subject,
-                letter.fontId,
-                letter.colorId,
-                letter.paperColorId,
-                letter.stampId,
-                letter.envelopeId,
-              );
 
               setLettersSent((prev) => prev + 1);
               setSendFlashing(true);
