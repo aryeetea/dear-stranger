@@ -1470,7 +1470,7 @@ export default function UniverseMap({
   ]
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: '#060a18' }}>
+    <div style={{ position: 'fixed', inset: 0, background: '#06040e' }}>
       <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', background: 'radial-gradient(ellipse 80% 55% at 12% 22%, rgba(100,20,200,0.55) 0%, transparent 62%), radial-gradient(ellipse 65% 65% at 85% 75%, rgba(15,50,185,0.48) 0%, transparent 62%), radial-gradient(ellipse 50% 44% at 58% 8%, rgba(0,140,190,0.35) 0%, transparent 62%), radial-gradient(ellipse 45% 42% at 28% 82%, rgba(175,25,80,0.30) 0%, transparent 62%), radial-gradient(ellipse 40% 36% at 78% 20%, rgba(55,110,240,0.32) 0%, transparent 62%)' }} />
 
       <canvas ref={canvasRef}

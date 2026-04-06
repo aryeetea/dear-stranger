@@ -96,7 +96,7 @@ export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: (
       style={{
         position: 'fixed',
         inset: 0,
-        background: '#080c1e',
+        background: '#06040e',
         overflowY: 'auto',
         overflowX: 'hidden',
         display: 'flex',

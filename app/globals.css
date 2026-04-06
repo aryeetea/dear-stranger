@@ -1,11 +1,11 @@
 @import "tailwindcss";
 
 :root {
-  --background: #070c1c;
+  --background: #06040e;
   --foreground: #ffffff;
   --gold: #c9a84c;
   --gold-light: #e6c76e;
-  --void: #060a18;
+  --void: #06040e;
   --font-size-base: 17px;
   --font-size-label: 13px;
   --font-size-small: 15px;
@@ -41,7 +41,7 @@ button, a, [role="button"], label[for], select, input[type="submit"], input[type
 }
 
 body {
-  background: var(--background);
+  background: radial-gradient(ellipse 140% 70% at 50% -10%, rgba(50,18,90,0.7) 0%, #06040e 52%) fixed, #06040e;
   color: rgba(255,255,255,0.92);
   font-family: 'Cormorant Garamond', Georgia, serif;
   font-size: var(--font-size-base);
