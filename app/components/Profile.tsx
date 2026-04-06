@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type CSSProperties } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { QRCodeSVG } from 'qrcode.react'
 import { updateHub, signOut, deleteAccount, exportMyLetters, uploadAvatarToStorage } from '../lib/auth'
 import { supabase } from '../../lib/supabase'
 import { HUB_COLOR_THEMES, HUB_STYLES, HUB_DECORATIONS, HUB_GLOW_LEVELS, type HubColor, type HubStyle, type HubDecoration, type HubGlowIntensity } from './UniverseMap'
@@ -85,6 +86,15 @@ export default function Profile({
     } finally { setAppearanceSaving(false) }
   }
 
+  function handleCopyUrl() {
+    void navigator.clipboard.writeText(appUrl)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  const [appUrl, setAppUrl] = useState('https://dear-stranger.vercel.app')
+  const [copied, setCopied] = useState(false)
+
   const [leavingConfirm, setLeavingConfirm] = useState(false)
   const [deleteStep, setDeleteStep] = useState<DeleteStep>('idle')
   const [exportedText, setExportedText] = useState('')
@@ -102,6 +112,10 @@ export default function Profile({
       setLastAvatarProp('')
     }
   }, [initialAvatarUrl, lastAvatarProp])
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') setAppUrl(window.location.origin)
+  }, [])
 
   // ── load regen count from DB on mount ──
   useEffect(() => {
@@ -520,6 +534,27 @@ export default function Profile({
                 { label: 'Show Online Status', desc: 'Let others see when your hub is glowing', enabled: true },
                 { label: 'Letter Travel Time', desc: 'Slow — letters arrive over 1 to 7 days', enabled: true },
               ].map((s, i) => <SettingRow key={i} label={s.label} desc={s.desc} enabled={s.enabled} />)}
+            </div>
+          </div>
+
+          <div style={{ height: '1px', background: 'linear-gradient(90deg, rgba(255,255,255,0.08), transparent)', marginBottom: '28px' }} />
+
+          <div style={{ marginBottom: '32px' }}>
+            <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.4em', color: 'rgba(201,168,76,0.65)', textTransform: 'uppercase', marginBottom: '6px' }}>Share This App</p>
+            <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(255,255,255,0.45)', marginBottom: '20px' }}>Scan to open Dear Stranger on any device</p>
+            <div style={{ display: 'flex', gap: '28px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+              <div style={{ padding: '12px', background: '#fff', borderRadius: '6px', lineHeight: 0, flexShrink: 0 }}>
+                <QRCodeSVG value={appUrl} size={120} bgColor="#ffffff" fgColor="#0a0a14" level="M" />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', justifyContent: 'center' }}>
+                <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '13px', color: 'rgba(255,255,255,0.5)', lineHeight: 1.6, maxWidth: '240px' }}>
+                  Point a phone camera at the code to visit the app — or add it to your home screen to install as a PWA.
+                </p>
+                <button onClick={handleCopyUrl}
+                  style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.25em', color: copied ? 'rgba(100,200,140,0.9)' : 'rgba(201,168,76,0.85)', padding: '8px 16px', border: `1px solid ${copied ? 'rgba(100,200,140,0.4)' : 'rgba(201,168,76,0.3)'}`, background: 'transparent', cursor: 'pointer', textTransform: 'uppercase', borderRadius: '2px', width: 'fit-content', transition: 'all 0.2s' }}>
+                  {copied ? '✓ Copied' : '⎘ Copy Link'}
+                </button>
+              </div>
             </div>
           </div>
 

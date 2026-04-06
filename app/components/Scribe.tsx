@@ -25,6 +25,11 @@ const PAPERS = [
   { id: 'postage', label: 'Postage Letter', sublabel: 'Stamp corners, postmark', unlocksAt: 8, swatch: 'linear-gradient(135deg, #f0ece8, #e4dcd4)' },
   { id: 'sakura', label: 'Cherry Blossom', sublabel: 'Soft pink floral border', unlocksAt: 10, swatch: 'linear-gradient(135deg, #fce8f0, #f0c8d8)' },
   { id: 'aged', label: 'Aged & Distressed', sublabel: 'Time-worn parchment', unlocksAt: 25, swatch: 'linear-gradient(135deg, #c8a870, #b89050)' },
+  { id: 'watercolor',     label: 'Watercolor',       sublabel: 'Painted pastel wash',    unlocksAt: 12, swatch: 'linear-gradient(135deg, #e8f0f8, #f4dce8)' },
+  { id: 'graph',          label: 'Graph Paper',      sublabel: "Engineer's grid",        unlocksAt: 7,  swatch: 'linear-gradient(135deg, #f4f8ff, #e8f0fa)' },
+  { id: 'blueprint',      label: 'Blueprint',        sublabel: 'Technical ink on blue',  unlocksAt: 14, swatch: 'linear-gradient(135deg, #0a2a52, #143870)' },
+  { id: 'midnight-scroll',label: 'Midnight Scroll',  sublabel: 'Dark arcane vellum',     unlocksAt: 20, swatch: 'linear-gradient(135deg, #0a0818, #1c0a34)' },
+  { id: 'rice-paper',     label: 'Rice Paper',       sublabel: 'Washi fiber texture',    unlocksAt: 11, swatch: 'linear-gradient(135deg, #faf8f4, #f0ece4)' },
 ]
 
 const STAMPS = [
@@ -87,6 +92,11 @@ const ENVELOPES = [
   { id: 'kraft',     label: 'Kraft',      desc: 'Rustic brown paper'    },
   { id: 'romantic',  label: 'Romantic',   desc: 'Sealed with a heart'   },
   { id: 'wax',       label: 'Wax Sealed', desc: 'Sealed in crimson wax' },
+  { id: 'midnight',  label: 'Midnight',   desc: 'Navy constellation'    },
+  { id: 'gold-foil', label: 'Gold Foil',  desc: 'Gilded & luminous'     },
+  { id: 'pastel',    label: 'Pastel',     desc: 'Soft gradient rainbow'  },
+  { id: 'marble',    label: 'Marble',     desc: 'Veined stone surface'  },
+  { id: 'forest',    label: 'Forest',     desc: 'Botanical leaf border'  },
 ]
 
 const FONTS = [
@@ -209,6 +219,11 @@ function EnvelopeSVG({ id = 'classic', color = '#c8a050', width: w = 120, height
   if (id === 'kraft') return <svg width={w} height={h} viewBox="0 0 120 80"><rect x="2" y="20" width="116" height="58" rx="2" fill="#c8924a" stroke="rgba(80,40,10,0.5)" strokeWidth="1.2"/>{[24,28,32,36,40,44,48,52,56,60,64,68,72].map((y,i)=><line key={i} x1="4" y1={y} x2="116" y2={y} stroke="rgba(80,40,10,0.07)" strokeWidth="0.5"/>)}<path d="M2 20 L60 56 L118 20 Z" fill="#be8840" stroke="rgba(80,40,10,0.4)" strokeWidth="1"/><path d="M2 78 L60 46 L118 78" fill="none" stroke="rgba(60,30,8,0.3)" strokeWidth="0.8"/><line x1="2" y1="20" x2="60" y2="46" stroke="rgba(60,30,8,0.18)" strokeWidth="0.6"/><line x1="118" y1="20" x2="60" y2="46" stroke="rgba(60,30,8,0.18)" strokeWidth="0.6"/><line x1="60" y1="22" x2="60" y2="76" stroke="rgba(80,40,10,0.22)" strokeWidth="0.9" strokeDasharray="3 2"/><line x1="4" y1="49" x2="116" y2="49" stroke="rgba(80,40,10,0.15)" strokeWidth="0.7"/><circle cx="60" cy="49" r="3" fill="rgba(80,40,10,0.28)"/></svg>
   if (id === 'romantic') return <svg width={w} height={h} viewBox="0 0 120 80"><rect x="2" y="20" width="116" height="58" rx="2" fill="#fce8ee" stroke="rgba(200,80,120,0.4)" strokeWidth="1"/><path d="M2 20 L60 56 L118 20 Z" fill="#fce0ea" stroke="rgba(180,60,100,0.32)" strokeWidth="0.8"/><path d="M2 78 L60 46 L118 78" fill="none" stroke="rgba(180,60,100,0.22)" strokeWidth="0.7"/><line x1="2" y1="20" x2="60" y2="46" stroke="rgba(180,60,100,0.14)" strokeWidth="0.6"/><line x1="118" y1="20" x2="60" y2="46" stroke="rgba(180,60,100,0.14)" strokeWidth="0.6"/><path d="M60 46 C56 42 51 40 51 43.5 C51 47 55 50 60 54 C65 50 69 47 69 43.5 C69 40 64 42 60 46Z" fill="rgba(200,70,110,0.58)" stroke="rgba(180,50,90,0.35)" strokeWidth="0.7"/><path d="M20 66 C18.5 64.2 17 63 17 64.5 C17 66 18.5 67.2 20 68.5 C21.5 67.2 23 66 23 64.5 C23 63 21.5 64.2 20 66Z" fill="rgba(200,80,120,0.42)"/><path d="M100 66 C98.5 64.2 97 63 97 64.5 C97 66 98.5 67.2 100 68.5 C101.5 67.2 103 66 103 64.5 C103 63 101.5 64.2 100 66Z" fill="rgba(200,80,120,0.42)"/></svg>
   if (id === 'wax') return <svg width={w} height={h} viewBox="0 0 120 80"><rect x="2" y="2" width="116" height="76" rx="2" fill="#f4eedd" stroke="rgba(100,80,40,0.4)" strokeWidth="1.2"/><path d="M2 2 L60 42 L118 2 Z" fill="#eee0c8" stroke="rgba(100,80,40,0.32)" strokeWidth="0.8"/><path d="M2 78 L60 38 L118 78" fill="none" stroke="rgba(100,80,40,0.2)" strokeWidth="0.7"/><line x1="2" y1="2" x2="60" y2="38" stroke="rgba(100,80,40,0.14)" strokeWidth="0.6"/><line x1="118" y1="2" x2="60" y2="38" stroke="rgba(100,80,40,0.14)" strokeWidth="0.6"/><circle cx="60" cy="42" r="11" fill="#8b1a1a"/><circle cx="60" cy="42" r="9" fill="#9a2020"/><text x="60" y="46" textAnchor="middle" fontSize="9" fill="rgba(255,200,180,0.8)" fontFamily="serif">✦</text></svg>
+  if (id === 'midnight') return <svg width={w} height={h} viewBox="0 0 120 80"><rect x="2" y="20" width="116" height="58" rx="2" fill="#0e1428" stroke="rgba(120,140,220,0.45)" strokeWidth="1.2"/><path d="M2 20 L60 56 L118 20 Z" fill="#0c1230" stroke="rgba(120,140,220,0.35)" strokeWidth="0.9"/><path d="M2 78 L60 46 L118 78" fill="none" stroke="rgba(100,120,200,0.25)"/><line x1="2" y1="20" x2="60" y2="46" stroke="rgba(100,120,200,0.15)" strokeWidth="0.7"/><line x1="118" y1="20" x2="60" y2="46" stroke="rgba(100,120,200,0.15)" strokeWidth="0.7"/>{[[16,32],[24,27],[36,38],[50,25],[62,56],[76,30],[88,40],[100,28],[110,36],[42,52],[80,58],[28,60]].map(([cx,cy],i)=><circle key={i} cx={cx} cy={cy} r={i%4===0?1.4:0.9} fill="rgba(200,220,255,0.8)"/>)}<path d="M16,32 L24,27 L36,38 L50,25" fill="none" stroke="rgba(180,200,240,0.2)" strokeWidth="0.6"/><path d="M76,30 L88,40 L100,28" fill="none" stroke="rgba(180,200,240,0.2)" strokeWidth="0.6"/></svg>
+  if (id === 'gold-foil') return <svg width={w} height={h} viewBox="0 0 120 80"><defs><linearGradient id="gf-body" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#f0c840"/><stop offset="40%" stopColor="#e0a820"/><stop offset="60%" stopColor="#f8e060"/><stop offset="100%" stopColor="#c89010"/></linearGradient><linearGradient id="gf-flap" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#f8d848"/><stop offset="100%" stopColor="#d09818"/></linearGradient></defs><rect x="2" y="20" width="116" height="58" rx="2" fill="url(#gf-body)" stroke="rgba(160,110,0,0.5)" strokeWidth="1.2"/>{[30,38,46,54,62,70].map((y,i)=><line key={i} x1="6" y1={y} x2="114" y2={y} stroke="rgba(255,230,80,0.18)" strokeWidth="0.7"/>)}<rect x="8" y="28" width="104" height="44" rx="1" fill="none" stroke="rgba(255,200,0,0.3)" strokeWidth="0.7"/><path d="M2 20 L60 56 L118 20 Z" fill="url(#gf-flap)" stroke="rgba(160,100,0,0.4)" strokeWidth="0.8"/><path d="M2 78 L60 46 L118 78" fill="none" stroke="rgba(140,90,0,0.3)" strokeWidth="0.7"/><line x1="2" y1="20" x2="60" y2="46" stroke="rgba(180,130,0,0.2)" strokeWidth="0.6"/><line x1="118" y1="20" x2="60" y2="46" stroke="rgba(180,130,0,0.2)" strokeWidth="0.6"/><circle cx="8" cy="27" r="3" fill="rgba(255,220,60,0.6)"/><circle cx="112" cy="27" r="3" fill="rgba(255,220,60,0.6)"/><circle cx="8" cy="71" r="3" fill="rgba(255,220,60,0.6)"/><circle cx="112" cy="71" r="3" fill="rgba(255,220,60,0.6)"/></svg>
+  if (id === 'pastel') return <svg width={w} height={h} viewBox="0 0 120 80"><defs><linearGradient id="pstel-body" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="#ffd8e0"/><stop offset="25%" stopColor="#ffecc8"/><stop offset="50%" stopColor="#e8f8d0"/><stop offset="75%" stopColor="#cceeff"/><stop offset="100%" stopColor="#e8d8f8"/></linearGradient><linearGradient id="pstel-flap" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="#f8d0e8"/><stop offset="50%" stopColor="#e0f0ff"/><stop offset="100%" stopColor="#f0e0fc"/></linearGradient></defs><rect x="2" y="20" width="116" height="58" rx="2" fill="url(#pstel-body)" stroke="rgba(180,160,200,0.35)" strokeWidth="1"/><path d="M2 20 L60 56 L118 20 Z" fill="url(#pstel-flap)" stroke="rgba(180,160,200,0.28)" strokeWidth="0.8"/><path d="M2 78 L60 46 L118 78" fill="none" stroke="rgba(160,140,180,0.2)"/><line x1="2" y1="20" x2="60" y2="46" stroke="rgba(160,140,180,0.14)" strokeWidth="0.6"/><line x1="118" y1="20" x2="60" y2="46" stroke="rgba(160,140,180,0.14)" strokeWidth="0.6"/><circle cx="10" cy="24" r="2.5" fill="rgba(255,180,200,0.6)"/><circle cx="110" cy="24" r="2.5" fill="rgba(200,220,255,0.6)"/><circle cx="10" cy="72" r="2.5" fill="rgba(220,200,255,0.6)"/><circle cx="110" cy="72" r="2.5" fill="rgba(180,240,200,0.6)"/></svg>
+  if (id === 'marble') return <svg width={w} height={h} viewBox="0 0 120 80"><defs><filter id="mrbl"><feTurbulence type="fractalNoise" baseFrequency="0.035 0.06" numOctaves="4" seed="8"/><feColorMatrix type="matrix" values="0 0 0 0 0.9  0 0 0 0 0.9  0 0 0 0 0.9  0 0 0 1 0"/><feComposite in2="SourceGraphic" operator="in"/></filter></defs><rect x="2" y="20" width="116" height="58" rx="2" fill="#eeebe6" stroke="rgba(100,90,80,0.35)" strokeWidth="1.2"/><rect x="2" y="20" width="116" height="58" rx="2" fill="rgba(0,0,0,0.04)" filter="url(#mrbl)"/><path d="M8 30 Q30 36 50 28 Q70 22 90 32 Q105 38 114 30" fill="none" stroke="rgba(120,110,100,0.22)" strokeWidth="1.5" strokeLinecap="round"/><path d="M6 48 Q20 42 40 50 Q60 56 80 46 Q100 38 114 46" fill="none" stroke="rgba(140,130,120,0.18)" strokeWidth="1.2" strokeLinecap="round"/><path d="M10 65 Q35 58 55 66 Q75 72 100 62" fill="none" stroke="rgba(120,110,100,0.15)" strokeWidth="1" strokeLinecap="round"/><path d="M2 20 L60 56 L118 20 Z" fill="rgba(230,225,220,0.9)" stroke="rgba(100,90,80,0.28)" strokeWidth="0.8"/><path d="M2 78 L60 46 L118 78" fill="none" stroke="rgba(100,90,80,0.18)"/><line x1="2" y1="20" x2="60" y2="46" stroke="rgba(100,90,80,0.12)" strokeWidth="0.6"/><line x1="118" y1="20" x2="60" y2="46" stroke="rgba(100,90,80,0.12)" strokeWidth="0.6"/></svg>
+  if (id === 'forest') return <svg width={w} height={h} viewBox="0 0 120 80"><rect x="2" y="20" width="116" height="58" rx="2" fill="#eef5e8" stroke="rgba(40,90,40,0.4)" strokeWidth="1"/><path d="M2 20 L60 56 L118 20 Z" fill="#e6f0e0" stroke="rgba(40,90,40,0.3)" strokeWidth="0.8"/><path d="M2 78 L60 46 L118 78" fill="none" stroke="rgba(40,90,40,0.2)"/><line x1="2" y1="20" x2="60" y2="46" stroke="rgba(40,90,40,0.14)" strokeWidth="0.6"/><line x1="118" y1="20" x2="60" y2="46" stroke="rgba(40,90,40,0.14)" strokeWidth="0.6"/><path d="M6 22 Q10 30 6 38 Q14 30 10 22Z" fill="rgba(60,120,50,0.45)" stroke="rgba(40,90,40,0.4)" strokeWidth="0.7"/><path d="M10 26 Q6 18 14 20Z" fill="rgba(80,140,60,0.4)"/><path d="M6 66 Q10 58 6 50 Q14 58 10 66Z" fill="rgba(60,120,50,0.45)" stroke="rgba(40,90,40,0.4)" strokeWidth="0.7"/><path d="M110 22 Q114 30 110 38 Q102 30 106 22Z" fill="rgba(60,120,50,0.45)" stroke="rgba(40,90,40,0.4)" strokeWidth="0.7"/><path d="M110 66 Q114 58 110 50 Q102 58 106 66Z" fill="rgba(60,120,50,0.45)" stroke="rgba(40,90,40,0.4)" strokeWidth="0.7"/>{[[14,24],[14,68],[106,24],[106,68]].map(([x,y],i)=><circle key={i} cx={x} cy={y} r="2" fill="rgba(40,100,40,0.4)"/>)}</svg>
   return <svg width={w} height={h} viewBox="0 0 120 80"><rect x="2" y="20" width="116" height="58" rx="3" fill={color} stroke="rgba(0,0,0,0.2)" strokeWidth="1"/><path d="M2 20 L60 56 L118 20 Z" fill={color} stroke="rgba(0,0,0,0.15)" strokeWidth="1"/><path d="M2 78 L60 46 L118 78" fill="none" stroke="rgba(0,0,0,0.12)" strokeWidth="1"/><line x1="2" y1="20" x2="60" y2="46" stroke="rgba(0,0,0,0.1)" strokeWidth="0.8"/><line x1="118" y1="20" x2="60" y2="46" stroke="rgba(0,0,0,0.1)" strokeWidth="0.8"/></svg>
 }
 
@@ -447,6 +462,102 @@ function AgedDistressed({ children, paperBg }: { children: React.ReactNode; pape
   )
 }
 
+function WatercolorPaper({ children, paperBg }: { children: React.ReactNode; paperBg?: string }) {
+  return (
+    <div style={{ position:'relative', background: paperBg || 'linear-gradient(160deg, #f0f6fb 0%, #faeef5 50%, #f5f8e8 100%)', boxShadow:'0 20px 80px rgba(0,0,0,0.55)', overflow:'hidden' }}>
+      <div style={{ position:'absolute', inset:0, pointerEvents:'none', zIndex:1 }}>
+        <svg width="100%" height="100%" style={{ position:'absolute', inset:0 }} preserveAspectRatio="xMidYMid slice">
+          <defs>
+            <filter id="wc-blur"><feGaussianBlur stdDeviation="18"/></filter>
+          </defs>
+          <ellipse cx="15%" cy="20%" rx="120" ry="80" fill="rgba(160,200,240,0.22)" filter="url(#wc-blur)"/>
+          <ellipse cx="80%" cy="15%" rx="100" ry="70" fill="rgba(230,160,200,0.2)" filter="url(#wc-blur)"/>
+          <ellipse cx="60%" cy="75%" rx="130" ry="90" fill="rgba(180,230,190,0.18)" filter="url(#wc-blur)"/>
+          <ellipse cx="25%" cy="80%" rx="90" ry="60" fill="rgba(250,200,150,0.18)" filter="url(#wc-blur)"/>
+          <ellipse cx="90%" cy="60%" rx="80" ry="100" fill="rgba(200,180,240,0.16)" filter="url(#wc-blur)"/>
+        </svg>
+      </div>
+      <div style={{ position:'absolute', inset:'14px', border:'1px solid rgba(160,140,200,0.18)', pointerEvents:'none', zIndex:2 }}/>
+      {[...Array(20)].map((_,i)=><div key={i} style={{ position:'absolute', left:'40px', right:'40px', top:`${60+i*30}px`, height:'1px', background:'rgba(140,120,180,0.1)' }}/>)}
+      <div style={{ padding:'40px', position:'relative', zIndex:3 }}>{children}</div>
+    </div>
+  )
+}
+
+function GraphPaper({ children, paperBg }: { children: React.ReactNode; paperBg?: string }) {
+  return (
+    <div style={{ position:'relative', background: paperBg || '#f8fbff', boxShadow:'0 20px 80px rgba(0,0,0,0.5)', overflow:'hidden' }}>
+      <div style={{ position:'absolute', inset:0, pointerEvents:'none', zIndex:1 }}>
+        {[...Array(40)].map((_,i)=><div key={`h${i}`} style={{ position:'absolute', left:0, right:0, top:`${i*20}px`, height:'1px', background: i%5===0 ? 'rgba(80,130,200,0.25)' : 'rgba(80,130,200,0.1)' }}/>)}
+        {[...Array(30)].map((_,i)=><div key={`v${i}`} style={{ position:'absolute', top:0, bottom:0, left:`${i*20}px`, width:'1px', background: i%5===0 ? 'rgba(80,130,200,0.25)' : 'rgba(80,130,200,0.1)' }}/>)}
+      </div>
+      <div style={{ padding:'40px', position:'relative', zIndex:2 }}>{children}</div>
+    </div>
+  )
+}
+
+function BlueprintPaper({ children, paperBg }: { children: React.ReactNode; paperBg?: string }) {
+  return (
+    <div style={{ position:'relative', background: paperBg || 'linear-gradient(160deg, #0d2d56 0%, #0a2248 100%)', boxShadow:'0 20px 80px rgba(0,0,0,0.85)', overflow:'hidden' }}>
+      <div style={{ position:'absolute', inset:0, pointerEvents:'none', zIndex:1 }}>
+        {[...Array(35)].map((_,i)=><div key={`h${i}`} style={{ position:'absolute', left:0, right:0, top:`${i*22}px`, height:'1px', background: i%5===0 ? 'rgba(160,210,255,0.3)' : 'rgba(160,210,255,0.12)' }}/>)}
+        {[...Array(28)].map((_,i)=><div key={`v${i}`} style={{ position:'absolute', top:0, bottom:0, left:`${i*22}px`, width:'1px', background: i%5===0 ? 'rgba(160,210,255,0.3)' : 'rgba(160,210,255,0.12)' }}/>)}
+        <div style={{ position:'absolute', inset:'16px', border:'1px solid rgba(160,210,255,0.35)' }}/>
+        <div style={{ position:'absolute', inset:'22px', border:'0.5px solid rgba(160,210,255,0.15)' }}/>
+      </div>
+      <div style={{ position:'absolute', top:'24px', left:'50%', transform:'translateX(-50%)', pointerEvents:'none', zIndex:3, whiteSpace:'nowrap' }}>
+        <p style={{ fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.6em', color:'rgba(160,210,255,0.6)', textTransform:'uppercase' }}>✦ Dear Stranger ✦</p>
+      </div>
+      {[...Array(18)].map((_,i)=><div key={i} style={{ position:'absolute', left:'36px', right:'36px', top:`${70+i*28}px`, height:'1px', background:'rgba(160,210,255,0.08)' }}/>)}
+      <div style={{ padding:'56px 44px 44px', position:'relative', zIndex:2 }}>{children}</div>
+    </div>
+  )
+}
+
+function MidnightScroll({ children, paperBg }: { children: React.ReactNode; paperBg?: string }) {
+  return (
+    <div style={{ position:'relative', background: paperBg || 'linear-gradient(175deg, #08060e 0%, #120820 50%, #0c0618 100%)', boxShadow:'0 20px 80px rgba(0,0,0,0.95)', overflow:'hidden' }}>
+      <div style={{ position:'absolute', inset:0, pointerEvents:'none', zIndex:1 }}>
+        {[...Array(50)].map((_,i)=>{
+          const x=((i*61+23)%100); const y=((i*47+17)%100); const sz=(i%3)*0.3+0.3; const op=(i%5)*0.03+0.05
+          return <div key={i} style={{ position:'absolute', left:`${x}%`, top:`${y}%`, width:`${sz}px`, height:`${sz}px`, borderRadius:'50%', background:`rgba(220,200,255,${op})` }}/>
+        })}
+        <svg width="100%" height="100%" style={{ position:'absolute', inset:0 }}>
+          <defs><filter id="glow-ms"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+          <path d="M0 0 L24 0 L24 24 Q0 24 0 0Z" fill="none" stroke="rgba(160,120,220,0.5)" strokeWidth="1.5"/>
+          <path d="M100% 0 L calc(100% - 24px) 0 L calc(100% - 24px) 24 Q100% 24 100% 0Z" fill="none" stroke="rgba(160,120,220,0.5)" strokeWidth="1.5"/>
+          <circle cx="12" cy="12" r="3" fill="rgba(180,140,240,0.4)" filter="url(#glow-ms)"/>
+        </svg>
+      </div>
+      <div style={{ position:'absolute', inset:'14px', border:'1px solid rgba(160,120,220,0.3)', pointerEvents:'none', zIndex:2 }}/>
+      <div style={{ position:'absolute', inset:'20px', border:'0.5px solid rgba(160,120,220,0.12)', pointerEvents:'none', zIndex:2 }}/>
+      <div style={{ textAlign:'center', paddingTop:'40px', paddingBottom:'4px', position:'relative', zIndex:3 }}>
+        <p style={{ fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.5em', color:'rgba(180,140,240,0.65)', textTransform:'uppercase' }}>✦ Dear Stranger ✦</p>
+        <div style={{ height:'1px', background:'linear-gradient(90deg, transparent, rgba(160,120,220,0.4), transparent)', margin:'8px 60px 0' }}/>
+      </div>
+      {[...Array(18)].map((_,i)=><div key={i} style={{ position:'absolute', left:'44px', right:'44px', top:`${90+i*30}px`, height:'1px', background:'rgba(160,120,220,0.08)' }}/>)}
+      <div style={{ padding:'8px 52px 52px', position:'relative', zIndex:3 }}>{children}</div>
+    </div>
+  )
+}
+
+function RicePaper({ children, paperBg }: { children: React.ReactNode; paperBg?: string }) {
+  return (
+    <div style={{ position:'relative', background: paperBg || 'linear-gradient(160deg, #fdfbf7 0%, #f8f4ec 100%)', boxShadow:'0 20px 80px rgba(0,0,0,0.4)', overflow:'hidden' }}>
+      <div style={{ position:'absolute', inset:0, pointerEvents:'none', backgroundImage:`url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.2' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0.1'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.055'/%3E%3C/svg%3E")`, backgroundSize:'200px', zIndex:1 }}/>
+      <div style={{ position:'absolute', inset:0, pointerEvents:'none', zIndex:2 }}>
+        {[...Array(12)].map((_,i)=>{
+          const x1=((i*73)%90)+5; const y1=((i*53)%80)+5; const x2=x1+((i*31)%15)-7; const y2=y1+((i*67)%40)-5
+          return <div key={i} style={{ position:'absolute', left:`${x1}%`, top:`${y1}%`, width:`${Math.abs(x2-x1)+1}%`, height:'1px', background:'rgba(180,160,120,0.06)', transform:`rotate(${((i*17)%30)-15}deg)` }}/>
+        })}
+      </div>
+      <div style={{ position:'absolute', inset:'16px', border:'1px solid rgba(160,140,100,0.2)', pointerEvents:'none', zIndex:3 }}/>
+      {[...Array(20)].map((_,i)=><div key={i} style={{ position:'absolute', left:'36px', right:'36px', top:`${56+i*28}px`, height:'1px', background:'rgba(140,120,80,0.1)' }}/>)}
+      <div style={{ padding:'40px', position:'relative', zIndex:4 }}>{children}</div>
+    </div>
+  )
+}
+
 const PAPER_INK: Record<string, { main: string; secondary: string; accent: string }> = {
   ornate: { main: '#140c04', secondary: 'rgba(35,20,6,0.72)', accent: '#8b6010' },
   floral: { main: '#140810', secondary: 'rgba(35,12,22,0.72)', accent: '#8b2050' },
@@ -461,6 +572,11 @@ const PAPER_INK: Record<string, { main: string; secondary: string; accent: strin
   vellum: { main: '#1c1008', secondary: 'rgba(38,22,10,0.72)', accent: '#6a4820' },
   'blue-ruled': { main: '#0a0c1a', secondary: 'rgba(18,22,40,0.72)', accent: '#2860b0' },
   kraft: { main: '#1e0e04', secondary: 'rgba(40,18,6,0.74)', accent: '#7a4010' },
+  watercolor: { main: '#1a1030', secondary: 'rgba(35,20,50,0.72)', accent: '#7060a8' },
+  graph: { main: '#0a1028', secondary: 'rgba(18,24,50,0.72)', accent: '#3060b0' },
+  blueprint: { main: '#c8e4ff', secondary: 'rgba(180,220,255,0.78)', accent: '#80c0ff' },
+  'midnight-scroll': { main: '#e8deff', secondary: 'rgba(220,210,255,0.78)', accent: '#c0a0ff' },
+  'rice-paper': { main: '#1c1408', secondary: 'rgba(38,26,10,0.72)', accent: '#7a5820' },
 }
 
 const PAPER_ENVELOPE_COLOR: Record<string, string> = {
@@ -469,6 +585,8 @@ const PAPER_ENVELOPE_COLOR: Record<string, string> = {
   sakura: '#f0b8cc', aged: '#b89050',
   plain: '#c8c8c8', starfield: '#4a4870', vellum: '#d8d0c0',
   'blue-ruled': '#a0c4e0', kraft: '#c0924a',
+  watercolor: '#b0a0d8', graph: '#8ab0d8', blueprint: '#2050a0',
+  'midnight-scroll': '#6040a8', 'rice-paper': '#c0a870',
 }
 
 function LetterContent({ fontFamily, ink, recipient, senderName, date, body, setBody, textareaRef, onPageFull, pageLimit }: {
@@ -645,6 +763,11 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
       case 'vellum': return <VellumPaper paperBg={pbg}>{content}</VellumPaper>
       case 'blue-ruled': return <BlueRuled paperBg={pbg}>{content}</BlueRuled>
       case 'kraft': return <KraftPaper paperBg={pbg}>{content}</KraftPaper>
+      case 'watercolor': return <WatercolorPaper paperBg={pbg}>{content}</WatercolorPaper>
+      case 'graph': return <GraphPaper paperBg={pbg}>{content}</GraphPaper>
+      case 'blueprint': return <BlueprintPaper paperBg={pbg}>{content}</BlueprintPaper>
+      case 'midnight-scroll': return <MidnightScroll paperBg={pbg}>{content}</MidnightScroll>
+      case 'rice-paper': return <RicePaper paperBg={pbg}>{content}</RicePaper>
       default: return <OrnateStationery paperBg={pbg}>{content}</OrnateStationery>
     }
   }

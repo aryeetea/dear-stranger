@@ -77,6 +77,11 @@ const PAPER_COLORS: Record<string, { accent: string; bg: string }> = {
   postage: { accent: '#a080c8', bg: 'rgba(140,100,180,0.1)' },
   sakura: { accent: '#f0a0c0', bg: 'rgba(240,150,190,0.1)' },
   aged: { accent: '#b89050', bg: 'rgba(180,130,60,0.1)' },
+  watercolor: { accent: '#a090d0', bg: 'rgba(160,140,200,0.1)' },
+  graph: { accent: '#6090c8', bg: 'rgba(80,120,200,0.1)' },
+  blueprint: { accent: '#80c0ff', bg: 'rgba(80,140,220,0.12)' },
+  'midnight-scroll': { accent: '#b090e0', bg: 'rgba(140,100,220,0.12)' },
+  'rice-paper': { accent: '#b09060', bg: 'rgba(160,130,80,0.1)' },
 }
 
 function clamp(value: number, min: number, max: number) {
