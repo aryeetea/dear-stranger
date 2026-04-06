@@ -70,11 +70,11 @@ export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: (
   const [titleOut, setTitleOut] = useState(false)
   useEffect(() => {
     const timers = [
-      setTimeout(() => setTitleOut(true), 2800),
-      setTimeout(() => setPhase(1), 3400),
-      setTimeout(() => setPhase(2), 4700),
-      setTimeout(() => setPhase(3), 5500),
-      setTimeout(() => setPhase(4), 6700),
+      setTimeout(() => setTitleOut(true), 5500),
+      setTimeout(() => setPhase(1), 6400),
+      setTimeout(() => setPhase(2), 8000),
+      setTimeout(() => setPhase(3), 9000),
+      setTimeout(() => setPhase(4), 10400),
     ]
     return () => timers.forEach(clearTimeout)
   }, [])
@@ -162,7 +162,7 @@ export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: (
                   key={i}
                   initial={{ opacity: 0, y: 24 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: 0.2 + i * 0.08, ease: [0.16, 1, 0.3, 1] }}
+                  transition={{ duration: 0.8, delay: 0.3 + i * 0.12, ease: [0.16, 1, 0.3, 1] }}
                   style={{
                     fontFamily: "'Cormorant Garamond', serif",
                     fontSize: 'clamp(52px, 10vw, 96px)',
@@ -186,7 +186,7 @@ export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: (
                   key={i}
                   initial={{ opacity: 0, y: 24 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: 0.55 + i * 0.07, ease: [0.16, 1, 0.3, 1] }}
+                  transition={{ duration: 0.8, delay: 0.9 + i * 0.11, ease: [0.16, 1, 0.3, 1] }}
                   style={{
                     fontFamily: "'Cormorant Garamond', serif",
                     fontSize: 'clamp(52px, 10vw, 96px)',
@@ -207,7 +207,7 @@ export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: (
             <motion.div
               initial={{ scaleX: 0, opacity: 0 }}
               animate={{ scaleX: 1, opacity: 1 }}
-              transition={{ duration: 1.1, delay: 1.6, ease: [0.16, 1, 0.3, 1] }}
+              transition={{ duration: 1.3, delay: 2.4, ease: [0.16, 1, 0.3, 1] }}
               style={{
                 originX: '50%' as unknown as number,
                 width: 'clamp(120px, 22vw, 260px)', height: '1px',
@@ -220,7 +220,7 @@ export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: (
             <motion.p
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 2.0, ease: 'easeOut' }}
+              transition={{ duration: 1.0, delay: 3.0, ease: 'easeOut' }}
               style={{
                 fontFamily: "'IM Fell English', serif",
                 fontStyle: 'italic',
