@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import OpenAI from 'openai'
+import { createClient } from '@supabase/supabase-js'
 
 export const maxDuration = 60
 
@@ -189,6 +190,22 @@ function getTemperature(voice: string) {
 
 export async function POST(req: Request) {
   try {
+    // Require a valid Supabase session — prevents anonymous AI API abuse
+    const authHeader = req.headers.get('authorization')
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    if (supabaseUrl && supabaseAnonKey) {
+      const supabase = createClient(supabaseUrl, supabaseAnonKey)
+      const { data: { user }, error: userError } = await supabase.auth.getUser(token)
+      if (userError || !user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      }
+    }
+
     const body = await req.json()
     const messages = normalizeMessages(body?.messages)
     const answers = normalizeAnswers(body?.answers)

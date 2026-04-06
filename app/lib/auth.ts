@@ -1,5 +1,10 @@
 import { supabase } from '../../lib/supabase'
 
+const MAX_HUB_NAME_LEN = 32
+const MAX_BIO_LEN = 300
+const MAX_ASK_LEN = 200
+const MAX_LETTER_BODY_LEN = 10000
+
 type HubRecord = {
   id: string
   hub_name: string | null
@@ -39,6 +44,7 @@ function normalizeHubName(hubName: string) {
 async function assertHubNameAvailable(hubName: string, excludeUserId?: string) {
   const normalized = normalizeHubName(hubName)
   if (!normalized) throw new Error('Hub name is required.')
+  if (normalized.length > MAX_HUB_NAME_LEN) throw new Error(`Hub name must be ${MAX_HUB_NAME_LEN} characters or fewer.`)
 
   const { data, error } = await supabase
     .from('hubs')
@@ -81,6 +87,8 @@ export async function signUpAndCreateHub(
   backdropId?: string,
   decoration?: string,
 ) {
+  if (bio.length > MAX_BIO_LEN) throw new Error(`Bio must be ${MAX_BIO_LEN} characters or fewer.`)
+  if (askAbout.length > MAX_ASK_LEN) throw new Error(`Ask about must be ${MAX_ASK_LEN} characters or fewer.`)
   await assertHubNameAvailable(hubName)
 
   const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -480,6 +488,12 @@ export async function updateHub(updates: {
   if (updates.hub_name && normalizeHubName(updates.hub_name)) {
     await assertHubNameAvailable(updates.hub_name, user.id)
   }
+  if (updates.bio !== undefined && updates.bio.length > MAX_BIO_LEN) {
+    throw new Error(`Bio must be ${MAX_BIO_LEN} characters or fewer.`)
+  }
+  if (updates.ask_about !== undefined && updates.ask_about.length > MAX_ASK_LEN) {
+    throw new Error(`Ask about must be ${MAX_ASK_LEN} characters or fewer.`)
+  }
 
   const cleaned = Object.fromEntries(
     Object.entries(updates).filter(([, value]) => value !== undefined),
@@ -519,6 +533,7 @@ export async function sendLetter(
 
   const trimmedBody = body.trim()
   if (!trimmedBody) throw new Error('Letter body cannot be empty')
+  if (trimmedBody.length > MAX_LETTER_BODY_LEN) throw new Error(`Letter must be ${MAX_LETTER_BODY_LEN} characters or fewer.`)
 
   // Universe letters are instant — they float freely as shooting stars immediately.
   // Direct letters travel based on length: shorter letters arrive sooner.

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { HUB_COLOR_THEMES, HUB_STYLES, HUB_DECORATIONS, type HubColor, type HubStyle, type HubDecoration } from './UniverseMap'
+import { supabase } from '../../lib/supabase'
 
 const MIN_EXCHANGES = 5
 const MAX_EXCHANGES = 20
@@ -157,9 +158,14 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
         : undefined
     try {
       setLoading(true); setError('')
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
       const res = await fetch('/api/soul-mirror-question', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({
           messages: history,
           answers,

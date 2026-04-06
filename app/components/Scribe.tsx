@@ -688,7 +688,7 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
                       {isSelected&&<div style={{ position:'absolute', top:'8px', right:'8px', width:'20px', height:'20px', borderRadius:'50%', background:'#e6c76e', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'11px', color:'#000', fontWeight:'bold' }}>✓</div>}
                     </div>
                     <p style={{ fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.18em', color:isSelected?'#e6c76e':'rgba(255,255,255,0.84)', textTransform:'uppercase', textAlign:'center' }}>{p.label}</p>
-                    <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'10px', color:'rgba(255,255,255,0.6)', textAlign:'center', marginTop:'2px' }}>{unlocked?p.sublabel:`Unlocks at ${p.unlocksAt}`}</p>
+                    <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'10px', color:'rgba(255,255,255,0.6)', textAlign:'center', marginTop:'2px' }}>{unlocked ? p.sublabel : (() => { const need = p.unlocksAt - lettersSent; return `Send ${need} more ${need === 1 ? 'letter' : 'letters'} to unlock` })()}</p>
                   </motion.div>
                 )
               })}

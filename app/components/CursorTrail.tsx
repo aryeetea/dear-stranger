@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 interface Particle {
   x: number
@@ -14,8 +14,15 @@ interface Particle {
 
 export default function CursorTrail() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [isTouch, setIsTouch] = useState(false)
 
   useEffect(() => {
+    // Skip the canvas entirely on touch / coarse-pointer devices (mobile, tablet)
+    if (window.matchMedia('(pointer: coarse)').matches) {
+      setIsTouch(true)
+      return
+    }
+
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')!
@@ -72,7 +79,7 @@ export default function CursorTrail() {
     }
   }, [])
 
-  return (
+  return isTouch ? null : (
     <canvas
       ref={canvasRef}
       style={{

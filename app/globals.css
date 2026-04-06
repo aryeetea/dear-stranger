@@ -383,3 +383,18 @@ button, a, [role="button"] {
     font-size: 15px !important;
   }
 }
+
+/* ── Touch / coarse pointer: disable custom cursor ──────────── */
+@media (pointer: coarse) {
+  html, body {
+    cursor: auto !important;
+  }
+  button, a, [role="button"], label[for], select,
+  input[type="submit"], input[type="file"] {
+    cursor: auto !important;
+  }
+  /* Prevent iOS Safari from zooming on input focus (requires ≥ 16px) */
+  input, textarea, select {
+    font-size: max(16px, 1em) !important;
+  }
+}

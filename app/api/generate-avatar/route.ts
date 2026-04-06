@@ -217,12 +217,16 @@ export async function POST(req: Request) {
     }
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+    let authenticatedUserId: string | null = null
+
     if (supabaseUrl && supabaseAnonKey) {
       const supabase = createClient(supabaseUrl, supabaseAnonKey)
       const { data: { user }, error: userError } = await supabase.auth.getUser(token)
       if (userError || !user) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
       }
+      authenticatedUserId = user.id
     }
 
     const body = await req.json()
@@ -259,6 +263,33 @@ export async function POST(req: Request) {
     }
 
     const generationMode: Mode = mode === 'reimagine' ? 'reimagine' : 'create'
+
+    // Server-side enforcement: reimagine is limited to 1 attempt per hub cycle.
+    // regen_count is stored as cycleNumber * 10 + localRegenCount.
+    if (generationMode === 'reimagine' && authenticatedUserId && supabaseUrl && supabaseAnonKey) {
+      const supabase = createClient(supabaseUrl, supabaseAnonKey)
+      const { data: hub } = await supabase
+        .from('hubs')
+        .select('regen_count, created_at')
+        .eq('id', authenticatedUserId)
+        .maybeSingle()
+
+      if (hub) {
+        const regenCount: number = hub.regen_count ?? 0
+        const storedCycle = Math.floor(regenCount / 10)
+        const localRegenCount = regenCount % 10
+        const createdAt = new Date(hub.created_at || Date.now())
+        const daysSinceCreation = Math.floor((Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24))
+        const currentCycle = Math.floor(daysSinceCreation / 90)
+
+        if (storedCycle === currentCycle && localRegenCount >= 1) {
+          return NextResponse.json(
+            { error: 'Reimagine limit reached for this cycle.' },
+            { status: 403 },
+          )
+        }
+      }
+    }
 
     const imagePrompt = buildAvatarPrompt(
       orderedAnswers,

@@ -391,6 +391,21 @@ function LetterEntry({ letter, index, onClick }: { letter: Letter; index: number
                 style={{ position: 'absolute', top: 0, bottom: 0, width: '40px', background: `linear-gradient(90deg, transparent, ${colors.accent}cc, transparent)`, filter: 'blur(2px)' }}
               />
             </div>
+            {letter.arrivedAt && (() => {
+              const msLeft = new Date(letter.arrivedAt).getTime() - Date.now()
+              const hoursLeft = Math.ceil(msLeft / (1000 * 60 * 60))
+              const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24))
+              let etaText: string
+              if (hoursLeft <= 1) etaText = 'arriving very soon'
+              else if (hoursLeft < 24) etaText = `~${hoursLeft}h away`
+              else if (daysLeft === 1) etaText = 'arriving tomorrow'
+              else etaText = `~${daysLeft} days away`
+              return (
+                <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '11px', color: 'rgba(255,255,255,0.55)', marginTop: '5px', textShadow: '0 1px 6px #fff8' }}>
+                  {etaText}
+                </p>
+              )
+            })()}
           </div>
         )}
       </div>
