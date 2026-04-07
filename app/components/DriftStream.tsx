@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { getDriftLetters, sendLetter } from '../lib/auth'
+import { getDriftLetters, sendLetter, blockUser, isBlocked } from '../lib/auth'
 import { playLetterSend, playTypingSound, playWaxSeal } from '../../lib/sounds'
 
 // ─── Drift-exclusive paper styles ────────────────────────────────────────────
@@ -205,6 +205,110 @@ function DriftPaperBg({ paperId, children }: { paperId: string; children: React.
         <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.4em', color: p.subtext, opacity: 0.5, margin: 0 }}>— ✦ —</p>
       </div>
     </div>
+  )
+}
+
+// ─── Letter reading modal with block ─────────────────────────────────────────
+function OpenLetterModal({ open, onClose, onBlocked }: {
+  open: DriftLetter
+  onClose: () => void
+  onBlocked: () => void
+}) {
+  const p = DRIFT_PAPERS.find(d => d.id === open.paperId) ?? DRIFT_PAPERS[0]
+  const f = DRIFT_FONTS.find(d => d.id === open.fontId) ?? DRIFT_FONTS[0]
+  const inkEntry = DRIFT_INKS.find(d => d.id === open.fontColor)
+  const resolvedInk = inkEntry ? inkEntry.color : p.text
+
+  const [blocking, setBlocking] = useState(false)
+  const [blocked, setBlocked] = useState(false)
+  const [confirmBlock, setConfirmBlock] = useState(false)
+
+  useEffect(() => {
+    isBlocked(open.senderId).then(setBlocked)
+  }, [open.senderId])
+
+  async function handleBlock() {
+    setBlocking(true)
+    try {
+      await blockUser(open.senderId)
+      setBlocked(true)
+      setTimeout(onBlocked, 600)
+    } catch {
+      setBlocking(false)
+      setConfirmBlock(false)
+    }
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.88)', zIndex: 90, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 20px', backdropFilter: 'blur(8px)' }}
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.93, y: 20 }}
+        animate={{ scale: 1, y: 0 }}
+        exit={{ scale: 0.93, opacity: 0 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+        onClick={e => e.stopPropagation()}
+        style={{ maxWidth: '580px', width: '100%', maxHeight: '84vh', overflowY: 'auto', position: 'relative' }}
+      >
+        {/* close */}
+        <button onClick={onClose}
+          style={{ position: 'absolute', top: '8px', right: '8px', zIndex: 100, background: 'rgba(0,0,0,0.5)', border: `1px solid ${p.border}`, borderRadius: '50%', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', color: p.subtext, cursor: 'pointer' }}>
+          ×
+        </button>
+
+        <DriftPaperBg paperId={open.paperId}>
+          <p style={{ fontFamily: f.family, fontStyle: 'italic', fontSize: 'clamp(20px,3.2vw,28px)', color: p.text, marginBottom: '4px', lineHeight: 1.2 }}>
+            {open.subject}
+          </p>
+          <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.2em', color: p.subtext, textTransform: 'uppercase', marginBottom: '28px' }}>
+            from {open.senderName}
+          </p>
+          <div style={{ height: '1px', background: p.border, marginBottom: '24px' }} />
+          <p style={{ fontFamily: f.family, fontSize: 'clamp(14px,1.8vw,16px)', color: resolvedInk, lineHeight: 2.0, whiteSpace: 'pre-wrap', margin: 0 }}>
+            {open.body}
+          </p>
+
+          {/* block section */}
+          <div style={{ marginTop: '32px', display: 'flex', justifyContent: 'flex-end' }}>
+            {blocked ? (
+              <p style={{ fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.22em', color: p.subtext, opacity: 0.5, textTransform: 'uppercase' }}>
+                Stranger blocked
+              </p>
+            ) : confirmBlock ? (
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '11px', color: p.subtext, margin: 0 }}>
+                  Block this stranger? Their letters will no longer drift to you.
+                </p>
+                <button
+                  onClick={handleBlock}
+                  disabled={blocking}
+                  style={{ background: 'rgba(180,40,40,0.12)', border: '1px solid rgba(200,60,60,0.5)', color: 'rgba(240,140,130,0.9)', fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.22em', textTransform: 'uppercase', padding: '5px 12px', cursor: 'pointer', borderRadius: '2px' }}>
+                  {blocking ? 'Blocking…' : 'Confirm'}
+                </button>
+                <button
+                  onClick={() => setConfirmBlock(false)}
+                  style={{ background: 'transparent', border: `1px solid ${p.border}`, color: p.subtext, fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.22em', textTransform: 'uppercase', padding: '5px 12px', cursor: 'pointer', borderRadius: '2px' }}>
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setConfirmBlock(true)}
+                style={{ background: 'transparent', border: `1px solid ${p.border}`, color: p.subtext, fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.22em', textTransform: 'uppercase', padding: '5px 12px', cursor: 'pointer', borderRadius: '2px', opacity: 0.55, transition: 'opacity 0.15s' }}
+                onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
+                onMouseLeave={e => (e.currentTarget.style.opacity = '0.55')}>
+                Block Stranger
+              </button>
+            )}
+          </div>
+        </DriftPaperBg>
+      </motion.div>
+    </motion.div>
   )
 }
 
@@ -676,49 +780,14 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
       {/* ── Letter reading modal ── */}
       <AnimatePresence>
         {open && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.88)', zIndex: 90, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 20px', backdropFilter: 'blur(8px)' }}
-            onClick={() => setOpen(null)}
-          >
-            <motion.div
-              initial={{ scale: 0.93, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.93, opacity: 0 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 28 }}
-              onClick={e => e.stopPropagation()}
-              style={{ maxWidth: '580px', width: '100%', maxHeight: '84vh', overflowY: 'auto', position: 'relative' }}
-            >
-              {(() => {
-                const p = DRIFT_PAPERS.find(d => d.id === open.paperId) ?? DRIFT_PAPERS[0]
-                const f = DRIFT_FONTS.find(d => d.id === open.fontId) ?? DRIFT_FONTS[0]
-                const inkEntry = DRIFT_INKS.find(d => d.id === open.fontColor)
-                const resolvedInk = inkEntry ? inkEntry.color : p.text
-                return (
-                  <>
-                    <button onClick={() => setOpen(null)}
-                      style={{ position: 'absolute', top: '8px', right: '8px', zIndex: 100, background: 'rgba(0,0,0,0.5)', border: `1px solid ${p.border}`, borderRadius: '50%', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', color: p.subtext, cursor: 'pointer' }}>
-                      ×
-                    </button>
-                    <DriftPaperBg paperId={open.paperId}>
-                      <p style={{ fontFamily: f.family, fontStyle: 'italic', fontSize: 'clamp(20px,3.2vw,28px)', color: p.text, marginBottom: '4px', lineHeight: 1.2 }}>
-                        {open.subject}
-                      </p>
-                      <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.2em', color: p.subtext, textTransform: 'uppercase', marginBottom: '28px' }}>
-                        from {open.senderName}
-                      </p>
-                      <div style={{ height: '1px', background: p.border, marginBottom: '24px' }} />
-                      <p style={{ fontFamily: f.family, fontSize: 'clamp(14px,1.8vw,16px)', color: resolvedInk, lineHeight: 2.0, whiteSpace: 'pre-wrap', margin: 0 }}>
-                        {open.body}
-                      </p>
-                    </DriftPaperBg>
-                  </>
-                )
-              })()}
-            </motion.div>
-          </motion.div>
+          <OpenLetterModal
+            open={open}
+            onClose={() => setOpen(null)}
+            onBlocked={() => {
+              setOpen(null)
+              setLetters(prev => prev.filter(l => l.senderId !== open.senderId))
+            }}
+          />
         )}
       </AnimatePresence>
     </motion.div>

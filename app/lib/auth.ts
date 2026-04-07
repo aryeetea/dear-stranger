@@ -387,7 +387,9 @@ const DRIFT_PAPER_IDS = ['void-parchment','nebula-leaf','starworn','moondust','e
 
 export async function getDriftLetters() {
   try {
-    const { data, error } = await supabase
+    const blockedIds = await getBlockedIds()
+
+    let query = supabase
       .from('letters')
       .select('id, sender_id, body, subject, paper_id, font_id, font_color, sender:sender_id(hub_name)')
       .eq('is_universe_letter', true)
@@ -395,6 +397,11 @@ export async function getDriftLetters() {
       .order('created_at', { ascending: false })
       .limit(30)
 
+    if (blockedIds.length > 0) {
+      query = query.not('sender_id', 'in', `(${blockedIds.join(',')})`)
+    }
+
+    const { data, error } = await query
     if (error) return []
 
     return ((data || []) as any[]).map((l) => ({
@@ -410,6 +417,63 @@ export async function getDriftLetters() {
     }))
   } catch {
     return []
+  }
+}
+
+// ─── Block / unblock ─────────────────────────────────────────────────────────
+
+export async function blockUser(blockedId: string) {
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+  if (userError) throw userError
+  if (!user) throw new Error('Not authenticated')
+  if (blockedId === user.id) throw new Error('Cannot block yourself')
+  const { error } = await supabase.from('user_blocks').upsert(
+    { blocker_id: user.id, blocked_id: blockedId },
+    { onConflict: 'blocker_id,blocked_id', ignoreDuplicates: true },
+  )
+  if (error) throw error
+}
+
+export async function unblockUser(blockedId: string) {
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+  if (userError) throw userError
+  if (!user) throw new Error('Not authenticated')
+  const { error } = await supabase
+    .from('user_blocks')
+    .delete()
+    .eq('blocker_id', user.id)
+    .eq('blocked_id', blockedId)
+  if (error) throw error
+}
+
+export async function getBlockedIds(): Promise<string[]> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return []
+    const { data, error } = await supabase
+      .from('user_blocks')
+      .select('blocked_id')
+      .eq('blocker_id', user.id)
+    if (error) return []
+    return (data || []).map((r: { blocked_id: string }) => r.blocked_id)
+  } catch {
+    return []
+  }
+}
+
+export async function isBlocked(blockedId: string): Promise<boolean> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return false
+    const { data } = await supabase
+      .from('user_blocks')
+      .select('blocked_id')
+      .eq('blocker_id', user.id)
+      .eq('blocked_id', blockedId)
+      .maybeSingle()
+    return !!data
+  } catch {
+    return false
   }
 }
 
