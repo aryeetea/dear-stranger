@@ -98,16 +98,103 @@ type DriftView = 'read' | 'write' | 'paper' | 'font' | 'ink'
 // ─── Paper background renderer ────────────────────────────────────────────────
 function DriftPaperBg({ paperId, children }: { paperId: string; children: React.ReactNode }) {
   const p = DRIFT_PAPERS.find(d => d.id === paperId) ?? DRIFT_PAPERS[0]
+  const id = paperId
+  const rl = (count: number, color: string, startY: number, gap: number, left: string, right: string) =>
+    [...Array(count)].map((_, i) => (
+      <div key={i} style={{ position: 'absolute', left, right, top: `${startY + i * gap}px`, height: '1px', background: color, pointerEvents: 'none', zIndex: 1 }} />
+    ))
   return (
     <div style={{
       background: p.bg,
       border: `1px solid ${p.border}`,
-      borderRadius: '3px',
-      padding: 'clamp(28px,4vw,52px)',
-      boxShadow: `0 0 60px rgba(0,0,0,0.7), inset 0 0 40px rgba(0,0,0,0.12)`,
+      borderRadius: '2px',
       position: 'relative',
+      overflow: 'hidden',
+      boxShadow: '0 20px 80px rgba(0,0,0,0.75), inset 0 0 60px rgba(0,0,0,0.15)',
     }}>
-      {children}
+      {/* void-parchment: star particles + inner border + ruled lines */}
+      {id === 'void-parchment' && <>
+        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 1 }}>
+          {[...Array(40)].map((_, i) => { const x = (i * 67 + 11) % 100; const y = (i * 53 + 7) % 100; const sz = (i % 3) * 0.3 + 0.3; const op = (i % 5) * 0.03 + 0.06; return <div key={i} style={{ position: 'absolute', left: `${x}%`, top: `${y}%`, width: `${sz}px`, height: `${sz}px`, borderRadius: '50%', background: `rgba(255,255,255,${op})` }} /> })}
+        </div>
+        <div style={{ position: 'absolute', inset: '14px', border: '1px solid rgba(160,130,220,0.18)', pointerEvents: 'none', zIndex: 2 }} />
+        {rl(20, 'rgba(160,130,220,0.08)', 70, 30, '44px', '44px')}
+      </>}
+      {/* nebula-leaf: stars + nebula SVG glow + inner border + lines */}
+      {id === 'nebula-leaf' && <>
+        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 1 }}>
+          {[...Array(55)].map((_, i) => { const x = (i * 71 + 23) % 100; const y = (i * 59 + 13) % 100; const sz = (i % 4) * 0.25 + 0.25; const op = (i % 6) * 0.025 + 0.07; return <div key={i} style={{ position: 'absolute', left: `${x}%`, top: `${y}%`, width: `${sz}px`, height: `${sz}px`, borderRadius: '50%', background: `rgba(255,255,255,${op})` }} /> })}
+        </div>
+        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 1 }}>
+          <svg width="100%" height="100%" style={{ position: 'absolute', inset: 0 }} preserveAspectRatio="xMidYMid slice">
+            <defs><filter id="nbl-blur"><feGaussianBlur stdDeviation="28" /></filter></defs>
+            <ellipse cx="80%" cy="18%" rx="160" ry="110" fill="rgba(140,60,200,0.11)" filter="url(#nbl-blur)" />
+            <ellipse cx="15%" cy="75%" rx="120" ry="90" fill="rgba(80,40,180,0.09)" filter="url(#nbl-blur)" />
+          </svg>
+        </div>
+        <div style={{ position: 'absolute', inset: '14px', border: '1px solid rgba(140,90,200,0.18)', pointerEvents: 'none', zIndex: 2 }} />
+        {rl(18, 'rgba(140,90,200,0.07)', 70, 30, '40px', '40px')}
+      </>}
+      {/* starworn: fractal grain + amber ruled lines + age spots */}
+      {id === 'starworn' && <>
+        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='swn'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0.35'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23swn)' opacity='0.1'/%3E%3C/svg%3E\")", backgroundSize: '180px', zIndex: 1 }} />
+        {rl(18, 'rgba(200,160,60,0.1)', 60, 30, '36px', '36px')}
+        {[[8, 12, 18], [82, 6, 14], [60, 78, 16]].map(([l, t, sz], i) => (
+          <div key={i} style={{ position: 'absolute', left: `${l}%`, top: `${t}%`, width: `${sz}px`, height: `${sz}px`, background: 'radial-gradient(circle, rgba(100,60,10,0.18) 0%, transparent 70%)', borderRadius: '50%', pointerEvents: 'none', zIndex: 2 }} />
+        ))}
+      </>}
+      {/* moondust: margin line + inner border + ruled lines */}
+      {id === 'moondust' && <>
+        <div style={{ position: 'absolute', left: '52px', top: 0, bottom: 0, width: '1px', background: 'rgba(80,80,180,0.22)', pointerEvents: 'none', zIndex: 2 }} />
+        <div style={{ position: 'absolute', inset: '14px', border: '1px solid rgba(80,80,160,0.1)', pointerEvents: 'none', zIndex: 2 }} />
+        {rl(22, 'rgba(100,100,200,0.11)', 52, 28, '54px', '20px')}
+      </>}
+      {/* ember-glow: grain + warm top radial + faint ruled lines */}
+      {id === 'ember-glow' && <>
+        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='emb'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0.3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23emb)' opacity='0.09'/%3E%3C/svg%3E\")", backgroundSize: '160px', zIndex: 1 }} />
+        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'radial-gradient(ellipse 80% 45% at 50% 0%, rgba(220,100,20,0.14) 0%, transparent 70%)', zIndex: 2 }} />
+        {rl(18, 'rgba(220,120,40,0.08)', 62, 30, '36px', '36px')}
+      </>}
+      {/* tide-glass: bioluminescent particles + inner border + lines */}
+      {id === 'tide-glass' && <>
+        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 1 }}>
+          {[...Array(30)].map((_, i) => { const x = (i * 73 + 17) % 100; const y = (i * 61 + 9) % 100; const sz = (i % 3) * 0.3 + 0.3; const op = (i % 5) * 0.03 + 0.07; return <div key={i} style={{ position: 'absolute', left: `${x}%`, top: `${y}%`, width: `${sz}px`, height: `${sz}px`, borderRadius: '50%', background: `rgba(100,220,240,${op})` }} /> })}
+        </div>
+        <div style={{ position: 'absolute', inset: '14px', border: '1px solid rgba(60,160,180,0.2)', pointerEvents: 'none', zIndex: 2 }} />
+        {rl(18, 'rgba(60,160,180,0.07)', 70, 30, '40px', '40px')}
+      </>}
+      {/* rose-ash: petal particles + inner border + lines */}
+      {id === 'rose-ash' && <>
+        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 1 }}>
+          {[...Array(25)].map((_, i) => { const x = (i * 67 + 23) % 100; const y = (i * 53 + 11) % 100; const sz = (i % 4) * 1.5 + 2; const op = (i % 5) * 0.025 + 0.08; return <div key={i} style={{ position: 'absolute', left: `${x}%`, top: `${y}%`, width: `${sz}px`, height: `${sz * 0.6}px`, borderRadius: '50%', background: `rgba(240,120,160,${op})`, transform: `rotate(${(i * 37) % 360}deg)` }} /> })}
+        </div>
+        <div style={{ position: 'absolute', inset: '14px', border: '1px solid rgba(200,80,120,0.18)', pointerEvents: 'none', zIndex: 2 }} />
+        {rl(18, 'rgba(200,80,120,0.07)', 70, 30, '40px', '40px')}
+      </>}
+      {/* gilded-dark: corner ornaments + double gold border + gold particles + lines */}
+      {id === 'gilded-dark' && <>
+        {[['0', '0', '0deg'], ['100%', '0', '90deg'], ['0', '100%', '-90deg'], ['100%', '100%', '180deg']].map(([l, t, rot], i) => (
+          <div key={i} style={{ position: 'absolute', left: l, top: t, transform: `translate(${i % 2 ? '-100%' : '0'}, ${i > 1 ? '-100%' : '0'})`, zIndex: 3, pointerEvents: 'none' }}>
+            <svg width="64" height="64" viewBox="0 0 64 64" style={{ transform: `rotate(${rot})` }}>
+              <path d="M0 0 L26 0 Q32 0 32 6 L32 26" fill="none" stroke="rgba(200,170,70,0.55)" strokeWidth="1.5" />
+              <circle cx="4" cy="4" r="2" fill="rgba(200,170,70,0.5)" />
+              <path d="M13 13 Q16 9 18 13 Q22 14 18 18 Q16 21 13 19 Q9 16 13 13Z" fill="rgba(200,170,70,0.16)" stroke="rgba(200,170,70,0.4)" strokeWidth="0.7" />
+            </svg>
+          </div>
+        ))}
+        <div style={{ position: 'absolute', inset: '14px', border: '1px solid rgba(200,170,70,0.32)', pointerEvents: 'none', zIndex: 2 }} />
+        <div style={{ position: 'absolute', inset: '20px', border: '0.5px solid rgba(200,170,70,0.14)', pointerEvents: 'none', zIndex: 2 }} />
+        {rl(18, 'rgba(200,170,70,0.07)', 70, 30, '44px', '44px')}
+        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 1 }}>
+          {[...Array(20)].map((_, i) => { const x = (i * 67 + 11) % 100; const y = (i * 53 + 17) % 100; const op = (i % 5) * 0.02 + 0.05; return <div key={i} style={{ position: 'absolute', left: `${x}%`, top: `${y}%`, width: '1.5px', height: '1.5px', borderRadius: '50%', background: `rgba(210,180,70,${op})` }} /> })}
+        </div>
+      </>}
+      {/* edge vignette for all papers */}
+      <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.22) 100%)', pointerEvents: 'none', zIndex: 3 }} />
+      {/* content */}
+      <div style={{ padding: 'clamp(28px,4vw,52px)', position: 'relative', zIndex: 4 }}>
+        {children}
+      </div>
     </div>
   )
 }
