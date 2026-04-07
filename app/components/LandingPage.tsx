@@ -307,7 +307,7 @@ export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: (
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div style={{ width: '28px', height: '1px', background: 'rgba(120,88,24,0.28)' }} />
             <span style={{ fontFamily: "'Dancing Script', cursive", fontSize: '16px', color: 'rgba(100,70,18,0.62)' }}>
-              Dear Stranger ✦
+              The Dear Stranger Team ✦
             </span>
           </div>
         </motion.div>
