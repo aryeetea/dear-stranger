@@ -4,79 +4,90 @@ import { createClient } from '@supabase/supabase-js'
 
 export const maxDuration = 120
 
-// --- PROMPT CONSTANTS (The "Secret Sauce" for your style) ---
-const STYLE_CONSTANTS = {
-  BASE_RENDER: 
-    "Semi-realistic 3D render with 2.5D depth. NOT flat illustration, NOT anime, NOT cartoon. " +
-    "Style: high-quality CG character art, volumetric lighting, subsurface skin scattering, fine hair strands, realistic fabric texture, and cinematic depth of field. " +
-    "Visual Quality: Unreal Engine 5 MetaHuman meets cinematic concept art—photorealistic proportions, soft dramatic lighting.",
-  
-  COMPOSITION: 
-    "Composition: full body visible head to toe, vertical portrait orientation, face clearly lit. " +
-    "IMPORTANT: depict exactly ONE single character. No duplicate figures, no mirror images, no side-by-side poses. " +
-    "Technical: No text, no watermark, no logo, no flat shading, no cel-shading, no cartoon outlines.",
+// --- THE "STYLIZED 3D" CONFIGURATION ---
+// These constants are designed to stop the AI from making real "photos" 
+// and instead focus on that clean, glowy, game-character look.
+const BASE_RENDER =
+  'High-end stylized 3D digital art — NOT a real person, NOT a photo. ' +
+  'Style: Clean 3D character design with smooth, porcelain-like skin and sculpted features. ' +
+  'Texture: Hand-painted textures, vibrant colors, and soft-focus backgrounds. ' +
+  'Lighting: Dreamy volumetric lighting, glowing rim highlights, and soft-box studio shadows. ' +
+  'Think high-budget 3D animated cinematic (Arcane/League of Legends style) — polished, smooth, and artistic.'
 
-  THEMES: {
-    fantasy: "Fantasy theme: magical environment, ethereal glow, otherworldly atmosphere.",
-    modern: "Modern theme: clean contemporary setting, stylish urban or studio environment.",
-    celestial: "Celestial theme: cosmic starfield, moonlit atmosphere, divine radiant energy.",
-    futuristic: "Futuristic theme: sleek sci-fi environment, holographic elements, neon-lit corridors.",
-    nature: "Nature-inspired theme: lush forest, flowing water, golden-hour light."
-  }
+const RENDERING_INSTRUCTION =
+  'Composition: Full body visible head to toe, vertical portrait orientation. ' +
+  'Background: A rich, atmospheric environment with a soft bokeh effect. ' +
+  'IMPORTANT: Depict exactly ONE single character. No text, no watermarks, no skin pores, no grainy textures, no realistic wrinkles.'
+
+const STYLE_DESCRIPTORS: Record<string, string> = {
+  fantasy: 'Fantasy theme: Magical glowing environment, ethereal aura, otherworldly elements.',
+  modern: 'Modern theme: Stylish contemporary setting, clean urban backdrop, soft studio lighting.',
+  celestial: 'Celestial theme: Cosmic moonlit atmosphere, radiant starfield, glowing divine energy.',
+  futuristic: 'Futuristic theme: Sleek sci-fi tech, neon accents, holographic glow.',
+  nature: 'Nature-inspired theme: Enchanted forest, soft golden-hour sunlight through leaves.',
 }
 
-// Helper to clean up user input
 function normalizeDetail(value: string) {
   return value.replace(/\s+/g, ' ').replace(/^[,.;:\s]+|[,.;:\s]+$/g, '').trim()
 }
 
-/**
- * Builds the final prompt sent to ChatGPT/DALL-E
- */
-function buildFinalPrompt(answers: string[], styleKey: string = 'fantasy'): string {
-  const details = answers.map(a => normalizeDetail(a)).filter(Boolean).join(', ')
-  const selectedTheme = STYLE_CONSTANTS.THEMES[styleKey as keyof typeof STYLE_CONSTANTS.THEMES] || STYLE_CONSTANTS.THEMES.fantasy
+function buildAvatarPrompt(answers: string[], styleKey?: string) {
+  const details = answers.map((a) => normalizeDetail(a)).filter(Boolean).join(', ')
+  const styleTheme = STYLE_DESCRIPTORS[styleKey?.toLowerCase() || 'fantasy']
 
   return [
-    `Character Description: ${details || 'A mysterious figure'}.`,
-    STYLE_CONSTANTS.BASE_RENDER,
-    selectedTheme,
-    STYLE_CONSTANTS.COMPOSITION
+    `Stylized 3D character portrait of: ${details || 'a mysterious figure'}.`,
+    BASE_RENDER,
+    styleTheme,
+    RENDERING_INSTRUCTION,
   ].join('\n\n')
 }
 
 export async function POST(req: Request) {
   try {
+    // 1. Auth & Validation
+    const authHeader = req.headers.get('authorization')
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null
+    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
     const body = await req.json()
     const { answers, style, userId } = body
 
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+    const openaiKey = process.env.OPENAI_API_KEY
+    if (!openaiKey) return NextResponse.json({ error: 'Missing API Key' }, { status: 500 })
 
-    // 1. Parse answers into a clean array
+    const openai = new OpenAI({ apiKey: openaiKey })
+
+    // 2. Parse User Input
     const orderedAnswers = Object.entries(answers || {})
       .sort(([a], [b]) => Number(a) - Number(b))
       .map(([, val]) => String(val))
 
-    // 2. Build the high-detail prompt
-    const finalPrompt = buildFinalPrompt(orderedAnswers, style)
+    if (orderedAnswers.length === 0) {
+      return NextResponse.json({ error: 'No descriptions provided.' }, { status: 400 })
+    }
 
-    // 3. Call DALL-E 3 (The engine behind ChatGPT images)
+    // 3. Construct the "Stylized" Prompt
+    const finalPrompt = buildAvatarPrompt(orderedAnswers, style)
+
+    // 4. Generate Image (DALL-E 3)
     const response = await openai.images.generate({
-      model: "dall-e-3",
+      model: 'dall-e-3',
       prompt: finalPrompt,
-      size: "1024x1792", // Vertical aspect ratio for full-body avatars
-      quality: "hd",
-      response_format: "b64_json",
+      size: '1024x1792', // Keeps the full-body portrait aspect ratio
+      quality: 'hd',
+      response_format: 'b64_json',
       user: userId,
     })
 
+    const image = response.data?.[0]
     return NextResponse.json({
-      imageUrl: `data:image/png;base64,${response.data?.[0]?.b64_json}`,
-      revisedPrompt: response.data?.[0]?.revised_prompt,
+      imageUrl: `data:image/png;base64,${image?.b64_json}`,
+      revisedPrompt: image?.revised_prompt,
     })
 
   } catch (error: any) {
-    console.error("Generation Error:", error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    console.error('Generation Error:', error)
+    return NextResponse.json({ error: error.message || 'Failed to generate.' }, { status: 500 })
   }
 }

@@ -122,6 +122,7 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
   const [selectedPaper, setSelectedPaper] = useState(DRIFT_PAPERS[0])
   const [selectedFont, setSelectedFont] = useState(DRIFT_FONTS[0])
   const [selectedInk, setSelectedInk] = useState(DRIFT_INKS[0])
+  const [driftType, setDriftType] = useState<'letter' | 'poem' | 'journal'>('letter')
   const [subject, setSubject] = useState('')
   const [body, setBody] = useState('')
   const [subjectError, setSubjectError] = useState(false)
@@ -339,6 +340,23 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
           <motion.div key="write" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} style={{ position: 'relative', zIndex: 2, maxWidth: '680px', margin: '0 auto' }}>
             {/* paper preview area */}
             <DriftPaperBg paperId={paper.id}>
+              {/* type selector */}
+              <div style={{ display: 'flex', gap: '6px', marginBottom: '18px' }}>
+                {(['letter', 'poem', 'journal'] as const).map(t => (
+                  <button key={t} onClick={() => setDriftType(t)}
+                    style={{
+                      background: driftType === t ? `rgba(255,255,255,0.1)` : 'transparent',
+                      border: `1px solid ${driftType === t ? paper.accent : paper.border}`,
+                      color: driftType === t ? paper.accent : paper.subtext,
+                      fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.22em',
+                      textTransform: 'uppercase', padding: '5px 14px', cursor: 'pointer',
+                      borderRadius: '2px', transition: 'all 0.15s',
+                    }}>
+                    {t === 'letter' ? 'Written Word' : t === 'poem' ? 'Poem' : 'Journal'}
+                  </button>
+                ))}
+              </div>
+
               {/* toolbar */}
               <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
                 {[
@@ -372,7 +390,15 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
               {subjectError && <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', color: '#f08070', letterSpacing: '0.2em', marginTop: '-16px', marginBottom: '14px' }}>A subject is needed</p>}
 
               {/* salutation */}
-              <p style={{ fontFamily, fontSize: '15px', fontStyle: 'italic', color: paper.subtext, marginBottom: '12px', lineHeight: 1.8 }}>Dear Stranger,</p>
+              {driftType === 'letter' && (
+                <p style={{ fontFamily, fontSize: '15px', fontStyle: 'italic', color: paper.subtext, marginBottom: '12px', lineHeight: 1.8 }}>Dear Stranger,</p>
+              )}
+              {driftType === 'poem' && (
+                <p style={{ fontFamily, fontSize: '11px', letterSpacing: '0.3em', color: paper.subtext, marginBottom: '14px', textTransform: 'uppercase', opacity: 0.6 }}>✦ a poem</p>
+              )}
+              {driftType === 'journal' && (
+                <p style={{ fontFamily, fontSize: '11px', letterSpacing: '0.3em', color: paper.subtext, marginBottom: '14px', textTransform: 'uppercase', opacity: 0.6 }}>✦ a journal entry</p>
+              )}
 
               {/* body */}
               <textarea
@@ -380,7 +406,7 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
                 value={body}
                 onChange={e => setBody(e.target.value)}
                 onKeyDown={handleTypingKey}
-                placeholder="Your letter begins here..."
+                placeholder={driftType === 'letter' ? 'Your letter begins here...' : driftType === 'poem' ? 'Let it pour out...' : 'Write freely...'}
                 maxLength={6000}
                 style={{
                   width: '100%', minHeight: '220px', background: 'transparent', border: 'none', outline: 'none',
@@ -391,10 +417,22 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
               />
 
               {/* sign-off */}
-              <p style={{ fontFamily, fontSize: '15px', fontStyle: 'italic', color: paper.subtext, marginTop: '10px', lineHeight: 1.8 }}>
-                Released into the void,<br />
-                <span style={{ color: paper.accent }}>{senderName || 'A Stranger'}</span>
-              </p>
+              {driftType === 'letter' && (
+                <p style={{ fontFamily, fontSize: '15px', fontStyle: 'italic', color: paper.subtext, marginTop: '10px', lineHeight: 1.8 }}>
+                  Released into the drift,<br />
+                  <span style={{ color: paper.accent }}>{senderName || 'A Stranger'}</span>
+                </p>
+              )}
+              {driftType === 'poem' && (
+                <p style={{ fontFamily, fontSize: '15px', fontStyle: 'italic', color: paper.subtext, marginTop: '10px', lineHeight: 1.8 }}>
+                  — <span style={{ color: paper.accent }}>{senderName || 'A Stranger'}</span>
+                </p>
+              )}
+              {driftType === 'journal' && (
+                <p style={{ fontFamily, fontSize: '15px', fontStyle: 'italic', color: paper.subtext, marginTop: '10px', lineHeight: 1.8 }}>
+                  — <span style={{ color: paper.accent }}>{senderName || 'A Stranger'}</span>
+                </p>
+              )}
 
               <div style={{ height: '1px', background: paper.border, margin: '20px 0' }} />
 
@@ -411,7 +449,7 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
                     padding: '12px 28px', cursor: body.trim() ? 'pointer' : 'default', borderRadius: '2px',
                     transition: 'all 0.2s',
                   }}>
-                  Release into the Universe ✦
+                  Release into the Drift ✦
                 </motion.button>
               </div>
             </DriftPaperBg>
@@ -445,7 +483,7 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
               style={{ fontSize: '48px' }}>✉</motion.div>
             <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}
               style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '17px', color: 'rgba(255,255,255,0.6)', marginTop: '28px' }}>
-              Drifting into the universe…
+              Drifting into the drift…
             </motion.p>
           </motion.div>
         )}
@@ -460,7 +498,7 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
             </p>
             <motion.button whileTap={{ scale: 0.97 }} onClick={onClose}
               style={{ marginTop: '20px', background: 'none', border: '1px solid rgba(230,199,110,0.35)', color: '#e6c76e', fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.3em', padding: '10px 24px', cursor: 'pointer', textTransform: 'uppercase' }}>
-              Return to the Universe
+              Return to the Drift
             </motion.button>
           </motion.div>
         )}
