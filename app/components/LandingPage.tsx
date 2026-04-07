@@ -151,6 +151,7 @@ export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: (
             transition={{ duration: 0.6 }}
             style={{
               position: 'fixed', inset: 0, zIndex: 20,
+              background: '#000000',
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
               pointerEvents: 'none',
             }}

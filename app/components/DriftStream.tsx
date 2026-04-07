@@ -191,9 +191,18 @@ function DriftPaperBg({ paperId, children }: { paperId: string; children: React.
       </>}
       {/* edge vignette for all papers */}
       <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.22) 100%)', pointerEvents: 'none', zIndex: 3 }} />
-      {/* content */}
-      <div style={{ padding: 'clamp(28px,4vw,52px)', position: 'relative', zIndex: 4 }}>
+      {/* ── Letterhead ── */}
+      <div style={{ textAlign: 'center', paddingTop: '36px', paddingBottom: '4px', position: 'relative', zIndex: 4 }}>
+        <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.5em', color: p.subtext, textTransform: 'uppercase', margin: 0 }}>✦ Dear Stranger ✦</p>
+        <div style={{ height: '1px', background: `linear-gradient(90deg, transparent, ${p.border}, transparent)`, margin: '10px 40px 0' }} />
+      </div>
+      {/* ── Content ── */}
+      <div style={{ padding: 'clamp(14px,2vw,22px) clamp(28px,4vw,52px) 0', position: 'relative', zIndex: 4 }}>
         {children}
+      </div>
+      {/* ── Footer ── */}
+      <div style={{ textAlign: 'center', padding: '16px 0 28px', position: 'relative', zIndex: 4 }}>
+        <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.4em', color: p.subtext, opacity: 0.5, margin: 0 }}>— ✦ —</p>
       </div>
     </div>
   )
@@ -425,16 +434,15 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
         {/* ── WRITE ── */}
         {tab === 'write' && !waxing && !sending && !sent && (
           <motion.div key="write" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} style={{ position: 'relative', zIndex: 2, maxWidth: '680px', margin: '0 auto' }}>
-            {/* paper preview area */}
-            <DriftPaperBg paperId={paper.id}>
-              {/* type selector */}
-              <div style={{ display: 'flex', gap: '6px', marginBottom: '18px' }}>
+            {/* ── Controls floating above the paper ── */}
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '14px', flexWrap: 'wrap', alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: '4px' }}>
                 {(['letter', 'poem', 'journal'] as const).map(t => (
                   <button key={t} onClick={() => setDriftType(t)}
                     style={{
-                      background: driftType === t ? `rgba(255,255,255,0.1)` : 'transparent',
-                      border: `1px solid ${driftType === t ? paper.accent : paper.border}`,
-                      color: driftType === t ? paper.accent : paper.subtext,
+                      background: driftType === t ? 'rgba(230,199,110,0.12)' : 'transparent',
+                      border: `1px solid ${driftType === t ? 'rgba(230,199,110,0.55)' : 'rgba(255,255,255,0.15)'}`,
+                      color: driftType === t ? '#e6c76e' : 'rgba(255,255,255,0.5)',
                       fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.22em',
                       textTransform: 'uppercase', padding: '5px 14px', cursor: 'pointer',
                       borderRadius: '2px', transition: 'all 0.15s',
@@ -443,23 +451,23 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
                   </button>
                 ))}
               </div>
+              <div style={{ flex: 1 }} />
+              {[
+                { key: 'paper', label: paper.label, icon: '⬛', onClick: () => setTab('paper') },
+                { key: 'font',  label: selectedFont.label, icon: 'A', onClick: () => setTab('font') },
+                { key: 'ink',   label: selectedInk.label, icon: '✒', onClick: () => setTab('ink') },
+              ].map(btn => (
+                <button key={btn.key} onClick={btn.onClick}
+                  style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.6)', fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.2em', textTransform: 'uppercase', padding: '5px 12px', cursor: 'pointer', borderRadius: '2px', display: 'flex', alignItems: 'center', gap: '5px', transition: 'background 0.15s' }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.12)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}>
+                  <span>{btn.icon}</span>{btn.label}
+                </button>
+              ))}
+            </div>
 
-              {/* toolbar */}
-              <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
-                {[
-                  { key: 'paper', label: paper.label, icon: '⬛', onClick: () => setTab('paper') },
-                  { key: 'font',  label: selectedFont.label, icon: 'A', onClick: () => setTab('font') },
-                  { key: 'ink',   label: selectedInk.label, icon: '✒', onClick: () => setTab('ink') },
-                ].map(btn => (
-                  <button key={btn.key} onClick={btn.onClick}
-                    style={{ background: 'rgba(255,255,255,0.06)', border: `1px solid ${paper.border}`, color: paper.subtext, fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.2em', textTransform: 'uppercase', padding: '5px 12px', cursor: 'pointer', borderRadius: '2px', display: 'flex', alignItems: 'center', gap: '5px', transition: 'background 0.15s' }}
-                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.12)')}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}>
-                    <span>{btn.icon}</span>{btn.label}
-                  </button>
-                ))}
-              </div>
-
+            {/* ── The paper ── */}
+            <DriftPaperBg paperId={paper.id}>
               {/* subject */}
               <input
                 value={subject}
@@ -689,25 +697,24 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
                 const inkEntry = DRIFT_INKS.find(d => d.id === open.fontColor)
                 const resolvedInk = inkEntry ? inkEntry.color : p.text
                 return (
-                  <div style={{ background: p.bg, border: `1px solid ${p.border}`, borderRadius: '3px', padding: 'clamp(28px,4vw,52px)', boxShadow: `0 40px 120px rgba(0,0,0,0.92), 0 0 60px rgba(0,0,0,0.4)`, position: 'relative' }}>
-                    <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.42em', color: p.subtext, textAlign: 'center', textTransform: 'uppercase', marginBottom: '8px' }}>
-                      Released to the universe
-                    </p>
-                    <p style={{ fontFamily: f.family, fontStyle: 'italic', fontSize: 'clamp(20px,3.2vw,28px)', color: p.text, marginBottom: '4px', lineHeight: 1.2 }}>
-                      {open.subject}
-                    </p>
-                    <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.2em', color: p.subtext, textTransform: 'uppercase', marginBottom: '28px' }}>
-                      from {open.senderName}
-                    </p>
-                    <div style={{ height: '1px', background: p.border, marginBottom: '24px' }} />
-                    <p style={{ fontFamily: f.family, fontSize: 'clamp(14px,1.8vw,16px)', color: resolvedInk, lineHeight: 2.0, whiteSpace: 'pre-wrap', margin: 0 }}>
-                      {open.body}
-                    </p>
+                  <>
                     <button onClick={() => setOpen(null)}
-                      style={{ position: 'absolute', top: '14px', right: '16px', background: 'none', border: 'none', fontSize: '20px', color: p.subtext, cursor: 'pointer' }}>
+                      style={{ position: 'absolute', top: '8px', right: '8px', zIndex: 100, background: 'rgba(0,0,0,0.5)', border: `1px solid ${p.border}`, borderRadius: '50%', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', color: p.subtext, cursor: 'pointer' }}>
                       ×
                     </button>
-                  </div>
+                    <DriftPaperBg paperId={open.paperId}>
+                      <p style={{ fontFamily: f.family, fontStyle: 'italic', fontSize: 'clamp(20px,3.2vw,28px)', color: p.text, marginBottom: '4px', lineHeight: 1.2 }}>
+                        {open.subject}
+                      </p>
+                      <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.2em', color: p.subtext, textTransform: 'uppercase', marginBottom: '28px' }}>
+                        from {open.senderName}
+                      </p>
+                      <div style={{ height: '1px', background: p.border, marginBottom: '24px' }} />
+                      <p style={{ fontFamily: f.family, fontSize: 'clamp(14px,1.8vw,16px)', color: resolvedInk, lineHeight: 2.0, whiteSpace: 'pre-wrap', margin: 0 }}>
+                        {open.body}
+                      </p>
+                    </DriftPaperBg>
+                  </>
                 )
               })()}
             </motion.div>
