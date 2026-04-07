@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { getUniverseLetters, sendLetter } from '../lib/auth'
+import { getDriftLetters, sendLetter } from '../lib/auth'
 import { playLetterSend, playTypingSound, playWaxSeal } from '../../lib/sounds'
 
 // ─── Drift-exclusive paper styles ────────────────────────────────────────────
@@ -64,15 +64,21 @@ const DRIFT_STARS = Array.from({ length: 28 }, (_, i) => ({
   opacity: (i % 6) * 0.035 + 0.03,
 }))
 
-// Deterministic floating positions for envelopes
-function envelopeLayout(count: number) {
-  return Array.from({ length: count }, (_, i) => ({
-    left: `${((i * 67 + 12) % 58) + 3}%`,
-    top: `${((i * 83 + 21) % 62) + 6}%`,
-    rotate: ((i * 37 + 5) % 26) - 13,
-    delay: i * 0.08,
-    envStyle: ENV_STYLES[i % ENV_STYLES.length],
-  }))
+// ─── Orbit radii and speeds for tornado display ───────────────────────────────
+const ORBIT_TRACKS = [
+  { radius: 110, yScale: 0.42, duration: 9 },
+  { radius: 175, yScale: 0.42, duration: 12 },
+  { radius: 240, yScale: 0.42, duration: 15 },
+]
+
+function orbitKeyframes(radius: number, yScale: number, startAngle: number, steps = 24) {
+  const kfX: number[] = [], kfY: number[] = []
+  for (let k = 0; k <= steps; k++) {
+    const angle = startAngle + (k / steps) * Math.PI * 2
+    kfX.push(Math.cos(angle) * radius)
+    kfY.push(Math.sin(angle) * radius * yScale)
+  }
+  return { kfX, kfY, times: Array.from({ length: steps + 1 }, (_, k) => k / steps) }
 }
 
 interface DriftLetter {
@@ -125,10 +131,8 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
   const lastTypeSoundRef = useRef<number>(0)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  const layout = envelopeLayout(letters.length)
-
   useEffect(() => {
-    getUniverseLetters().then((data) => {
+    getDriftLetters().then((data) => {
       setLetters(data as DriftLetter[])
       setLoading(false)
     })
@@ -260,57 +264,65 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
               </div>
             )}
 
-            {/* floating envelopes */}
-            {!loading && letters.map((letter, i) => {
-              const pos = layout[i]
-              const env = pos.envStyle
-              return (
-                <motion.div
-                  key={letter.id}
-                  initial={{ opacity: 0, scale: 0.85, rotate: pos.rotate }}
-                  animate={{ opacity: 1, scale: 1, y: [0, -6, 0], rotate: pos.rotate }}
-                  transition={{ delay: pos.delay, duration: 0.6, rotate: { duration: 0 }, y: { duration: 3.5 + (i % 4) * 0.7, repeat: Infinity, ease: 'easeInOut', delay: i * 0.4 } }}
-                  onClick={() => setOpen(letter)}
-                  title={letter.subject}
-                  style={{
-                    position: 'absolute',
-                    left: pos.left,
-                    top: pos.top,
-                    cursor: 'pointer',
-                    width: 'clamp(88px, 10vw, 120px)',
-                    zIndex: 10 + i,
-                  }}
-                >
-                  {/* envelope body */}
-                  <div style={{
-                    width: '100%',
-                    paddingBottom: '68%',
-                    background: env.bg,
-                    border: `1px solid ${env.border}`,
-                    borderRadius: '2px',
-                    position: 'relative',
-                    boxShadow: `0 8px 28px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.4)`,
-                    transition: 'box-shadow 0.2s, transform 0.2s',
-                  }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = `0 12px 40px rgba(0,0,0,0.8), 0 0 24px ${env.border}`; (e.currentTarget as HTMLDivElement).style.transform = 'scale(1.06)' }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = `0 8px 28px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.4)`; (e.currentTarget as HTMLDivElement).style.transform = 'scale(1)' }}
-                  >
-                    {/* envelope flap (triangle on top) */}
-                    <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }} viewBox="0 0 100 68" preserveAspectRatio="none">
-                      <polygon points="0,0 100,0 50,38" fill={env.flap} opacity="0.9" />
-                      <polygon points="0,0 50,38 0,68" fill="rgba(0,0,0,0.12)" />
-                      <polygon points="100,0 50,38 100,68" fill="rgba(0,0,0,0.08)" />
-                    </svg>
-                    {/* wax dot */}
-                    <div style={{ position: 'absolute', bottom: '20%', left: '50%', transform: 'translateX(-50%)', width: '10px', height: '10px', borderRadius: '50%', background: env.border, boxShadow: `0 0 6px ${env.border}` }} />
-                  </div>
-                  {/* label */}
-                  <p style={{ fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.18em', color: env.label, textTransform: 'uppercase', textAlign: 'center', marginTop: '6px', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {letter.subject}
-                  </p>
-                </motion.div>
-              )
-            })}
+            {/* tornado-orbit envelopes */}
+            {!loading && letters.length > 0 && (
+              <div style={{ position: 'absolute', top: '50%', left: '50%' }}>
+                {letters.map((letter, i) => {
+                  const track = ORBIT_TRACKS[i % 3]
+                  const startAngle = (i * 2.399) % (Math.PI * 2)
+                  const duration = track.duration + i * 0.6
+                  const { kfX, kfY, times } = orbitKeyframes(track.radius, track.yScale, startAngle)
+                  const env = ENV_STYLES[i % ENV_STYLES.length]
+                  return (
+                    <motion.div
+                      key={letter.id}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1, x: kfX, y: kfY }}
+                      transition={{
+                        opacity: { duration: 0.8, delay: i * 0.12 },
+                        x: { duration, repeat: Infinity, ease: 'linear', times },
+                        y: { duration, repeat: Infinity, ease: 'linear', times },
+                      }}
+                      onClick={() => setOpen(letter)}
+                      title={letter.subject}
+                      style={{
+                        position: 'absolute',
+                        cursor: 'pointer',
+                        width: 'clamp(72px, 8vw, 100px)',
+                        marginLeft: 'calc(-1 * clamp(36px, 4vw, 50px))',
+                        marginTop: 'calc(-1 * clamp(25px, 2.7vw, 34px))',
+                        zIndex: 10 + i,
+                      }}
+                    >
+                      {/* envelope body */}
+                      <div style={{
+                        width: '100%',
+                        paddingBottom: '68%',
+                        background: env.bg,
+                        border: `1px solid ${env.border}`,
+                        borderRadius: '2px',
+                        position: 'relative',
+                        boxShadow: `0 8px 28px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.4)`,
+                        transition: 'box-shadow 0.2s, transform 0.2s',
+                      }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = `0 12px 40px rgba(0,0,0,0.8), 0 0 24px ${env.border}`; (e.currentTarget as HTMLDivElement).style.transform = 'scale(1.08)' }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = `0 8px 28px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.4)`; (e.currentTarget as HTMLDivElement).style.transform = 'scale(1)' }}
+                      >
+                        <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }} viewBox="0 0 100 68" preserveAspectRatio="none">
+                          <polygon points="0,0 100,0 50,38" fill={env.flap} opacity="0.9" />
+                          <polygon points="0,0 50,38 0,68" fill="rgba(0,0,0,0.12)" />
+                          <polygon points="100,0 50,38 100,68" fill="rgba(0,0,0,0.08)" />
+                        </svg>
+                        <div style={{ position: 'absolute', bottom: '20%', left: '50%', transform: 'translateX(-50%)', width: '10px', height: '10px', borderRadius: '50%', background: env.border, boxShadow: `0 0 6px ${env.border}` }} />
+                      </div>
+                      <p style={{ fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.18em', color: env.label, textTransform: 'uppercase', textAlign: 'center', marginTop: '6px', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {letter.subject}
+                      </p>
+                    </motion.div>
+                  )
+                })}
+              </div>
+            )}
 
             {/* hint */}
             {!loading && letters.length > 0 && (

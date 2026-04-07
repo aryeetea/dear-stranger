@@ -383,6 +383,36 @@ export async function getUniverseLetters() {
   }
 }
 
+const DRIFT_PAPER_IDS = ['void-parchment','nebula-leaf','starworn','moondust','ember-glow','tide-glass','rose-ash','gilded-dark']
+
+export async function getDriftLetters() {
+  try {
+    const { data, error } = await supabase
+      .from('letters')
+      .select('id, sender_id, body, subject, paper_id, font_id, font_color, sender:sender_id(hub_name)')
+      .eq('is_universe_letter', true)
+      .in('paper_id', DRIFT_PAPER_IDS)
+      .order('created_at', { ascending: false })
+      .limit(30)
+
+    if (error) return []
+
+    return ((data || []) as any[]).map((l) => ({
+      id: l.id,
+      senderId: (l.sender_id as string) || '',
+      senderName: l.sender?.hub_name || 'A Stranger',
+      body: (l.body as string) || '',
+      preview: l.body ? (l.body.length > 80 ? `${l.body.slice(0, 80)}...` : l.body) : '',
+      subject: l.subject || 'Untitled',
+      paperId: (l.paper_id as string) || 'void-parchment',
+      fontId: (l.font_id as string) || 'almendra',
+      fontColor: (l.font_color as string) || undefined,
+    }))
+  } catch {
+    return []
+  }
+}
+
 export async function getSession() {
   try {
     const { data, error } = await supabase.auth.getSession()
