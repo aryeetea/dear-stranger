@@ -103,18 +103,11 @@ export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: (
   }, [])
 
   const paragraphs: { text: string; italic?: boolean }[] = [
-    { text: "Welcome. I'm glad you found this." },
-    { text: 'Dear Stranger is a place for slow letters — the kind you actually meant to write. No feed, no trending topics, no follower counts. Just words, and the space between sending and receiving.' },
-    { text: 'Here is how it works:', italic: true },
-    { text: 'When you first arrive, the Soul Mirror will build your avatar. You can choose to answer a set of guided questions — nothing too serious, just enough to know what you are envisioning, or you can describe yourself in your own words. Either way, what you give it shapes your avatar and your hub that represents you in this universe. No real name. No photo. Just your words, and what the mirror makes of them.' },
-    { text: 'One thing you should know before you begin: you only get two chances. The first is now. The second is one reimagine, available only once. After that, your avatar is sealed for ninety days. So take your time with the description — it matters more than it might seem.', italic: true },
-    { text: 'Once your hub exists, you can write. You can send a letter to the open universe and let it drift until a stranger finds it, or you can visit the Starmap, find a hub whose name or light speaks to you, and address your letter directly. Longer letters take a little longer to arrive — that is intentional. This place is not built for speed.' },
-    { text: 'There are no likes here. No read receipts. No quick reactions. If a letter moves you, you write one back. That is the only way to respond, and honestly, it is the better way.' },
-    { text: 'A few things this place asks of you:', italic: true },
-    { text: 'Be honest. Be kind. Do not use this space to harm anyone — no harassment, no cruelty, no letters designed to hurt anyone. You can be anonymous here, but anonymity is not a license to be unkind. It is a gift. Use it well.' },
-    { text: 'Your hub name, your words, and your light are yours. We will never sell them or show them to an algorithm. What you write here stays within the universe you are about to enter.' },
-    { text: 'I cannot promise every letter will be answered. I can only promise this is a real place, built for real words, between real people.', italic: true },
-    { text: 'One more thing — Dear Stranger lives on your device too. You can add it to your home screen and open it like any other app, no app store needed. Look for the install prompt in your browser, or the "add to home screen" option in your browser menu.' },
+    { text: 'Dear Stranger is a place for slow letters — the kind you actually meant to write. No feed, no follower counts, no algorithms. Just words, and the space between sending and receiving.' },
+    { text: 'When you arrive, the Soul Mirror will build your avatar from your own description. No real name. No photo. Just your words, and what the mirror makes of them. Take your time — your avatar is sealed for ninety days after it is set.' },
+    { text: 'Once your hub exists, you can write to the open universe and let your letter drift until a stranger finds it, or address one directly to someone whose light speaks to you. There are no likes here, no read receipts. If a letter moves you, you write one back.', italic: true },
+    { text: 'Be honest. Be kind. Anonymity is a gift — use it well.' },
+    { text: 'We cannot promise every letter will be answered. We can only promise this is a real place, built for real words, between real people.', italic: true },
   ]
 
   return (
@@ -122,7 +115,7 @@ export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: (
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'transparent',
+        background: '#000000',
         overflowY: 'auto',
         overflowX: 'hidden',
         display: 'flex',
@@ -237,12 +230,7 @@ export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: (
         )}
       </AnimatePresence>
 
-      <div
-        style={{
-          position: 'fixed', inset: 0, pointerEvents: 'none',
-          background: 'radial-gradient(ellipse 65% 55% at 50% 40%, rgba(35,18,75,0.36) 0%, transparent 65%)',
-        }}
-      />
+
 
       <motion.article
         initial={{ opacity: 0, y: 80, scale: 0.9, filter: 'blur(6px)' }}
@@ -283,10 +271,11 @@ export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: (
               animate={phase >= 3 ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 1.1, delay: i * 0.1, ease: 'easeOut' }}
               style={{
-                fontFamily: "'Dancing Script', cursive",
-                fontSize: 'clamp(16px, 2vw, 20px)',
-                color: italic ? '#1a1208' : 'rgba(38,24,6,0.8)',
-                lineHeight: 1.85,
+                fontFamily: "'IM Fell English', serif",
+                fontStyle: italic ? 'italic' : 'normal',
+                fontSize: 'clamp(15px, 1.8vw, 18px)',
+                color: italic ? '#1a1208' : 'rgba(38,24,6,0.82)',
+                lineHeight: 1.9,
                 margin: 0,
               }}
             >

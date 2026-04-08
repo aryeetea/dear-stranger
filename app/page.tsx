@@ -1074,7 +1074,7 @@ export default function Home() {
 
   return (
     <>
-      <NebulaBackground />
+      {screen !== 'landing' && <NebulaBackground />}
       <WarpFlash screenKey={screen} />
       {sendFlashing && (
         <LetterDepartAnimation onDone={() => {
