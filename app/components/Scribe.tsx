@@ -290,7 +290,7 @@ const DAILY_PROMPTS = [
 export default function Scribe({ recipientName, senderName, lettersSent = 0, onClose, onSend }: {
   recipientName?: string; senderName?: string; lettersSent?: number
   onClose?: () => void
-  onSend?: (letter: { to?: string; body: string; paperId: string; subject: string; fontId: string; colorId?: string; paperColorId?: string; stampId?: string; envelopeId?: string; capsuleDays?: number }) => void
+  onSend?: (letter: { to?: string; body: string; paperId: string; subject: string; fontId: string; colorId?: string; paperColorId?: string; stampId?: string; envelopeId?: string; capsuleDays?: number; burnAfterReading?: boolean }) => void
 }) {
   const unlockedPapers = PAPERS.filter(p => p.unlocksAt <= lettersSent)
   const [selectedPaper, setSelectedPaper] = useState(unlockedPapers[0])
@@ -309,6 +309,7 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
   const [view, setView] = useState<'write'|'papers'|'fonts'|'stamps'|'colors'|'paper-color'|'envelopes'|'envelope'|'wax-seal'>('write')
   const [journalMode, setJournalMode] = useState(false)
   const [capsuleDays, setCapsuleDays] = useState<30|60|90>(30)
+  const [burnAfterReading, setBurnAfterReading] = useState(false)
   const lastTypeSoundRef = useRef<number>(0)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [showPrompt, setShowPrompt] = useState(true)
@@ -376,7 +377,7 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
     await new Promise(r => setTimeout(r, 2200))
     setSent(true)
     setTimeout(() => {
-      onSend?.({ to: journalMode ? undefined : recipientName, body, paperId: selectedPaper.id, subject, fontId: selectedFont.id, colorId: selectedColor ?? undefined, paperColorId: selectedPaperColor ?? undefined, stampId: selectedStamp, envelopeId: selectedEnvelope, capsuleDays: journalMode ? capsuleDays : undefined })
+      onSend?.({ to: journalMode ? undefined : recipientName, body, paperId: selectedPaper.id, subject, fontId: selectedFont.id, colorId: selectedColor ?? undefined, paperColorId: selectedPaperColor ?? undefined, stampId: selectedStamp, envelopeId: selectedEnvelope, capsuleDays: journalMode ? capsuleDays : undefined, burnAfterReading: burnAfterReading || undefined })
       onClose?.()
     }, 2400)
   }
@@ -743,6 +744,16 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
                 )}
               </div>
             )}
+
+            <div style={{ marginTop:'8px', marginBottom:'4px' }}>
+              <button
+                onClick={() => setBurnAfterReading(b => !b)}
+                style={{ background: burnAfterReading ? 'rgba(220,60,40,0.1)' : 'none', border: `1px solid ${burnAfterReading ? 'rgba(220,60,40,0.5)' : 'rgba(255,255,255,0.16)'}`, color: burnAfterReading ? '#e87060' : 'rgba(255,255,255,0.65)', fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.22em', textTransform: 'uppercase', padding: '5px 12px', cursor: 'pointer', borderRadius: '2px', transition: 'all 0.2s' }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(220,60,40,0.5)'; e.currentTarget.style.color = '#e87060' }}
+                onMouseLeave={e => { if (!burnAfterReading) { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.16)'; e.currentTarget.style.color = 'rgba(255,255,255,0.65)' } }}>
+                🔥 {burnAfterReading ? 'Burn After Reading · On' : 'Burn After Reading'}
+              </button>
+            </div>
 
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:'12px', flexWrap:'wrap', gap:'8px' }}>
               <div style={{ display:'flex', alignItems:'center', gap:'6px', flexWrap:'wrap' }}>

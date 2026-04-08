@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { getMyLetters, archiveLetter } from '../lib/auth'
+import { getMyLetters, archiveLetter, deleteLetter } from '../lib/auth'
 import { playWaxSeal } from '../../lib/sounds'
 import { PAPER_TONES, PAPER_INK, renderLetterPaper } from '../lib/letterPapers'
 
@@ -68,6 +68,7 @@ interface Letter {
   travelProgress?: number
   direction: 'sent' | 'received'
   isUniverseLetter?: boolean
+  burnAfterReading?: boolean
 }
 
 const PAPER_COLORS: Record<string, { accent: string; bg: string }> = {
@@ -136,6 +137,7 @@ export default function Observatory({
             direction: 'sent',
             travelProgress: l.status === 'transit' ? clamp(Math.floor(rawProgress), 0, 100) : undefined,
             isUniverseLetter: l.is_universe_letter ?? false,
+            burnAfterReading: l.burn_after_reading ?? false,
           }
         }
 
@@ -165,6 +167,7 @@ export default function Observatory({
             direction: 'received',
             travelProgress: effectiveStatus === 'transit' ? clamp(Math.floor(rawProgress), 0, 100) : undefined,
             isUniverseLetter: l.is_universe_letter ?? false,
+            burnAfterReading: l.burn_after_reading ?? false,
           }
         }
 
@@ -204,6 +207,16 @@ export default function Observatory({
       arrived: prev.arrived.filter(l => l.id !== letter.id),
       archive: [{ ...letter, status: 'archive' as const }, ...prev.archive],
     }))
+  }
+
+  async function handleBurnAndClose(letter: Letter) {
+    setOpenLetter(null)
+    setLetters(prev => ({
+      ...prev,
+      arrived: prev.arrived.filter(l => l.id !== letter.id),
+      archive: prev.archive.filter(l => l.id !== letter.id),
+    }))
+    try { await deleteLetter(letter.id) } catch (err) { console.error('Failed to delete burn letter:', err) }
   }
 
   const tabs = [
@@ -334,7 +347,8 @@ export default function Observatory({
         {openLetter && (
           <LetterModal letter={openLetter} onClose={() => setOpenLetter(null)}
             onReply={name => { setOpenLetter(null); onWriteLetter?.(name) }}
-            onArchive={() => handleArchive(openLetter)} />
+            onArchive={() => handleArchive(openLetter)}
+            onBurn={openLetter.burnAfterReading && openLetter.direction === 'received' ? () => handleBurnAndClose(openLetter) : undefined} />
         )}
       </AnimatePresence>
     </motion.div>
@@ -373,7 +387,7 @@ function LetterEntry({ letter, index, onClick }: { letter: Letter; index: number
       whileHover={!isTransit ? ({ backgroundColor: 'rgba(255,255,255,0.07)' } as never) : {}}
     >
       <div style={{ fontSize: '18px', lineHeight: 1, flexShrink: 0, marginTop: '2px', opacity: isTransit ? 0.85 : letter.status === 'archive' ? 0.7 : 1, filter: isTransit ? 'none' : `drop-shadow(0 0 4px ${colors.accent}80)` }}>
-        {isTransit ? '✦' : '📜'}
+        {isTransit ? '✦' : (letter.burnAfterReading && letter.direction === 'received') ? '🔥' : '📜'}
       </div>
 
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -507,11 +521,13 @@ function LetterModal({
   onClose,
   onReply,
   onArchive,
+  onBurn,
 }: {
   letter: Letter
   onClose: () => void
   onReply?: (name: string) => void
   onArchive?: () => void
+  onBurn?: () => void
 }) {
   const colors = PAPER_COLORS[letter.paperId] || PAPER_COLORS.ornate
   const bodyFont = (letter.fontId && FONT_FAMILIES[letter.fontId]) || "'Cormorant Garamond', serif"
@@ -524,9 +540,14 @@ function LetterModal({
     : defaultInk
 
   const isReceivedLetter = letter.direction === 'received' && (letter.status === 'arrived' || letter.status === 'archive')
-  const [openPhase, setOpenPhase] = useState<'envelope'|'letter'>(isReceivedLetter ? 'envelope' : 'letter')
+  const isBurnReceived = isReceivedLetter && !!letter.burnAfterReading
+  const [burnConfirmed, setBurnConfirmed] = useState(false)
+  const [openPhase, setOpenPhase] = useState<'warning'|'envelope'|'letter'>(
+    isBurnReceived ? 'warning' : isReceivedLetter ? 'envelope' : 'letter'
+  )
+  const handleClose = () => { if (burnConfirmed) onBurn?.(); onClose() }
   useEffect(() => {
-    if (!isReceivedLetter) return
+    if (!isReceivedLetter || isBurnReceived) return
     playWaxSeal()
     const t = setTimeout(() => setOpenPhase('letter'), 1600)
     return () => clearTimeout(t)
@@ -538,9 +559,39 @@ function LetterModal({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      onClick={onClose}
+      onClick={handleClose}
       style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,5,0.85)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 90, padding: '20px' }}
     >
+      {openPhase === 'warning' && isBurnReceived && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={e => e.stopPropagation()}
+          style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '24px', textAlign: 'center', padding: '20px', maxWidth: '320px' }}
+        >
+          <motion.div animate={{ scale: [1, 1.08, 1] }} transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
+            style={{ fontSize: '52px', filter: 'drop-shadow(0 0 20px rgba(255,80,40,0.7))' }}>🔥</motion.div>
+          <p style={{ fontFamily: "'Cinzel', serif", fontSize: '11px', letterSpacing: '0.35em', color: '#e87060', textTransform: 'uppercase' }}>Burn After Reading</p>
+          <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '15px', color: 'rgba(255,255,255,0.82)', lineHeight: 1.75 }}>
+            This letter will be destroyed once you read it.<br />There is no going back.
+          </p>
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <button
+              onClick={() => { setBurnConfirmed(true); setOpenPhase('envelope'); playWaxSeal(); setTimeout(() => setOpenPhase('letter'), 1600) }}
+              style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.3em', color: '#e87060', padding: '10px 20px', border: '1px solid rgba(220,60,40,0.55)', borderRadius: '2px', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase', transition: 'all 0.2s' }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(220,60,40,0.1)' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+            >Open & Destroy ✶</button>
+            <button
+              onClick={onClose}
+              style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.3em', color: 'rgba(255,255,255,0.45)', padding: '10px 20px', border: '1px solid rgba(255,255,255,0.18)', borderRadius: '2px', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase', transition: 'all 0.2s' }}
+              onMouseEnter={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.72)' }}
+              onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.45)' }}
+            >Keep Sealed</button>
+          </div>
+        </motion.div>
+      )}
       {openPhase === 'envelope' && isReceivedLetter && (
         <motion.div
           initial={{ opacity: 0, scale: 0.85 }}
@@ -581,7 +632,7 @@ function LetterModal({
         style={{ width: 'min(600px, 92vw)', maxHeight: '80vh', overflowY: 'auto', borderRadius: '3px', boxShadow: `0 16px 60px rgba(0,0,0,0.9), 0 0 40px ${colors.accent}20`, position: 'relative' }}
       >
         <button
-          onClick={onClose}
+          onClick={handleClose}
           style={{ position: 'absolute', top: '16px', right: '16px', background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', opacity: 0.6, transition: 'opacity 0.2s', color: defaultInk, zIndex: 10 }}
           onMouseEnter={e => { e.currentTarget.style.opacity = '0.95' }}
           onMouseLeave={e => { e.currentTarget.style.opacity = '0.6' }}

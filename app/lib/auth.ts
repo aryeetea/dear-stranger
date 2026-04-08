@@ -619,6 +619,7 @@ export async function sendLetter(
   stampId?: string,
   envelopeId?: string,
   customArrivesAt?: Date,
+  burnAfterReading?: boolean,
 ) {
   const {
     data: { user },
@@ -666,12 +667,23 @@ export async function sendLetter(
         ...(paperColor ? { paper_color: paperColor } : {}),
         ...(stampId ? { stamp_id: stampId } : {}),
         ...(envelopeId ? { envelope_id: envelopeId } : {}),
+        ...(burnAfterReading ? { burn_after_reading: true } : {}),
       },
     ])
     .select()
 
   if (error) throw error
   return data
+}
+
+export async function deleteLetter(letterId: string) {
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+  if (userError || !user) throw new Error('Not authenticated')
+  const { error } = await supabase
+    .from('letters')
+    .delete()
+    .eq('id', letterId)
+  if (error) throw error
 }
 
 export async function getMyLetters() {

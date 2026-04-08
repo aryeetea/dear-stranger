@@ -1281,6 +1281,7 @@ export default function Home() {
                   letter.stampId,
                   letter.envelopeId,
                   customArrivesAt,
+                  letter.burnAfterReading,
                 )
               } else {
                 const allHubs = await getAllHubs();
@@ -1302,6 +1303,8 @@ export default function Home() {
                   letter.paperColorId,
                   letter.stampId,
                   letter.envelopeId,
+                  undefined,
+                  letter.burnAfterReading,
                 );
               }
 
