@@ -158,9 +158,9 @@ export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: (
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.8, delay: 0.3 + i * 0.12, ease: [0.16, 1, 0.3, 1] }}
                   style={{
-                    fontFamily: "'Dancing Script', cursive",
+                    fontFamily: "'Cormorant Garamond', serif",
                     fontSize: 'clamp(52px, 10vw, 96px)',
-                    fontWeight: 400,
+                    fontWeight: 300,
                     color: 'rgba(245,230,190,0.92)',
                     letterSpacing: '0.06em',
                     lineHeight: 1,
@@ -182,9 +182,9 @@ export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: (
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.8, delay: 0.9 + i * 0.11, ease: [0.16, 1, 0.3, 1] }}
                   style={{
-                    fontFamily: "'Dancing Script', cursive",
+                    fontFamily: "'Cormorant Garamond', serif",
                     fontSize: 'clamp(52px, 10vw, 96px)',
-                    fontWeight: 400,
+                    fontWeight: 300,
                     color: 'rgba(245,230,190,0.92)',
                     letterSpacing: '0.06em',
                     lineHeight: 1,
