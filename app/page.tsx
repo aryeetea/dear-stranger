@@ -783,6 +783,8 @@ export default function Home() {
             const msg = signUpErr instanceof Error ? signUpErr.message.toLowerCase() : ''
             if (msg.includes('already registered') || msg.includes('already exists') || msg.includes('user already')) {
               signUpFailed = true
+            } else if (msg.includes('signup limit') || msg.includes('no user returned')) {
+              throw new Error('Signup limit reached. Please try again in an hour, or ask the app owner to create your account.')
             } else {
               throw signUpErr
             }

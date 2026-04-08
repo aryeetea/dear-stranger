@@ -178,14 +178,25 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
           ...(stylePayload || {}),
         }),
       })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Failed')
+      let data: { question?: string; done?: boolean; chips?: string[]; error?: string } = {}
+      try { data = await res.json() } catch { /* non-JSON response (e.g. timeout) */ }
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
       const isClosing = data.done === true
       const chips: string[] = data.chips || []
-      setMessages(prev => [...prev, { role: 'ai', text: data.question, isClosing, chips }])
+      setMessages(prev => [...prev, { role: 'ai', text: data.question ?? '', isClosing, chips }])
       if (isClosing) setChatDone(true)
     } catch (err) {
-      setError('Something went quiet. Try again.'); console.error(err)
+      const msg = err instanceof Error ? err.message : ''
+      if (msg === 'Unauthorized') {
+        setError('Please sign in to continue.')
+      } else if (msg.startsWith('HTTP 5')) {
+        setError('The mirror is unavailable right now. Try again in a moment.')
+      } else if (msg.startsWith('HTTP')) {
+        setError(`Something went wrong (${msg}). Try again.`)
+      } else {
+        setError('Something went quiet. Check your connection and try again.')
+      }
+      console.error('[SoulMirror]', msg, err)
     } finally { setLoading(false) }
   }
 
@@ -265,7 +276,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
   )
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: currentBg.base, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '20px', overflowY: 'auto', transition: 'background 1s ease' }}>
+    <div style={{ position: 'fixed', inset: 0, background: currentBg.base, zIndex: 50, overflowY: 'auto', transition: 'background 1s ease' }}>
       <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', background: currentBg.gradient, transition: 'background 1s ease' }} />
 
       {errorMessage && (
@@ -274,6 +285,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
         </div>
       )}
 
+      <div style={{ minHeight: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', boxSizing: 'border-box' }}>
       <AnimatePresence mode="wait">
         {phase === 'mode' && (
           <motion.div key="mode" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.4 }}
@@ -746,6 +758,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
         )}
 
       </AnimatePresence>
+      </div>
     </div>
   )
 }

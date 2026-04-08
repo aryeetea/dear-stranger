@@ -97,7 +97,7 @@ export async function signUpAndCreateHub(
   })
 
   if (authError) throw authError
-  if (!authData.user) throw new Error('No user returned after signup')
+  if (!authData.user) throw new Error('Signup limit reached. Please try again in an hour, or contact support.')
 
   const { error: hubError } = await supabase.from('hubs').insert([
     {
