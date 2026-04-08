@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useState, type CSSProperties } from 'react'
+import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { getMyLetters, archiveLetter } from '../lib/auth'
 import { playWaxSeal } from '../../lib/sounds'
+import { PAPER_TONES, PAPER_INK, renderLetterPaper } from '../lib/letterPapers'
 
 // ── Static stars — no Math.random in render ──
 const OBS_STARS = Array.from({ length: 30 }, (_, i) => ({
@@ -514,14 +515,13 @@ function LetterModal({
 }) {
   const colors = PAPER_COLORS[letter.paperId] || PAPER_COLORS.ornate
   const bodyFont = (letter.fontId && FONT_FAMILIES[letter.fontId]) || "'Cormorant Garamond', serif"
+  const paperBg = letter.paperColor
+    ? (PAPER_TONES.find(t => t.id === letter.paperColor)?.bg ?? undefined)
+    : undefined
+  const defaultInk = PAPER_INK[letter.paperId]?.main ?? '#180e04'
   const bodyColor = (letter.fontColor && FONT_COLOR_MAP[letter.fontColor])
-    ? `color-mix(in srgb, ${FONT_COLOR_MAP[letter.fontColor]} 85%, rgba(255,255,255,0.7))`
-    : 'rgba(255,255,255,0.94)'
-  const ps: CSSProperties = {
-    background: 'linear-gradient(180deg, rgba(18,16,24,0.96), rgba(10,8,14,0.98))',
-    border: `1px solid ${colors.accent}45`,
-    color: 'rgba(255,255,255,0.94)',
-  }
+    ? FONT_COLOR_MAP[letter.fontColor]
+    : defaultInk
 
   const isReceivedLetter = letter.direction === 'received' && (letter.status === 'arrived' || letter.status === 'archive')
   const [openPhase, setOpenPhase] = useState<'envelope'|'letter'>(isReceivedLetter ? 'envelope' : 'letter')
@@ -578,55 +578,66 @@ function LetterModal({
         exit={{ opacity: 0, scale: 0.95, y: 8 }}
         transition={{ duration: 0.35 }}
         onClick={e => e.stopPropagation()}
-        style={{ ...ps, width: 'min(600px, 92vw)', maxHeight: '80vh', overflowY: 'auto', borderRadius: '3px', padding: 'clamp(32px,5vw,56px) clamp(28px,6vw,60px)', boxShadow: `0 16px 60px rgba(0,0,0,0.9), 0 0 40px ${colors.accent}20`, position: 'relative' }}
+        style={{ width: 'min(600px, 92vw)', maxHeight: '80vh', overflowY: 'auto', borderRadius: '3px', boxShadow: `0 16px 60px rgba(0,0,0,0.9), 0 0 40px ${colors.accent}20`, position: 'relative' }}
       >
-        <div style={{ position: 'absolute', top: 0, left: '15%', right: '15%', height: '1px', background: `linear-gradient(90deg, transparent, ${colors.accent}60, transparent)` }} />
+        <button
+          onClick={onClose}
+          style={{ position: 'absolute', top: '16px', right: '16px', background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', opacity: 0.6, transition: 'opacity 0.2s', color: defaultInk, zIndex: 10 }}
+          onMouseEnter={e => { e.currentTarget.style.opacity = '0.95' }}
+          onMouseLeave={e => { e.currentTarget.style.opacity = '0.6' }}
+        >
+          ×
+        </button>
 
-        <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.4em', color: colors.accent, textTransform: 'uppercase', marginBottom: '20px', opacity: 0.88 }}>
-          {letter.direction === 'received' ? `From · ${letter.from}` : `To · ${letter.to}`}
-        </p>
-
-        <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '11px', opacity: 0.76, marginBottom: '20px' }}>
-          {new Date(letter.arrivedAt || letter.sentAt).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-        </p>
-
-        <p style={{ fontFamily: bodyFont, fontSize: '17px', fontStyle: 'italic', color: bodyColor, opacity: 0.9, marginBottom: '16px', lineHeight: 1.8 }}>
-          {letter.direction === 'received'
-            ? (letter.isUniverseLetter ? 'Dear Stranger,' : `Dear ${letter.to},`)
-            : `Dear ${letter.to},`}
-        </p>
-
-        {letter.body.split('\n\n— ✦ —\n\n').map((page, i, arr) => (
-          <div key={i}>
-            <p style={{ fontFamily: bodyFont, fontSize: 'clamp(15px,2vw,18px)', lineHeight: 2, letterSpacing: '0.02em', color: bodyColor, opacity: 0.98, whiteSpace: 'pre-wrap' }}>
-              {page}
+        {renderLetterPaper(letter.paperId, paperBg, (
+          <>
+            <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.4em', color: colors.accent, textTransform: 'uppercase', marginBottom: '20px', opacity: 0.88 }}>
+              {letter.direction === 'received' ? `From · ${letter.from}` : `To · ${letter.to}`}
             </p>
-            {i < arr.length - 1 && (
-              <div style={{ textAlign: 'center', margin: '24px 0', opacity: 0.4 }}>
-                <span style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.4em', color: colors.accent }}>— ✦ —</span>
+
+            <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '11px', opacity: 0.76, marginBottom: '20px', color: bodyColor }}>
+              {new Date(letter.arrivedAt || letter.sentAt).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            </p>
+
+            <p style={{ fontFamily: bodyFont, fontSize: '17px', fontStyle: 'italic', color: bodyColor, opacity: 0.9, marginBottom: '16px', lineHeight: 1.8 }}>
+              {letter.direction === 'received'
+                ? (letter.isUniverseLetter ? 'Dear Stranger,' : `Dear ${letter.to},`)
+                : `Dear ${letter.to},`}
+            </p>
+
+            {letter.body.split('\n\n— ✦ —\n\n').map((page, i, arr) => (
+              <div key={i}>
+                <p style={{ fontFamily: bodyFont, fontSize: 'clamp(15px,2vw,18px)', lineHeight: 2, letterSpacing: '0.02em', color: bodyColor, opacity: 0.98, whiteSpace: 'pre-wrap' }}>
+                  {page}
+                </p>
+                {i < arr.length - 1 && (
+                  <div style={{ textAlign: 'center', margin: '24px 0', opacity: 0.4 }}>
+                    <span style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.4em', color: colors.accent }}>— ✦ —</span>
+                  </div>
+                )}
+              </div>
+            ))}
+
+            <p style={{ fontFamily: bodyFont, fontStyle: 'italic', fontSize: '15px', color: bodyColor, opacity: 0.86, marginTop: '24px', lineHeight: 1.9 }}>
+              With presence,<br />
+              <span style={{ color: colors.accent, opacity: 0.95 }}>
+                {letter.direction === 'received' && !letter.isUniverseLetter && letter.from
+                  ? letter.from
+                  : 'A Stranger'}
+              </span>
+            </p>
+
+            {(letter.stampId || letter.envelopeId) && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'flex-end', gap: '12px', marginTop: '16px', opacity: 0.85 }}>
+                {letter.envelopeId && <ModalEnvelope id={letter.envelopeId} />}
+                {letter.stampId && <ModalStamp id={letter.stampId} />}
               </div>
             )}
-          </div>
+          </>
         ))}
 
-        <p style={{ fontFamily: bodyFont, fontStyle: 'italic', fontSize: '15px', color: bodyColor, opacity: 0.86, marginTop: '24px', lineHeight: 1.9 }}>
-          With presence,<br />
-          <span style={{ color: colors.accent, opacity: 0.95 }}>
-            {letter.direction === 'received' && !letter.isUniverseLetter && letter.from
-              ? letter.from
-              : 'A Stranger'}
-          </span>
-        </p>
-
-        {(letter.stampId || letter.envelopeId) && (
-          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'flex-end', gap: '12px', marginTop: '16px', opacity: 0.85 }}>
-            {letter.envelopeId && <ModalEnvelope id={letter.envelopeId} />}
-            {letter.stampId && <ModalStamp id={letter.stampId} />}
-          </div>
-        )}
-
         {letter.direction === 'received' && (
-          <div style={{ marginTop: '32px', paddingTop: '20px', borderTop: `1px solid ${colors.accent}38`, display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+          <div style={{ padding: '16px 28px 20px', background: 'rgba(0,0,8,0.97)', borderTop: `1px solid ${colors.accent}38`, display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
             <button
               onClick={() => onReply?.(letter.from || '')}
               style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.3em', color: colors.accent, padding: '10px 24px', border: `1px solid ${colors.accent}70`, borderRadius: '2px', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase', transition: 'all 0.2s' }}
@@ -648,7 +659,7 @@ function LetterModal({
           </div>
         )}
         {letter.direction === 'sent' && letter.status === 'arrived' && (
-          <div style={{ marginTop: '32px', paddingTop: '20px', borderTop: `1px solid ${colors.accent}38` }}>
+          <div style={{ padding: '16px 28px 20px', background: 'rgba(0,0,8,0.97)', borderTop: `1px solid ${colors.accent}38` }}>
             <button
               onClick={onArchive}
               style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.3em', color: 'rgba(255,255,255,0.45)', padding: '10px 24px', border: '1px solid rgba(255,255,255,0.18)', borderRadius: '2px', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase', transition: 'all 0.2s' }}
@@ -659,17 +670,6 @@ function LetterModal({
             </button>
           </div>
         )}
-
-        <div style={{ position: 'absolute', bottom: 0, left: '15%', right: '15%', height: '1px', background: `linear-gradient(90deg, transparent, ${colors.accent}40, transparent)` }} />
-
-        <button
-          onClick={onClose}
-          style={{ position: 'absolute', top: '16px', right: '16px', background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', opacity: 0.6, transition: 'opacity 0.2s', color: 'inherit' }}
-          onMouseEnter={e => { e.currentTarget.style.opacity = '0.95' }}
-          onMouseLeave={e => { e.currentTarget.style.opacity = '0.6' }}
-        >
-          ×
-        </button>
         </motion.div>
       )}
     </motion.div>
