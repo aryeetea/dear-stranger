@@ -3,7 +3,16 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { playLetterSend, playTypingSound, playWaxSeal } from '../../lib/sounds'
+import type { VoiceEffect } from '../../lib/audioEffects'
 import { PAPER_TONES, PAPER_INK, renderLetterPaper } from '../lib/letterPapers'
+import {
+  HANDWRITING_STYLES,
+  LETTER_EMBELLISHMENTS,
+  getHandwritingStyleStyles,
+  renderLetterEmbellishment,
+  type HandwritingStyle,
+  type EmbellishmentId,
+} from '../lib/letterEnrichments'
 
 const SCRIBE_STARS = Array.from({ length: 20 }, (_, i) => ({
   width: `${(i % 3) * 0.45 + 0.3}px`,
@@ -287,10 +296,35 @@ const DAILY_PROMPTS = [
   'Write to the truth you’ve been circling around',
 ]
 
+const VOICE_EFFECT_OPTIONS: { id: VoiceEffect; label: string; desc: string }[] = [
+  { id: 'raw', label: 'No Effect', desc: 'Your real voice, unfiltered' },
+  { id: 'anonymous', label: 'Anonymous', desc: 'Softened and disguised' },
+  { id: 'echo', label: 'Echo', desc: 'A little chamber around the words' },
+  { id: 'void', label: 'Void', desc: 'Lower, distant, and cosmic' },
+]
+
+function buildPromptPool() {
+  const seed = Math.floor(new Date().getTime() / 86400000)
+  const shuffled = [...DAILY_PROMPTS]
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = (seed * 9301 + i * 49297 + 233280) % (i + 1)
+    ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+  }
+  return shuffled.slice(0, 5)
+}
+
+function formatCapsuleOpenDate(capsuleDays: number) {
+  return new Date(new Date().getTime() + capsuleDays * 86400000).toLocaleDateString('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  })
+}
+
 export default function Scribe({ recipientName, senderName, lettersSent = 0, onClose, onSend }: {
   recipientName?: string; senderName?: string; lettersSent?: number
   onClose?: () => void
-  onSend?: (letter: { to?: string; body: string; paperId: string; subject: string; fontId: string; colorId?: string; paperColorId?: string; stampId?: string; envelopeId?: string; capsuleDays?: number; burnAfterReading?: boolean }) => void
+  onSend?: (letter: { to?: string; body: string; paperId: string; subject: string; fontId: string; colorId?: string; paperColorId?: string; stampId?: string; envelopeId?: string; capsuleDays?: number; burnAfterReading?: boolean; voiceNoteBlob?: Blob; voiceEffect?: VoiceEffect; handwritingStyle?: HandwritingStyle; embellishmentId?: EmbellishmentId }) => void
 }) {
   const unlockedPapers = PAPERS.filter(p => p.unlocksAt <= lettersSent)
   const [selectedPaper, setSelectedPaper] = useState(unlockedPapers[0])
@@ -310,18 +344,21 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
   const [journalMode, setJournalMode] = useState(false)
   const [capsuleDays, setCapsuleDays] = useState<30|60|90>(30)
   const [burnAfterReading, setBurnAfterReading] = useState(false)
+  const [selectedHandwriting, setSelectedHandwriting] = useState<HandwritingStyle>('steady')
+  const [selectedEmbellishment, setSelectedEmbellishment] = useState<EmbellishmentId>('none')
+  const [voiceEffect, setVoiceEffect] = useState<VoiceEffect>('raw')
+  const [voiceNoteBlob, setVoiceNoteBlob] = useState<Blob | null>(null)
+  const [voiceNoteUrl, setVoiceNoteUrl] = useState<string | null>(null)
+  const [isRecordingVoice, setIsRecordingVoice] = useState(false)
+  const [voiceError, setVoiceError] = useState<string | null>(null)
   const lastTypeSoundRef = useRef<number>(0)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const mediaStreamRef = useRef<MediaStream | null>(null)
+  const recordingChunksRef = useRef<Blob[]>([])
+  const recordTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [showPrompt, setShowPrompt] = useState(true)
-  const promptPool = useRef<string[]>((() => {
-    const seed = Math.floor(Date.now() / 86400000)
-    const shuffled = [...DAILY_PROMPTS]
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = (seed * 9301 + i * 49297 + 233280) % (i + 1)
-      ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
-    }
-    return shuffled.slice(0, 5)
-  })()).current
+  const [promptPool] = useState<string[]>(() => buildPromptPool())
   const [promptIdx, setPromptIdx] = useState(0)
   const [promptVisible, setPromptVisible] = useState(true)
   const todayPrompt = promptPool[promptIdx]
@@ -360,6 +397,74 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
     if (view === 'write') setTimeout(() => textareaRef.current?.focus(), 300)
   }, [view, selectedPaper])
 
+  useEffect(() => {
+    return () => {
+      if (recordTimeoutRef.current) clearTimeout(recordTimeoutRef.current)
+      mediaRecorderRef.current?.stream.getTracks().forEach(track => track.stop())
+      mediaStreamRef.current?.getTracks().forEach(track => track.stop())
+      if (voiceNoteUrl) URL.revokeObjectURL(voiceNoteUrl)
+    }
+  }, [voiceNoteUrl])
+
+  async function startVoiceRecording() {
+    try {
+      setVoiceError(null)
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : MediaRecorder.isTypeSupported('audio/mp4')
+          ? 'audio/mp4'
+          : ''
+      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream)
+      recordingChunksRef.current = []
+      recorder.ondataavailable = event => {
+        if (event.data.size > 0) recordingChunksRef.current.push(event.data)
+      }
+      recorder.onstop = () => {
+        const blob = new Blob(recordingChunksRef.current, { type: recorder.mimeType || 'audio/webm' })
+        mediaStreamRef.current?.getTracks().forEach(track => track.stop())
+        mediaStreamRef.current = null
+        mediaRecorderRef.current = null
+        if (!blob.size) {
+          setVoiceError('The recording was empty.')
+          setIsRecordingVoice(false)
+          return
+        }
+        if (voiceNoteUrl) URL.revokeObjectURL(voiceNoteUrl)
+        setVoiceNoteBlob(blob)
+        setVoiceNoteUrl(URL.createObjectURL(blob))
+        setIsRecordingVoice(false)
+      }
+      recorder.onerror = () => {
+        setVoiceError('Voice note recording failed.')
+        setIsRecordingVoice(false)
+      }
+      mediaRecorderRef.current = recorder
+      mediaStreamRef.current = stream
+      setIsRecordingVoice(true)
+      recorder.start()
+      recordTimeoutRef.current = setTimeout(() => {
+        if (recorder.state !== 'inactive') recorder.stop()
+      }, 30000)
+    } catch {
+      setVoiceError('Microphone access was denied or unavailable.')
+    }
+  }
+
+  function stopVoiceRecording() {
+    if (recordTimeoutRef.current) clearTimeout(recordTimeoutRef.current)
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop()
+    }
+  }
+
+  function clearVoiceNote() {
+    if (voiceNoteUrl) URL.revokeObjectURL(voiceNoteUrl)
+    setVoiceNoteUrl(null)
+    setVoiceNoteBlob(null)
+    setVoiceError(null)
+  }
+
   async function handleRelease() {
     if (!body.trim()) return
     if (!subject.trim()) {
@@ -377,7 +482,7 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
     await new Promise(r => setTimeout(r, 2200))
     setSent(true)
     setTimeout(() => {
-      onSend?.({ to: journalMode ? undefined : recipientName, body, paperId: selectedPaper.id, subject, fontId: selectedFont.id, colorId: selectedColor ?? undefined, paperColorId: selectedPaperColor ?? undefined, stampId: selectedStamp, envelopeId: selectedEnvelope, capsuleDays: journalMode ? capsuleDays : undefined, burnAfterReading: burnAfterReading || undefined })
+      onSend?.({ to: journalMode ? undefined : recipientName, body, paperId: selectedPaper.id, subject, fontId: selectedFont.id, colorId: selectedColor ?? undefined, paperColorId: selectedPaperColor ?? undefined, stampId: selectedStamp, envelopeId: selectedEnvelope, capsuleDays: journalMode ? capsuleDays : undefined, burnAfterReading: burnAfterReading || undefined, voiceNoteBlob: voiceNoteBlob ?? undefined, voiceEffect: voiceNoteBlob ? voiceEffect : undefined, handwritingStyle: selectedHandwriting, embellishmentId: selectedEmbellishment })
       onClose?.()
     }, 2400)
   }
@@ -397,7 +502,14 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
         lastTypeSoundRef.current = now
       }
     }
-    const content = <LetterContent fontFamily={fontFamily} ink={effectiveInk} recipient={recipientName} senderName={senderName} date={today} body={pages[currentPage]} setBody={setPageBody} textareaRef={textareaRef} onPageFull={handlePageFull} pageLimit={PAGE_CHAR_LIMIT} onKeyDown={handleTypingKey}/>
+    const content = (
+      <div style={{ position:'relative' }}>
+        {renderLetterEmbellishment(selectedEmbellishment, effectiveInk.accent, 'compose')}
+        <div style={getHandwritingStyleStyles(selectedHandwriting)}>
+          <LetterContent fontFamily={fontFamily} ink={effectiveInk} recipient={recipientName} senderName={senderName} date={today} body={pages[currentPage]} setBody={setPageBody} textareaRef={textareaRef} onPageFull={handlePageFull} pageLimit={PAGE_CHAR_LIMIT} onKeyDown={handleTypingKey}/>
+        </div>
+      </div>
+    )
     const pbg = selectedPaperColor ? (PAPER_TONES.find(t => t.id === selectedPaperColor)?.bg ?? undefined) : undefined
     return renderLetterPaper(selectedPaper.id, pbg, content)
   }
@@ -738,7 +850,7 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
                       </button>
                     ))}
                     <span style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'11px', color:'rgba(255,255,255,0.38)' }}>
-                      · opens {new Date(Date.now() + capsuleDays * 86400000).toLocaleDateString('en-US', { month:'long', day:'numeric', year:'numeric' })}
+                      · opens {formatCapsuleOpenDate(capsuleDays)}
                     </span>
                   </div>
                 )}
@@ -755,14 +867,119 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
               </button>
             </div>
 
+            <div style={{ marginTop:'10px', padding:'12px 14px', border:'1px solid rgba(230,199,110,0.14)', borderRadius:'6px', background:'rgba(255,255,255,0.03)' }}>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(150px, 1fr))', gap:'10px' }}>
+                <div>
+                  <p style={{ fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.24em', color:'#e6c76e', textTransform:'uppercase', margin:'0 0 8px' }}>Letter Form</p>
+                  <div style={{ display:'flex', flexDirection:'column', gap:'6px' }}>
+                    {HANDWRITING_STYLES.map(style => {
+                      const isSelected = selectedHandwriting === style.id
+                      return (
+                        <button
+                          key={style.id}
+                          onClick={() => setSelectedHandwriting(style.id)}
+                          style={{ textAlign:'left', padding:'8px 10px', background:isSelected ? 'rgba(230,199,110,0.12)' : 'rgba(255,255,255,0.02)', border:`1px solid ${isSelected ? 'rgba(230,199,110,0.35)' : 'rgba(255,255,255,0.08)'}`, borderRadius:'4px', cursor:'pointer' }}>
+                          <p style={{ fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.16em', color:isSelected ? '#e6c76e' : 'rgba(255,255,255,0.78)', textTransform:'uppercase', margin:'0 0 3px' }}>{style.label}</p>
+                          <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'10px', color:'rgba(255,255,255,0.46)', margin:0 }}>{style.desc}</p>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <p style={{ fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.24em', color:'#e6c76e', textTransform:'uppercase', margin:'0 0 8px' }}>Embellishment</p>
+                  <div style={{ display:'flex', flexDirection:'column', gap:'6px' }}>
+                    {LETTER_EMBELLISHMENTS.map(embellishment => {
+                      const isSelected = selectedEmbellishment === embellishment.id
+                      return (
+                        <button
+                          key={embellishment.id}
+                          onClick={() => setSelectedEmbellishment(embellishment.id)}
+                          style={{ textAlign:'left', padding:'8px 10px', background:isSelected ? 'rgba(230,199,110,0.12)' : 'rgba(255,255,255,0.02)', border:`1px solid ${isSelected ? 'rgba(230,199,110,0.35)' : 'rgba(255,255,255,0.08)'}`, borderRadius:'4px', cursor:'pointer' }}>
+                          <p style={{ fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.16em', color:isSelected ? '#e6c76e' : 'rgba(255,255,255,0.78)', textTransform:'uppercase', margin:'0 0 3px' }}>{embellishment.label}</p>
+                          <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'10px', color:'rgba(255,255,255,0.46)', margin:0 }}>{embellishment.desc}</p>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
+              <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'11px', color:'rgba(255,255,255,0.44)', margin:'10px 0 0' }}>
+                Choose Typed for a cleaner typeset letter, or one of the handwritten forms for a more personal page.
+              </p>
+            </div>
+
+            <div style={{ marginTop:'8px', padding:'12px 14px', border:'1px solid rgba(140,160,255,0.16)', borderRadius:'6px', background:'rgba(30,34,70,0.12)' }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:'12px', flexWrap:'wrap' }}>
+                <div>
+                  <p style={{ fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.24em', color:'rgba(180,195,255,0.88)', textTransform:'uppercase', margin:'0 0 4px' }}>Voice Note From The Void</p>
+                  <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'11px', color:'rgba(255,255,255,0.55)', margin:0 }}>Optional, up to 30 seconds</p>
+                </div>
+                <div style={{ display:'flex', gap:'8px', flexWrap:'wrap' }}>
+                  {!isRecordingVoice ? (
+                    <button
+                      onClick={startVoiceRecording}
+                      style={{ background:'none', border:'1px solid rgba(180,195,255,0.3)', color:'rgba(210,220,255,0.9)', fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.18em', textTransform:'uppercase', padding:'6px 12px', cursor:'pointer', borderRadius:'2px' }}>
+                      {voiceNoteBlob ? 'Record Again' : 'Record'}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={stopVoiceRecording}
+                      style={{ background:'rgba(180,60,60,0.12)', border:'1px solid rgba(220,80,80,0.4)', color:'rgba(255,170,170,0.92)', fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.18em', textTransform:'uppercase', padding:'6px 12px', cursor:'pointer', borderRadius:'2px' }}>
+                      Stop Recording
+                    </button>
+                  )}
+                  {voiceNoteBlob && (
+                    <button
+                      onClick={clearVoiceNote}
+                      style={{ background:'none', border:'1px solid rgba(255,255,255,0.14)', color:'rgba(255,255,255,0.62)', fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.18em', textTransform:'uppercase', padding:'6px 12px', cursor:'pointer', borderRadius:'2px' }}>
+                      Remove
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(120px, 1fr))', gap:'8px', marginTop:'12px' }}>
+                {VOICE_EFFECT_OPTIONS.map(option => {
+                  const isSelected = voiceEffect === option.id
+                  return (
+                    <button
+                      key={option.id}
+                      onClick={() => setVoiceEffect(option.id)}
+                      style={{ textAlign:'left', padding:'8px 10px', background:isSelected ? 'rgba(180,195,255,0.12)' : 'rgba(255,255,255,0.02)', border:`1px solid ${isSelected ? 'rgba(180,195,255,0.45)' : 'rgba(255,255,255,0.08)'}`, borderRadius:'4px', cursor:'pointer' }}>
+                      <p style={{ fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.18em', color:isSelected ? 'rgba(210,220,255,0.95)' : 'rgba(255,255,255,0.78)', textTransform:'uppercase', margin:'0 0 4px' }}>{option.label}</p>
+                      <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'10px', color:'rgba(255,255,255,0.48)', margin:0 }}>{option.desc}</p>
+                    </button>
+                  )
+                })}
+              </div>
+
+              {isRecordingVoice && (
+                <p style={{ fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.2em', color:'rgba(255,140,140,0.88)', textTransform:'uppercase', margin:'12px 0 0' }}>
+                  Recording now...
+                </p>
+              )}
+
+              {voiceNoteUrl && (
+                <div style={{ marginTop:'12px' }}>
+                  <audio controls src={voiceNoteUrl} style={{ width:'100%', opacity:0.82 }} />
+                </div>
+              )}
+
+              {voiceError && (
+                <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'11px', color:'rgba(255,150,150,0.82)', margin:'10px 0 0' }}>{voiceError}</p>
+              )}
+            </div>
+
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:'12px', flexWrap:'wrap', gap:'8px' }}>
               <div style={{ display:'flex', alignItems:'center', gap:'6px', flexWrap:'wrap' }}>
                 {[
                   { label:selectedPaper.label, action:()=>setView('papers'), icon:'📄' },
                   { label:selectedFont.label, action:()=>setView('fonts'), icon:'✒' },
-                  { label:selectedStamp?STAMPS.find(s=>s.id===selectedStamp)?.label||'Stamp':'Stamp', action:()=>setView('stamps'), icon:'🔖' },
-                  { label:selectedColor?FONT_COLORS.find(c=>c.id===selectedColor)?.label||'Ink':'Ink Color', action:()=>setView('colors'), icon:'🎨' },
-                  { label:selectedPaperColor?PAPER_TONES.find(t=>t.id===selectedPaperColor)?.label||'Paper Tone':'Paper Tone', action:()=>setView('paper-color'), icon:'🗒' },
+                  { label:selectedStamp ? STAMPS.find(s=>s.id===selectedStamp)?.label || 'Stamp' : 'Stamp', action:()=>setView('stamps'), icon:'🔖' },
+                  { label:selectedColor ? FONT_COLORS.find(c=>c.id===selectedColor)?.label || 'Ink' : 'Ink', action:()=>setView('colors'), icon:'🎨' },
+                  { label:selectedPaperColor ? PAPER_TONES.find(t=>t.id===selectedPaperColor)?.label || 'Paper Tone' : 'Paper Tone', action:()=>setView('paper-color'), icon:'🗒' },
                   { label:ENVELOPES.find(e=>e.id===selectedEnvelope)?.label||'Envelope', action:()=>setView('envelopes'), icon:'✉' },
                 ].map((btn,i)=>(
                   <button key={i} onClick={btn.action}
@@ -772,6 +989,12 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
                     {btn.icon} {btn.label}
                   </button>
                 ))}
+                <span style={{ fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.15em', color:'rgba(255,255,255,0.56)', textTransform:'uppercase', padding:'5px 0', whiteSpace:'nowrap' }}>
+                  ✍ {HANDWRITING_STYLES.find(style=>style.id===selectedHandwriting)?.label || 'Typed'}
+                </span>
+                <span style={{ fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.15em', color:'rgba(255,255,255,0.56)', textTransform:'uppercase', padding:'5px 0', whiteSpace:'nowrap' }}>
+                  ❋ {LETTER_EMBELLISHMENTS.find(embellishment=>embellishment.id===selectedEmbellishment)?.label || 'None'}
+                </span>
               </div>
               <motion.button onClick={handleRelease} disabled={!body.trim()||releasing} whileTap={body.trim()?{scale:0.97}:{}}
                 style={{ padding:'11px 22px', background:'transparent', border:`1px solid ${body.trim()?'rgba(230,199,110,0.55)':'rgba(255,255,255,0.12)'}`, color:body.trim()?'#e6c76e':'rgba(255,255,255,0.42)', fontFamily:"'Cinzel', serif", fontSize:'10px', letterSpacing:'0.22em', textTransform:'uppercase', cursor:body.trim()?'pointer':'default', borderRadius:'2px', opacity:releasing?0.6:1 }}
@@ -833,7 +1056,7 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
             </motion.p>
             <motion.p initial={{ opacity:0 }} animate={{ opacity:1 }} transition={{ delay:0.8 }}
               style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'14px', color:'rgba(255,255,255,0.82)' }}>
-              {recipientName ? `traveling toward ${recipientName}...` : journalMode ? `opens ${new Date(Date.now() + capsuleDays * 86400000).toLocaleDateString('en-US', { month:'long', day:'numeric', year:'numeric' })}` : 'finding its way to a stranger...'}
+              {recipientName ? `traveling toward ${recipientName}...` : journalMode ? `opens ${formatCapsuleOpenDate(capsuleDays)}` : 'finding its way to a stranger...'}
             </motion.p>
           </motion.div>
         )}

@@ -1,8 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { signIn, signInWithGoogle, signInWithDiscord, signOut } from '../lib/auth'
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error && error.message ? error.message : fallback
+}
 
 function DiscordIcon() {
   return (
@@ -44,8 +48,9 @@ export function LoginScreen({
       await signOut()
       await signIn(email.trim(), password)
       onSuccess()
-    } catch (err: any) {
-      setError(err.message?.includes('Invalid login') ? 'Incorrect email or password.' : (err.message || 'Login failed.'))
+    } catch (err: unknown) {
+      const message = getErrorMessage(err, 'Login failed.')
+      setError(message.includes('Invalid login') ? 'Incorrect email or password.' : message)
     } finally { setLoading(false) }
   }
 
@@ -54,8 +59,8 @@ export function LoginScreen({
     try {
       await signOut()
       await signInWithGoogle()
-    } catch (err: any) {
-      setError(err.message || 'Google sign-in failed.')
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Google sign-in failed.'))
       setGoogleLoading(false)
     }
   }
@@ -65,8 +70,8 @@ export function LoginScreen({
     try {
       await signOut()
       await signInWithDiscord()
-    } catch (err: any) {
-      setError(err.message || 'Discord sign-in failed.')
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Discord sign-in failed.'))
       setDiscordLoading(false)
     }
   }
@@ -167,8 +172,8 @@ export function SignupScreen({
       // Store credentials so onboarding can use them to create the real account
       setPendingCredentials({ email: email.trim(), password })
       onSuccess()
-    } catch (err: any) {
-      setError(err.message || 'Signup failed.')
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Signup failed.'))
     } finally { setLoading(false) }
   }
 
@@ -178,8 +183,8 @@ export function SignupScreen({
       await signOut()
       setPendingCredentials(null)
       await signInWithGoogle()
-    } catch (err: any) {
-      setError(err.message || 'Google sign-in failed.')
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Google sign-in failed.'))
       setGoogleLoading(false)
     }
   }
@@ -190,8 +195,8 @@ export function SignupScreen({
       await signOut()
       setPendingCredentials(null)
       await signInWithDiscord()
-    } catch (err: any) {
-      setError(err.message || 'Discord sign-in failed.')
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Discord sign-in failed.'))
       setDiscordLoading(false)
     }
   }

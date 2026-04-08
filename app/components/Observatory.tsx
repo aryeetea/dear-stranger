@@ -3,8 +3,10 @@
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { getMyLetters, archiveLetter, deleteLetter } from '../lib/auth'
+import { playAudioWithEffect, type VoiceEffect } from '../../lib/audioEffects'
 import { playWaxSeal } from '../../lib/sounds'
 import { PAPER_TONES, PAPER_INK, renderLetterPaper } from '../lib/letterPapers'
+import { getHandwritingStyleStyles, renderLetterEmbellishment, type HandwritingStyle, type EmbellishmentId } from '../lib/letterEnrichments'
 
 // ── Static stars — no Math.random in render ──
 const OBS_STARS = Array.from({ length: 30 }, (_, i) => ({
@@ -69,6 +71,34 @@ interface Letter {
   direction: 'sent' | 'received'
   isUniverseLetter?: boolean
   burnAfterReading?: boolean
+  voiceNoteUrl?: string
+  voiceEffect?: VoiceEffect
+  handwritingStyle?: HandwritingStyle
+  embellishmentId?: EmbellishmentId
+}
+
+type LetterRow = {
+  id: string
+  sender_id?: string | null
+  sender?: { hub_name?: string | null } | null
+  recipient?: { hub_name?: string | null } | null
+  subject?: string | null
+  body?: string | null
+  paper_id?: string | null
+  font_id?: string | null
+  font_color?: string | null
+  paper_color?: string | null
+  stamp_id?: string | null
+  envelope_id?: string | null
+  created_at?: string | null
+  arrives_at?: string | null
+  status?: string | null
+  is_universe_letter?: boolean | null
+  burn_after_reading?: boolean | null
+  voice_note_url?: string | null
+  voice_effect?: string | null
+  handwriting_style?: string | null
+  embellishment_id?: string | null
 }
 
 const PAPER_COLORS: Record<string, { accent: string; bg: string }> = {
@@ -91,6 +121,35 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max)
 }
 
+function daysBetween(now: Date, then: Date) {
+  return Math.round((now.getTime() - then.getTime()) / 86400000)
+}
+
+function getAnniversaryLabel(dateString: string) {
+  const now = new Date()
+  const then = new Date(dateString)
+  const diffDays = daysBetween(now, then)
+  if (diffDays < 27) return null
+  if (diffDays >= 27 && diffDays <= 33) return 'One month ago'
+  if (diffDays >= 87 && diffDays <= 95) return 'Three months ago'
+  if (diffDays >= 178 && diffDays <= 188) return 'Six months ago'
+
+  const yearDiff = now.getFullYear() - then.getFullYear()
+  const sameSeasonWindow = Math.abs(now.getMonth() - then.getMonth()) <= 1 && Math.abs(now.getDate() - then.getDate()) <= 7
+  if (yearDiff === 1 && sameSeasonWindow) return 'One year ago'
+  if (yearDiff > 1 && sameSeasonWindow) return `${yearDiff} years ago`
+  return null
+}
+
+function formatObservatoryDate(dateString?: string) {
+  if (!dateString) return 'Awaiting a timestamp'
+  return new Date(dateString).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })
+}
+
 export default function Observatory({
   onClose,
   onWriteLetter,
@@ -106,6 +165,12 @@ export default function Observatory({
     archive: Letter[]
   }>({ transit: [], arrived: [], archive: [] })
   const [loading, setLoading] = useState(true)
+  const [currentTime, setCurrentTime] = useState(() => Date.now())
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setCurrentTime(Date.now()), 60000)
+    return () => window.clearInterval(timer)
+  }, [])
 
   useEffect(() => {
     async function loadLetters() {
@@ -113,12 +178,14 @@ export default function Observatory({
         setLoading(true)
         const data = await getMyLetters()
 
-        const mapSentLetter = (l: any): Letter => {
-          const createdMs = new Date(l.created_at).getTime()
+        const mapSentLetter = (l: LetterRow): Letter => {
+          const createdAt = l.created_at || new Date().toISOString()
+          const createdMs = new Date(createdAt).getTime()
           const arrivesMs = l.arrives_at ? new Date(l.arrives_at).getTime() : createdMs
           const nowMs = Date.now()
           const totalMs = arrivesMs - createdMs
           const rawProgress = totalMs > 0 ? ((nowMs - createdMs) / totalMs) * 100 : 100
+          const status: Letter['status'] = l.status === 'transit' || l.status === 'archive' || l.status === 'arrived' ? l.status : 'arrived'
           return {
             id: l.id,
             from: l.sender?.hub_name || 'You',
@@ -131,24 +198,30 @@ export default function Observatory({
             paperColor: l.paper_color || undefined,
             stampId: l.stamp_id || undefined,
             envelopeId: l.envelope_id || undefined,
-            sentAt: l.created_at,
+            sentAt: createdAt,
             arrivedAt: l.arrives_at || undefined,
-            status: l.status,
+            status,
             direction: 'sent',
-            travelProgress: l.status === 'transit' ? clamp(Math.floor(rawProgress), 0, 100) : undefined,
+            travelProgress: status === 'transit' ? clamp(Math.floor(rawProgress), 0, 100) : undefined,
             isUniverseLetter: l.is_universe_letter ?? false,
             burnAfterReading: l.burn_after_reading ?? false,
+            voiceNoteUrl: l.voice_note_url || undefined,
+            voiceEffect: (l.voice_effect as VoiceEffect | null) || undefined,
+            handwritingStyle: (l.handwriting_style as HandwritingStyle | null) || 'typed',
+            embellishmentId: (l.embellishment_id as EmbellishmentId | null) || 'none',
           }
         }
 
-        const mapReceivedLetter = (l: any): Letter => {
-          const createdMs = new Date(l.created_at).getTime()
+        const mapReceivedLetter = (l: LetterRow): Letter => {
+          const createdAt = l.created_at || new Date().toISOString()
+          const createdMs = new Date(createdAt).getTime()
           const arrivesMs = l.arrives_at ? new Date(l.arrives_at).getTime() : createdMs
           const nowMs = Date.now()
           const totalMs = arrivesMs - createdMs
           const rawProgress = totalMs > 0 ? ((nowMs - createdMs) / totalMs) * 100 : 100
           // Client-side: if arrives_at has passed, treat as arrived even if DB hasn't updated yet
-          const effectiveStatus = (l.status === 'transit' && l.arrives_at && nowMs >= arrivesMs) ? 'arrived' : l.status
+          const baseStatus: Letter['status'] = l.status === 'transit' || l.status === 'archive' || l.status === 'arrived' ? l.status : 'arrived'
+          const effectiveStatus = (baseStatus === 'transit' && l.arrives_at && nowMs >= arrivesMs) ? 'arrived' : baseStatus
           return {
             id: l.id,
             from: l.sender?.hub_name || 'Unknown Sender',
@@ -161,18 +234,22 @@ export default function Observatory({
             paperColor: l.paper_color || undefined,
             stampId: l.stamp_id || undefined,
             envelopeId: l.envelope_id || undefined,
-            sentAt: l.created_at,
+            sentAt: createdAt,
             arrivedAt: l.arrives_at || undefined,
-            status: effectiveStatus as Letter['status'],
+            status: effectiveStatus,
             direction: 'received',
             travelProgress: effectiveStatus === 'transit' ? clamp(Math.floor(rawProgress), 0, 100) : undefined,
             isUniverseLetter: l.is_universe_letter ?? false,
             burnAfterReading: l.burn_after_reading ?? false,
+            voiceNoteUrl: l.voice_note_url || undefined,
+            voiceEffect: (l.voice_effect as VoiceEffect | null) || undefined,
+            handwritingStyle: (l.handwriting_style as HandwritingStyle | null) || 'typed',
+            embellishmentId: (l.embellishment_id as EmbellishmentId | null) || 'none',
           }
         }
 
         const userId = data.userId
-        const mapLetter = (l: any): Letter =>
+        const mapLetter = (l: LetterRow): Letter =>
           l.sender_id === userId ? mapSentLetter(l) : mapReceivedLetter(l)
 
         const allMapped = [
@@ -198,6 +275,13 @@ export default function Observatory({
   const transit = letters.transit
   const arrived = letters.arrived
   const archive = letters.archive
+  const totalLetters = transit.length + arrived.length + archive.length
+  const newlyArrivedCount = arrived.filter(letter => (currentTime - new Date(letter.arrivedAt || letter.sentAt).getTime()) < 48 * 3600000).length
+  const anniversaryLetters = [...arrived, ...archive]
+    .map(letter => ({ letter, label: getAnniversaryLabel(letter.arrivedAt || letter.sentAt) }))
+    .filter((entry): entry is { letter: Letter; label: string } => !!entry.label)
+    .sort((a, b) => new Date(b.letter.arrivedAt || b.letter.sentAt).getTime() - new Date(a.letter.arrivedAt || a.letter.sentAt).getTime())
+    .slice(0, 4)
 
   async function handleArchive(letter: Letter) {
     await archiveLetter(letter.id)
@@ -237,14 +321,17 @@ export default function Observatory({
       className="fixed-scroll-panel"
       style={{
         position: 'fixed', inset: 0,
-        background: 'rgba(0,0,5,0.97)',
+        background: 'rgba(14,10,24,0.94)',
         backdropFilter: 'blur(20px)',
         WebkitBackdropFilter: 'blur(20px)',
         zIndex: 70, overflowY: 'auto',
         padding: '80px 20px 120px',
       }}
     >
-      <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', background: `radial-gradient(ellipse 50% 40% at 15% 25%, rgba(30,15,70,0.2) 0%, transparent 65%), radial-gradient(ellipse 40% 50% at 85% 75%, rgba(8,20,60,0.18) 0%, transparent 65%)` }} />
+      <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', background: `radial-gradient(ellipse 52% 44% at 14% 20%, rgba(255,190,214,0.18) 0%, transparent 68%), radial-gradient(ellipse 42% 40% at 84% 16%, rgba(153,220,255,0.18) 0%, transparent 72%), radial-gradient(ellipse 44% 44% at 76% 80%, rgba(255,214,170,0.12) 0%, transparent 74%), radial-gradient(ellipse 38% 30% at 40% 58%, rgba(211,173,255,0.14) 0%, transparent 70%), linear-gradient(180deg, rgba(36,22,58,0.34) 0%, rgba(16,10,28,0.84) 100%)` }} />
+      <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', opacity: 0.09, mixBlendMode: 'screen', backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 220 220'%3E%3Cfilter id='grain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23grain)' opacity='0.72'/%3E%3C/svg%3E\")" }} />
+      <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', boxShadow: 'inset 0 0 220px rgba(22,10,38,0.44)' }} />
+      <div style={{ position: 'fixed', left: '50%', top: '42%', width: 'min(72vw, 760px)', height: 'min(72vw, 760px)', transform: 'translate(-50%, -50%)', pointerEvents: 'none', borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,242,245,0.12) 0%, rgba(196,170,255,0.06) 28%, rgba(134,220,255,0.04) 46%, transparent 72%)', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 0 0 80px rgba(255,228,238,0.02), 0 0 0 170px rgba(170,218,255,0.014)' }} />
 
       {/* Static stars */}
       <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0 }}>
@@ -264,40 +351,93 @@ export default function Observatory({
         ← Universe
       </motion.button>
 
-      <div style={{ maxWidth: '720px', margin: '0 auto', position: 'relative', zIndex: 2 }}>
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
-          style={{ textAlign: 'center', marginBottom: '48px' }}>
-          <p style={{ fontFamily: "'Cinzel', serif", fontSize: 'clamp(20px, 3vw, 28px)', fontWeight: 300, letterSpacing: '0.4em', color: '#e6c76e', textTransform: 'uppercase', marginBottom: '10px', textShadow: '0 0 10px rgba(230,199,110,0.22)' }}>
-            The Observatory
-          </p>
-          <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '15px', color: 'rgba(255,255,255,0.82)', letterSpacing: '0.06em' }}>
-            letters in motion, letters at rest
-          </p>
-        </motion.div>
+      <div style={{ maxWidth: '1180px', margin: '0 auto', position: 'relative', zIndex: 2 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(280px, 340px) minmax(0, 1fr)', gap: '22px', alignItems: 'start' }}>
+          <motion.aside initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.45 }} style={{ position: 'sticky', top: '88px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+            <div style={{ padding: '22px 20px', borderRadius: '30px', border: '1px solid rgba(255,255,255,0.12)', background: 'linear-gradient(180deg, rgba(255,255,255,0.16), rgba(255,255,255,0.06))', boxShadow: '0 28px 80px rgba(20,12,38,0.28)', backdropFilter: 'blur(16px)' }}>
+              <div style={{ width: '100%', aspectRatio: '1 / 1', maxWidth: '220px', margin: '0 auto 20px', borderRadius: '50%', position: 'relative', background: 'radial-gradient(circle at 42% 38%, rgba(255,252,246,0.96), rgba(255,214,230,0.42) 26%, rgba(171,220,255,0.24) 48%, rgba(255,255,255,0.04) 66%, rgba(8,10,24,0) 74%)', boxShadow: '0 0 56px rgba(255,220,236,0.22)' }}>
+                <div style={{ position: 'absolute', inset: '9%', borderRadius: '50%', border: '1px solid rgba(255,255,255,0.3)' }} />
+                <div style={{ position: 'absolute', inset: '22%', borderRadius: '50%', border: '1px dashed rgba(255,255,255,0.26)' }} />
+                <div style={{ position: 'absolute', inset: '30%', borderRadius: '50%', background: 'radial-gradient(circle, rgba(198,243,255,0.3), transparent 70%)' }} />
+              </div>
+              <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.38em', color: 'rgba(255,234,196,0.84)', textTransform: 'uppercase', marginBottom: '10px', textAlign: 'center' }}>Moonwashed Archive</p>
+              <p style={{ fontFamily: "'Cinzel', serif", fontSize: 'clamp(24px, 3vw, 34px)', letterSpacing: '0.22em', color: '#fff4f8', textTransform: 'uppercase', marginBottom: '10px', textAlign: 'center', textShadow: '0 8px 24px rgba(255,214,230,0.24)' }}>The Observatory</p>
+              <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '16px', color: 'rgba(255,255,255,0.82)', lineHeight: 1.65, textAlign: 'center' }}>
+                A tower ledger for letters that are arriving, lingering, and fading into memory.
+              </p>
+            </div>
 
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}
-          style={{ display: 'flex', background: 'rgba(10,12,30,0.68)', border: '1px solid rgba(230,199,110,0.16)', borderRadius: '4px', overflow: 'hidden', marginBottom: '32px' }}>
-          {tabs.map((tab, i) => (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-              style={{ flex: 1, padding: '14px 8px', background: activeTab === tab.id ? 'rgba(230,199,110,0.1)' : 'transparent', border: 'none', borderRight: i < 2 ? '1px solid rgba(255,255,255,0.08)' : 'none', cursor: 'pointer', transition: 'background 0.3s', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-              <span style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.25em', textTransform: 'uppercase', color: activeTab === tab.id ? '#e6c76e' : 'rgba(255,255,255,0.72)', transition: 'color 0.3s' }}>
-                {tab.label}
-              </span>
-              <span style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', color: activeTab === tab.id ? 'rgba(230,199,110,0.82)' : 'rgba(255,255,255,0.55)', transition: 'color 0.3s' }}>
-                {tab.count} {tab.count === 1 ? 'letter' : 'letters'}
-              </span>
-            </button>
-          ))}
-        </motion.div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px' }}>
+              {[
+                { label: 'Total Letters', value: totalLetters, note: 'all constellations' },
+                { label: 'New Arrivals', value: newlyArrivedCount, note: 'past two days' },
+                { label: 'Anniversaries', value: anniversaryLetters.length, note: 'currently glowing' },
+              ].map(stat => (
+                <div key={stat.label} style={{ padding: '16px 16px 14px', borderRadius: '22px', background: 'linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.07))', border: '1px solid rgba(255,255,255,0.12)', boxShadow: '0 14px 32px rgba(28,16,44,0.16)', backdropFilter: 'blur(14px)' }}>
+                  <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.28em', color: 'rgba(255,234,196,0.8)', textTransform: 'uppercase', marginBottom: '10px' }}>{stat.label}</p>
+                  <p style={{ fontFamily: "'Cinzel', serif", fontSize: '32px', color: '#fff5f8', marginBottom: '6px' }}>{stat.value}</p>
+                  <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '12px', color: 'rgba(255,255,255,0.68)', lineHeight: 1.4 }}>{stat.note}</p>
+                </div>
+              ))}
+            </div>
 
-        <AnimatePresence mode="wait">
-          <motion.div key={activeTab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.3 }}>
+            {anniversaryLetters.length > 0 && (
+              <div style={{ padding: '18px', borderRadius: '26px', background: 'linear-gradient(180deg, rgba(255,228,238,0.18), rgba(183,230,255,0.08))', border: '1px solid rgba(255,255,255,0.12)', boxShadow: '0 22px 48px rgba(24,14,40,0.2)', backdropFilter: 'blur(14px)' }}>
+                <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.34em', color: '#fff0c8', textTransform: 'uppercase', marginBottom: '6px' }}>Orbital Returns</p>
+                <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(255,255,255,0.74)', marginBottom: '12px' }}>old words flashing by again</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {anniversaryLetters.map(({ letter, label }) => (
+                    <button
+                      key={letter.id}
+                      onClick={() => setOpenLetter(letter)}
+                      style={{ textAlign: 'left', padding: '12px 12px 11px', background: 'rgba(255,255,255,0.14)', border: '1px solid rgba(255,255,255,0.14)', borderRadius: '16px', cursor: 'pointer', backdropFilter: 'blur(10px)' }}>
+                      <p style={{ fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.18em', color: 'rgba(255,240,206,0.92)', textTransform: 'uppercase', marginBottom: '6px' }}>{label}</p>
+                      <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(255,255,255,0.88)', lineHeight: 1.45, marginBottom: '6px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{letter.preview}</p>
+                      <p style={{ fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.14em', color: 'rgba(255,255,255,0.56)', textTransform: 'uppercase' }}>{letter.direction === 'received' ? `From ${letter.from}` : `To ${letter.to}`}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </motion.aside>
+
+          <div>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.18 }}
+              style={{ display: 'flex', background: 'linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.07))', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '24px', overflow: 'hidden', marginBottom: '18px', padding: '6px', boxShadow: '0 18px 40px rgba(22,12,38,0.18)', backdropFilter: 'blur(14px)' }}>
+              {tabs.map((tab, i) => (
+                <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                  style={{ flex: 1, padding: '15px 8px', background: activeTab === tab.id ? 'linear-gradient(180deg, rgba(255,235,246,0.24), rgba(196,230,255,0.16))' : 'transparent', border: 'none', borderRight: i < 2 ? '1px solid rgba(255,255,255,0.08)' : 'none', cursor: 'pointer', transition: 'background 0.3s', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', borderRadius: '18px', boxShadow: activeTab === tab.id ? 'inset 0 1px 0 rgba(255,255,255,0.22), 0 10px 24px rgba(255,220,236,0.08)' : 'none' }}>
+                  <span style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.25em', textTransform: 'uppercase', color: activeTab === tab.id ? '#fff0c8' : 'rgba(255,255,255,0.8)', transition: 'color 0.3s' }}>
+                    {tab.label}
+                  </span>
+                  <span style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', color: activeTab === tab.id ? 'rgba(255,245,221,0.92)' : 'rgba(255,255,255,0.6)', transition: 'color 0.3s' }}>
+                    {tab.count} {tab.count === 1 ? 'letter' : 'letters'}
+                  </span>
+                </button>
+              ))}
+            </motion.div>
+
+            <AnimatePresence mode="wait">
+              <motion.div key={activeTab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.3 }} style={{ padding: '18px clamp(16px, 2vw, 24px) 22px', background: 'linear-gradient(180deg, rgba(255,255,255,0.16), rgba(255,255,255,0.06))', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '30px', boxShadow: '0 26px 72px rgba(20,12,40,0.24), inset 0 1px 0 rgba(255,255,255,0.08)', backdropFilter: 'blur(16px)' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-end', marginBottom: '18px' }}>
+              <div>
+                <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.3em', color: 'rgba(255,234,196,0.78)', textTransform: 'uppercase', marginBottom: '6px' }}>
+                  {activeTab === 'transit' ? 'Current Orbit' : activeTab === 'arrived' ? 'Open Constellation' : 'Silent Stacks'}
+                </p>
+                <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(255,255,255,0.76)' }}>
+                  {activeTab === 'transit' ? 'Letters still crossing the dark.' : activeTab === 'arrived' ? 'Recent arrivals waiting to be opened.' : 'Words preserved after their brightest glow.'}
+                </p>
+              </div>
+              <div style={{ padding: '10px 14px', borderRadius: '999px', border: '1px solid rgba(255,255,255,0.14)', background: 'rgba(255,255,255,0.12)' }}>
+                <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.24em', color: 'rgba(255,245,220,0.84)', textTransform: 'uppercase' }}>{currentLetters.length} visible</p>
+              </div>
+            </div>
             {loading ? (
-              <div style={{ textAlign: 'center', padding: '60px 0' }}>
+              <div style={{ textAlign: 'center', padding: '72px 0', borderRadius: '18px', background: 'linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01))', border: '1px solid rgba(255,255,255,0.05)' }}>
                 <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '16px', color: 'rgba(255,255,255,0.75)' }}>loading letters...</p>
               </div>
             ) : currentLetters.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '60px 0' }}>
+              <div style={{ textAlign: 'center', padding: '72px 0', borderRadius: '18px', background: 'linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01))', border: '1px solid rgba(255,255,255,0.05)' }}>
                 <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '16px', color: 'rgba(255,255,255,0.75)' }}>
                   {activeTab === 'transit' && 'No letters traveling at the moment.'}
                   {activeTab === 'arrived' && 'No letters have arrived yet.'}
@@ -307,40 +447,66 @@ export default function Observatory({
             ) : (() => {
               const sentLetters = currentLetters.filter(l => l.direction === 'sent')
               const receivedLetters = currentLetters.filter(l => l.direction === 'received')
+              const displayLetters = [...receivedLetters, ...sentLetters]
+              const featuredLetter = displayLetters[0]
+              const galleryLetters = displayLetters.slice(1)
               const isClickable = (l: Letter) => l.status !== 'transit'
               return (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
-                  {receivedLetters.length > 0 && (
-                    <div>
-                      <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.35em', color: 'rgba(230,199,110,0.6)', textTransform: 'uppercase', marginBottom: '10px' }}>
-                        {activeTab === 'transit' ? 'Incoming' : 'Received'}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+                  {featuredLetter && (
+                    <button
+                      onClick={() => isClickable(featuredLetter) && setOpenLetter(featuredLetter)}
+                      style={{
+                        textAlign: 'left',
+                        padding: '24px',
+                        borderRadius: '28px',
+                        border: '1px solid rgba(255,255,255,0.14)',
+                        background: 'linear-gradient(135deg, rgba(255,244,248,0.18), rgba(204,232,255,0.1) 52%, rgba(255,216,173,0.1) 100%)',
+                        cursor: isClickable(featuredLetter) ? 'pointer' : 'default',
+                        boxShadow: '0 22px 50px rgba(22,12,40,0.18)',
+                        backdropFilter: 'blur(16px)',
+                      }}>
+                      <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.34em', color: 'rgba(255,241,205,0.86)', textTransform: 'uppercase', marginBottom: '10px' }}>
+                        Featured {featuredLetter.direction === 'received' ? 'Arrival' : 'Dispatch'}
                       </p>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                        {receivedLetters.map((letter, i) => (
-                          <LetterEntry key={letter.id} letter={letter} index={i}
-                            onClick={() => isClickable(letter) && setOpenLetter(letter)} />
-                        ))}
+                      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.4fr) minmax(180px, 0.8fr)', gap: '18px', alignItems: 'end' }}>
+                        <div>
+                          <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '24px', lineHeight: 1.4, color: 'rgba(255,255,255,0.96)', marginBottom: '12px', textShadow: '0 8px 30px rgba(255,214,230,0.16)' }}>
+                            {featuredLetter.preview}
+                          </p>
+                          <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px', lineHeight: 1.75, color: 'rgba(255,255,255,0.72)', maxWidth: '560px' }}>
+                            {featuredLetter.direction === 'received' ? `From ${featuredLetter.from}` : `To ${featuredLetter.to}`} · {formatObservatoryDate(featuredLetter.arrivedAt || featuredLetter.sentAt)}
+                          </p>
+                        </div>
+                        <div style={{ display: 'grid', gap: '10px' }}>
+                          <div style={{ padding: '12px 14px', borderRadius: '18px', background: 'rgba(255,255,255,0.14)', border: '1px solid rgba(255,255,255,0.12)' }}>
+                            <p style={{ fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.2em', color: 'rgba(255,241,205,0.82)', textTransform: 'uppercase', marginBottom: '6px' }}>Status</p>
+                            <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '15px', color: 'rgba(255,255,255,0.82)' }}>{featuredLetter.status === 'transit' ? 'Traveling now' : featuredLetter.status === 'archive' ? 'Archived softly' : 'Ready to open'}</p>
+                          </div>
+                          <div style={{ padding: '12px 14px', borderRadius: '18px', background: 'rgba(255,255,255,0.14)', border: '1px solid rgba(255,255,255,0.12)' }}>
+                            <p style={{ fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.2em', color: 'rgba(255,241,205,0.82)', textTransform: 'uppercase', marginBottom: '6px' }}>Direction</p>
+                            <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '15px', color: 'rgba(255,255,255,0.82)' }}>{featuredLetter.direction === 'received' ? 'Incoming constellation' : 'Sent across the map'}</p>
+                          </div>
+                        </div>
                       </div>
-                    </div>
+                    </button>
                   )}
-                  {sentLetters.length > 0 && (
-                    <div>
-                      <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.35em', color: 'rgba(230,199,110,0.6)', textTransform: 'uppercase', marginBottom: '10px' }}>
-                        {activeTab === 'transit' ? 'Sending' : 'Sent'}
-                      </p>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                        {sentLetters.map((letter, i) => (
-                          <LetterEntry key={letter.id} letter={letter} index={i}
-                            onClick={() => isClickable(letter) && setOpenLetter(letter)} />
-                        ))}
-                      </div>
+
+                  {galleryLetters.length > 0 && (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '14px' }}>
+                      {galleryLetters.map((letter, i) => (
+                        <LetterEntry key={letter.id} letter={letter} index={i} currentTime={currentTime}
+                          onClick={() => isClickable(letter) && setOpenLetter(letter)} />
+                      ))}
                     </div>
                   )}
                 </div>
               )
             })()}
-          </motion.div>
-        </AnimatePresence>
+              </motion.div>
+            </AnimatePresence>
+          </div>
+        </div>
       </div>
 
       <AnimatePresence>
@@ -355,11 +521,14 @@ export default function Observatory({
   )
 }
 
-function LetterEntry({ letter, index, onClick }: { letter: Letter; index: number; onClick: () => void }) {
+function LetterEntry({ letter, index, onClick, currentTime }: { letter: Letter; index: number; onClick: () => void; currentTime: number }) {
   const colors = PAPER_COLORS[letter.paperId] || PAPER_COLORS.ornate
   const isTransit = letter.status === 'transit'
+  const isNewArrival = !isTransit && letter.direction === 'received' && (currentTime - new Date(letter.arrivedAt || letter.sentAt).getTime()) < 48 * 3600000
+  const displayDate = formatObservatoryDate(isTransit ? letter.arrivedAt : (letter.arrivedAt || letter.sentAt))
+  const statusLabel = isTransit ? 'In transit' : letter.status === 'archive' ? 'Archived' : isNewArrival ? 'New arrival' : 'Settled'
 
-  const ageDays = (Date.now() - new Date(letter.sentAt).getTime()) / 86400000
+  const ageDays = (currentTime - new Date(letter.sentAt).getTime()) / 86400000
   const agePct = letter.status === 'archive' ? Math.min(Math.max((ageDays - 7) / 23, 0), 1) : 0
   const ageFilter = agePct > 0 ? `sepia(${Math.round(agePct * 55)}%) saturate(${(1 - agePct * 0.3).toFixed(2)}) brightness(${(1 - agePct * 0.08).toFixed(2)})` : undefined
 
@@ -371,55 +540,88 @@ function LetterEntry({ letter, index, onClick }: { letter: Letter; index: number
       onClick={onClick}
       style={{
         display: 'flex',
-        alignItems: 'flex-start',
-        gap: '16px',
-        padding: '18px 20px',
-        background: colors.bg,
-        border: `1.5px solid ${isTransit ? 'rgba(230,199,110,0.28)' : 'rgba(255,255,255,0.18)'}`,
-        borderRadius: '4px',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        gap: '14px',
+        minHeight: isTransit ? '220px' : '190px',
+        padding: '18px',
+        background: `linear-gradient(135deg, rgba(255,242,247,0.18), ${colors.bg} 42%, rgba(180,228,255,0.12) 100%)`,
+        border: `1.5px solid ${isTransit ? 'rgba(255,234,198,0.34)' : 'rgba(255,255,255,0.14)'}`,
+        borderRadius: '22px',
         cursor: isTransit ? 'default' : 'pointer',
-        transition: 'background 0.2s',
+        transition: 'background 0.2s, transform 0.2s, border-color 0.2s',
         position: 'relative',
         overflow: 'hidden',
-        boxShadow: isTransit ? `0 2px 8px ${colors.accent}22` : `0 1px 6px #0002`,
+        boxShadow: isTransit ? `0 16px 36px rgba(24,14,40,0.18), 0 2px 8px ${colors.accent}22` : `0 14px 34px rgba(24,14,40,0.2), 0 1px 6px rgba(255,255,255,0.06)`,
         filter: ageFilter,
+        backdropFilter: 'blur(14px)',
       }}
-      whileHover={!isTransit ? ({ backgroundColor: 'rgba(255,255,255,0.07)' } as never) : {}}
+      whileHover={!isTransit ? ({ y: -2, borderColor: 'rgba(255,240,205,0.34)' } as never) : {}}
     >
-      <div style={{ fontSize: '18px', lineHeight: 1, flexShrink: 0, marginTop: '2px', opacity: isTransit ? 0.85 : letter.status === 'archive' ? 0.7 : 1, filter: isTransit ? 'none' : `drop-shadow(0 0 4px ${colors.accent}80)` }}>
-        {isTransit ? '✦' : (letter.burnAfterReading && letter.direction === 'received') ? '🔥' : '📜'}
+      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg, rgba(255,255,255,0.12), transparent 18%, transparent 82%, rgba(255,255,255,0.04))', pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', right: '16px', top: '14px', width: '64px', height: '64px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,255,255,0.16), transparent 70%)', pointerEvents: 'none' }} />
+      {isNewArrival && (
+        <motion.div
+          animate={{ opacity: [0.18, 0.42, 0.18] }}
+          transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
+          style={{ position: 'absolute', inset: 0, background: 'linear-gradient(110deg, transparent 0%, rgba(255,221,234,0.06) 35%, rgba(214,244,255,0.18) 50%, rgba(255,233,191,0.06) 65%, transparent 100%)', pointerEvents: 'none' }}
+        />
+      )}
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
+        <div style={{ fontSize: '18px', lineHeight: 1, flexShrink: 0, marginTop: '2px', opacity: isTransit ? 0.85 : letter.status === 'archive' ? 0.7 : 1, filter: isTransit ? 'none' : `drop-shadow(0 0 4px ${colors.accent}80)` }}>
+          {isTransit ? '✦' : (letter.burnAfterReading && letter.direction === 'received') ? '🔥' : '📜'}
+        </div>
+        <span style={{ padding: '6px 10px', borderRadius: '999px', border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.12)', fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.18em', color: isTransit ? '#fff0c8' : 'rgba(255,255,255,0.82)', textTransform: 'uppercase' }}>
+          {statusLabel}
+        </span>
       </div>
 
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: '5px' }}>
-          <p style={{ fontFamily: "'Cinzel', serif", fontSize: '11px', letterSpacing: '0.18em', color: colors.accent, textTransform: 'uppercase', textShadow: '0 1px 6px #fff8, 0 0px 1px #fff4' }}>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ marginBottom: '10px' }}>
+          <p style={{ fontFamily: "'Cinzel', serif", fontSize: '11px', letterSpacing: '0.18em', color: '#fff0c8', textTransform: 'uppercase', textShadow: '0 1px 6px #fff8, 0 0px 1px #fff4' }}>
             {letter.direction === 'received' ? `From · ${letter.from}` : `To · ${letter.to}`}
           </p>
-          <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.15em', color: 'rgba(255,255,255,0.82)', whiteSpace: 'nowrap', flexShrink: 0, textShadow: '0 1px 6px #fff8, 0 0px 1px #fff4' }}>
-            {isTransit ? 'traveling' : letter.arrivedAt || letter.sentAt}
+          <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.16em', color: 'rgba(255,255,255,0.62)', textTransform: 'uppercase', marginTop: '8px' }}>
+            {displayDate}
           </p>
         </div>
 
-        <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(255,255,255,0.92)', lineHeight: 1.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textShadow: '0 1px 6px #fff8, 0 0px 1px #fff4' }}>
+        <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '16px', color: 'rgba(255,255,255,0.92)', lineHeight: 1.55, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', textShadow: '0 1px 6px #fff8, 0 0px 1px #fff4' }}>
           {letter.preview}
         </p>
 
         {isTransit && (
-          <div style={{ marginTop: '12px' }}>
+          <div style={{ marginTop: '14px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
               <span style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.2em', color: 'rgba(255,255,255,0.82)', textTransform: 'uppercase', textShadow: '0 1px 6px #fff8, 0 0px 1px #fff4' }}>In transit</span>
               <span style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.15em', color: 'rgba(230,199,110,0.95)', textShadow: '0 1px 6px #fff8, 0 0px 1px #fff4' }}>{letter.travelProgress ?? 0}%</span>
             </div>
-            <div style={{ height: '2px', background: 'rgba(255,255,255,0.14)', borderRadius: '1px', overflow: 'hidden', position: 'relative' }}>
-              <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${letter.travelProgress ?? 0}%`, background: `linear-gradient(90deg, transparent, ${colors.accent})` }} />
-              <motion.div
-                animate={{ left: ['0%', '100%'] }}
-                transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
-                style={{ position: 'absolute', top: 0, bottom: 0, width: '40px', background: `linear-gradient(90deg, transparent, ${colors.accent}cc, transparent)`, filter: 'blur(2px)' }}
-              />
+            <div style={{ height: '52px', position: 'relative' }}>
+              <svg viewBox="0 0 160 52" width="100%" height="52" preserveAspectRatio="none" style={{ overflow: 'visible' }}>
+                <path d="M 16 26 C 38 4, 122 4, 144 26 C 122 48, 38 48, 16 26" fill="none" stroke="rgba(230,199,110,0.22)" strokeWidth="1.1" strokeDasharray="3 4" />
+                <path d="M 16 26 C 38 4, 122 4, 144 26" fill="none" stroke="rgba(230,199,110,0.12)" strokeWidth="0.8" />
+                <path d="M 16 26 C 38 48, 122 48, 144 26" fill="none" stroke="rgba(230,199,110,0.08)" strokeWidth="0.8" />
+                <motion.circle
+                  cx={16 + ((letter.travelProgress ?? 0) / 100) * 128}
+                  cy={26}
+                  r="4.6"
+                  animate={{ r: [4.2, 5.4, 4.2], opacity: [0.8, 1, 0.8] }}
+                  transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+                  fill="rgba(255,230,150,0.95)"
+                />
+                <motion.circle
+                  cx={16 + ((letter.travelProgress ?? 0) / 100) * 128}
+                  cy={26}
+                  r="8.2"
+                  animate={{ r: [7.4, 10.2, 7.4], opacity: [0.16, 0.28, 0.16] }}
+                  transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+                  fill="rgba(230,199,110,0.45)"
+                />
+              </svg>
             </div>
             {letter.arrivedAt && (() => {
-              const msLeft = new Date(letter.arrivedAt).getTime() - Date.now()
+              const msLeft = new Date(letter.arrivedAt).getTime() - currentTime
               const hoursLeft = Math.ceil(msLeft / (1000 * 60 * 60))
               const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24))
               let etaText: string
@@ -538,10 +740,12 @@ function LetterModal({
   const bodyColor = (letter.fontColor && FONT_COLOR_MAP[letter.fontColor])
     ? FONT_COLOR_MAP[letter.fontColor]
     : defaultInk
+  const writingStyle = getHandwritingStyleStyles(letter.handwritingStyle || 'typed')
 
   const isReceivedLetter = letter.direction === 'received' && (letter.status === 'arrived' || letter.status === 'archive')
   const isBurnReceived = isReceivedLetter && !!letter.burnAfterReading
   const [burnConfirmed, setBurnConfirmed] = useState(false)
+  const [isPlayingVoice, setIsPlayingVoice] = useState(false)
   const [openPhase, setOpenPhase] = useState<'warning'|'envelope'|'letter'>(
     isBurnReceived ? 'warning' : isReceivedLetter ? 'envelope' : 'letter'
   )
@@ -553,6 +757,23 @@ function LetterModal({
     return () => clearTimeout(t)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    return () => {
+      setIsPlayingVoice(false)
+    }
+  }, [])
+
+  async function handlePlayVoiceNote() {
+    if (!letter.voiceNoteUrl || isPlayingVoice) return
+    setIsPlayingVoice(true)
+    try {
+      await playAudioWithEffect(letter.voiceNoteUrl, letter.voiceEffect || 'raw', () => setIsPlayingVoice(false))
+    } catch (error) {
+      console.error('Failed to play voice note:', error)
+      setIsPlayingVoice(false)
+    }
+  }
 
   return (
     <motion.div
@@ -641,7 +862,8 @@ function LetterModal({
         </button>
 
         {renderLetterPaper(letter.paperId, paperBg, (
-          <>
+          <div style={{ position: 'relative' }}>
+            {renderLetterEmbellishment(letter.embellishmentId, colors.accent, 'read')}
             <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.4em', color: colors.accent, textTransform: 'uppercase', marginBottom: '20px', opacity: 0.88 }}>
               {letter.direction === 'received' ? `From · ${letter.from}` : `To · ${letter.to}`}
             </p>
@@ -657,7 +879,7 @@ function LetterModal({
             </p>
 
             {letter.body.split('\n\n— ✦ —\n\n').map((page, i, arr) => (
-              <div key={i}>
+              <div key={i} style={writingStyle}>
                 <p style={{ fontFamily: bodyFont, fontSize: 'clamp(15px,2vw,18px)', lineHeight: 2, letterSpacing: '0.02em', color: bodyColor, opacity: 0.98, whiteSpace: 'pre-wrap' }}>
                   {page}
                 </p>
@@ -668,6 +890,23 @@ function LetterModal({
                 )}
               </div>
             ))}
+
+            {letter.voiceNoteUrl && (
+              <div style={{ marginTop:'22px', padding:'14px 16px', border:`1px solid ${colors.accent}30`, borderRadius:'6px', background:'rgba(10,10,24,0.18)' }}>
+                <p style={{ fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.28em', color:colors.accent, textTransform:'uppercase', margin:'0 0 6px' }}>Voice Note</p>
+                <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'11px', color:bodyColor, opacity:0.68, margin:'0 0 12px' }}>
+                  {letter.voiceEffect === 'raw' || !letter.voiceEffect
+                    ? 'A spoken note was left with this letter.'
+                    : `Played through the ${letter.voiceEffect} effect.`}
+                </p>
+                <button
+                  onClick={handlePlayVoiceNote}
+                  disabled={isPlayingVoice}
+                  style={{ background:'transparent', border:`1px solid ${colors.accent}70`, color:colors.accent, fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.24em', textTransform:'uppercase', padding:'8px 14px', cursor:isPlayingVoice ? 'default' : 'pointer', borderRadius:'2px', opacity:isPlayingVoice ? 0.6 : 1 }}>
+                  {isPlayingVoice ? 'Playing...' : 'Play Voice Note'}
+                </button>
+              </div>
+            )}
 
             <p style={{ fontFamily: bodyFont, fontStyle: 'italic', fontSize: '15px', color: bodyColor, opacity: 0.86, marginTop: '24px', lineHeight: 1.9 }}>
               With presence,<br />
@@ -684,7 +923,7 @@ function LetterModal({
                 {letter.stampId && <ModalStamp id={letter.stampId} />}
               </div>
             )}
-          </>
+          </div>
         ))}
 
         {letter.direction === 'received' && (

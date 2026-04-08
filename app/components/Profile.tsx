@@ -3,7 +3,7 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { QRCodeSVG } from 'qrcode.react'
-import { updateHub, signOut, deleteAccount, exportMyLetters, uploadAvatarToStorage } from '../lib/auth'
+import { updateHub, signOut, deleteAccount, exportMyLetters, uploadAvatarToStorage, getVisitorBook, type VisitorBookEntry } from '../lib/auth'
 import { supabase } from '../../lib/supabase'
 import { HUB_COLOR_THEMES, HUB_STYLES, HUB_DECORATIONS, HUB_GLOW_LEVELS, type HubColor, type HubStyle, type HubDecoration, type HubGlowIntensity } from './UniverseMap'
 
@@ -32,16 +32,18 @@ function getMirrorCycle(createdAt?: string) {
 export default function Profile({
   hubName, bio, askAbout, avatarUrl: initialAvatarUrl, avatarPromptPending, regenCount: initialRegenCount,
   hubCreatedAt,
+  visitorBookEnabled: initialVisitorBookEnabled = false,
   hubStyle: initialHubStyle = 'portal', hubColor: initialHubColor = 'gold',
   hubDecoration: initialHubDecoration = 'none', hubGlowIntensity: initialHubGlowIntensity = 'normal',
   onClose, onUpdateHub,
 }: {
   hubName?: string; bio?: string; askAbout?: string; avatarUrl?: string; avatarPromptPending?: string | null; regenCount?: number
   hubCreatedAt?: string
+  visitorBookEnabled?: boolean
   hubStyle?: HubStyle; hubColor?: HubColor
   hubDecoration?: HubDecoration; hubGlowIntensity?: HubGlowIntensity
   onClose?: () => void
-  onUpdateHub?: (updates: { hubName?: string; bio?: string; askAbout?: string; avatarUrl?: string; hubStyle?: HubStyle; hubColor?: HubColor; hubDecoration?: HubDecoration; hubGlowIntensity?: HubGlowIntensity }) => void
+  onUpdateHub?: (updates: { hubName?: string; bio?: string; askAbout?: string; avatarUrl?: string; hubStyle?: HubStyle; hubColor?: HubColor; hubDecoration?: HubDecoration; hubGlowIntensity?: HubGlowIntensity; visitorBookEnabled?: boolean }) => void
 }) {
   const [hubNameState, setHubNameState] = useState(hubName || 'Your Hub')
   const [bioState, setBioState] = useState(bio || 'A wanderer who arrived here quietly, carrying something unspoken.')
@@ -71,6 +73,11 @@ export default function Profile({
   const [selectedGlowIntensity, setSelectedGlowIntensity] = useState<HubGlowIntensity>(initialHubGlowIntensity)
   const [appearanceSaving, setAppearanceSaving] = useState(false)
   const [appearanceSaved, setAppearanceSaved] = useState(false)
+  const [visitorBookEnabledState, setVisitorBookEnabledState] = useState(initialVisitorBookEnabled)
+  const [visitorBookSaving, setVisitorBookSaving] = useState(false)
+  const [visitorBookEntries, setVisitorBookEntries] = useState<VisitorBookEntry[]>([])
+  const [visitorBookLoading, setVisitorBookLoading] = useState(false)
+  const [visitorBookError, setVisitorBookError] = useState('')
 
   const appearanceChanged = selectedHubStyle !== initialHubStyle || selectedHubColor !== initialHubColor || selectedDecoration !== initialHubDecoration || selectedGlowIntensity !== initialHubGlowIntensity
 
@@ -117,6 +124,19 @@ export default function Profile({
     if (typeof window !== 'undefined') setAppUrl(window.location.origin)
   }, [])
 
+  useEffect(() => {
+    setVisitorBookEnabledState(initialVisitorBookEnabled)
+  }, [initialVisitorBookEnabled])
+
+  useEffect(() => {
+    if (!visitorBookEnabledState) {
+      setVisitorBookEntries([])
+      setVisitorBookError('')
+      return
+    }
+    void loadVisitorBook()
+  }, [visitorBookEnabledState])
+
   // ── load regen count from DB on mount ──
   useEffect(() => {
     async function loadRegenCount() {
@@ -148,7 +168,6 @@ export default function Profile({
 
   // Decode the encoded regen_count
   const localRegenCount = regenCount % 10
-  const regenCycle = Math.floor(regenCount / 10)
   const attemptsLeft = MAX_REGEN_ATTEMPTS - localRegenCount
 
   // Compute real cycle info from hub creation date
@@ -282,6 +301,46 @@ export default function Profile({
     } catch (err) { console.error(err) } finally { setSaving(false) }
   }
 
+  async function loadVisitorBook() {
+    try {
+      setVisitorBookLoading(true)
+      setVisitorBookError('')
+      const entries = await getVisitorBook()
+      setVisitorBookEntries(entries)
+    } catch (err) {
+      console.error(err)
+      setVisitorBookError('Could not load the visitor book right now.')
+    } finally {
+      setVisitorBookLoading(false)
+    }
+  }
+
+  async function toggleVisitorBook() {
+    const nextValue = !visitorBookEnabledState
+    try {
+      setVisitorBookSaving(true)
+      setVisitorBookError('')
+      await updateHub({ visitor_book_enabled: nextValue })
+      setVisitorBookEnabledState(nextValue)
+      onUpdateHub?.({ visitorBookEnabled: nextValue })
+    } catch (err) {
+      console.error(err)
+      setVisitorBookError('Could not update visitor book visibility.')
+    } finally {
+      setVisitorBookSaving(false)
+    }
+  }
+
+  function formatVisitTime(dateString: string) {
+    const diffMs = Date.now() - new Date(dateString).getTime()
+    const diffHours = Math.max(1, Math.floor(diffMs / 3600000))
+    if (diffHours < 24) return `${diffHours}h ago`
+    const diffDays = Math.floor(diffHours / 24)
+    if (diffDays < 30) return `${diffDays}d ago`
+    const diffMonths = Math.floor(diffDays / 30)
+    return `${diffMonths}mo ago`
+  }
+
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }}
       style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,5,0.97)', backdropFilter: 'blur(20px)', zIndex: 70, overflowY: 'auto' }}>
@@ -309,6 +368,7 @@ export default function Profile({
             </div>
           )}
           {currentAvatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
             <img src={currentAvatarUrl} alt="Avatar" className="profile-avatar-fill" />
           ) : (
             <div className="profile-avatar-fill" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(180deg, rgba(20,25,60,0.8), rgba(5,8,20,0.9))' }}>
@@ -522,6 +582,55 @@ export default function Profile({
                 </motion.div>
               )}
             </AnimatePresence>
+          </div>
+
+          <div style={{ height: '1px', background: 'linear-gradient(90deg, rgba(255,255,255,0.08), transparent)', marginBottom: '28px' }} />
+
+          <div style={{ marginBottom: '32px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '10px', flexWrap: 'wrap' }}>
+              <div>
+                <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.4em', color: 'rgba(201,168,76,0.65)', textTransform: 'uppercase', marginBottom: '6px' }}>Visitor Book</p>
+                <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(255,255,255,0.45)' }}>A private log of who opened your hub card.</p>
+              </div>
+              <button onClick={() => void toggleVisitorBook()} disabled={visitorBookSaving}
+                style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.2em', color: visitorBookEnabledState ? '#c9a84c' : 'rgba(255,255,255,0.6)', padding: '7px 14px', border: `1px solid ${visitorBookEnabledState ? 'rgba(201,168,76,0.38)' : 'rgba(255,255,255,0.14)'}`, background: visitorBookEnabledState ? 'rgba(201,168,76,0.08)' : 'transparent', cursor: visitorBookSaving ? 'default' : 'pointer', textTransform: 'uppercase', borderRadius: '4px' }}>
+                {visitorBookSaving ? 'Saving...' : visitorBookEnabledState ? 'Visitor Book On' : 'Visitor Book Off'}
+              </button>
+            </div>
+
+            {visitorBookError && (
+              <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(220,100,100,0.85)', marginBottom: '10px' }}>{visitorBookError}</p>
+            )}
+
+            {visitorBookEnabledState ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '14px' }}>
+                {visitorBookLoading ? (
+                  <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(255,255,255,0.5)' }}>Gathering recent visitors...</p>
+                ) : visitorBookEntries.length === 0 ? (
+                  <div style={{ padding: '14px 16px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px' }}>
+                    <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(255,255,255,0.55)', margin: 0 }}>No one has signed the quiet yet.</p>
+                  </div>
+                ) : visitorBookEntries.map((entry) => (
+                  <div key={entry.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', padding: '12px 14px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
+                      {entry.avatarUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={entry.avatarUrl} alt={entry.visitorName} style={{ width: '34px', height: '34px', borderRadius: '50%', objectFit: 'cover', border: '1px solid rgba(201,168,76,0.22)' }} />
+                      ) : (
+                        <div style={{ width: '34px', height: '34px', borderRadius: '50%', border: '1px solid rgba(201,168,76,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(201,168,76,0.55)', fontSize: '14px' }}>✦</div>
+                      )}
+                      <div style={{ minWidth: 0 }}>
+                        <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.14em', color: 'rgba(255,255,255,0.82)', textTransform: 'uppercase', margin: '0 0 4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{entry.visitorName}</p>
+                        <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '12px', color: 'rgba(255,255,255,0.45)', margin: 0 }}>looked in for a moment</p>
+                      </div>
+                    </div>
+                    <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.18em', color: 'rgba(201,168,76,0.6)', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{formatVisitTime(entry.visitedAt)}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(255,255,255,0.42)', lineHeight: 1.7 }}>When this is off, new visits are not recorded and the book stays private to you.</p>
+            )}
           </div>
 
           <div style={{ height: '1px', background: 'linear-gradient(90deg, rgba(255,255,255,0.08), transparent)', marginBottom: '28px' }} />

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { getAllHubs, getUniverseLetters } from '../lib/auth'
+import { getAllHubs, getUniverseLetters, getReturnPaths, recordHubVisit } from '../lib/auth'
 import { playShootingStarCatch, playClick } from '../../lib/sounds'
 // ── HUB STYLE TYPES ──
 export type HubStyle = 'portal' | 'lantern' | 'ruin' | 'hourglass' | 'telescope' | 'greenhouse' | 'lotus' | 'cottage' | 'forge' | 'tower' | 'ship'
@@ -55,6 +55,7 @@ export const HUB_COLOR_THEMES: { id: HubColor; label: string; ring: string; glow
 ]
 
 interface Hub {
+  id: string
   x: number; y: number
   name: string; bio: string; askAbout?: string
   avatarUrl?: string; avatarImage?: HTMLImageElement
@@ -62,17 +63,21 @@ interface Hub {
   isMe?: boolean; floatOffset: number; floatSpeed: number
   colorTheme: HubColor; hubStyle: HubStyle
   decoration: HubDecoration; glowIntensity: HubGlowIntensity
+  visitorBookEnabled?: boolean
 }
 
 interface ShootingStar {
   id: number; x: number; y: number
-  vx: number; vy: number; alpha: number
+  startX: number; startY: number; targetX: number; targetY: number
+  controlX: number; controlY: number; progress: number; speed: number; alpha: number
   tail: { x: number; y: number }[]
   letterId: string; senderId: string; senderName: string; preview: string; body: string
   age: number; maxAge: number; clicked: boolean
 }
 
-interface TooltipState { hub: Hub; sx: number; sy: number }
+type UniverseHubRecord = Awaited<ReturnType<typeof getAllHubs>>[number]
+
+interface TooltipState { hub: Hub; sx: number; sy: number; scale: number }
 interface ProfileState { hub: Hub; screenX: number; screenY: number; telescopeMode: boolean }
 
 const imageCache = new Map<string, HTMLImageElement>()
@@ -89,6 +94,11 @@ function loadImage(url: string): Promise<HTMLImageElement> {
 
 function getColor(colorTheme?: string | null) {
   return HUB_COLOR_THEMES.find(theme => theme.id === colorTheme) || HUB_COLOR_THEMES[0]
+}
+
+function quadraticPoint(start: number, control: number, end: number, t: number) {
+  const inv = 1 - t
+  return inv * inv * start + 2 * inv * t * control + t * t * end
 }
 
 // Push hubs apart so none overlap or crowd too closely.
@@ -1091,14 +1101,15 @@ function drawShootingStar(ctx: CanvasRenderingContext2D, star: ShootingStar) {
     ctx.beginPath()
     ctx.moveTo(star.tail[i].x, star.tail[i].y)
     ctx.lineTo(star.tail[i + 1].x, star.tail[i + 1].y)
-    ctx.strokeStyle = `rgba(201,168,76,${alpha * t * 0.6})`
-    ctx.lineWidth = (1 - t) * 3 + 0.5
+    ctx.strokeStyle = `rgba(${t > 0.5 ? '194,210,255' : '176,138,255'},${alpha * t * 0.72})`
+    ctx.lineWidth = (1 - t) * 3.6 + 0.5
     ctx.stroke()
   }
-  const glow = ctx.createRadialGradient(star.x, star.y, 0, star.x, star.y, 8)
-  glow.addColorStop(0, `rgba(255,240,180,${alpha})`)
-  glow.addColorStop(0.3, `rgba(201,168,76,${alpha * 0.6})`)
-  glow.addColorStop(1, `rgba(201,168,76,0)`)
+  const glow = ctx.createRadialGradient(star.x, star.y, 0, star.x, star.y, 11)
+  glow.addColorStop(0, `rgba(245,248,255,${alpha})`)
+  glow.addColorStop(0.28, `rgba(198,214,255,${alpha * 0.74})`)
+  glow.addColorStop(0.62, `rgba(176,138,255,${alpha * 0.38})`)
+  glow.addColorStop(1, `rgba(176,138,255,0)`)
   ctx.beginPath(); ctx.arc(star.x, star.y, 8, 0, Math.PI * 2)
   ctx.fillStyle = glow; ctx.fill()
   ctx.beginPath(); ctx.arc(star.x, star.y, 2.5, 0, Math.PI * 2)
@@ -1125,8 +1136,11 @@ export default function UniverseMap({
   const dragStartRef = useRef({ x: 0, y: 0 })
   const animFrameRef = useRef<number>(0)
   const shootingStarsRef = useRef<ShootingStar[]>([])
+  const returnPathsRef = useRef<{ hubA: string; hubB: string }[]>([])
   const starIdRef = useRef(0)
   const lastPinchDistRef = useRef<number | null>(null)
+  const hoveredHubRef = useRef<Hub | null>(null)
+  const mouseRef = useRef({ x: 0, y: 0 })
 
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
   const [profile, setProfile] = useState<ProfileState | null>(null)
@@ -1137,7 +1151,11 @@ export default function UniverseMap({
   const [activeNav, setActiveNav] = useState(0)
   const [hoveredNav, setHoveredNav] = useState<number | null>(null)
 
-  useEffect(() => { if (navResetSignal > 0) setActiveNav(0) }, [navResetSignal])
+  useEffect(() => {
+    if (navResetSignal <= 0) return
+    const timer = window.setTimeout(() => setActiveNav(0), 0)
+    return () => window.clearTimeout(timer)
+  }, [navResetSignal])
 
   // Spawn a shooting star carrying a letter
   function spawnShootingStar(letter?: { id: string; senderId: string; senderName: string; preview: string; body: string }) {
@@ -1152,16 +1170,27 @@ export default function UniverseMap({
     const targetX = canvas.width * 0.2 + Math.random() * canvas.width * 0.6
     const targetY = canvas.height * 0.2 + Math.random() * canvas.height * 0.6
     const dist = Math.sqrt((targetX - x) ** 2 + (targetY - y) ** 2)
-    const speed = 0.3 + Math.random() * 0.2
+    const speed = 0.0048 + Math.random() * 0.0018
+    const midX = (x + targetX) / 2
+    const midY = (y + targetY) / 2
+    const dx = targetX - x
+    const dy = targetY - y
+    const length = Math.max(Math.sqrt(dx * dx + dy * dy), 1)
+    const normalX = -dy / length
+    const normalY = dx / length
+    const curveMagnitude = 80 + Math.random() * 180
+    const curveDirection = Math.random() > 0.5 ? 1 : -1
     const star: ShootingStar = {
       id: starIdRef.current++, x, y,
-      vx: ((targetX - x) / dist) * speed,
-      vy: ((targetY - y) / dist) * speed,
+      startX: x, startY: y, targetX, targetY,
+      controlX: midX + normalX * curveMagnitude * curveDirection,
+      controlY: midY + normalY * curveMagnitude * curveDirection,
+      progress: 0, speed,
       alpha: 0.9, tail: [],
       letterId: letter?.id || '', senderId: letter?.senderId || '', senderName: letter?.senderName || 'A Stranger',
       preview: letter?.preview || 'A letter drifts through the universe...',
       body: letter?.body || 'A letter drifts through the universe...',
-      age: 0, maxAge: dist / speed, clicked: false,
+      age: 0, maxAge: Math.max(180, Math.round(1 / speed) + Math.round(dist * 0.12)), clicked: false,
     }
     shootingStarsRef.current.push(star)
   }
@@ -1218,12 +1247,13 @@ export default function UniverseMap({
       const realHubs = await getAllHubs()
       const myAvatarImg = hubAvatarUrl ? await loadImage(hubAvatarUrl) : undefined
 
-      const otherHubs = await Promise.all(realHubs.map(async (hub: any, i: number) => {
+      const otherHubs = await Promise.all(realHubs.map(async (hub: UniverseHubRecord, i: number) => {
         const angle = (i / Math.max(realHubs.length, 1)) * Math.PI * 2 + 0.3
         const dist = 180 + (i * 73) % 320
         const avatarImg = hub.avatar_url ? await loadImage(hub.avatar_url) : undefined
         const styles: HubStyle[] = ['portal', 'lantern', 'ruin', 'hourglass', 'telescope', 'greenhouse', 'lotus', 'cottage', 'forge', 'tower', 'ship']
         return {
+          id: hub.id,
           x: Math.cos(angle) * dist, y: Math.sin(angle) * dist,
           name: hub.hub_name, bio: hub.bio || '', askAbout: hub.ask_about || '',
           avatarUrl: hub.avatar_url || '', avatarImage: avatarImg,
@@ -1235,6 +1265,7 @@ export default function UniverseMap({
           hubStyle: (hub.hub_style as HubStyle) || styles[i % styles.length],
           decoration: (hub.decoration as HubDecoration) || 'none',
           glowIntensity: (hub.glow_intensity as HubGlowIntensity) || 'normal',
+          visitorBookEnabled: Boolean(hub.visitor_book_enabled),
         } as Hub
       }))
 
@@ -1244,14 +1275,16 @@ export default function UniverseMap({
       otherHubs.forEach((hub, i) => { hub.x = allPositions[i + 1].x; hub.y = allPositions[i + 1].y })
 
       hubsRef.current = [{
-        x: 0, y: 0, name: hubName || 'Your Hub',
+        id: 'me', x: 0, y: 0, name: hubName || 'Your Hub',
         bio: hubBio || 'This is your place in the universe.',
         askAbout: hubAskAbout || '',
         avatarUrl: hubAvatarUrl || '', avatarImage: myAvatarImg,
         online: true, pulse: 0, size: 1.1, isMe: true,
         floatOffset: 0, floatSpeed: 0.5, colorTheme: hubColor, hubStyle,
-        decoration: hubDecoration, glowIntensity: hubGlowIntensity,
+        decoration: hubDecoration, glowIntensity: hubGlowIntensity, visitorBookEnabled: false,
       }, ...otherHubs]
+
+      returnPathsRef.current = await getReturnPaths()
 
       // Star field background
       const starCanvas = document.createElement('canvas')
@@ -1264,11 +1297,124 @@ export default function UniverseMap({
         sCtx.fill()
       }
 
+      const parallaxStars = Array.from({ length: Math.floor((canvas.width * canvas.height) / 5200) }, (_, i) => ({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        radius: 0.6 + Math.random() * 1.8,
+        depth: 0.12 + Math.random() * 1.2,
+        pulse: Math.random() * Math.PI * 2,
+        tint: i % 5 === 0 ? '180,198,255' : i % 7 === 0 ? '198,186,255' : '240,245,255',
+      }))
+
+      const nebulaClouds = [
+        { x: canvas.width * 0.18, y: canvas.height * 0.24, rx: canvas.width * 0.24, ry: canvas.height * 0.16, color: '58,38,120', alpha: 0.18, drift: 0.04, depth: 0.18, front: false },
+        { x: canvas.width * 0.82, y: canvas.height * 0.28, rx: canvas.width * 0.19, ry: canvas.height * 0.13, color: '94,126,220', alpha: 0.16, drift: -0.035, depth: 0.14, front: false },
+        { x: canvas.width * 0.72, y: canvas.height * 0.76, rx: canvas.width * 0.26, ry: canvas.height * 0.18, color: '54,76,164', alpha: 0.12, drift: 0.028, depth: 0.22, front: false },
+        { x: canvas.width * 0.34, y: canvas.height * 0.58, rx: canvas.width * 0.18, ry: canvas.height * 0.12, color: '96,70,170', alpha: 0.1, drift: -0.024, depth: 0.35, front: true },
+        { x: canvas.width * 0.64, y: canvas.height * 0.44, rx: canvas.width * 0.15, ry: canvas.height * 0.1, color: '124,148,255', alpha: 0.08, drift: 0.032, depth: 0.42, front: true },
+      ]
+
+      const drawNebulaCloud = (cloud: (typeof nebulaClouds)[number], hoverFocus: { x: number; y: number } | null, time: number) => {
+        const swayX = Math.sin(time * cloud.drift + cloud.depth * 8) * 34
+        const swayY = Math.cos(time * cloud.drift * 0.8 + cloud.depth * 6) * 24
+        let pullX = 0
+        let pullY = 0
+        if (hoverFocus) {
+          pullX = (hoverFocus.x - cloud.x) * Math.min(cloud.depth * 0.018, 0.018)
+          pullY = (hoverFocus.y - cloud.y) * Math.min(cloud.depth * 0.018, 0.018)
+        }
+        const xPos = cloud.x + swayX + pullX
+        const yPos = cloud.y + swayY + pullY
+        const gradient = ctx.createRadialGradient(xPos, yPos, cloud.rx * 0.1, xPos, yPos, cloud.rx)
+        gradient.addColorStop(0, `rgba(${cloud.color},${cloud.alpha + (hoverFocus ? 0.02 : 0)})`)
+        gradient.addColorStop(0.55, `rgba(${cloud.color},${cloud.alpha * 0.45})`)
+        gradient.addColorStop(1, `rgba(${cloud.color},0)`)
+        ctx.save()
+        ctx.filter = `blur(${cloud.front ? 28 : 42}px)`
+        ctx.beginPath()
+        ctx.ellipse(xPos, yPos, cloud.rx, cloud.ry, Math.sin(time * cloud.drift) * 0.4, 0, Math.PI * 2)
+        ctx.fillStyle = gradient
+        ctx.fill()
+        ctx.restore()
+      }
+
       const draw = () => {
         ctx.clearRect(0, 0, canvas.width, canvas.height)
+        ctx.fillStyle = '#02040c'
+        ctx.fillRect(0, 0, canvas.width, canvas.height)
+        ctx.fillStyle = 'rgba(8,10,24,0.72)'
+        ctx.fillRect(0, 0, canvas.width, canvas.height)
         ctx.drawImage(starCanvas, 0, 0)
         const t = Date.now() * 0.001
         const offset = offsetRef.current; const scale = scaleRef.current
+        const hoverFocus = hoveredHubRef.current
+          ? {
+              x: offset.x + hoveredHubRef.current.x * scale,
+              y: offset.y + hoveredHubRef.current.y * scale + Math.sin(t * hoveredHubRef.current.floatSpeed + hoveredHubRef.current.floatOffset) * 4,
+            }
+          : null
+
+        nebulaClouds.filter(cloud => !cloud.front).forEach(cloud => drawNebulaCloud(cloud, hoverFocus, t))
+
+        parallaxStars.forEach(star => {
+          const parallaxX = (mouseRef.current.x - canvas.width / 2) * star.depth * 0.01
+          const parallaxY = (mouseRef.current.y - canvas.height / 2) * star.depth * 0.01
+          const xPos = star.x - parallaxX
+          const yPos = star.y - parallaxY
+          let alpha = 0.12 + 0.34 * Math.abs(Math.sin(t * (0.16 + star.depth * 0.08) + star.pulse))
+          let radius = star.radius
+          if (hoverFocus) {
+            const dx = hoverFocus.x - xPos
+            const dy = hoverFocus.y - yPos
+            const distance = Math.sqrt(dx * dx + dy * dy)
+            if (distance < 170) {
+              const lift = 1 - distance / 170
+              alpha += lift * 0.55
+              radius += lift * 1.3
+            }
+          }
+          ctx.beginPath()
+          ctx.arc(xPos, yPos, radius, 0, Math.PI * 2)
+          ctx.fillStyle = `rgba(${star.tint},${Math.min(alpha, 0.98)})`
+          ctx.fill()
+        })
+
+        if (hoverFocus) {
+          const gravityGlow = ctx.createRadialGradient(hoverFocus.x, hoverFocus.y, 0, hoverFocus.x, hoverFocus.y, 180)
+          gravityGlow.addColorStop(0, 'rgba(210,224,255,0.16)')
+          gravityGlow.addColorStop(0.32, 'rgba(156,138,255,0.1)')
+          gravityGlow.addColorStop(1, 'rgba(156,138,255,0)')
+          ctx.beginPath()
+          ctx.arc(hoverFocus.x, hoverFocus.y, 180, 0, Math.PI * 2)
+          ctx.fillStyle = gravityGlow
+          ctx.fill()
+        }
+
+        // Draw return paths (faint glowing connections between hubs that exchanged letters)
+        returnPathsRef.current.forEach(({ hubA, hubB }) => {
+          const hA = hubsRef.current.find(h => h.name === hubA)
+          const hB = hubsRef.current.find(h => h.name === hubB)
+          if (!hA || !hB) return
+          const ax = offset.x + hA.x * scale
+          const ay = offset.y + hA.y * scale + Math.sin(t * hA.floatSpeed + hA.floatOffset) * 4
+          const bx = offset.x + hB.x * scale
+          const by = offset.y + hB.y * scale + Math.sin(t * hB.floatSpeed + hB.floatOffset) * 4
+          const pathAlpha = 0.10 + 0.05 * Math.sin(t * 0.7 + (hubA.charCodeAt(0) + hubB.charCodeAt(0)) * 0.03)
+          const grad = ctx.createLinearGradient(ax, ay, bx, by)
+          grad.addColorStop(0, `rgba(180,130,255,${pathAlpha})`)
+          grad.addColorStop(0.5, `rgba(200,160,255,${(pathAlpha * 1.6).toFixed(3)})`)
+          grad.addColorStop(1, `rgba(180,130,255,${pathAlpha})`)
+          ctx.save()
+          ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by)
+          ctx.strokeStyle = grad; ctx.lineWidth = 1.2; ctx.stroke()
+          // Traveling pulse bead
+          const pulsePos = ((t * 0.25 + (hubA.charCodeAt(0) * 0.07)) % 1)
+          const px = ax + (bx - ax) * pulsePos
+          const py = ay + (by - ay) * pulsePos
+          ctx.beginPath(); ctx.arc(px, py, 2, 0, Math.PI * 2)
+          ctx.fillStyle = `rgba(210,170,255,0.55)`; ctx.fill()
+          ctx.restore()
+        })
 
         // Draw hubs
         hubsRef.current.forEach(hub => {
@@ -1296,6 +1442,8 @@ export default function UniverseMap({
 
           drawHub(ctx, hub, sx, sy + floatY, s, t)
         })
+
+        nebulaClouds.filter(cloud => cloud.front).forEach(cloud => drawNebulaCloud(cloud, hoverFocus, t))
 
         // Feature 5: constellation line from myHub to selected hub
         const selProfile = profileRef.current
@@ -1343,7 +1491,10 @@ export default function UniverseMap({
           star.tail.push({ x: star.x, y: star.y })
           if (star.tail.length > 30) star.tail.shift()
           if (star.age <= star.maxAge) {
-            star.x += star.vx; star.y += star.vy
+            const speedScale = hoveredHubRef.current ? 0.58 : 1
+            star.progress = Math.min(1, star.progress + star.speed * speedScale)
+            star.x = quadraticPoint(star.startX, star.controlX, star.targetX, star.progress)
+            star.y = quadraticPoint(star.startY, star.controlY, star.targetY, star.progress)
           } else {
             star.alpha *= 0.98
           }
@@ -1357,7 +1508,7 @@ export default function UniverseMap({
     }
     void init()
     return () => { cancelAnimationFrame(animFrameRef.current); if (resizeHandler) window.removeEventListener('resize', resizeHandler) }
-  }, [hubName, hubStyle, hubColor, hubDecoration, hubGlowIntensity])
+  }, [hubName, hubStyle, hubColor, hubDecoration, hubGlowIntensity, hubAvatarUrl, hubBio, hubAskAbout])
 
   // ── Patch avatar in-place when it changes without re-running full init ──
   useEffect(() => {
@@ -1401,6 +1552,13 @@ export default function UniverseMap({
     return shootingStarsRef.current.find(star => {
       return Math.sqrt((mx - star.x) ** 2 + (my - star.y) ** 2) < 20
     }) || null
+  }, [])
+
+  const openHubProfile = useCallback((hub: Hub, screenX: number, screenY: number) => {
+    setProfile({ hub, screenX, screenY, telescopeMode: hub.hubStyle === 'telescope' })
+    if (!hub.isMe && hub.id) {
+      void recordHubVisit(hub.id).catch(() => {})
+    }
   }, [])
 
   // ── Touch events (non-passive) for mobile pan + pinch-zoom ──
@@ -1451,7 +1609,7 @@ export default function UniverseMap({
           if (star) { star.clicked = true; setStarPreview(star); playShootingStarCatch(); isDraggingRef.current = false; return }
           const hub = getHubAt(t.clientX, t.clientY)
           if (hub) {
-            setProfile({ hub, screenX: t.clientX, screenY: t.clientY, telescopeMode: hub.hubStyle === 'telescope' })
+            openHubProfile(hub, t.clientX, t.clientY)
           } else {
             setProfile(null)
           }
@@ -1469,7 +1627,7 @@ export default function UniverseMap({
       canvas.removeEventListener('touchmove', onTouchMove)
       canvas.removeEventListener('touchend', onTouchEnd)
     }
-  }, [getHubAt, getStarAt])
+  }, [getHubAt, getStarAt, openHubProfile])
 
   const handleMouseDown = (e: React.MouseEvent) => {
     isDraggingRef.current = true; hasDraggedRef.current = false
@@ -1482,13 +1640,19 @@ export default function UniverseMap({
     if (isDraggingRef.current && (dx > 4 || dy > 4)) {
       hasDraggedRef.current = true
       offsetRef.current = { x: e.clientX - dragStartRef.current.x, y: e.clientY - dragStartRef.current.y }
+      hoveredHubRef.current = null
       setTooltip(null); return
     }
+    mouseRef.current = { x: e.clientX, y: e.clientY }
     if (!isDraggingRef.current) {
       const hub = getHubAt(e.clientX, e.clientY)
       if (hub) {
-        setTooltip({ hub, sx: offsetRef.current.x + hub.x * scaleRef.current, sy: offsetRef.current.y + hub.y * scaleRef.current })
-      } else setTooltip(null)
+        hoveredHubRef.current = hub
+        setTooltip({ hub, sx: offsetRef.current.x + hub.x * scaleRef.current, sy: offsetRef.current.y + hub.y * scaleRef.current, scale: scaleRef.current })
+      } else {
+        hoveredHubRef.current = null
+        setTooltip(null)
+      }
     }
   }
 
@@ -1499,8 +1663,7 @@ export default function UniverseMap({
       if (star) { star.clicked = true; setStarPreview(star); playShootingStarCatch(); isDraggingRef.current = false; return }
       const hub = getHubAt(e.clientX, e.clientY)
       if (hub) {
-        const isTelescope = hub.hubStyle === 'telescope'
-        setProfile({ hub, screenX: e.clientX, screenY: e.clientY, telescopeMode: isTelescope })
+        openHubProfile(hub, e.clientX, e.clientY)
         setTooltip(null)
       } else setProfile(null)
     }
@@ -1522,20 +1685,24 @@ export default function UniverseMap({
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'transparent' }}>
-      <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', background: 'radial-gradient(ellipse 80% 55% at 12% 22%, rgba(100,20,200,0.55) 0%, transparent 62%), radial-gradient(ellipse 65% 65% at 85% 75%, rgba(15,50,185,0.48) 0%, transparent 62%), radial-gradient(ellipse 50% 44% at 58% 8%, rgba(0,140,190,0.35) 0%, transparent 62%), radial-gradient(ellipse 45% 42% at 28% 82%, rgba(175,25,80,0.30) 0%, transparent 62%), radial-gradient(ellipse 40% 36% at 78% 20%, rgba(55,110,240,0.32) 0%, transparent 62%)' }} />
+      <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', background: 'radial-gradient(ellipse 75% 58% at 50% 52%, rgba(8,14,34,0.28) 0%, rgba(2,4,12,0.92) 76%), radial-gradient(ellipse 44% 32% at 18% 18%, rgba(54,34,120,0.22) 0%, transparent 72%), radial-gradient(ellipse 38% 30% at 82% 20%, rgba(74,112,220,0.16) 0%, transparent 72%), radial-gradient(ellipse 45% 34% at 74% 82%, rgba(40,62,146,0.14) 0%, transparent 76%)' }} />
+      <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', background: 'linear-gradient(180deg, rgba(4,6,16,0.16) 0%, rgba(2,3,10,0.5) 100%)', mixBlendMode: 'screen' }} />
 
       <canvas ref={canvasRef}
         style={{ position: 'absolute', inset: 0, cursor: tooltip?.hub?.hubStyle === 'telescope' ? 'zoom-in' : 'grab' }}
         onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp}
-        onMouseLeave={() => { isDraggingRef.current = false; setTooltip(null) }}
+        onMouseLeave={() => { isDraggingRef.current = false; hoveredHubRef.current = null; setTooltip(null) }}
         onWheel={handleWheel} />
+
+      <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', opacity: 0.11, mixBlendMode: 'screen', backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 220 220'%3E%3Cfilter id='grain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.92' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23grain)' opacity='0.72'/%3E%3C/svg%3E\")" }} />
+      <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', boxShadow: 'inset 0 0 180px rgba(0,0,0,0.72), inset 0 0 48px rgba(70,90,190,0.08)' }} />
 
       {/* Tooltip */}
       <AnimatePresence>
         {tooltip && !profile && (
           <motion.div key="tip" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}
-            style={{ position: 'fixed', left: tooltip.sx, top: tooltip.sy - tooltip.hub.size * scaleRef.current * 48, transform: 'translateX(-50%)', pointerEvents: 'none', zIndex: 60 }}>
-            <div style={{ background: 'rgba(8,10,28,0.92)', border: `1px solid ${tooltip.hub.isMe ? 'rgba(230,199,110,0.55)' : 'rgba(255,255,255,0.2)'}`, borderRadius: '20px', padding: '6px 16px', backdropFilter: 'blur(12px)' }}>
+            style={{ position: 'fixed', left: tooltip.sx, top: tooltip.sy - tooltip.hub.size * tooltip.scale * 48, transform: 'translateX(-50%)', pointerEvents: 'none', zIndex: 60 }}>
+            <div style={{ background: 'rgba(6,8,22,0.9)', border: `1px solid ${tooltip.hub.isMe ? 'rgba(230,199,110,0.55)' : 'rgba(176,194,255,0.22)'}`, borderRadius: '20px', padding: '7px 16px', backdropFilter: 'blur(12px)', boxShadow: tooltip.hub.isMe ? '0 0 18px rgba(230,199,110,0.12)' : '0 0 18px rgba(150,170,255,0.08)' }}>
               <p style={{ fontFamily: "'Cinzel', serif", fontSize: '11px', letterSpacing: '0.18em', color: tooltip.hub.isMe ? '#e6c76e' : 'rgba(255,255,255,0.9)', whiteSpace: 'nowrap' }}>
                 {tooltip.hub.name}
                 {tooltip.hub.hubStyle === 'telescope' && <span style={{ fontSize: '8px', opacity: 0.6, marginLeft: '6px' }}>· click to zoom</span>}
@@ -1598,6 +1765,7 @@ export default function UniverseMap({
               {/* Avatar panel */}
               <div className="universe-hub-avatar-col" style={{ width: '42%', minHeight: '380px', background: 'linear-gradient(135deg, rgba(20,25,60,0.9), rgba(10,15,40,0.95))', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden', flexShrink: 0 }}>
                 {profile.hub.avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img src={profile.hub.avatarUrl} alt="Avatar"
                     style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center', position: 'absolute', inset: 0 }} />
                 ) : (
@@ -1638,13 +1806,16 @@ export default function UniverseMap({
                       <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: 'clamp(13px,1.8vw,15px)', color: 'rgba(255,255,255,0.85)', lineHeight: 1.7, marginBottom: '20px' }}>{profile.hub.bio}</p>
                     </>
                   ) : (
-                    <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(255,255,255,0.35)', lineHeight: 1.7, marginBottom: '20px' }}>This wanderer hasn't written a bio yet.</p>
+                    <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(255,255,255,0.35)', lineHeight: 1.7, marginBottom: '20px' }}>This wanderer hasn&apos;t written a bio yet.</p>
                   )}
                   {profile.hub.askAbout && (
                     <>
                       <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.3em', color: 'rgba(126,207,180,0.85)', textTransform: 'uppercase', marginBottom: '8px' }}>Open to letters about</p>
                       <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: 'clamp(13px,1.8vw,15px)', color: 'rgba(255,255,255,0.72)', lineHeight: 1.6 }}>{profile.hub.askAbout}</p>
                     </>
+                  )}
+                  {!profile.hub.isMe && profile.hub.visitorBookEnabled && (
+                    <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.22em', color: 'rgba(230,199,110,0.46)', textTransform: 'uppercase', marginTop: '16px' }}>This hub keeps a visitor book</p>
                   )}
                 </div>
                 <div style={{ display: 'flex', gap: '10px', marginTop: '24px', flexWrap: 'wrap' }}>
@@ -1697,7 +1868,7 @@ export default function UniverseMap({
 
       <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.4, duration: 0.8 }}
         className="universe-hint"
-        style={{ position: 'fixed', top: '28px', left: '50%', transform: 'translateX(-50%)', fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '12px', color: 'rgba(255,255,255,0.5)', letterSpacing: '0.08em', pointerEvents: 'none', whiteSpace: 'nowrap', zIndex: 50 }}>
+        style={{ position: 'fixed', top: '28px', left: '50%', transform: 'translateX(-50%)', fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '12px', color: 'rgba(208,220,255,0.5)', letterSpacing: '0.08em', pointerEvents: 'none', whiteSpace: 'nowrap', zIndex: 50 }}>
         drag to explore · scroll to zoom · catch shooting stars
       </motion.p>
     </div>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import EntryScreen from './components/EntryScreen'
 import LandingPage from './components/LandingPage'
 import SoulMirror from './components/SoulMirror'
@@ -23,6 +23,7 @@ import {
   getMyHub,
   getAllHubs,
   sendLetter,
+  uploadVoiceNote,
   updateHub,
   signIn,
   uploadAvatarToStorage,
@@ -95,12 +96,10 @@ async function requestAvatarImage(
   const timeout = setTimeout(() => controller.abort(), timeoutMs)
 
   try {
-    let token: string | undefined
-
     // getSession() auto-refreshes the token when it's close to expiry —
     // never call refreshSession() explicitly as Supabase rate-limits it.
     const { data: { session } } = await supabase.auth.getSession()
-    token = session?.access_token
+    const token = session?.access_token
 
     const response = await fetch('/api/generate-avatar', {
       method: 'POST',
@@ -203,15 +202,10 @@ function NebulaBackground() {
 
 // ── Brief radial warp when the active screen changes ─────────
 function WarpFlash({ screenKey }: { screenKey: string }) {
-  const [active, setActive] = useState(false)
-  const prevKey = useRef(screenKey)
+  const [active, setActive] = useState(true)
   useEffect(() => {
-    if (prevKey.current !== screenKey) {
-      prevKey.current = screenKey
-      setActive(true)
-      const t = setTimeout(() => setActive(false), 700)
-      return () => clearTimeout(t)
-    }
+    const t = setTimeout(() => setActive(false), 700)
+    return () => clearTimeout(t)
   }, [screenKey])
   if (!active) return null
   return (
@@ -252,7 +246,7 @@ function GuestBanner({ onCreateHub, onSignIn, onDismiss }: {
         fontSize: '13px', color: 'rgba(255,255,255,0.45)',
         letterSpacing: '0.04em',
       }}>
-        You're exploring as a guest
+        You&apos;re exploring as a guest
       </span>
       <span style={{ color: 'rgba(201,168,76,0.3)', fontSize: '10px' }}>✦</span>
       <button
@@ -327,7 +321,7 @@ function GuestNudge({ onCreateHub, onSignIn, onClose }: {
         <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.4em', color: 'rgba(201,168,76,0.5)', textTransform: 'uppercase', marginBottom: '16px' }}>Dear Stranger</p>
         <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '22px', color: 'rgba(255,255,255,0.85)', marginBottom: '10px', letterSpacing: '0.04em' }}>This is for hub owners</p>
         <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(255,255,255,0.38)', marginBottom: '32px', lineHeight: 1.7 }}>
-          To send letters and make your mark in the universe, you'll need a hub of your own.
+          To send letters and make your mark in the universe, you&apos;ll need a hub of your own.
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <button
@@ -374,6 +368,9 @@ function GuestNudge({ onCreateHub, onSignIn, onClose }: {
     </div>
   )
 }
+
+type HubWithMeta = NonNullable<Awaited<ReturnType<typeof getMyHub>>>
+type ArrivedLetterSummary = { recipient_id?: string | null }
 
 // ── Shooting-star animation that plays after a letter is sent ─
 function LetterDepartAnimation({ onDone }: { onDone: () => void }) {
@@ -473,6 +470,7 @@ export default function Home() {
   const [hubColor, setHubColor] = useState<HubColor>('gold')
   const [hubDecoration, setHubDecoration] = useState<HubDecoration>('none')
   const [hubGlowIntensity, setHubGlowIntensity] = useState<HubGlowIntensity>('normal')
+  const [visitorBookEnabled, setVisitorBookEnabled] = useState(false)
   const [hubRegenCount, setHubRegenCount] = useState(0)
   const [hubCreatedAt, setHubCreatedAt] = useState('')
   const [lettersSent, setLettersSent] = useState(0)
@@ -504,7 +502,7 @@ export default function Home() {
   const screenRef = useRef<Screen>('loading')
   const onboardingInFlightRef = useRef(false)
 
-  function clearHubState(resetResume = true) {
+  const clearHubState = useCallback((resetResume = true) => {
     setHubName('')
     setHubBio('')
     setHubAskAbout('')
@@ -513,12 +511,13 @@ export default function Home() {
     setHubColor('gold')
     setHubDecoration('none')
     setHubGlowIntensity('normal')
+    setVisitorBookEnabled(false)
     setLettersSent(0)
     setHubRegenCount(0)
     setHubCreatedAt('')
     setHubAvatarPending(null)
     if (resetResume) setOnboardingResumeState(null)
-  }
+  }, [])
 
   useEffect(() => {
     screenRef.current = screen
@@ -575,7 +574,7 @@ export default function Home() {
     async function checkArrivals() {
       try {
         const data = await getMyLetters()
-        const arrivedCount = (data.arrived || []).filter((l: any) => l.direction === 'received').length
+        const arrivedCount = (data.arrived || []).filter((l: ArrivedLetterSummary) => l.recipient_id === data.userId).length
         if (knownArrivedCountRef.current === null) {
           knownArrivedCountRef.current = arrivedCount
           return
@@ -603,7 +602,7 @@ export default function Home() {
     }
   }, [screen])
 
-  async function routeFromSession() {
+  const routeFromSession = useCallback(async () => {
     function timeoutPromise<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
       return Promise.race([
         promise,
@@ -635,14 +634,15 @@ export default function Home() {
         setHubBio(hub.bio || '')
         setHubAskAbout(hub.ask_about || '')
         setHubAvatarUrl(hub.avatar_url || '')
-        setHubAvatarPending((hub as any).avatar_prompt_pending || null)
+        setHubAvatarPending((hub as HubWithMeta).avatar_prompt_pending || null)
         setHubStyle((hub.hub_style as HubStyle) || 'portal')
         setHubColor(coerceHubColor(hub.backdrop_id))
         setHubDecoration((hub.decoration as HubDecoration) || 'none')
         setHubGlowIntensity((hub.glow_intensity as HubGlowIntensity) || 'normal')
         setLettersSent(hub.letters_sent || 0)
+        setVisitorBookEnabled(Boolean((hub as HubWithMeta).visitor_book_enabled))
         setHubRegenCount(hub.regen_count || 0)
-        setHubCreatedAt((hub as any).created_at || '')
+        setHubCreatedAt((hub as HubWithMeta).created_at || '')
         setOnboardingError('')
         setOnboardingResumeState(null)
 
@@ -660,7 +660,7 @@ export default function Home() {
       setScreen('landing')
       console.log('[routeFromSession] fallback to landing')
     }
-  }
+  }, [clearHubState])
 
   useEffect(() => {
     let ignore = false;
@@ -710,7 +710,7 @@ export default function Home() {
       if (fallbackTimer) clearTimeout(fallbackTimer)
       authListener.subscription.unsubscribe()
     }
-  }, [])
+  }, [clearHubState, routeFromSession])
 
   async function handleOnboardingComplete(
     answers: Record<number, string>,
@@ -1023,14 +1023,15 @@ export default function Home() {
               setHubBio(hub.bio || '')
               setHubAskAbout(hub.ask_about || '')
               setHubAvatarUrl(hub.avatar_url || '')
-              setHubAvatarPending((hub as any).avatar_prompt_pending || null)
+              setHubAvatarPending((hub as HubWithMeta).avatar_prompt_pending || null)
               setHubStyle((hub.hub_style as HubStyle) || 'portal')
               setHubColor(coerceHubColor(hub.backdrop_id))
               setHubDecoration((hub.decoration as HubDecoration) || 'none')
               setHubGlowIntensity((hub.glow_intensity as HubGlowIntensity) || 'normal')
               setLettersSent(hub.letters_sent || 0)
+              setVisitorBookEnabled(Boolean((hub as HubWithMeta).visitor_book_enabled))
               setHubRegenCount(hub.regen_count || 0)
-              setHubCreatedAt((hub as any).created_at || '')
+              setHubCreatedAt((hub as HubWithMeta).created_at || '')
               setScreen('universe')
               return
             }
@@ -1075,7 +1076,7 @@ export default function Home() {
   return (
     <>
       {screen !== 'landing' && <NebulaBackground />}
-      <WarpFlash screenKey={screen} />
+      <WarpFlash key={screen} screenKey={screen} />
       {sendFlashing && (
         <LetterDepartAnimation onDone={() => {
           setSendFlashing(false)
@@ -1265,6 +1266,7 @@ export default function Home() {
           onClose={() => { setScribeOpen(false); setNavResetSignal(s => s + 1) }}
           onSend={async (letter) => {
             try {
+              const voiceNoteUrl = letter.voiceNoteBlob ? await uploadVoiceNote(letter.voiceNoteBlob) : undefined
               if (letter.capsuleDays) {
                 const myHub = await getMyHub()
                 if (!myHub) throw new Error('Could not get own hub')
@@ -1282,6 +1284,10 @@ export default function Home() {
                   letter.envelopeId,
                   customArrivesAt,
                   letter.burnAfterReading,
+                  voiceNoteUrl,
+                  letter.voiceEffect,
+                  letter.handwritingStyle,
+                  letter.embellishmentId,
                 )
               } else {
                 const allHubs = await getAllHubs();
@@ -1305,6 +1311,10 @@ export default function Home() {
                   letter.envelopeId,
                   undefined,
                   letter.burnAfterReading,
+                  voiceNoteUrl,
+                  letter.voiceEffect,
+                  letter.handwritingStyle,
+                  letter.embellishmentId,
                 );
               }
 
@@ -1354,8 +1364,9 @@ export default function Home() {
           hubColor={hubColor}
           hubDecoration={hubDecoration}
           hubGlowIntensity={hubGlowIntensity}
+          visitorBookEnabled={visitorBookEnabled}
           onClose={() => { setProfileOpen(false); setNavResetSignal(s => s + 1) }}
-          onUpdateHub={({ hubName: nextHubName, bio: nextBio, askAbout: nextAskAbout, avatarUrl: nextAvatarUrl, hubStyle: nextHubStyle, hubColor: nextHubColor, hubDecoration: nextHubDecoration, hubGlowIntensity: nextHubGlowIntensity }) => {
+          onUpdateHub={({ hubName: nextHubName, bio: nextBio, askAbout: nextAskAbout, avatarUrl: nextAvatarUrl, hubStyle: nextHubStyle, hubColor: nextHubColor, hubDecoration: nextHubDecoration, hubGlowIntensity: nextHubGlowIntensity, visitorBookEnabled: nextVisitorBookEnabled }) => {
             if (typeof nextHubName === 'string') setHubName(nextHubName)
             if (typeof nextBio === 'string') setHubBio(nextBio)
             if (typeof nextAskAbout === 'string') setHubAskAbout(nextAskAbout)
@@ -1364,6 +1375,7 @@ export default function Home() {
             if (nextHubColor) setHubColor(nextHubColor)
             if (nextHubDecoration) setHubDecoration(nextHubDecoration)
             if (nextHubGlowIntensity) setHubGlowIntensity(nextHubGlowIntensity)
+            if (typeof nextVisitorBookEnabled === 'boolean') setVisitorBookEnabled(nextVisitorBookEnabled)
           }}
         />
       )}

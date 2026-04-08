@@ -10,15 +10,16 @@ const FONT_MODES = [
 const STORAGE_KEY = 'ds-fontsize-mode'
 
 export default function FontSizeControls() {
-  const [mode, setMode] = useState('fontsize-default')
+  const [mode, setMode] = useState(() => {
+    if (typeof window === 'undefined') return 'fontsize-default'
+    return localStorage.getItem(STORAGE_KEY) || 'fontsize-default'
+  })
   const [open, setOpen] = useState(false)
 
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY) || 'fontsize-default'
-    setMode(stored)
     document.documentElement.classList.remove('fontsize-default', 'fontsize-large', 'fontsize-xlarge')
-    document.documentElement.classList.add(stored)
-  }, [])
+    document.documentElement.classList.add(mode)
+  }, [mode])
 
   function setFontMode(className: string) {
     setMode(className)

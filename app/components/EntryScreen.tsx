@@ -5,8 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 
 export default function EntryScreen({
   onEnter,
-  onLogin,
-  onSignup,
+  onLogin: _onLogin,
+  onSignup: _onSignup,
   onGuest,
 }: {
   onEnter?: () => void

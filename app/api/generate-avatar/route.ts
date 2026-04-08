@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import OpenAI from 'openai'
-import { createClient } from '@supabase/supabase-js'
 
 export const maxDuration = 120
 
@@ -50,7 +49,7 @@ export async function POST(req: Request) {
     const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null
     if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const body = await req.json()
+    const body = await req.json() as { answers?: Record<string, unknown>; style?: string; userId?: string }
     const { answers, style, userId } = body
 
     const openaiKey = process.env.OPENAI_API_KEY
@@ -86,8 +85,8 @@ export async function POST(req: Request) {
       revisedPrompt: image?.revised_prompt,
     })
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Generation Error:', error)
-    return NextResponse.json({ error: error.message || 'Failed to generate.' }, { status: 500 })
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to generate.' }, { status: 500 })
   }
 }

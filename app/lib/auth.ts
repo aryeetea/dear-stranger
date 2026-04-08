@@ -1,4 +1,5 @@
 import { supabase } from '../../lib/supabase'
+import type { HandwritingStyle, EmbellishmentId } from '../lib/letterEnrichments'
 
 const MAX_HUB_NAME_LEN = 32
 const MAX_BIO_LEN = 300
@@ -18,8 +19,10 @@ type HubRecord = {
   glow_intensity?: string | null
   regen_count?: number | null
   letters_sent?: number | null
+  visitor_book_enabled?: boolean | null
   email?: string | null
   created_at?: string | null
+  online?: boolean | null
 }
 
 type LetterRecord = {
@@ -35,6 +38,42 @@ type LetterRecord = {
   sender?: { hub_name?: string | null } | null
   recipient?: { hub_name?: string | null } | null
   envelope_id?: string | null
+  handwriting_style?: string | null
+  embellishment_id?: string | null
+}
+
+type UniverseLetterRow = {
+  id: string
+  sender_id?: string | null
+  body?: string | null
+  subject?: string | null
+  paper_id?: string | null
+  font_id?: string | null
+  font_color?: string | null
+  handwriting_style?: string | null
+  embellishment_id?: string | null
+  created_at?: string | null
+  sender?: { hub_name?: string | null } | null
+}
+
+type VisitorBookRow = {
+  id: string
+  visitor_id?: string | null
+  visited_at: string
+  visitor?: { hub_name?: string | null; avatar_url?: string | null } | null
+}
+
+type ReturnPathRow = {
+  sender?: { hub_name?: string | null } | null
+  recipient?: { hub_name?: string | null } | null
+}
+
+export type VisitorBookEntry = {
+  id: string
+  visitorId: string
+  visitorName: string
+  avatarUrl?: string
+  visitedAt: string
 }
 
 function normalizeHubName(hubName: string) {
@@ -360,14 +399,14 @@ export async function getUniverseLetters() {
   try {
     const { data, error } = await supabase
       .from('letters')
-      .select('id, sender_id, body, subject, paper_id, font_id, font_color, sender:sender_id(hub_name)')
+      .select('id, sender_id, body, subject, paper_id, font_id, font_color, handwriting_style, embellishment_id, sender:sender_id(hub_name)')
       .eq('is_universe_letter', true)
       .order('created_at', { ascending: false })
       .limit(50)
 
     if (error) return []
 
-    return ((data || []) as any[]).map((l) => ({
+    return ((data || []) as UniverseLetterRow[]).map((l) => ({
       id: l.id,
       senderId: (l.sender_id as string) || '',
       senderName: l.sender?.hub_name || 'A Stranger',
@@ -377,6 +416,8 @@ export async function getUniverseLetters() {
       paperId: (l.paper_id as string) || 'void-parchment',
       fontId: (l.font_id as string) || 'im-fell',
       fontColor: (l.font_color as string) || undefined,
+      handwritingStyle: (l.handwriting_style as string) || 'typed',
+      embellishmentId: (l.embellishment_id as string) || 'none',
     }))
   } catch {
     return []
@@ -391,7 +432,7 @@ export async function getDriftLetters() {
 
     let query = supabase
       .from('letters')
-      .select('id, sender_id, body, subject, paper_id, font_id, font_color, sender:sender_id(hub_name)')
+      .select('id, sender_id, body, subject, paper_id, font_id, font_color, handwriting_style, embellishment_id, created_at, sender:sender_id(hub_name)')
       .eq('is_universe_letter', true)
       .in('paper_id', DRIFT_PAPER_IDS)
       .order('created_at', { ascending: false })
@@ -404,7 +445,7 @@ export async function getDriftLetters() {
     const { data, error } = await query
     if (error) return []
 
-    return ((data || []) as any[]).map((l) => ({
+    return ((data || []) as UniverseLetterRow[]).map((l) => ({
       id: l.id,
       senderId: (l.sender_id as string) || '',
       senderName: l.sender?.hub_name || 'A Stranger',
@@ -414,10 +455,80 @@ export async function getDriftLetters() {
       paperId: (l.paper_id as string) || 'void-parchment',
       fontId: (l.font_id as string) || 'almendra',
       fontColor: (l.font_color as string) || undefined,
+      handwritingStyle: (l.handwriting_style as string) || 'typed',
+      embellishmentId: (l.embellishment_id as string) || 'none',
+      createdAt: (l.created_at as string) || undefined,
     }))
   } catch {
     return []
   }
+}
+
+export async function recordHubVisit(hubId: string) {
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser()
+
+  if (userError) throw userError
+  if (!user || user.id === hubId) return false
+
+  const { data: hub, error: hubError } = await supabase
+    .from('hubs')
+    .select('id, visitor_book_enabled')
+    .eq('id', hubId)
+    .maybeSingle()
+
+  if (hubError) throw hubError
+  if (!hub?.visitor_book_enabled) return false
+
+  const since = new Date(Date.now() - 45 * 60 * 1000).toISOString()
+  const { data: recentVisit, error: recentError } = await supabase
+    .from('hub_visits')
+    .select('id')
+    .eq('hub_id', hubId)
+    .eq('visitor_id', user.id)
+    .gte('visited_at', since)
+    .order('visited_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (recentError) throw recentError
+  if (recentVisit) return false
+
+  const { error } = await supabase
+    .from('hub_visits')
+    .insert({ hub_id: hubId, visitor_id: user.id })
+
+  if (error) throw error
+  return true
+}
+
+export async function getVisitorBook(limit = 18): Promise<VisitorBookEntry[]> {
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser()
+
+  if (userError) throw userError
+  if (!user) return []
+
+  const { data, error } = await supabase
+    .from('hub_visits')
+    .select('id, visitor_id, visited_at, visitor:visitor_id(hub_name, avatar_url)')
+    .eq('hub_id', user.id)
+    .order('visited_at', { ascending: false })
+    .limit(limit)
+
+  if (error) throw error
+
+  return ((data || []) as VisitorBookRow[]).map((row) => ({
+    id: row.id as string,
+    visitorId: (row.visitor_id as string) || '',
+    visitorName: row.visitor?.hub_name || 'A Stranger',
+    avatarUrl: row.visitor?.avatar_url || undefined,
+    visitedAt: row.visited_at as string,
+  }))
 }
 
 // ─── Block / unblock ─────────────────────────────────────────────────────────
@@ -572,7 +683,8 @@ export async function updateHub(updates: {
   hub_style?: string
   backdrop_id?: string
   regen_count?: number
-  [key: string]: any
+  visitor_book_enabled?: boolean
+  [key: string]: unknown
 }) {
   const {
     data: { user },
@@ -620,6 +732,10 @@ export async function sendLetter(
   envelopeId?: string,
   customArrivesAt?: Date,
   burnAfterReading?: boolean,
+  voiceNoteUrl?: string,
+  voiceEffect?: string,
+  handwritingStyle?: HandwritingStyle,
+  embellishmentId?: EmbellishmentId,
 ) {
   const {
     data: { user },
@@ -668,6 +784,9 @@ export async function sendLetter(
         ...(stampId ? { stamp_id: stampId } : {}),
         ...(envelopeId ? { envelope_id: envelopeId } : {}),
         ...(burnAfterReading ? { burn_after_reading: true } : {}),
+        ...(voiceNoteUrl ? { voice_note_url: voiceNoteUrl, voice_effect: voiceEffect || 'raw' } : {}),
+        handwriting_style: handwritingStyle || 'typed',
+        ...(embellishmentId && embellishmentId !== 'none' ? { embellishment_id: embellishmentId } : {}),
       },
     ])
     .select()
@@ -684,6 +803,52 @@ export async function deleteLetter(letterId: string) {
     .delete()
     .eq('id', letterId)
   if (error) throw error
+}
+
+export async function uploadVoiceNote(blob: Blob): Promise<string> {
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+  if (userError || !user) throw new Error('Not authenticated')
+  const ext = blob.type.includes('ogg') ? 'ogg' : blob.type.includes('mp4') ? 'mp4' : 'webm'
+  const path = `${user.id}/${Date.now()}.${ext}`
+  const { error } = await supabase.storage
+    .from('voice-notes')
+    .upload(path, blob, { contentType: blob.type || 'audio/webm' })
+  if (error) throw error
+  const { data: urlData } = supabase.storage.from('voice-notes').getPublicUrl(path)
+  return urlData.publicUrl
+}
+
+export async function getReturnPaths(): Promise<{ hubA: string; hubB: string }[]> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return []
+    const since = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString()
+    const { data, error } = await supabase
+      .from('letters')
+      .select('sender:sender_id(hub_name), recipient:recipient_id(hub_name)')
+      .eq('is_universe_letter', false)
+      .gte('created_at', since)
+      .limit(500)
+    if (error || !data) return []
+    const edges = new Set<string>()
+    for (const row of data as ReturnPathRow[]) {
+      const sender = row.sender?.hub_name
+      const recipient = row.recipient?.hub_name
+      if (sender && recipient) edges.add(`${sender}\u2192${recipient}`)
+    }
+    const seen = new Set<string>()
+    const pairs: { hubA: string; hubB: string }[] = []
+    for (const edge of edges) {
+      const arrowIdx = edge.indexOf('\u2192')
+      const a = edge.slice(0, arrowIdx)
+      const b = edge.slice(arrowIdx + 1)
+      if (edges.has(`${b}\u2192${a}`)) {
+        const key = [a, b].sort().join('|')
+        if (!seen.has(key)) { seen.add(key); pairs.push({ hubA: a, hubB: b }) }
+      }
+    }
+    return pairs
+  } catch { return [] }
 }
 
 export async function getMyLetters() {
@@ -794,7 +959,6 @@ export async function uploadAvatarToStorage(
   const matches = compressed.match(/^data:(.+);base64,(.+)$/)
   if (!matches) throw new Error('Invalid base64 image format')
 
-  const mimeType = matches[1]
   const base64Data = matches[2]
 
   const byteCharacters = atob(base64Data)

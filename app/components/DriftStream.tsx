@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { getDriftLetters, sendLetter, blockUser, isBlocked } from '../lib/auth'
 import { playLetterSend, playTypingSound, playWaxSeal } from '../../lib/sounds'
+import { HANDWRITING_STYLES, LETTER_EMBELLISHMENTS, getHandwritingStyleStyles, renderLetterEmbellishment, type HandwritingStyle, type EmbellishmentId } from '../lib/letterEnrichments'
 
 // ─── Drift-exclusive paper styles ────────────────────────────────────────────
 const DRIFT_PAPERS = [
@@ -91,9 +92,32 @@ interface DriftLetter {
   paperId: string
   fontId: string
   fontColor?: string
+  handwritingStyle?: HandwritingStyle
+  embellishmentId?: EmbellishmentId
+  createdAt?: string
 }
 
 type DriftView = 'read' | 'write' | 'paper' | 'font' | 'ink'
+
+function formatDriftTime(dateString?: string) {
+  if (!dateString) return 'drifting through the void'
+  const diffMs = Date.now() - new Date(dateString).getTime()
+  const diffHours = Math.max(1, Math.floor(diffMs / 3600000))
+  if (diffHours < 24) return `drifting for ${diffHours} hour${diffHours === 1 ? '' : 's'}`
+  const diffDays = Math.floor(diffHours / 24)
+  if (diffDays < 30) return `drifting for ${diffDays} day${diffDays === 1 ? '' : 's'}`
+  const diffMonths = Math.floor(diffDays / 30)
+  return `drifting for ${diffMonths} month${diffMonths === 1 ? '' : 's'}`
+}
+
+function formatDriftDate(dateString?: string) {
+  if (!dateString) return 'No timestamp'
+  return new Date(dateString).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })
+}
 
 // ─── Paper background renderer ────────────────────────────────────────────────
 function DriftPaperBg({ paperId, children }: { paperId: string; children: React.ReactNode }) {
@@ -218,14 +242,38 @@ function OpenLetterModal({ open, onClose, onBlocked }: {
   const f = DRIFT_FONTS.find(d => d.id === open.fontId) ?? DRIFT_FONTS[0]
   const inkEntry = DRIFT_INKS.find(d => d.id === open.fontColor)
   const resolvedInk = inkEntry ? inkEntry.color : p.text
+  const writingStyle = getHandwritingStyleStyles(open.handwritingStyle || 'typed')
 
   const [blocking, setBlocking] = useState(false)
   const [blocked, setBlocked] = useState(false)
   const [confirmBlock, setConfirmBlock] = useState(false)
+  const [phase, setPhase] = useState<'seal' | 'unfold' | 'read'>('seal')
+  const [visibleChars, setVisibleChars] = useState(0)
 
   useEffect(() => {
     isBlocked(open.senderId).then(setBlocked)
   }, [open.senderId])
+
+  useEffect(() => {
+    const openTimer = setTimeout(() => setPhase('unfold'), 650)
+    const readTimer = setTimeout(() => setPhase('read'), 1325)
+    return () => {
+      clearTimeout(openTimer)
+      clearTimeout(readTimer)
+    }
+  }, [open.id])
+
+  useEffect(() => {
+    if (phase !== 'read') return
+    const timer = window.setInterval(() => {
+      setVisibleChars(prev => {
+        const next = Math.min(open.body.length, prev + 8)
+        if (next >= open.body.length) window.clearInterval(timer)
+        return next
+      })
+    }, 18)
+    return () => window.clearInterval(timer)
+  }, [phase, open.body])
 
   async function handleBlock() {
     setBlocking(true)
@@ -244,16 +292,18 @@ function OpenLetterModal({ open, onClose, onBlocked }: {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.88)', zIndex: 90, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 20px', backdropFilter: 'blur(8px)' }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(3,2,10,0.92)', zIndex: 90, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 20px', backdropFilter: 'blur(8px)' }}
       onClick={onClose}
     >
+      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'radial-gradient(ellipse 34% 28% at 24% 22%, rgba(162,92,190,0.12) 0%, transparent 72%), radial-gradient(ellipse 30% 24% at 74% 68%, rgba(255,142,88,0.1) 0%, transparent 72%), radial-gradient(ellipse 50% 36% at 50% 56%, rgba(72,40,120,0.16) 0%, transparent 80%)' }} />
+      <div style={{ position: 'absolute', left: '50%', top: '50%', width: 'min(74vw, 760px)', height: 'min(74vw, 760px)', transform: 'translate(-50%, -50%)', pointerEvents: 'none', borderRadius: '50%', border: '1px solid rgba(206,172,242,0.08)', boxShadow: '0 0 0 80px rgba(166,126,220,0.025), 0 0 0 170px rgba(255,150,92,0.018)' }} />
       <motion.div
         initial={{ scale: 0.93, y: 20 }}
         animate={{ scale: 1, y: 0 }}
         exit={{ scale: 0.93, opacity: 0 }}
         transition={{ type: 'spring', stiffness: 300, damping: 28 }}
         onClick={e => e.stopPropagation()}
-        style={{ maxWidth: '580px', width: '100%', maxHeight: '84vh', overflowY: 'auto', position: 'relative' }}
+        style={{ maxWidth: '680px', width: '100%', maxHeight: '84vh', overflowY: 'auto', position: 'relative', padding: '18px', borderRadius: '28px', background: 'linear-gradient(180deg, rgba(12,8,24,0.72), rgba(8,6,18,0.48))', border: '1px solid rgba(214,186,255,0.08)', boxShadow: '0 28px 90px rgba(0,0,0,0.5)' }}
       >
         {/* close */}
         <button onClick={onClose}
@@ -261,16 +311,52 @@ function OpenLetterModal({ open, onClose, onBlocked }: {
           ×
         </button>
 
+        <div style={{ position: 'relative' }}>
+          {phase !== 'read' && (
+            <motion.div
+              initial={{ opacity: 0.9 }}
+              animate={{ opacity: phase === 'seal' ? 1 : 0.85 }}
+              style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9, pointerEvents: 'none' }}>
+              <motion.div
+                initial={{ scale: 0.94, rotateX: 0, opacity: 1 }}
+                animate={phase === 'seal'
+                  ? { scale: [0.94, 1, 0.98], rotate: [0, -1.5, 1.5, 0] }
+                  : { scale: [1, 1.02, 1.06], rotateX: [0, 14, 24], y: [0, -18, -30], opacity: [1, 0.84, 0] }}
+                transition={{ duration: phase === 'seal' ? 0.55 : 0.7, ease: 'easeInOut' }}
+                style={{ position: 'relative', width: 'min(520px, 88vw)', aspectRatio: '1.45 / 1', borderRadius: '6px', background: 'linear-gradient(160deg, rgba(38,22,58,0.98), rgba(82,48,106,0.94))', border: '1px solid rgba(230,190,255,0.18)', boxShadow: '0 22px 70px rgba(0,0,0,0.7)' }}>
+                <div style={{ position: 'absolute', inset: 0, clipPath: 'polygon(0 0, 100% 0, 50% 54%)', background: 'linear-gradient(180deg, rgba(124,80,154,0.98), rgba(62,34,88,0.95))', borderBottom: '1px solid rgba(230,190,255,0.14)' }} />
+                <motion.div
+                  animate={phase === 'seal' ? { scale: [1, 0.92, 1.08, 1] } : { scale: [1, 0.8, 0.55], opacity: [1, 0.7, 0] }}
+                  transition={{ duration: 0.46, ease: 'easeInOut' }}
+                  style={{ position: 'absolute', left: '50%', top: '52%', transform: 'translate(-50%, -50%)', width: '66px', height: '66px', borderRadius: '50%', background: 'radial-gradient(circle at 36% 30%, rgba(255,146,136,0.98), rgba(134,30,34,0.94) 54%, rgba(72,10,16,0.98))', boxShadow: '0 0 28px rgba(190,60,60,0.42)' }} />
+                {phase === 'unfold' && [...Array(14)].map((_, index) => (
+                  <motion.span
+                    key={index}
+                    initial={{ opacity: 0.9, scale: 0.4, x: 0, y: 0 }}
+                    animate={{ opacity: 0, scale: 1.1, x: (index - 7) * 16, y: ((index % 4) - 1.5) * 18 - 8 }}
+                    transition={{ duration: 0.6, ease: 'easeOut' }}
+                    style={{ position: 'absolute', left: '50%', top: '52%', width: '8px', height: '8px', background: 'rgba(214,112,122,0.85)', clipPath: 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)' }}
+                  />
+                ))}
+              </motion.div>
+            </motion.div>
+          )}
+
         <DriftPaperBg paperId={open.paperId}>
+          {renderLetterEmbellishment(open.embellishmentId, p.accent, 'read')}
+          <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'radial-gradient(ellipse 42% 30% at 52% 46%, rgba(120,68,190,0.08) 0%, transparent 74%)', zIndex: 2 }} />
           <p style={{ fontFamily: f.family, fontStyle: 'italic', fontSize: 'clamp(20px,3.2vw,28px)', color: p.text, marginBottom: '4px', lineHeight: 1.2 }}>
             {open.subject}
           </p>
           <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.2em', color: p.subtext, textTransform: 'uppercase', marginBottom: '28px' }}>
             from {open.senderName}
           </p>
+          <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.2em', color: p.subtext, textTransform: 'uppercase', marginBottom: '14px', opacity: 0.7 }}>
+            {formatDriftTime(open.createdAt)}
+          </p>
           <div style={{ height: '1px', background: p.border, marginBottom: '24px' }} />
-          <p style={{ fontFamily: f.family, fontSize: 'clamp(14px,1.8vw,16px)', color: resolvedInk, lineHeight: 2.0, whiteSpace: 'pre-wrap', margin: 0 }}>
-            {open.body}
+          <p style={{ ...writingStyle, fontFamily: f.family, fontSize: 'clamp(14px,1.8vw,16px)', color: resolvedInk, lineHeight: 2.0, whiteSpace: 'pre-wrap', margin: 0 }}>
+            {phase === 'read' ? open.body.slice(0, visibleChars) : ''}
           </p>
 
           {/* block section */}
@@ -307,6 +393,7 @@ function OpenLetterModal({ open, onClose, onBlocked }: {
             )}
           </div>
         </DriftPaperBg>
+        </div>
       </motion.div>
     </motion.div>
   )
@@ -322,6 +409,8 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
   const [selectedPaper, setSelectedPaper] = useState(DRIFT_PAPERS[0])
   const [selectedFont, setSelectedFont] = useState(DRIFT_FONTS[0])
   const [selectedInk, setSelectedInk] = useState(DRIFT_INKS[0])
+  const [selectedHandwriting, setSelectedHandwriting] = useState<HandwritingStyle>('typed')
+  const [selectedEmbellishment, setSelectedEmbellishment] = useState<EmbellishmentId>('none')
   const [driftType, setDriftType] = useState<'letter' | 'poem' | 'journal'>('letter')
   const [subject, setSubject] = useState('')
   const [body, setBody] = useState('')
@@ -329,6 +418,8 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
   const [sending, setSending] = useState(false)
   const [waxing, setWaxing] = useState(false)
   const [sent, setSent] = useState(false)
+  const [hoveredLetterId, setHoveredLetterId] = useState<string | null>(null)
+  const [openingLetterId, setOpeningLetterId] = useState<string | null>(null)
   const lastTypeSoundRef = useRef<number>(0)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -342,6 +433,7 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
   const paper = selectedPaper
   const fontFamily = selectedFont.family
   const inkColor = selectedInk.color
+  const writeStyle = getHandwritingStyleStyles(selectedHandwriting)
 
   function handleTypingKey() {
     const now = Date.now()
@@ -371,6 +463,13 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
         subject,
         selectedFont.id,
         selectedInk.id,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        selectedHandwriting,
+        selectedEmbellishment,
       )
     } catch { /* silent */ }
     setSent(true)
@@ -392,7 +491,7 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
       className="fixed-scroll-panel"
       style={{
         position: 'fixed', inset: 0,
-        background: 'rgba(0,0,5,0.97)',
+        background: 'rgba(6,2,14,0.98)',
         backdropFilter: 'blur(20px)',
         zIndex: 70,
         overflowY: tab === 'read' ? 'hidden' : 'auto',
@@ -400,7 +499,8 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
       }}
     >
       {/* stars */}
-      <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', background: 'radial-gradient(ellipse 55% 45% at 50% 30%, rgba(15,10,60,0.32) 0%, transparent 65%)' }} />
+      <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', background: 'radial-gradient(ellipse 58% 42% at 50% 28%, rgba(104,52,150,0.3) 0%, transparent 66%), radial-gradient(ellipse 34% 26% at 18% 72%, rgba(200,110,84,0.14) 0%, transparent 72%), radial-gradient(ellipse 28% 24% at 82% 22%, rgba(152,90,190,0.14) 0%, transparent 72%), radial-gradient(circle at 50% 52%, rgba(255,182,110,0.05) 0%, transparent 18%)' }} />
+      <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', opacity: 0.1, mixBlendMode: 'screen', backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 220 220'%3E%3Cfilter id='grain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23grain)' opacity='0.72'/%3E%3C/svg%3E\")" }} />
       <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none' }}>
         {DRIFT_STARS.map((s, i) => (
           <div key={i} style={{ position: 'absolute', width: s.width, height: s.width, borderRadius: '50%', background: `rgba(255,255,255,${s.opacity})`, left: s.left, top: s.top }} />
@@ -423,6 +523,7 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
         {/* title */}
         <div style={{ pointerEvents: 'none', textAlign: 'center' }}>
           <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.52em', color: '#e6c76e', textTransform: 'uppercase', margin: 0 }}>The Driftstream</p>
+          <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '12px', color: 'rgba(255,255,255,0.38)', marginTop: '6px' }}>open currents, hidden senders</p>
         </div>
 
         {/* tab toggle */}
@@ -448,6 +549,16 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
         {/* ── READ / floating envelopes ── */}
         {tab === 'read' && (
           <motion.div key="read" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position: 'fixed', inset: 0, overflow: 'hidden' }}>
+            <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'radial-gradient(ellipse 42% 36% at 50% 52%, rgba(255,132,78,0.08) 0%, transparent 68%)' }} />
+            <div style={{ position: 'absolute', left: '50%', top: '50%', width: 'min(64vw, 680px)', height: 'min(64vw, 680px)', transform: 'translate(-50%, -50%)', pointerEvents: 'none', borderRadius: '50%', background: 'radial-gradient(circle, rgba(94,38,140,0.22) 0%, rgba(34,14,64,0.1) 34%, transparent 70%)', filter: 'blur(10px)' }} />
+            <div style={{ position: 'absolute', left: '50%', top: '50%', width: 'min(34vw, 340px)', height: 'min(34vw, 340px)', transform: 'translate(-50%, -50%)', pointerEvents: 'none', borderRadius: '50%', border: '1px solid rgba(224,186,255,0.12)', boxShadow: '0 0 0 24px rgba(224,186,255,0.025), 0 0 40px rgba(255,148,94,0.08)' }} />
+            <div style={{ position: 'absolute', left: '50%', top: '50%', width: '22px', height: '22px', transform: 'translate(-50%, -50%)', pointerEvents: 'none', borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,214,150,0.95), rgba(255,142,90,0.4) 56%, rgba(255,142,90,0) 72%)', boxShadow: '0 0 30px rgba(255,176,108,0.45)' }} />
+            <div style={{ position: 'absolute', top: '112px', left: '50%', transform: 'translateX(-50%)', width: 'min(580px, calc(100vw - 48px))', textAlign: 'center', pointerEvents: 'none' }}>
+              <p style={{ fontFamily: "'Cinzel', serif", fontSize: '11px', letterSpacing: '0.36em', color: 'rgba(230,199,110,0.72)', textTransform: 'uppercase', marginBottom: '10px' }}>Anonymous Current</p>
+              <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '18px', lineHeight: 1.6, color: 'rgba(255,255,255,0.64)' }}>
+                Letters circle the warm center until one drifts close enough to be opened.
+              </p>
+            </div>
             {loading && (
               <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.38em', color: 'rgba(230,199,110,0.42)', textTransform: 'uppercase' }}>Listening to the void…</p>
@@ -456,12 +567,14 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
 
             {!loading && letters.length === 0 && (
               <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
+                <div style={{ width: 'min(460px, calc(100vw - 48px))', padding: '28px 24px', borderRadius: '24px', background: 'linear-gradient(180deg, rgba(18,12,34,0.76), rgba(10,8,20,0.64))', border: '1px solid rgba(255,255,255,0.07)', boxShadow: '0 20px 60px rgba(0,0,0,0.28)', textAlign: 'center' }}>
                 <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '18px', color: 'rgba(255,255,255,0.35)' }}>The universe is quiet right now.</p>
                 <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(255,255,255,0.2)' }}>Be the first to release a letter into the open.</p>
                 <motion.button whileTap={{ scale: 0.97 }} onClick={() => setTab('write')}
                   style={{ marginTop: '16px', background: 'none', border: '1px solid rgba(230,199,110,0.35)', color: '#e6c76e', fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.3em', padding: '10px 24px', cursor: 'pointer', textTransform: 'uppercase' }}>
                   Write & Release
                 </motion.button>
+                </div>
               </div>
             )}
 
@@ -478,13 +591,17 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
                     <motion.div
                       key={letter.id}
                       initial={{ opacity: 0 }}
-                      animate={{ opacity: 1, x: kfX, y: kfY }}
+                      animate={{ opacity: 1, x: kfX, y: kfY, rotate: hoveredLetterId === letter.id ? 0 : [((i % 5) - 2) * 2, ((i % 7) - 3) * 3, ((i % 4) - 1.5) * 2], scale: openingLetterId === letter.id ? [1, 1.08, 1.24] : hoveredLetterId === letter.id ? 1.1 : [1, 0.985, 1.02] }}
                       transition={{
                         opacity: { duration: 0.8, delay: i * 0.12 },
                         x: { duration, repeat: Infinity, ease: 'linear', times },
                         y: { duration, repeat: Infinity, ease: 'linear', times },
+                        rotate: { duration: hoveredLetterId === letter.id ? 0.24 : 7 + (i % 4), repeat: hoveredLetterId === letter.id || openingLetterId === letter.id ? 0 : Infinity, ease: 'easeInOut' },
+                        scale: { duration: openingLetterId === letter.id ? 0.52 : 4.8 + i * 0.12, repeat: openingLetterId === letter.id || hoveredLetterId === letter.id ? 0 : Infinity, ease: 'easeInOut' },
                       }}
-                      onClick={() => setOpen(letter)}
+                      onClick={() => { setOpeningLetterId(letter.id); setTimeout(() => { setOpen(letter); setOpeningLetterId(null) }, 360) }}
+                      onMouseEnter={() => setHoveredLetterId(letter.id)}
+                      onMouseLeave={() => setHoveredLetterId(current => current === letter.id ? null : current)}
                       title={letter.subject}
                       style={{
                         position: 'absolute',
@@ -493,6 +610,7 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
                         marginLeft: 'calc(-1 * clamp(36px, 4vw, 50px))',
                         marginTop: 'calc(-1 * clamp(25px, 2.7vw, 34px))',
                         zIndex: 10 + i,
+                        transformStyle: 'preserve-3d',
                       }}
                     >
                       {/* envelope body */}
@@ -501,23 +619,34 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
                         paddingBottom: '68%',
                         background: env.bg,
                         border: `1px solid ${env.border}`,
-                        borderRadius: '2px',
+                        borderRadius: '10px',
                         position: 'relative',
-                        boxShadow: `0 8px 28px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.4)`,
+                        boxShadow: hoveredLetterId === letter.id ? `0 20px 44px rgba(0,0,0,0.82), 0 0 28px ${env.border}` : `0 8px 28px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.4)`,
                         transition: 'box-shadow 0.2s, transform 0.2s',
+                        transform: `translateZ(${(i % 3) * 12}px) ${hoveredLetterId === letter.id ? 'rotateX(0deg)' : `rotateX(${(i % 3) - 1}deg)`}`,
                       }}
-                        onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = `0 12px 40px rgba(0,0,0,0.8), 0 0 24px ${env.border}`; (e.currentTarget as HTMLDivElement).style.transform = 'scale(1.08)' }}
-                        onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = `0 8px 28px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.4)`; (e.currentTarget as HTMLDivElement).style.transform = 'scale(1)' }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.transform = 'translateZ(26px) rotateX(0deg)' }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.transform = `translateZ(${(i % 3) * 12}px) rotateX(${(i % 3) - 1}deg)` }}
                       >
+                        <div style={{ position: 'absolute', inset: '-20% 18% auto', height: '80%', background: `linear-gradient(180deg, ${env.border}, transparent 74%)`, opacity: 0.2, filter: 'blur(14px)', transform: 'translateY(-12px)', pointerEvents: 'none' }} />
                         <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }} viewBox="0 0 100 68" preserveAspectRatio="none">
                           <polygon points="0,0 100,0 50,38" fill={env.flap} opacity="0.9" />
                           <polygon points="0,0 50,38 0,68" fill="rgba(0,0,0,0.12)" />
                           <polygon points="100,0 50,38 100,68" fill="rgba(0,0,0,0.08)" />
                         </svg>
+                        <div style={{ position: 'absolute', inset: '10% 14%', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)', opacity: 0.38 }} />
+                        <div style={{ position: 'absolute', left: '12%', right: '12%', bottom: '18%', padding: '6px 7px', borderRadius: '8px', background: 'rgba(5,5,12,0.26)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                          <p style={{ fontFamily: "'Cinzel', serif", fontSize: '6px', letterSpacing: '0.16em', color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: '3px' }}>
+                            {letter.subject}
+                          </p>
+                          <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '8px', color: env.label, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {formatDriftDate(letter.createdAt)}
+                          </p>
+                        </div>
                         <div style={{ position: 'absolute', bottom: '20%', left: '50%', transform: 'translateX(-50%)', width: '10px', height: '10px', borderRadius: '50%', background: env.border, boxShadow: `0 0 6px ${env.border}` }} />
                       </div>
-                      <p style={{ fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.18em', color: env.label, textTransform: 'uppercase', textAlign: 'center', marginTop: '6px', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {letter.subject}
+                      <p style={{ fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.18em', color: env.label, textTransform: 'uppercase', textAlign: 'center', marginTop: '8px', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {formatDriftTime(letter.createdAt)}
                       </p>
                     </motion.div>
                   )
@@ -527,19 +656,53 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
 
             {/* hint */}
             {!loading && letters.length > 0 && (
-              <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8 }}
-                style={{ position: 'absolute', bottom: '32px', left: '50%', transform: 'translateX(-50%)', fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '12px', color: 'rgba(255,255,255,0.22)', textAlign: 'center', whiteSpace: 'nowrap', pointerEvents: 'none' }}>
-                Click an envelope to read its letter
-              </motion.p>
+              <>
+                <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8 }}
+                  style={{ position: 'absolute', bottom: '34px', left: '50%', transform: 'translateX(-50%)', fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '12px', color: 'rgba(255,255,255,0.22)', textAlign: 'center', whiteSpace: 'nowrap', pointerEvents: 'none' }}>
+                  envelopes drift in hidden currents
+                </motion.p>
+                <div style={{ position: 'absolute', left: '24px', bottom: '24px', width: 'min(280px, calc(100vw - 48px))', padding: '16px 18px', borderRadius: '18px', background: 'linear-gradient(180deg, rgba(20,14,36,0.72), rgba(10,8,20,0.62))', border: '1px solid rgba(255,255,255,0.06)', boxShadow: '0 16px 40px rgba(0,0,0,0.24)', pointerEvents: 'none' }}>
+                  <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.26em', color: 'rgba(230,199,110,0.72)', textTransform: 'uppercase', marginBottom: '8px' }}>Current Reading</p>
+                  <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(255,255,255,0.62)', lineHeight: 1.55 }}>
+                    {letters.length} drifting letter{letters.length === 1 ? '' : 's'} are circling tonight.
+                  </p>
+                </div>
+              </>
             )}
           </motion.div>
         )}
 
         {/* ── WRITE ── */}
         {tab === 'write' && !waxing && !sending && !sent && (
-          <motion.div key="write" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} style={{ position: 'relative', zIndex: 2, maxWidth: '680px', margin: '0 auto' }}>
-            {/* ── Controls floating above the paper ── */}
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '14px', flexWrap: 'wrap', alignItems: 'center' }}>
+          <motion.div key="write" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} style={{ position: 'relative', zIndex: 2, maxWidth: '980px', margin: '0 auto' }}>
+            <div style={{ marginBottom: '20px', padding: '24px clamp(18px, 3vw, 28px)', borderRadius: '24px', background: 'linear-gradient(135deg, rgba(18,12,34,0.82), rgba(10,8,20,0.72) 52%, rgba(42,22,18,0.44) 100%)', border: '1px solid rgba(255,255,255,0.07)', boxShadow: '0 24px 70px rgba(0,0,0,0.3)' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '18px', justifyContent: 'space-between', alignItems: 'end' }}>
+                <div style={{ flex: '1 1 360px', minWidth: '280px' }}>
+                  <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.34em', color: 'rgba(230,199,110,0.72)', textTransform: 'uppercase', marginBottom: '10px' }}>Release Chamber</p>
+                  <p style={{ fontFamily: "'Cinzel', serif", fontSize: 'clamp(22px, 3vw, 34px)', letterSpacing: '0.2em', color: '#f1dfab', textTransform: 'uppercase', marginBottom: '10px' }}>Compose For The Current</p>
+                  <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '16px', color: 'rgba(255,255,255,0.62)', lineHeight: 1.65, maxWidth: '520px' }}>
+                    Pick the paper, hand, and embellishment that matches the mood, then let the drift decide where it lands.
+                  </p>
+                </div>
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'flex-end', flex: '0 1 360px' }}>
+                  {[
+                    { label: 'Paper', value: paper.label, onClick: () => setTab('paper') },
+                    { label: 'Hand', value: selectedFont.label, onClick: () => setTab('font') },
+                    { label: 'Ink', value: selectedInk.label, onClick: () => setTab('ink') },
+                  ].map(chip => (
+                    <button key={chip.label} onClick={chip.onClick}
+                      style={{ padding: '12px 14px', minWidth: '112px', textAlign: 'left', borderRadius: '14px', background: 'linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03))', border: '1px solid rgba(255,255,255,0.08)', cursor: 'pointer' }}>
+                      <p style={{ fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.24em', color: 'rgba(230,199,110,0.72)', textTransform: 'uppercase', marginBottom: '6px' }}>{chip.label}</p>
+                      <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(255,255,255,0.78)' }}>{chip.value}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '18px', alignItems: 'start' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', padding: '14px', borderRadius: '18px', background: 'linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02))', border: '1px solid rgba(255,255,255,0.07)' }}>
               <div style={{ display: 'flex', gap: '4px' }}>
                 {(['letter', 'poem', 'journal'] as const).map(t => (
                   <button key={t} onClick={() => setDriftType(t)}
@@ -555,23 +718,41 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
                   </button>
                 ))}
               </div>
-              <div style={{ flex: 1 }} />
-              {[
-                { key: 'paper', label: paper.label, icon: '⬛', onClick: () => setTab('paper') },
-                { key: 'font',  label: selectedFont.label, icon: 'A', onClick: () => setTab('font') },
-                { key: 'ink',   label: selectedInk.label, icon: '✒', onClick: () => setTab('ink') },
-              ].map(btn => (
-                <button key={btn.key} onClick={btn.onClick}
-                  style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.6)', fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.2em', textTransform: 'uppercase', padding: '5px 12px', cursor: 'pointer', borderRadius: '2px', display: 'flex', alignItems: 'center', gap: '5px', transition: 'background 0.15s' }}
-                  onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.12)')}
-                  onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}>
-                  <span>{btn.icon}</span>{btn.label}
-                </button>
-              ))}
-            </div>
+                </div>
 
-            {/* ── The paper ── */}
+                <div style={{ padding: '14px 14px 12px', background: 'linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02))', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '18px' }}>
+                <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.22em', color: '#e6c76e', textTransform: 'uppercase', margin: '0 0 8px' }}>Letter Form</p>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(128px, 1fr))', gap: '8px' }}>
+                  {HANDWRITING_STYLES.map(style => {
+                    const isSelected = selectedHandwriting === style.id
+                    return (
+                      <button key={style.id} onClick={() => setSelectedHandwriting(style.id)} style={{ textAlign: 'left', minHeight: '84px', padding: '10px 10px 9px', background: isSelected ? 'linear-gradient(180deg, rgba(230,199,110,0.16), rgba(230,199,110,0.08))' : 'rgba(255,255,255,0.02)', border: `1px solid ${isSelected ? 'rgba(230,199,110,0.35)' : 'rgba(255,255,255,0.08)'}`, borderRadius: '12px', cursor: 'pointer', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                        <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.14em', color: isSelected ? '#e6c76e' : 'rgba(255,255,255,0.78)', textTransform: 'uppercase', margin: '0 0 2px' }}>{style.label}</p>
+                        <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '10px', color: 'rgba(255,255,255,0.44)', margin: 0 }}>{style.desc}</p>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+              <div style={{ padding: '14px 14px 12px', background: 'linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02))', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '18px' }}>
+                <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.22em', color: '#e6c76e', textTransform: 'uppercase', margin: '0 0 8px' }}>Embellishment</p>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(128px, 1fr))', gap: '8px' }}>
+                  {LETTER_EMBELLISHMENTS.map(embellishment => {
+                    const isSelected = selectedEmbellishment === embellishment.id
+                    return (
+                      <button key={embellishment.id} onClick={() => setSelectedEmbellishment(embellishment.id)} style={{ textAlign: 'left', minHeight: '84px', padding: '10px 10px 9px', background: isSelected ? 'linear-gradient(180deg, rgba(230,199,110,0.16), rgba(230,199,110,0.08))' : 'rgba(255,255,255,0.02)', border: `1px solid ${isSelected ? 'rgba(230,199,110,0.35)' : 'rgba(255,255,255,0.08)'}`, borderRadius: '12px', cursor: 'pointer', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                        <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.14em', color: isSelected ? '#e6c76e' : 'rgba(255,255,255,0.78)', textTransform: 'uppercase', margin: '0 0 2px' }}>{embellishment.label}</p>
+                        <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '10px', color: 'rgba(255,255,255,0.44)', margin: 0 }}>{embellishment.desc}</p>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+              </div>
+
+              <div style={{ padding: '18px', borderRadius: '24px', background: 'linear-gradient(180deg, rgba(12,10,26,0.82), rgba(8,8,18,0.68))', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 24px 70px rgba(0,0,0,0.28)' }}>
             <DriftPaperBg paperId={paper.id}>
+              {renderLetterEmbellishment(selectedEmbellishment, paper.accent, 'compose')}
               {/* subject */}
               <input
                 value={subject}
@@ -608,6 +789,7 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
                 placeholder={driftType === 'letter' ? 'Your letter begins here...' : driftType === 'poem' ? 'Let it pour out...' : 'Write freely...'}
                 maxLength={6000}
                 style={{
+                  ...writeStyle,
                   width: '100%', minHeight: '220px', background: 'transparent', border: 'none', outline: 'none',
                   color: inkColor, fontFamily, fontSize: 'clamp(14px,1.8vw,16px)', lineHeight: 2,
                   resize: 'none', letterSpacing: '0.01em', caretColor: paper.accent,
@@ -652,6 +834,8 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
                 </motion.button>
               </div>
             </DriftPaperBg>
+              </div>
+            </div>
           </motion.div>
         )}
 
@@ -659,12 +843,16 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
         {waxing && (
           <motion.div key="waxing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             style={{ position: 'fixed', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 2 }}>
+            <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'radial-gradient(ellipse 35% 28% at 50% 50%, rgba(255,120,88,0.08) 0%, transparent 68%)' }} />
             <motion.div
               initial={{ scale: 0.2, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
+              animate={{ scale: 1, opacity: 1, rotate: [0, -6, 4, 0] }}
               transition={{ duration: 0.6, ease: 'easeOut' }}
-              style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'radial-gradient(circle, #8b1a1a, #6a0f0f)', boxShadow: '0 0 40px rgba(160,30,30,0.7)' }}
+              style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'radial-gradient(circle, #b62e36, #6a0f0f)', boxShadow: '0 0 40px rgba(160,30,30,0.7)' }}
             />
+            {[...Array(12)].map((_, index) => (
+              <motion.span key={index} initial={{ opacity: 0.9, scale: 0.4, x: 0, y: 0 }} animate={{ opacity: 0, scale: 1.1, x: (index - 6) * 16, y: ((index % 4) - 1.5) * 18 - 12 }} transition={{ duration: 0.66, ease: 'easeOut' }} style={{ position: 'absolute', left: '50%', top: '50%', width: '8px', height: '8px', background: 'rgba(214,112,122,0.82)', clipPath: 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)' }} />
+            ))}
             <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }}
               style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '16px', color: 'rgba(255,200,180,0.85)', marginTop: '32px', letterSpacing: '0.04em' }}>
               Sealing your letter…
@@ -676,8 +864,9 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
         {sending && !sent && (
           <motion.div key="sending" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             style={{ position: 'fixed', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 2 }}>
+            <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'radial-gradient(ellipse 44% 34% at 50% 50%, rgba(255,126,84,0.06) 0%, transparent 70%)' }} />
             <motion.div
-              animate={{ y: [0, -120, -300], x: [0, 60, 200], opacity: [1, 1, 0], rotate: [0, -8, -20] }}
+              animate={{ y: [0, -80, -210], x: [0, 36, 122], opacity: [1, 1, 0], rotate: [0, -8, -20], scale: [1, 1.04, 0.98] }}
               transition={{ duration: 1.8, ease: 'easeIn' }}
               style={{ fontSize: '48px' }}>✉</motion.div>
             <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}
@@ -705,7 +894,7 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
         {/* ── PAPER picker ── */}
         {tab === 'paper' && (
           <motion.div key="paper-pick" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} style={{ position: 'relative', zIndex: 2, maxWidth: '680px', margin: '0 auto' }}>
-            <div style={{ textAlign: 'center', marginBottom: '28px' }}>
+            <div style={{ textAlign: 'center', marginBottom: '28px', padding: '22px 18px', borderRadius: '22px', background: 'linear-gradient(180deg, rgba(18,12,34,0.8), rgba(10,8,20,0.66))', border: '1px solid rgba(255,255,255,0.07)' }}>
               <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.5em', color: '#e6c76e', textTransform: 'uppercase', marginBottom: '5px' }}>Choose Your Letter</p>
               <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(255,255,255,0.7)' }}>Each carries its own atmosphere</p>
             </div>
@@ -731,7 +920,7 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
         {/* ── FONT picker ── */}
         {tab === 'font' && (
           <motion.div key="font-pick" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} style={{ position: 'relative', zIndex: 2, maxWidth: '560px', margin: '0 auto' }}>
-            <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+            <div style={{ textAlign: 'center', marginBottom: '24px', padding: '22px 18px', borderRadius: '22px', background: 'linear-gradient(180deg, rgba(18,12,34,0.8), rgba(10,8,20,0.66))', border: '1px solid rgba(255,255,255,0.07)' }}>
               <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.5em', color: '#e6c76e', textTransform: 'uppercase', marginBottom: '5px' }}>Choose Your Hand</p>
               <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(255,255,255,0.7)' }}>The voice your words carry</p>
             </div>
@@ -753,7 +942,7 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
         {/* ── INK picker ── */}
         {tab === 'ink' && (
           <motion.div key="ink-pick" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} style={{ position: 'relative', zIndex: 2, maxWidth: '480px', margin: '0 auto' }}>
-            <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+            <div style={{ textAlign: 'center', marginBottom: '24px', padding: '22px 18px', borderRadius: '22px', background: 'linear-gradient(180deg, rgba(18,12,34,0.8), rgba(10,8,20,0.66))', border: '1px solid rgba(255,255,255,0.07)' }}>
               <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.5em', color: '#e6c76e', textTransform: 'uppercase', marginBottom: '5px' }}>Choose Your Ink</p>
               <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(255,255,255,0.7)' }}>The colour of your words in the dark</p>
             </div>
@@ -781,6 +970,7 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
       <AnimatePresence>
         {open && (
           <OpenLetterModal
+            key={open.id}
             open={open}
             onClose={() => setOpen(null)}
             onBlocked={() => {

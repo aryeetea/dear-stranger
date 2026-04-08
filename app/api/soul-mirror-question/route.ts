@@ -35,13 +35,6 @@ const VOICE_PROMPTS: Record<MirrorVoice, string> = {
 const FALLBACK_QUESTION = 'What part of your appearance stands out first?'
 const FALLBACK_DONE_MESSAGE =
   'The mirror has enough now. Your reflection is ready to enter the universe.'
-const FALLBACK_CHIPS = ['glowing eyes', 'long dark hair', 'layered clothing', 'moonlit aura']
-const FALLBACK_DONE_CHIPS = [
-  'reflecting now',
-  'I can see you',
-  'ready to enter',
-  'continue',
-]
 
 function stripFormatting(text: string) {
   return text
@@ -96,7 +89,7 @@ function sanitizeChip(value: string) {
     .trim()
 }
 
-function sanitizeChips(chips: unknown, done: boolean) {
+function sanitizeChips(chips: unknown) {
   const seen = new Set<string>()
   const cleaned = Array.isArray(chips)
     ? chips
@@ -361,7 +354,7 @@ Return JSON only using the provided schema.
     return NextResponse.json({
       question: sanitizeQuestion(String(parsed.question), done),
       done,
-      chips: sanitizeChips(parsed.chips, done),
+      chips: sanitizeChips(parsed.chips),
     })
   } catch (error) {
     console.error('Soul mirror error:', error)

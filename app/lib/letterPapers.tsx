@@ -355,7 +355,7 @@ export function RicePaper({ children, paperBg }: { children: React.ReactNode; pa
       <div style={{ position:'absolute', inset:0, pointerEvents:'none', backgroundImage:`url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.2' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0.1'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.055'/%3E%3C/svg%3E")`, backgroundSize:'200px', zIndex:1 }}/>
       <div style={{ position:'absolute', inset:0, pointerEvents:'none', zIndex:2 }}>
         {[...Array(12)].map((_,i)=>{
-          const x1=((i*73)%90)+5; const y1=((i*53)%80)+5; const x2=x1+((i*31)%15)-7; const y2=y1+((i*67)%40)-5
+          const x1=((i*73)%90)+5; const y1=((i*53)%80)+5; const x2=x1+((i*31)%15)-7
           return <div key={i} style={{ position:'absolute', left:`${x1}%`, top:`${y1}%`, width:`${Math.abs(x2-x1)+1}%`, height:'1px', background:'rgba(180,160,120,0.06)', transform:`rotate(${((i*17)%30)-15}deg)` }}/>
         })}
       </div>

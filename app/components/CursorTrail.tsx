@@ -14,12 +14,11 @@ interface Particle {
 
 export default function CursorTrail() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [isTouch, setIsTouch] = useState(false)
+  const [isTouch] = useState(() => typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches)
 
   useEffect(() => {
     // Skip the canvas entirely on touch / coarse-pointer devices (mobile, tablet)
     if (window.matchMedia('(pointer: coarse)').matches) {
-      setIsTouch(true)
       return
     }
 

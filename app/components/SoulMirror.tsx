@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { HUB_COLOR_THEMES, HUB_STYLES, HUB_DECORATIONS, type HubColor, type HubStyle, type HubDecoration } from './UniverseMap'
 import { supabase } from '../../lib/supabase'
@@ -138,18 +138,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages, loading])
 
-
-  // Fallback style for 'No preference'
-  const NO_PREFERENCE_STYLE = { id: 'no-preference', label: 'No preference', desc: 'Let the mirror decide.', base: '#181818', gradient: 'radial-gradient(ellipse 70% 50% at 30% 20%, rgba(90,90,90,0.25) 0%, transparent 65%)' }
-
-  useEffect(() => {
-    if (phase !== 'chat' || !selectedVoice || hasInitialized.current) return
-    hasInitialized.current = true
-    void fetchAIMessage([], [])
-  }, [phase, selectedStyle, selectedVoice])
-
-
-  async function fetchAIMessage(history: typeof messages, answers: string[]) {
+  const fetchAIMessage = useCallback(async (history: typeof messages, answers: string[]) => {
     // If a preset style is selected use it; if user typed a custom style use that; otherwise just use voice and answers
     const stylePayload = selectedStyle
       ? { style: selectedStyle.label, styleDescription: selectedStyle.desc }
@@ -198,7 +187,13 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
       }
       console.error('[SoulMirror]', msg, err)
     } finally { setLoading(false) }
-  }
+  }, [customStyle, isReturning, selectedStyle, selectedVoice])
+
+  useEffect(() => {
+    if (phase !== 'chat' || !selectedVoice || hasInitialized.current) return
+    hasInitialized.current = true
+    void fetchAIMessage([], [])
+  }, [fetchAIMessage, phase, selectedVoice])
 
   async function handleSend(text?: string) {
     const finalText = (text || inputValue).trim()
@@ -207,21 +202,6 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
     const newAnswers = [...userAnswers, finalText]
     setMessages(newMessages); setUserAnswers(newAnswers); setInputValue('')
     await fetchAIMessage(newMessages, newAnswers)
-  }
-
-  function handleFreeformComplete() {
-    const answersRecord: Record<number, string> = { 0: freeformText }
-    onComplete?.(
-      answersRecord,
-      selectedStyle || undefined,
-      selectedHubStyle,
-      selectedHubColor,
-      selectedVoice || undefined,
-      bio.trim(),
-      askAbout.trim(),
-      hubName.trim(),
-      selectedDecoration,
-    )
   }
 
   function handleEnter() {
@@ -293,7 +273,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
             <div style={{ textAlign: 'center', marginBottom: '36px' }}>
               <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.55em', color: 'rgba(201,168,76,0.55)', textTransform: 'uppercase', marginBottom: '14px' }}>Soul Mirror</p>
               <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: 'clamp(22px,3.5vw,30px)', color: 'rgba(255,255,255,0.93)', lineHeight: 1.4, marginBottom: '12px' }}>Before we begin</p>
-              <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '16px', color: 'rgba(255,255,255,0.5)', lineHeight: 1.7 }}>Your Soul Mirror shapes how you appear in this universe. Choose how you'd like to describe yourself.</p>
+              <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '16px', color: 'rgba(255,255,255,0.5)', lineHeight: 1.7 }}>Your Soul Mirror shapes how you appear in this universe. Choose how you&apos;d like to describe yourself.</p>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
               <motion.button
@@ -306,7 +286,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
                 <span style={{ fontSize: '28px' }}>✦</span>
                 <div>
                   <p style={{ fontFamily: "'Cinzel', serif", fontSize: '11px', letterSpacing: '0.22em', color: '#e6c76e', textTransform: 'uppercase', marginBottom: '10px' }}>Let the mirror ask me</p>
-                  <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '15px', color: 'rgba(255,255,255,0.55)', lineHeight: 1.75 }}>Answer a few short questions and the mirror builds your portrait from what you share. Best if you're not sure where to start.</p>
+                  <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '15px', color: 'rgba(255,255,255,0.55)', lineHeight: 1.75 }}>Answer a few short questions and the mirror builds your portrait from what you share. Best if you&apos;re not sure where to start.</p>
                 </div>
               </motion.button>
               <motion.button
@@ -318,7 +298,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
                 <GoldLines />
                 <span style={{ fontSize: '28px' }}>◎</span>
                 <div>
-                  <p style={{ fontFamily: "'Cinzel', serif", fontSize: '11px', letterSpacing: '0.22em', color: '#e6c76e', textTransform: 'uppercase', marginBottom: '10px' }}>I'll describe myself</p>
+                  <p style={{ fontFamily: "'Cinzel', serif", fontSize: '11px', letterSpacing: '0.22em', color: '#e6c76e', textTransform: 'uppercase', marginBottom: '10px' }}>I&apos;ll describe myself</p>
                   <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '15px', color: 'rgba(255,255,255,0.55)', lineHeight: 1.75 }}>Write your own description in your own words. No prompts, just your vision. Best if you already know what you want.</p>
                 </div>
               </motion.button>
