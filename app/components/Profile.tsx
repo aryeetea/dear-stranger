@@ -341,10 +341,34 @@ export default function Profile({
     return `${diffMonths}mo ago`
   }
 
+  // ── Hub style visual map ──
+  const hubTheme = HUB_COLOR_THEMES.find(t => t.id === selectedHubColor)
+  const hubGlowRgb = hubTheme?.glow || '201,168,76'
+  const hubGlowIntensityValue = selectedGlowIntensity === 'none' ? 0 : selectedGlowIntensity === 'subtle' ? 0.25 : selectedGlowIntensity === 'normal' ? 0.5 : 0.85
+
+  const HUB_STYLE_CENTERPIECE: Record<string, { symbol: string; label: string; ambient: string }> = {
+    portal:   { symbol: '✦', label: 'Portal', ambient: 'rgba(150,100,220,0.18)' },
+    lotus:    { symbol: '✿', label: 'Lotus Bloom', ambient: 'rgba(220,120,160,0.18)' },
+    tower:    { symbol: '⌖', label: 'Watcher Tower', ambient: 'rgba(80,140,220,0.18)' },
+    cottage:  { symbol: '⌂', label: 'Cozy Cottage', ambient: 'rgba(180,120,60,0.18)' },
+    wanderer: { symbol: '✧', label: 'Wanderer', ambient: 'rgba(100,200,150,0.18)' },
+    oracle:   { symbol: '◎', label: 'Oracle', ambient: 'rgba(200,160,80,0.18)' },
+  }
+  const centerpiece = HUB_STYLE_CENTERPIECE[selectedHubStyle] || HUB_STYLE_CENTERPIECE.portal
+
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }}
       style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,5,0.97)', backdropFilter: 'blur(20px)', zIndex: 70, overflowY: 'auto' }}>
-      <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', background: 'radial-gradient(ellipse 55% 40% at 15% 25%, rgba(40,15,80,0.3) 0%, transparent 65%), radial-gradient(ellipse 45% 55% at 85% 75%, rgba(10,20,70,0.25) 0%, transparent 65%)' }} />
+      <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', background: `radial-gradient(ellipse 55% 40% at 15% 25%, rgba(${hubGlowRgb},${hubGlowIntensityValue * 0.5}) 0%, transparent 65%), radial-gradient(ellipse 45% 55% at 85% 75%, rgba(10,20,70,0.25) 0%, transparent 65%)` }} />
+
+      {/* ── Ambient hub glow pulse ── */}
+      <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0 }}>
+        <motion.div
+          animate={{ opacity: [hubGlowIntensityValue * 0.3, hubGlowIntensityValue * 0.55, hubGlowIntensityValue * 0.3] }}
+          transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+          style={{ position: 'absolute', top: '5%', left: '5%', width: '420px', height: '420px', borderRadius: '50%', background: `radial-gradient(circle, rgba(${hubGlowRgb},0.22) 0%, transparent 70%)`, filter: 'blur(48px)', pointerEvents: 'none' }}
+        />
+      </div>
 
       <motion.button initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} onClick={onClose}
         style={{ position: 'fixed', top: '28px', right: '28px', background: 'none', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.55)', fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.3em', padding: '8px 16px', cursor: 'pointer', textTransform: 'uppercase', zIndex: 80 }}
@@ -354,10 +378,36 @@ export default function Profile({
       </motion.button>
 
       <div className="profile-layout">
-        {/* LEFT — Avatar */}
+        {/* LEFT — Avatar + Hub Centerpiece */}
         <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6 }}
           className="profile-avatar-col">
           <div style={{ position: 'absolute', inset: 0, zIndex: 3, pointerEvents: 'none', background: 'linear-gradient(to right, transparent 65%, rgba(0,0,5,0.97) 100%), linear-gradient(to bottom, rgba(0,0,5,0.3) 0%, transparent 15%, transparent 85%, rgba(0,0,5,0.6) 100%)' }} />
+
+          {/* Hub structure centerpiece ring — orbits over the avatar */}
+          <div style={{ position: 'absolute', bottom: '12%', left: '50%', transform: 'translateX(-50%)', zIndex: 5, pointerEvents: 'none', textAlign: 'center' }}>
+            <motion.div
+              animate={{ scale: [1, 1.06, 1], opacity: [0.7, 1, 0.7] }}
+              transition={{ duration: 3.8, repeat: Infinity, ease: 'easeInOut' }}
+              style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <div style={{ width: '72px', height: '72px', borderRadius: '50%', border: `1px solid rgba(${hubGlowRgb},0.45)`, boxShadow: `0 0 30px rgba(${hubGlowRgb},${hubGlowIntensityValue * 0.6}), inset 0 0 16px rgba(${hubGlowRgb},0.08)`, display: 'flex', alignItems: 'center', justifyContent: 'center', background: `radial-gradient(circle, rgba(${hubGlowRgb},0.08) 0%, transparent 70%)` }}>
+                <span style={{ fontSize: '28px', color: `rgba(${hubGlowRgb},0.92)`, filter: `drop-shadow(0 0 12px rgba(${hubGlowRgb},0.7))` }}>{centerpiece.symbol}</span>
+              </div>
+              {/* Orbiting decoration dots */}
+              {[0, 72, 144, 216, 288].map((deg, i) => (
+                <motion.div
+                  key={i}
+                  animate={{ rotate: [deg, deg + 360] }}
+                  transition={{ duration: 18 + i * 2, repeat: Infinity, ease: 'linear' }}
+                  style={{ position: 'absolute', width: '90px', height: '90px', top: '-9px', left: '-9px' }}
+                >
+                  <div style={{ position: 'absolute', top: '0', left: '50%', transform: 'translateX(-50%)', width: '4px', height: '4px', borderRadius: '50%', background: `rgba(${hubGlowRgb},${0.4 + i * 0.1})`, boxShadow: `0 0 6px rgba(${hubGlowRgb},0.4)` }} />
+                </motion.div>
+              ))}
+            </motion.div>
+            <p style={{ fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.32em', color: `rgba(${hubGlowRgb},0.6)`, textTransform: 'uppercase', marginTop: '8px' }}>{centerpiece.label}</p>
+          </div>
+
           {regenLoading && (
             <div style={{ position: 'absolute', inset: 0, zIndex: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,5,0.7)', backdropFilter: 'blur(8px)' }}>
               <div style={{ textAlign: 'center' }}>
@@ -372,7 +422,7 @@ export default function Profile({
             <img src={currentAvatarUrl} alt="Avatar" className="profile-avatar-fill" />
           ) : (
             <div className="profile-avatar-fill" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(180deg, rgba(20,25,60,0.8), rgba(5,8,20,0.9))' }}>
-              <div style={{ width: '100px', height: '100px', borderRadius: '50%', border: '1px solid rgba(201,168,76,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '40px' }}>✦</div>
+              <div style={{ width: '100px', height: '100px', borderRadius: '50%', border: `1px solid rgba(${hubGlowRgb},0.3)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '40px', color: `rgba(${hubGlowRgb},0.8)` }}>{centerpiece.symbol}</div>
             </div>
           )}
         </motion.div>

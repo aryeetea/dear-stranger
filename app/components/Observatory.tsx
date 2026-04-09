@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { getMyLetters, archiveLetter, deleteLetter } from '../lib/auth'
+import { getMyLetters, archiveLetter, deleteLetter, deleteLetterForEveryone } from '../lib/auth'
 import { playAudioWithEffect, type VoiceEffect } from '../../lib/audioEffects'
 import { playWaxSeal } from '../../lib/sounds'
 import { PAPER_TONES, PAPER_INK, renderLetterPaper } from '../lib/letterPapers'
@@ -252,6 +252,12 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
     try { await deleteLetter(letter.id) } catch (err) { console.error('Failed to delete burn letter:', err) }
   }
 
+  async function handleDeleteForEveryone(letter: Letter) {
+    setOpenLetter(null)
+    setLetters(prev => prev.filter(l => l.id !== letter.id))
+    try { await deleteLetterForEveryone(letter.id) } catch (err) { console.error('Failed to delete letter for everyone:', err) }
+  }
+
   function handleLetterClick(letter: Letter) {
     if (letter.status === 'transit') return
     setZoomTarget(letter)
@@ -496,6 +502,7 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
             onReply={name => { setOpenLetter(null); onWriteLetter?.(name) }}
             onArchive={() => handleArchive(openLetter)}
             onBurn={openLetter.burnAfterReading && openLetter.direction === 'received' ? () => handleBurnAndClose(openLetter) : undefined}
+            onDeleteForEveryone={() => handleDeleteForEveryone(openLetter)}
           />
         )}
       </AnimatePresence>
@@ -544,8 +551,8 @@ function ModalEnvelope({ id }: { id: string }) {
   return <svg width={w} height={h} viewBox="0 0 120 80"><rect x="2" y="20" width="116" height="58" rx="3" fill="rgba(230,199,110,0.15)" stroke="rgba(230,199,110,0.45)" strokeWidth="1"/><path d="M2 20 L60 56 L118 20 Z" fill="rgba(230,199,110,0.12)" stroke="rgba(230,199,110,0.35)" strokeWidth="1"/></svg>
 }
 
-function LetterModal({ letter, onClose, onReply, onArchive, onBurn }: {
-  letter: Letter; onClose: () => void; onReply?: (name: string) => void; onArchive?: () => void; onBurn?: () => void
+function LetterModal({ letter, onClose, onReply, onArchive, onBurn, onDeleteForEveryone }: {
+  letter: Letter; onClose: () => void; onReply?: (name: string) => void; onArchive?: () => void; onBurn?: () => void; onDeleteForEveryone?: () => void
 }) {
   const colors = PAPER_COLORS[letter.paperId] || PAPER_COLORS.ornate
   const bodyFont = (letter.fontId && FONT_FAMILIES[letter.fontId]) || "'Cormorant Garamond', serif"
@@ -556,6 +563,7 @@ function LetterModal({ letter, onClose, onReply, onArchive, onBurn }: {
   const isReceivedLetter = letter.direction === 'received' && (letter.status === 'arrived' || letter.status === 'archive')
   const isBurnReceived = isReceivedLetter && !!letter.burnAfterReading
   const [burnConfirmed, setBurnConfirmed] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState(false)
   const [isPlayingVoice, setIsPlayingVoice] = useState(false)
   const [openPhase, setOpenPhase] = useState<'warning' | 'envelope' | 'letter'>(
     isBurnReceived ? 'warning' : isReceivedLetter ? 'envelope' : 'letter'
@@ -633,14 +641,36 @@ function LetterModal({ letter, onClose, onReply, onArchive, onBurn }: {
             </div>
           ))}
           {letter.direction === 'received' && (
-            <div style={{ padding: '16px 28px 20px', background: 'rgba(0,0,8,0.97)', borderTop: `1px solid ${colors.accent}38`, display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+            <div style={{ padding: '16px 28px 20px', background: 'rgba(0,0,8,0.97)', borderTop: `1px solid ${colors.accent}38`, display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
               <button onClick={() => onReply?.(letter.from || '')} style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.3em', color: colors.accent, padding: '10px 24px', border: `1px solid ${colors.accent}70`, borderRadius: '2px', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase' }} onMouseEnter={e => { e.currentTarget.style.background = `${colors.accent}12`; e.currentTarget.style.boxShadow = `0 0 20px ${colors.accent}20` }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.boxShadow = 'none' }}>Reply ✦</button>
               {letter.status === 'arrived' && <button onClick={onArchive} style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.3em', color: 'rgba(255,255,255,0.45)', padding: '10px 24px', border: '1px solid rgba(255,255,255,0.18)', borderRadius: '2px', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase' }} onMouseEnter={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.72)' }} onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.45)' }}>Archive</button>}
+              <div style={{ marginLeft: 'auto' }}>
+                {deleteConfirm ? (
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <span style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>Delete for everyone?</span>
+                    <button onClick={() => { setDeleteConfirm(false); onDeleteForEveryone?.() }} style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.22em', color: 'rgba(220,80,80,0.9)', padding: '7px 14px', border: '1px solid rgba(220,80,80,0.45)', borderRadius: '2px', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase' }}>Confirm</button>
+                    <button onClick={() => setDeleteConfirm(false)} style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.22em', color: 'rgba(255,255,255,0.35)', padding: '7px 14px', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '2px', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase' }}>Cancel</button>
+                  </div>
+                ) : (
+                  <button onClick={() => setDeleteConfirm(true)} style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.22em', color: 'rgba(200,60,60,0.45)', padding: '7px 14px', border: '1px solid rgba(200,60,60,0.15)', borderRadius: '2px', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase', transition: 'all 0.15s' }} onMouseEnter={e => { e.currentTarget.style.color = 'rgba(220,80,80,0.85)'; e.currentTarget.style.borderColor = 'rgba(220,80,80,0.4)' }} onMouseLeave={e => { e.currentTarget.style.color = 'rgba(200,60,60,0.45)'; e.currentTarget.style.borderColor = 'rgba(200,60,60,0.15)' }}>Delete for Everyone</button>
+                )}
+              </div>
             </div>
           )}
           {letter.direction === 'sent' && letter.status === 'arrived' && (
-            <div style={{ padding: '16px 28px 20px', background: 'rgba(0,0,8,0.97)', borderTop: `1px solid ${colors.accent}38` }}>
+            <div style={{ padding: '16px 28px 20px', background: 'rgba(0,0,8,0.97)', borderTop: `1px solid ${colors.accent}38`, display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
               <button onClick={onArchive} style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.3em', color: 'rgba(255,255,255,0.45)', padding: '10px 24px', border: '1px solid rgba(255,255,255,0.18)', borderRadius: '2px', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase' }} onMouseEnter={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.72)' }} onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.45)' }}>Archive</button>
+              <div style={{ marginLeft: 'auto' }}>
+                {deleteConfirm ? (
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <span style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>Delete for everyone?</span>
+                    <button onClick={() => { setDeleteConfirm(false); onDeleteForEveryone?.() }} style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.22em', color: 'rgba(220,80,80,0.9)', padding: '7px 14px', border: '1px solid rgba(220,80,80,0.45)', borderRadius: '2px', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase' }}>Confirm</button>
+                    <button onClick={() => setDeleteConfirm(false)} style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.22em', color: 'rgba(255,255,255,0.35)', padding: '7px 14px', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '2px', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase' }}>Cancel</button>
+                  </div>
+                ) : (
+                  <button onClick={() => setDeleteConfirm(true)} style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.22em', color: 'rgba(200,60,60,0.45)', padding: '7px 14px', border: '1px solid rgba(200,60,60,0.15)', borderRadius: '2px', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase', transition: 'all 0.15s' }} onMouseEnter={e => { e.currentTarget.style.color = 'rgba(220,80,80,0.85)'; e.currentTarget.style.borderColor = 'rgba(220,80,80,0.4)' }} onMouseLeave={e => { e.currentTarget.style.color = 'rgba(200,60,60,0.45)'; e.currentTarget.style.borderColor = 'rgba(200,60,60,0.15)' }}>Delete for Everyone</button>
+                )}
+              </div>
             </div>
           )}
         </motion.div>

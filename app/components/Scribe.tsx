@@ -353,6 +353,8 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
   const [voiceError, setVoiceError] = useState<string | null>(null)
   const lastTypeSoundRef = useRef<number>(0)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const [sparkles, setSparkles] = useState<{ id: number; x: number; y: number; char: string }[]>([])
+  const paperRef = useRef<HTMLDivElement>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const mediaStreamRef = useRef<MediaStream | null>(null)
   const recordingChunksRef = useRef<Blob[]>([])
@@ -500,6 +502,17 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
       if (now - lastTypeSoundRef.current > 60) {
         playTypingSound()
         lastTypeSoundRef.current = now
+        // Emit sparkle near the paper
+        if (paperRef.current) {
+          const rect = paperRef.current.getBoundingClientRect()
+          const seed = now % 1000
+          const sx = rect.left + rect.width * (0.3 + (seed % 400) / 1000)
+          const sy = rect.top + rect.height * (0.35 + (seed % 300) / 1200)
+          const SPARKLE_CHARS = ['✦', '·', '⋆', '✧', '∘']
+          const char = SPARKLE_CHARS[seed % SPARKLE_CHARS.length]
+          setSparkles(prev => [...prev.slice(-12), { id: now, x: sx, y: sy, char }])
+          setTimeout(() => setSparkles(prev => prev.filter(s => s.id !== now)), 900)
+        }
       }
     }
     const content = (
@@ -511,7 +524,16 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
       </div>
     )
     const pbg = selectedPaperColor ? (PAPER_TONES.find(t => t.id === selectedPaperColor)?.bg ?? undefined) : undefined
-    return renderLetterPaper(selectedPaper.id, pbg, content)
+    return (
+      <motion.div
+        ref={paperRef}
+        animate={{ y: [0, -5, 0], boxShadow: ['0 24px 80px rgba(0,0,0,0.55)', '0 32px 100px rgba(0,0,0,0.45)', '0 24px 80px rgba(0,0,0,0.55)'] }}
+        transition={{ duration: 4.5, repeat: Infinity, ease: 'easeInOut', delay: 0.3 }}
+        style={{ borderRadius: '3px', position: 'relative' }}
+      >
+        {renderLetterPaper(selectedPaper.id, pbg, content)}
+      </motion.div>
+    )
   }
 
   const stampCategories = [...new Set(STAMPS.map(s => s.category))]
@@ -520,6 +542,17 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
     <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }} transition={{ duration:0.4 }}
       className="fixed-scroll-panel"
       style={{ position:'fixed', inset:0, background:'rgba(0,0,5,0.97)', backdropFilter:'blur(20px)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'flex-start', zIndex:70, padding:'72px 20px 40px', overflowY:'auto' }}>
+
+      {/* Sparkle particles */}
+      {sparkles.map(s => (
+        <motion.span
+          key={s.id}
+          initial={{ opacity: 0.9, scale: 0.5, x: s.x, y: s.y }}
+          animate={{ opacity: 0, scale: 1.4, y: s.y - 38, x: s.x + (((s.id * 7) % 40) - 20) }}
+          transition={{ duration: 0.8, ease: 'easeOut' }}
+          style={{ position: 'fixed', pointerEvents: 'none', zIndex: 200, fontSize: '11px', color: effectiveInk.accent, transform: 'translate(-50%, -50%)', userSelect: 'none' }}
+        >{s.char}</motion.span>
+      ))}
 
       <div style={{ position:'fixed', inset:0, pointerEvents:'none', background:'radial-gradient(ellipse 50% 40% at 20% 30%, rgba(30,15,70,0.2) 0%, transparent 65%)' }}/>
       <div style={{ position:'fixed', inset:0, pointerEvents:'none' }}>
@@ -1032,8 +1065,20 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
         )}
 
         {view==='envelope' && !sent && (
-          <motion.div key="envelope" initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }} style={{ textAlign:'center', zIndex:2 }}>
-            <motion.div initial={{ y:0, rotate:0 }} animate={{ y:[0,-20,80], rotate:[0,-3,2], opacity:[1,1,0] }} transition={{ duration:2, ease:'easeInOut' }}
+          <motion.div key="envelope" initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }} style={{ textAlign:'center', zIndex:2, position:'relative' }}>
+            {/* Comet trail streaks behind the envelope */}
+            {[...Array(6)].map((_, i) => (
+              <motion.div key={i}
+                initial={{ opacity: 0, scaleX: 0, x: '-60%', y: '-50%' }}
+                animate={{ opacity: [0, 0.6, 0], scaleX: [0, 1, 0.2], x: ['-60%', `${-80 - i*20}%`] }}
+                transition={{ duration: 1.8, delay: 0.15 + i * 0.06, ease: 'easeIn' }}
+                style={{ position: 'absolute', left: '50%', top: '50%', width: `${40 + i * 18}px`, height: '1.5px', background: `rgba(230,199,110,${0.45 - i*0.06})`, borderRadius: '1px', transformOrigin: 'right center', pointerEvents: 'none' }}
+              />
+            ))}
+            <motion.div
+              initial={{ y:0, rotate:0, scale:1 }}
+              animate={{ y:[0,-30,-280], x:[0,30,160], rotate:[0,-6,-22], scale:[1,0.9,0.18], opacity:[1,1,0] }}
+              transition={{ duration:1.9, ease:'easeIn' }}
               style={{ display:'inline-block', marginBottom:'24px', position:'relative' }}>
               <EnvelopeSVG id={selectedEnvelope} color={envelopeColor}/>
               {selectedStamp&&<div style={{ position:'absolute', top:'8px', right:'8px', transform:'rotate(3deg)' }}><StampSVG id={selectedStamp} size={32}/></div>}

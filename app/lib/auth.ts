@@ -805,6 +805,21 @@ export async function deleteLetter(letterId: string) {
   if (error) throw error
 }
 
+export async function deleteLetterForEveryone(letterId: string) {
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+  if (userError || !user) throw new Error('Not authenticated')
+  // Verify the user is involved in this letter before deleting it
+  const { data: letter, error: fetchError } = await supabase
+    .from('letters')
+    .select('id')
+    .eq('id', letterId)
+    .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
+    .maybeSingle()
+  if (fetchError || !letter) throw new Error('Letter not found or access denied')
+  const { error } = await supabase.from('letters').delete().eq('id', letterId)
+  if (error) throw error
+}
+
 export async function uploadVoiceNote(blob: Blob): Promise<string> {
   const { data: { user }, error: userError } = await supabase.auth.getUser()
   if (userError || !user) throw new Error('Not authenticated')
@@ -885,7 +900,9 @@ export async function getMyLetters() {
 
     if (error) return { userId: user.id, transit: [], arrived: [], archive: [] }
 
-    const letters = (data || []) as LetterRecord[]
+    const letters = (data || [])
+      .filter((l) => !(l.is_universe_letter && DRIFT_PAPER_IDS.includes((l as { paper_id?: string | null }).paper_id || '')))
+      as LetterRecord[]
 
     return {
       userId: user.id,
