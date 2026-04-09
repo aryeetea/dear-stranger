@@ -1764,31 +1764,62 @@ export default function UniverseMap({
             <motion.div onClick={e => e.stopPropagation()}
               className="universe-hub-card"
               style={{ background: 'rgba(8,10,28,0.95)', border: '1px solid rgba(230,199,110,0.22)', borderRadius: '16px', width: 'min(780px, 95vw)', minHeight: '380px', display: 'flex', overflow: 'hidden', boxShadow: '0 0 80px rgba(0,0,0,0.9)', backdropFilter: 'blur(20px)', position: 'relative' }}>
-              {/* Avatar panel */}
-              <div className="universe-hub-avatar-col" style={{ width: '42%', minHeight: '380px', background: 'linear-gradient(135deg, rgba(20,25,60,0.9), rgba(10,15,40,0.95))', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden', flexShrink: 0 }}>
-                {profile.hub.avatarUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={profile.hub.avatarUrl} alt="Avatar"
-                    style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center', position: 'absolute', inset: 0 }} />
-                ) : (
-                  profile.hub.isMe && avatarGenerating ? (
-                    <motion.div
-                      animate={{ opacity: [0.35, 1, 0.35], scale: [0.9, 1.15, 0.9], rotate: [0, 180, 360] }}
-                      transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
-                      style={{ fontSize: '48px', color: 'rgba(201,168,76,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                    >✦</motion.div>
-                  ) : (
-                    <div style={{ fontSize: '48px', color: 'rgba(201,168,76,0.5)' }}>✦</div>
-                  )
-                )}
-                <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to right, transparent 60%, rgba(8,10,28,0.95) 100%)' }} />
-                {profile.telescopeMode && (
-                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
-                    style={{ position: 'absolute', top: '16px', left: '16px', background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(201,168,76,0.3)', borderRadius: '20px', padding: '4px 10px' }}>
-                    <p style={{ fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.25em', color: 'rgba(201,168,76,0.8)', textTransform: 'uppercase' }}>⟡ Magnified</p>
-                  </motion.div>
-                )}
-              </div>
+              {/* Avatar panel — holographic portal */}
+              {(() => {
+                const cardGlowRgb = HUB_COLOR_THEMES.find(t => t.id === profile.hub.colorTheme)?.glow || '201,168,76'
+                return (
+                  <div className="universe-hub-avatar-col" style={{ width: '42%', minHeight: '380px', background: 'linear-gradient(180deg, rgba(4,6,18,0.97), rgba(8,12,28,0.98))', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden', flexShrink: 0 }}>
+                    {profile.hub.avatarUrl ? (
+                      <>
+                        {/* Projection cone */}
+                        <div style={{ position: 'absolute', bottom: '15%', left: '50%', transform: 'translateX(-50%)', width: '120%', height: '78%', background: `radial-gradient(ellipse at 50% 100%, rgba(${cardGlowRgb},0.18) 0%, rgba(0,170,255,0.08) 22%, transparent 62%)`, pointerEvents: 'none', zIndex: 2, mixBlendMode: 'screen' }} />
+                        <motion.div animate={{ opacity: [0.35, 0.68, 0.35] }} transition={{ duration: 4.5, repeat: Infinity, ease: 'easeInOut' }}
+                          style={{ position: 'absolute', bottom: '15%', left: '50%', transform: 'translateX(-50%)', width: '75%', height: '60%', background: 'radial-gradient(ellipse at 50% 100%, rgba(0,160,255,0.14) 0%, transparent 70%)', pointerEvents: 'none', zIndex: 2, mixBlendMode: 'screen', filter: 'blur(5px)' }} />
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={profile.hub.avatarUrl} alt="Avatar"
+                          style={{ width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'top center', position: 'absolute', inset: 0, filter: `brightness(1.08) saturate(0.82) drop-shadow(0 0 20px rgba(${cardGlowRgb},0.4)) drop-shadow(0 0 8px rgba(0,190,255,0.25))`, animation: 'holo-flicker 7s ease-in-out infinite' }} />
+                        {/* Scanlines */}
+                        <div style={{ position: 'absolute', inset: 0, zIndex: 3, pointerEvents: 'none', background: 'repeating-linear-gradient(to bottom, transparent 0px, transparent 3px, rgba(0,200,255,0.018) 3px, rgba(0,200,255,0.018) 4px)', animation: 'holo-scan 10s linear infinite' }} />
+                        {/* Portal ring */}
+                        <motion.div animate={{ opacity: [0.7, 1, 0.7] }} transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
+                          style={{ position: 'absolute', bottom: '15%', left: '50%', transform: 'translateX(-50%)', width: '70%', zIndex: 5, pointerEvents: 'none' }}>
+                          <svg width="100%" viewBox="0 0 200 58" overflow="visible" style={{ display: 'block' }}>
+                            <defs>
+                              <filter id="uhc-glow-wide" x="-70%" y="-70%" width="240%" height="240%"><feGaussianBlur in="SourceGraphic" stdDeviation="7" /></filter>
+                              <filter id="uhc-glow-soft" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur in="SourceGraphic" stdDeviation="3" /></filter>
+                            </defs>
+                            <ellipse cx="100" cy="29" rx="95" ry="22" fill="none" stroke={`rgba(${cardGlowRgb},0.5)`} strokeWidth="10" filter="url(#uhc-glow-wide)" />
+                            <ellipse cx="100" cy="29" rx="95" ry="22" fill="none" stroke="rgba(0,210,255,0.32)" strokeWidth="5" filter="url(#uhc-glow-soft)" />
+                            <ellipse cx="100" cy="29" rx="94" ry="21" fill="none" stroke={`rgba(${cardGlowRgb},0.9)`} strokeWidth="1.3" />
+                            <ellipse cx="100" cy="29" rx="94" ry="21" fill="none" stroke="rgba(0,220,255,0.35)" strokeWidth="0.5" />
+                            <ellipse cx="100" cy="29" rx="79" ry="17" fill="none" stroke={`rgba(${cardGlowRgb},0.35)`} strokeWidth="0.9" strokeDasharray="5 3.5">
+                              <animateTransform attributeName="transform" type="rotate" from="0 100 29" to="360 100 29" dur="20s" repeatCount="indefinite" />
+                            </ellipse>
+                            <ellipse cx="100" cy="29" rx="94" ry="21" fill={`rgba(${cardGlowRgb},0.05)`} />
+                          </svg>
+                        </motion.div>
+                      </>
+                    ) : (
+                      profile.hub.isMe && avatarGenerating ? (
+                        <motion.div
+                          animate={{ opacity: [0.35, 1, 0.35], scale: [0.9, 1.15, 0.9], rotate: [0, 180, 360] }}
+                          transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
+                          style={{ fontSize: '48px', color: `rgba(${cardGlowRgb},0.7)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        >✦</motion.div>
+                      ) : (
+                        <div style={{ fontSize: '48px', color: `rgba(${cardGlowRgb},0.5)` }}>✦</div>
+                      )
+                    )}
+                    <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to right, transparent 60%, rgba(8,10,28,0.95) 100%)', pointerEvents: 'none', zIndex: 6 }} />
+                    {profile.telescopeMode && (
+                      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
+                        style={{ position: 'absolute', top: '16px', left: '16px', background: 'rgba(0,0,0,0.6)', border: `1px solid rgba(${cardGlowRgb},0.3)`, borderRadius: '20px', padding: '4px 10px', zIndex: 7 }}>
+                        <p style={{ fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.25em', color: `rgba(${cardGlowRgb},0.8)`, textTransform: 'uppercase' }}>⟡ Magnified</p>
+                      </motion.div>
+                    )}
+                  </div>
+                )
+              })()}
               {/* Info panel */}
               <div style={{ flex: 1, padding: 'clamp(24px,4vw,40px)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                 <div>
