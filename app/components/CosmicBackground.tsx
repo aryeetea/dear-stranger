@@ -32,12 +32,12 @@ export default function CosmicBackground() {
 
       // Nebula clouds — large soft radial blobs
       const nebulae = [
-        { xr: 0.08, yr: 0.28, r: H * 0.55, col: 'rgba(65,12,130,0.16)', sx: 1.9, sy: 0.65 },
-        { xr: 0.80, yr: 0.70, r: H * 0.50, col: 'rgba(12,40,165,0.13)', sx: 1.3, sy: 0.85 },
-        { xr: 0.48, yr: 0.06, r: H * 0.38, col: 'rgba(95,18,88,0.11)', sx: 2.1, sy: 0.45 },
-        { xr: 0.92, yr: 0.16, r: H * 0.32, col: 'rgba(18,75,148,0.12)', sx: 0.85, sy: 1.55 },
-        { xr: 0.25, yr: 0.90, r: H * 0.42, col: 'rgba(55,8,110,0.11)', sx: 1.6, sy: 0.60 },
-        { xr: 0.62, yr: 0.48, r: H * 0.28, col: 'rgba(35,10,80,0.08)', sx: 1.0, sy: 1.0 },
+        { xr: 0.08, yr: 0.28, r: H * 0.55, col: 'rgba(65,12,130,0.28)', sx: 1.9, sy: 0.65 },
+        { xr: 0.80, yr: 0.70, r: H * 0.50, col: 'rgba(12,40,165,0.24)', sx: 1.3, sy: 0.85 },
+        { xr: 0.48, yr: 0.06, r: H * 0.38, col: 'rgba(95,18,88,0.22)', sx: 2.1, sy: 0.45 },
+        { xr: 0.92, yr: 0.16, r: H * 0.32, col: 'rgba(18,75,148,0.20)', sx: 0.85, sy: 1.55 },
+        { xr: 0.25, yr: 0.90, r: H * 0.42, col: 'rgba(55,8,110,0.22)', sx: 1.6, sy: 0.60 },
+        { xr: 0.62, yr: 0.48, r: H * 0.28, col: 'rgba(35,10,80,0.18)', sx: 1.0, sy: 1.0 },
       ]
       nebulae.forEach(n => {
         c.save()
@@ -61,9 +61,9 @@ export default function CosmicBackground() {
       const bw = H * 0.32
       const og = c.createLinearGradient(0, -bw, 0, bw)
       og.addColorStop(0, 'transparent')
-      og.addColorStop(0.28, 'rgba(110,90,180,0.055)')
-      og.addColorStop(0.5, 'rgba(145,125,210,0.10)')
-      og.addColorStop(0.72, 'rgba(110,90,180,0.055)')
+      og.addColorStop(0.28, 'rgba(110,90,180,0.09)')
+      og.addColorStop(0.5, 'rgba(145,125,210,0.16)')
+      og.addColorStop(0.72, 'rgba(110,90,180,0.09)')
       og.addColorStop(1, 'transparent')
       c.fillStyle = og; c.fillRect(-W, -bw, W * 2, bw * 2)
 
@@ -71,9 +71,9 @@ export default function CosmicBackground() {
       const cw = H * 0.052
       const cg = c.createLinearGradient(0, -cw, 0, cw)
       cg.addColorStop(0, 'transparent')
-      cg.addColorStop(0.35, 'rgba(195,188,240,0.07)')
-      cg.addColorStop(0.5, 'rgba(220,215,255,0.13)')
-      cg.addColorStop(0.65, 'rgba(195,188,240,0.07)')
+      cg.addColorStop(0.35, 'rgba(195,188,240,0.12)')
+      cg.addColorStop(0.5, 'rgba(220,215,255,0.22)')
+      cg.addColorStop(0.65, 'rgba(195,188,240,0.12)')
       cg.addColorStop(1, 'transparent')
       c.fillStyle = cg; c.fillRect(-W, -cw, W * 2, cw * 2)
 
@@ -136,7 +136,7 @@ export default function CosmicBackground() {
 
     function buildTwinklers(W: number, H: number) {
       twinklers = []
-      for (let i = 0; i < 18; i++) {
+      for (let i = 0; i < 28; i++) {
         twinklers.push({
           x: sr(i * 31 + 700) * W,
           y: sr(i * 37 + 701) * H,
