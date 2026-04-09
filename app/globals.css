@@ -368,6 +368,13 @@ button, a, [role="button"] {
   to   { transform: translate(5%, -6%) scale(1.1); }
 }
 
+/* ── Body cosmic breathe ─────────────────────────────────────── */
+@keyframes body-breathe {
+  0%   { background-position: 50% -15%, 85% 15%, 15% 85%; }
+  50%  { background-position: 52% -12%, 82% 18%, 18% 82%; }
+  100% { background-position: 48% -18%, 88% 12%, 12% 88%; }
+}
+
 /* ── Screen warp flash ───────────────────────────────────────── */
 @keyframes warp-flash {
   0%   { opacity: 0; transform: scale(0.92); }
