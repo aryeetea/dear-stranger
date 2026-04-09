@@ -233,17 +233,13 @@ const PAPER_ENVELOPE_COLOR: Record<string, string> = {
   'midnight-scroll': '#6040a8', 'rice-paper': '#c0a870',
 }
 
-function LetterContent({ fontFamily, ink, recipient, senderName, date, body, setBody, textareaRef, onPageFull, pageLimit, onKeyDown }: {
+function LetterContent({ fontFamily, ink, recipient, senderName, date, body, setBody, textareaRef, onKeyDown }: {
   fontFamily: string; ink: { main: string; secondary: string; accent: string }
   recipient?: string; senderName?: string; date: string
   body: string; setBody: (v: string) => void
   textareaRef: React.RefObject<HTMLTextAreaElement | null>
-  onPageFull?: () => void
-  pageLimit: number
   onKeyDown?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void
 }) {
-  const isFull = body.length >= pageLimit
-  const charsLeft = pageLimit - body.length
   return (
     <div>
       <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'12px', color:ink.secondary, marginBottom:'16px', textShadow: '0 1px 6px #fff8, 0 0px 1px #fff4' }}>{date}</p>
@@ -251,20 +247,8 @@ function LetterContent({ fontFamily, ink, recipient, senderName, date, body, set
         {recipient ? `Dear ${recipient},` : 'Dear Stranger,'}
       </p>
       <textarea ref={textareaRef} value={body} onChange={e=>setBody(e.target.value)} onKeyDown={onKeyDown}
-        placeholder="Begin your letter here..." maxLength={pageLimit}
-        style={{ width:'100%', height:'252px', background:'transparent', border:'none', outline:'none', color:ink.main, caretColor:ink.accent, fontFamily, fontSize:'16px', lineHeight:2, resize:'none', overflow:'hidden', letterSpacing:'0.01em', textShadow: '0 1px 6px #fff8, 0 0px 1px #fff4' }}/>
-      {isFull ? (
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginTop:'6px' }}>
-          <span style={{ fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.2em', color:'rgba(230,199,110,0.65)', textTransform:'uppercase' }}>Page full</span>
-          <motion.button whileTap={{ scale:0.96 }} onClick={onPageFull}
-            style={{ background:'rgba(230,199,110,0.08)', border:'1px solid rgba(230,199,110,0.55)', color:'#e6c76e', fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.2em', textTransform:'uppercase', padding:'4px 12px', cursor:'pointer', borderRadius:'2px' }}
-            animate={{ opacity:[1,0.65,1] }} transition={{ duration:1.4, repeat:Infinity }}>
-            Continue on next page →
-          </motion.button>
-        </div>
-      ) : charsLeft <= 80 ? (
-        <p style={{ textAlign:'right', fontFamily:"'Cinzel', serif", fontSize:'7px', letterSpacing:'0.2em', color:'rgba(255,255,255,0.35)', marginTop:'4px' }}>{charsLeft} chars remaining</p>
-      ) : null}
+        placeholder="Begin your letter here..."
+        style={{ width:'100%', minHeight:'252px', height:'auto', background:'transparent', border:'none', outline:'none', color:ink.main, caretColor:ink.accent, fontFamily, fontSize:'16px', lineHeight:2, resize:'none', overflow:'hidden', letterSpacing:'0.01em', textShadow: '0 1px 6px #fff8, 0 0px 1px #fff4' }}/>
       <p style={{ fontFamily, fontStyle:'italic', fontSize:'15px', color:ink.secondary, marginTop:'10px', lineHeight:1.9, textShadow: '0 1px 6px #fff8, 0 0px 1px #fff4' }}>
         Yours across the distance,<br/>
         <span style={{ color:ink.accent }}>{senderName || 'A Stranger'}</span>
@@ -491,12 +475,12 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
 
   const renderPaper = () => {
   const setPageBody = (v: string) => setPages(prev => prev.map((p, i) => i === currentPage ? v : p))
-    const PAGE_CHAR_LIMIT = 480
     function handlePageFull() {
       setPages(prev => [...prev, ''])
       setCurrentPage(pages.length)
       setTimeout(() => textareaRef.current?.focus(), 100)
     }
+    void handlePageFull // kept for future multi-page feature
     const handleTypingKey = () => {
       const now = Date.now()
       if (now - lastTypeSoundRef.current > 60) {
@@ -519,7 +503,7 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
       <div style={{ position:'relative' }}>
         {renderLetterEmbellishment(selectedEmbellishment, effectiveInk.accent, 'compose')}
         <div style={getHandwritingStyleStyles(selectedHandwriting)}>
-          <LetterContent fontFamily={fontFamily} ink={effectiveInk} recipient={recipientName} senderName={senderName} date={today} body={pages[currentPage]} setBody={setPageBody} textareaRef={textareaRef} onPageFull={handlePageFull} pageLimit={PAGE_CHAR_LIMIT} onKeyDown={handleTypingKey}/>
+          <LetterContent fontFamily={fontFamily} ink={effectiveInk} recipient={recipientName} senderName={senderName} date={today} body={pages[currentPage]} setBody={setPageBody} textareaRef={textareaRef} onKeyDown={handleTypingKey}/>
         </div>
       </div>
     )

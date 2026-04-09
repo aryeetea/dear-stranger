@@ -1118,11 +1118,11 @@ function drawShootingStar(ctx: CanvasRenderingContext2D, star: ShootingStar) {
 
 export default function UniverseMap({
   hubName, hubBio, hubAskAbout, hubAvatarUrl, hubStyle = 'portal', hubColor = 'gold',
-  hubDecoration = 'none', hubGlowIntensity = 'normal',
+  hubDecoration = 'none', hubGlowIntensity = 'normal', currentUserId = '',
   onWriteLetter, onObservatory, onProfile, onDriftstream, navResetSignal = 0, avatarGenerating = false,
 }: {
   hubName?: string; hubBio?: string; hubAskAbout?: string; hubAvatarUrl?: string; hubStyle?: HubStyle; hubColor?: HubColor
-  hubDecoration?: HubDecoration; hubGlowIntensity?: HubGlowIntensity
+  hubDecoration?: HubDecoration; hubGlowIntensity?: HubGlowIntensity; currentUserId?: string
   onWriteLetter?: (recipientName?: string) => void
   onObservatory?: () => void; onProfile?: () => void; onDriftstream?: () => void
   navResetSignal?: number; avatarGenerating?: boolean
@@ -1202,7 +1202,9 @@ export default function UniverseMap({
     async function refreshUniverseLetters() {
       const letters = await getUniverseLetters()
       if (!cancelled) {
-        universeLetters = letters.filter(letter => letter.body.trim().length > 0)
+        universeLetters = letters
+          .filter(letter => letter.body.trim().length > 0)
+          .filter(letter => !currentUserId || letter.senderId !== currentUserId)
       }
     }
 

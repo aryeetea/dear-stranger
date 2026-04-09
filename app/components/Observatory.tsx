@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { getMyLetters, archiveLetter, deleteLetter, deleteLetterForEveryone } from '../lib/auth'
+import { getMyLetters, pinLetter, unpinLetter, getPinnedLetterIds, deleteLetter, deleteLetterForEveryone } from '../lib/auth'
 import { playAudioWithEffect, type VoiceEffect } from '../../lib/audioEffects'
 import { playWaxSeal } from '../../lib/sounds'
 import { PAPER_TONES, PAPER_INK, renderLetterPaper } from '../lib/letterPapers'
@@ -163,6 +163,7 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
   const [openLetter, setOpenLetter] = useState<Letter | null>(null)
   const [letters, setLetters] = useState<Letter[]>([])
   const [loading, setLoading] = useState(true)
+  const [currentUserId, setCurrentUserId] = useState('')
   const [currentTime, setCurrentTime] = useState(() => Date.now())
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const [tooltip, setTooltip] = useState<{ letter: Letter; x: number; y: number } | null>(null)
@@ -218,10 +219,12 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
             embellishmentId: (l.embellishment_id as EmbellishmentId | null) || 'none',
           }
         }
+        setCurrentUserId(userId)
+        const pinnedIds = getPinnedLetterIds(userId)
+        const applyPin = (l: Letter): Letter => pinnedIds.has(l.id) ? { ...l, status: 'archive' as const } : l
         const all: Letter[] = [
-          ...(data.transit || []).map(mapLetter),
-          ...(data.arrived || []).map(mapLetter),
-          ...(data.archive || []).map(mapLetter),
+          ...(data.transit || []).map(mapLetter).map(applyPin),
+          ...(data.arrived || []).map(mapLetter).map(applyPin),
         ]
         setLetters(assignCelestialPositions(all))
       } catch (err) {
@@ -240,10 +243,17 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
     setMousePos({ x: (e.clientX - rect.left) / rect.width, y: (e.clientY - rect.top) / rect.height })
   }, [])
 
-  async function handleArchive(letter: Letter) {
-    await archiveLetter(letter.id)
-    setOpenLetter(null)
-    setLetters(prev => assignCelestialPositions(prev.map(l => l.id === letter.id ? { ...l, status: 'archive' as const } : l)))
+  function handlePin(letter: Letter) {
+    const isAlreadyPinned = letter.status === 'archive'
+    if (isAlreadyPinned) {
+      unpinLetter(letter.id, currentUserId)
+      setOpenLetter(null)
+      setLetters(prev => assignCelestialPositions(prev.map(l => l.id === letter.id ? { ...l, status: 'arrived' as const } : l)))
+    } else {
+      pinLetter(letter.id, currentUserId)
+      setOpenLetter(null)
+      setLetters(prev => assignCelestialPositions(prev.map(l => l.id === letter.id ? { ...l, status: 'archive' as const } : l)))
+    }
   }
 
   async function handleBurnAndClose(letter: Letter) {
@@ -266,7 +276,7 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
 
   const transit = letters.filter(l => l.status === 'transit')
   const arrived = letters.filter(l => l.status === 'arrived')
-  const archive = letters.filter(l => l.status === 'archive')
+  const pinned = letters.filter(l => l.status === 'archive')
   const total = letters.length
   const newlyArrived = arrived.filter(l => (currentTime - new Date(l.arrivedAt || l.sentAt).getTime()) < 48 * 3600000)
 
@@ -318,7 +328,7 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
         {[
           { label: 'In Transit', sub: 'crossing the dark', count: transit.length, zone: 'transit', x: '16.75%' },
           { label: 'Arrived', sub: 'glowing, waiting', count: arrived.length, zone: 'arrived', x: '50%' },
-          { label: 'Archive', sub: 'dim constellations', count: archive.length, zone: 'archive', x: '83.25%' },
+          { label: 'Pinned', sub: 'held close, always', count: pinned.length, zone: 'archive', x: '83.25%' },
         ].map(z => (
           <div key={z.zone} style={{ position: 'absolute', left: z.x, transform: 'translateX(-50%)', textAlign: 'center', opacity: activeZone === z.zone ? 1 : 0.45, transition: 'opacity 0.3s' }}>
             <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.45em', color: z.zone === 'arrived' ? '#e6c76e' : 'rgba(255,255,255,0.8)', textTransform: 'uppercase', marginBottom: '3px' }}>{z.label}</p>
@@ -500,7 +510,7 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
           <LetterModal
             letter={openLetter} onClose={() => setOpenLetter(null)}
             onReply={name => { setOpenLetter(null); onWriteLetter?.(name) }}
-            onArchive={() => handleArchive(openLetter)}
+            onArchive={() => handlePin(openLetter)}
             onBurn={openLetter.burnAfterReading && openLetter.direction === 'received' ? () => handleBurnAndClose(openLetter) : undefined}
             onDeleteForEveryone={() => handleDeleteForEveryone(openLetter)}
           />
@@ -553,6 +563,7 @@ function ModalEnvelope({ id }: { id: string }) {
 
 function LetterModal({ letter, onClose, onReply, onArchive, onBurn, onDeleteForEveryone }: {
   letter: Letter; onClose: () => void; onReply?: (name: string) => void; onArchive?: () => void; onBurn?: () => void; onDeleteForEveryone?: () => void
+  // onArchive doubles as pin/unpin
 }) {
   const colors = PAPER_COLORS[letter.paperId] || PAPER_COLORS.ornate
   const bodyFont = (letter.fontId && FONT_FAMILIES[letter.fontId]) || "'Cormorant Garamond', serif"
@@ -643,7 +654,7 @@ function LetterModal({ letter, onClose, onReply, onArchive, onBurn, onDeleteForE
           {letter.direction === 'received' && (
             <div style={{ padding: '16px 28px 20px', background: 'rgba(0,0,8,0.97)', borderTop: `1px solid ${colors.accent}38`, display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
               <button onClick={() => onReply?.(letter.from || '')} style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.3em', color: colors.accent, padding: '10px 24px', border: `1px solid ${colors.accent}70`, borderRadius: '2px', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase' }} onMouseEnter={e => { e.currentTarget.style.background = `${colors.accent}12`; e.currentTarget.style.boxShadow = `0 0 20px ${colors.accent}20` }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.boxShadow = 'none' }}>Reply ✦</button>
-              {letter.status === 'arrived' && <button onClick={onArchive} style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.3em', color: 'rgba(255,255,255,0.45)', padding: '10px 24px', border: '1px solid rgba(255,255,255,0.18)', borderRadius: '2px', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase' }} onMouseEnter={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.72)' }} onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.45)' }}>Archive</button>}
+              <button onClick={onArchive} style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.3em', color: 'rgba(255,255,255,0.45)', padding: '10px 24px', border: '1px solid rgba(255,255,255,0.18)', borderRadius: '2px', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase' }} onMouseEnter={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.72)' }} onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.45)' }}>{letter.status === 'archive' ? '★ Pinned' : '☆ Pin'}</button>
               <div style={{ marginLeft: 'auto' }}>
                 {deleteConfirm ? (
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -659,7 +670,7 @@ function LetterModal({ letter, onClose, onReply, onArchive, onBurn, onDeleteForE
           )}
           {letter.direction === 'sent' && letter.status === 'arrived' && (
             <div style={{ padding: '16px 28px 20px', background: 'rgba(0,0,8,0.97)', borderTop: `1px solid ${colors.accent}38`, display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-              <button onClick={onArchive} style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.3em', color: 'rgba(255,255,255,0.45)', padding: '10px 24px', border: '1px solid rgba(255,255,255,0.18)', borderRadius: '2px', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase' }} onMouseEnter={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.72)' }} onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.45)' }}>Archive</button>
+              <button onClick={onArchive} style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.3em', color: 'rgba(255,255,255,0.45)', padding: '10px 24px', border: '1px solid rgba(255,255,255,0.18)', borderRadius: '2px', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase' }} onMouseEnter={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.72)' }} onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.45)' }}>{letter.status === 'archive' ? '★ Pinned' : '☆ Pin'}</button>
               <div style={{ marginLeft: 'auto' }}>
                 {deleteConfirm ? (
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>

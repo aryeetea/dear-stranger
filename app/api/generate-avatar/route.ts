@@ -8,15 +8,20 @@ export const maxDuration = 120
 // and instead focus on that clean, glowy, game-character look.
 const BASE_RENDER =
   'High-end stylized 3D digital art — NOT a real person, NOT a photo. ' +
-  'Style: Clean 3D character design with smooth, porcelain-like skin and sculpted features. ' +
+  'Style: Clean 3D character design with smooth, sculpted features. ' +
+  'CRITICAL SKIN RULE: Render the character\'s skin tone EXACTLY as described by the user — do not lighten, alter, or approximate any described skin color. ' +
+  'If no skin color is described, default to a warm neutral tone. ' +
   'Texture: Hand-painted textures, vibrant colors, and soft-focus backgrounds. ' +
   'Lighting: Dreamy volumetric lighting, glowing rim highlights, and soft-box studio shadows. ' +
   'Think high-budget 3D animated cinematic (Arcane/League of Legends style) — polished, smooth, and artistic.'
 
 const RENDERING_INSTRUCTION =
-  'Composition: Full body visible head to toe, vertical portrait orientation. ' +
+  'COMPOSITION: The image MUST be a vertical portrait (taller than wide). Full body visible head to toe. ' +
+  'The character fills most of the frame. NEVER produce a landscape or square composition. ' +
   'Background: A rich, atmospheric environment with a soft bokeh effect. ' +
-  'IMPORTANT: Depict exactly ONE single character. No text, no watermarks, no skin pores, no grainy textures, no realistic wrinkles.'
+  'COMPANIONS: If the user mentions a pet, animal, or creature companion, include it alongside the character — ' +
+  'this applies especially to otherworldly themes (e.g. a spirit fox, cosmic dragon, shadow cat, magical beast). ' +
+  'IMPORTANT: No text, no watermarks, no skin pores, no grainy textures, no realistic wrinkles.'
 
 const STYLE_DESCRIPTORS: Record<string, string> = {
   fantasy: 'Fantasy theme: Magical glowing environment, ethereal aura, otherworldly elements.',
@@ -35,10 +40,11 @@ function buildAvatarPrompt(answers: string[], styleKey?: string) {
   const styleTheme = STYLE_DESCRIPTORS[styleKey?.toLowerCase() || 'fantasy']
 
   return [
-    `Stylized 3D character portrait of: ${details || 'a mysterious figure'}.`,
+    `PORTRAIT — Stylized 3D character portrait of: ${details || 'a mysterious figure'}.`,
     BASE_RENDER,
     styleTheme,
     RENDERING_INSTRUCTION,
+    'FINAL REMINDER: Output must be a vertical portrait image only. Landscape orientation is forbidden.',
   ].join('\n\n')
 }
 

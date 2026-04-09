@@ -487,6 +487,7 @@ export default function Home() {
     return localStorage.getItem('ds_ambient_muted') === '1'
   })
   const [isGuest, setIsGuest] = useState(false)
+  const [currentUserId, setCurrentUserId] = useState('')
   const [guestBannerDismissed, setGuestBannerDismissed] = useState(false)
   const [guestNudgeOpen, setGuestNudgeOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
@@ -1185,6 +1186,7 @@ export default function Home() {
           hubColor={hubColor}
           hubDecoration={hubDecoration}
           hubGlowIntensity={hubGlowIntensity}
+          currentUserId={currentUserId}
           avatarGenerating={avatarGenerating}
           onWriteLetter={(name) => {
             if (isGuest) { setGuestNudgeOpen(true); return }

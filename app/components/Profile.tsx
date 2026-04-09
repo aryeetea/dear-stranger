@@ -351,27 +351,21 @@ export default function Profile({
         ? 0.5
         : 0.85
 
-  const HUB_STYLE_CENTERPIECE: Record<string, { symbol: string; label: string; ambient: string }> = {
-    portal:   { symbol: '✦', label: 'Portal', ambient: 'rgba(150,100,220,0.18)' },
-    lotus:    { symbol: '✿', label: 'Lotus Bloom', ambient: 'rgba(220,120,160,0.18)' },
-    tower:    { symbol: '⌖', label: 'Watcher Tower', ambient: 'rgba(80,140,220,0.18)' },
-    cottage:  { symbol: '⌂', label: 'Cozy Cottage', ambient: 'rgba(180,120,60,0.18)' },
-    wanderer: { symbol: '✧', label: 'Wanderer', ambient: 'rgba(100,200,150,0.18)' },
-    oracle:   { symbol: '◎', label: 'Oracle', ambient: 'rgba(200,160,80,0.18)' },
-  }
-  const centerpiece = HUB_STYLE_CENTERPIECE[selectedHubStyle] || HUB_STYLE_CENTERPIECE.portal
+  // Use the real icon + label from HUB_STYLES so every style gets its correct symbol
+  const hubStyleDef = HUB_STYLES.find(s => s.id === selectedHubStyle) || HUB_STYLES[0]
+  const centerpiece = { symbol: hubStyleDef.icon, label: hubStyleDef.label }
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }}
       style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,5,0.97)', backdropFilter: 'blur(20px)', zIndex: 70, overflowY: 'auto' }}>
-      <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', background: `radial-gradient(ellipse 55% 40% at 15% 25%, rgba(${hubGlowRgb},${hubGlowIntensityValue * 0.5}) 0%, transparent 65%), radial-gradient(ellipse 45% 55% at 85% 75%, rgba(10,20,70,0.25) 0%, transparent 65%)` }} />
+      <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', background: `radial-gradient(ellipse 70% 55% at 20% 30%, rgba(${hubGlowRgb},${hubGlowIntensityValue * 0.7}) 0%, transparent 60%), radial-gradient(ellipse 50% 60% at 80% 70%, rgba(${hubGlowRgb},${hubGlowIntensityValue * 0.35}) 0%, transparent 55%)` }} />
 
       {/* ── Ambient hub glow pulse ── */}
       <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0 }}>
         <motion.div
           animate={{ opacity: [hubGlowIntensityValue * 0.3, hubGlowIntensityValue * 0.55, hubGlowIntensityValue * 0.3] }}
           transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
-          style={{ position: 'absolute', top: '5%', left: '5%', width: '420px', height: '420px', borderRadius: '50%', background: `radial-gradient(circle, rgba(${hubGlowRgb},0.22) 0%, transparent 70%)`, filter: 'blur(48px)', pointerEvents: 'none' }}
+          style={{ position: 'absolute', top: '5%', left: '5%', width: '520px', height: '520px', borderRadius: '50%', background: `radial-gradient(circle, rgba(${hubGlowRgb},0.28) 0%, transparent 70%)`, filter: 'blur(60px)', pointerEvents: 'none' }}
         />
       </div>
 
@@ -388,30 +382,7 @@ export default function Profile({
           className="profile-avatar-col">
           <div style={{ position: 'absolute', inset: 0, zIndex: 3, pointerEvents: 'none', background: 'linear-gradient(to right, transparent 65%, rgba(0,0,5,0.97) 100%), linear-gradient(to bottom, rgba(0,0,5,0.3) 0%, transparent 15%, transparent 85%, rgba(0,0,5,0.6) 100%)' }} />
 
-          {/* Hub structure centerpiece ring — orbits over the avatar */}
-          <div style={{ position: 'absolute', bottom: '12%', left: '50%', transform: 'translateX(-50%)', zIndex: 5, pointerEvents: 'none', textAlign: 'center' }}>
-            <motion.div
-              animate={{ scale: [1, 1.06, 1], opacity: [0.7, 1, 0.7] }}
-              transition={{ duration: 3.8, repeat: Infinity, ease: 'easeInOut' }}
-              style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-            >
-              <div style={{ width: '72px', height: '72px', borderRadius: '50%', border: `1px solid rgba(${hubGlowRgb},0.45)`, boxShadow: `0 0 30px rgba(${hubGlowRgb},${hubGlowIntensityValue * 0.6}), inset 0 0 16px rgba(${hubGlowRgb},0.08)`, display: 'flex', alignItems: 'center', justifyContent: 'center', background: `radial-gradient(circle, rgba(${hubGlowRgb},0.08) 0%, transparent 70%)` }}>
-                <span style={{ fontSize: '28px', color: `rgba(${hubGlowRgb},0.92)`, filter: `drop-shadow(0 0 12px rgba(${hubGlowRgb},0.7))` }}>{centerpiece.symbol}</span>
-              </div>
-              {/* Orbiting decoration dots */}
-              {[0, 72, 144, 216, 288].map((deg, i) => (
-                <motion.div
-                  key={i}
-                  animate={{ rotate: [deg, deg + 360] }}
-                  transition={{ duration: 18 + i * 2, repeat: Infinity, ease: 'linear' }}
-                  style={{ position: 'absolute', width: '90px', height: '90px', top: '-9px', left: '-9px' }}
-                >
-                  <div style={{ position: 'absolute', top: '0', left: '50%', transform: 'translateX(-50%)', width: '4px', height: '4px', borderRadius: '50%', background: `rgba(${hubGlowRgb},${0.4 + i * 0.1})`, boxShadow: `0 0 6px rgba(${hubGlowRgb},0.4)` }} />
-                </motion.div>
-              ))}
-            </motion.div>
-            <p style={{ fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.32em', color: `rgba(${hubGlowRgb},0.6)`, textTransform: 'uppercase', marginTop: '8px' }}>{centerpiece.label}</p>
-          </div>
+          {/* Hub structure centerpiece ring — removed from avatar col, now in info col */}
 
           {regenLoading && (
             <div style={{ position: 'absolute', inset: 0, zIndex: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,5,0.7)', backdropFilter: 'blur(8px)' }}>
@@ -424,7 +395,9 @@ export default function Profile({
           )}
           {currentAvatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={currentAvatarUrl} alt="Avatar" className="profile-avatar-fill" />
+            <img src={currentAvatarUrl} alt="Avatar" className="profile-avatar-fill"
+              style={{ filter: `drop-shadow(0 0 ${Math.round(hubGlowIntensityValue * 40)}px rgba(${hubGlowRgb},${hubGlowIntensityValue * 0.55}))` }}
+            />
           ) : (
             <div className="profile-avatar-fill" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(180deg, rgba(20,25,60,0.8), rgba(5,8,20,0.9))' }}>
               <div style={{ width: '100px', height: '100px', borderRadius: '50%', border: `1px solid rgba(${hubGlowRgb},0.3)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '40px', color: `rgba(${hubGlowRgb},0.8)` }}>{centerpiece.symbol}</div>
@@ -437,7 +410,27 @@ export default function Profile({
           className="profile-info-col">
 
           <div style={{ marginBottom: '40px' }}>
-            <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.5em', color: 'rgba(201,168,76,0.6)', textTransform: 'uppercase', marginBottom: '6px' }}>Soul Mirror</p>
+            {/* ── Centered hub style symbol ── */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '22px' }}>
+              <motion.div
+                animate={{ scale: [1, 1.07, 1], boxShadow: [`0 0 18px rgba(${hubGlowRgb},${hubGlowIntensityValue * 0.4})`, `0 0 36px rgba(${hubGlowRgb},${hubGlowIntensityValue * 0.75})`, `0 0 18px rgba(${hubGlowRgb},${hubGlowIntensityValue * 0.4})`] }}
+                transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
+                style={{ position: 'relative', width: '64px', height: '64px', borderRadius: '50%', border: `1px solid rgba(${hubGlowRgb},0.55)`, background: `radial-gradient(circle, rgba(${hubGlowRgb},0.12) 0%, transparent 75%)`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+              >
+                {/* Orbiting dots */}
+                {[0, 120, 240].map((deg, i) => (
+                  <motion.div key={i} animate={{ rotate: [deg, deg + 360] }} transition={{ duration: 14 + i * 3, repeat: Infinity, ease: 'linear' }}
+                    style={{ position: 'absolute', width: '78px', height: '78px', top: '-7px', left: '-7px' }}>
+                    <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: '5px', height: '5px', borderRadius: '50%', background: `rgba(${hubGlowRgb},${0.55 + i * 0.12})`, boxShadow: `0 0 8px rgba(${hubGlowRgb},0.5)` }} />
+                  </motion.div>
+                ))}
+                <span style={{ fontSize: '26px', lineHeight: 1, filter: `drop-shadow(0 0 10px rgba(${hubGlowRgb},0.8))` }}>{centerpiece.symbol}</span>
+              </motion.div>
+              <div>
+                <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.5em', color: `rgba(${hubGlowRgb},0.7)`, textTransform: 'uppercase', marginBottom: '4px' }}>Soul Hub</p>
+                <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.28em', color: `rgba(${hubGlowRgb},0.42)`, textTransform: 'uppercase' }}>{centerpiece.label}</p>
+              </div>
+            </div>
             {editingHub ? (
               <div style={{ marginBottom: '8px' }}>
                 <input value={hubDraft} onChange={e => setHubDraft(e.target.value)} autoFocus
@@ -450,7 +443,10 @@ export default function Profile({
               </div>
             ) : (
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 'clamp(28px,4vw,48px)', letterSpacing: '0.06em', color: 'rgba(255,255,255,0.95)', lineHeight: 1.1 }}>{hubNameState}</p>
+                <motion.p
+                  animate={{ textShadow: [`0 0 18px rgba(${hubGlowRgb},0.0)`, `0 0 24px rgba(${hubGlowRgb},0.35)`, `0 0 18px rgba(${hubGlowRgb},0.0)`] }}
+                  transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+                  style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 'clamp(28px,4vw,48px)', letterSpacing: '0.06em', color: 'rgba(255,255,255,0.95)', lineHeight: 1.1 }}>{hubNameState}</motion.p>
                 <button onClick={() => { setHubDraft(hubNameState); setEditingHub(true) }} style={editBtn}>Edit</button>
               </div>
             )}
@@ -508,7 +504,7 @@ export default function Profile({
 
           <div style={{ marginBottom: '28px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '10px' }}>
-              <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.4em', color: 'rgba(201,168,76,0.65)', textTransform: 'uppercase' }}>Bio</p>
+              <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.4em', color: `rgba(${hubGlowRgb},0.75)`, textTransform: 'uppercase' }}>Bio</p>
               {!editingBio && <button onClick={() => { setBioDraft(bioState); setEditingBio(true) }} style={editBtn}>Edit</button>}
             </div>
             {editingBio ? (
@@ -521,7 +517,10 @@ export default function Profile({
                 </div>
               </div>
             ) : (
-              <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: 'clamp(15px,1.8vw,18px)', color: 'rgba(255,255,255,0.82)', lineHeight: 1.8 }}>{bioState}</p>
+              <motion.p
+                animate={{ y: [0, -3, 0] }}
+                transition={{ duration: 5.5, repeat: Infinity, ease: 'easeInOut' }}
+                style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: 'clamp(15px,1.8vw,18px)', color: 'rgba(255,255,255,0.82)', lineHeight: 1.8 }}>{bioState}</motion.p>
             )}
           </div>
 
