@@ -172,13 +172,13 @@ export function LoginScreen({
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
         <input value={email} onChange={e => setEmail(e.target.value)} type="email" placeholder="Email address"
           autoCapitalize="none" autoCorrect="off" spellCheck={false}
-          style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', color: 'rgba(255,255,255,0.85)', fontFamily: "'Cinzel', serif", fontSize: '11px', letterSpacing: '0.1em', padding: '13px 16px', outline: 'none', caretColor: '#c9a84c' }}
+          style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', color: 'rgba(255,255,255,0.85)', fontFamily: "'Cormorant Garamond', serif", fontSize: '15px', letterSpacing: '0.04em', padding: '13px 16px', outline: 'none', caretColor: '#c9a84c' }}
           onFocus={e => e.target.style.borderColor = 'rgba(201,168,76,0.4)'}
           onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
           onKeyDown={e => e.key === 'Enter' && void handleLogin()} />
         <input value={password} onChange={e => setPassword(e.target.value)} type="password" placeholder="Password"
           autoCapitalize="none" autoCorrect="off" spellCheck={false}
-          style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', color: 'rgba(255,255,255,0.85)', fontFamily: "'Cinzel', serif", fontSize: '11px', letterSpacing: '0.1em', padding: '13px 16px', outline: 'none', caretColor: '#c9a84c' }}
+          style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', color: 'rgba(255,255,255,0.85)', fontFamily: "'Cormorant Garamond', serif", fontSize: '15px', letterSpacing: '0.04em', padding: '13px 16px', outline: 'none', caretColor: '#c9a84c' }}
           onFocus={e => e.target.style.borderColor = 'rgba(201,168,76,0.4)'}
           onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
           onKeyDown={e => e.key === 'Enter' && void handleLogin()} />
@@ -300,17 +300,17 @@ export function SignupScreen({
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
         <input value={email} onChange={e => setEmail(e.target.value)} type="email" placeholder="Email address"
           autoCapitalize="none" autoCorrect="off" spellCheck={false}
-          style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', color: 'rgba(255,255,255,0.85)', fontFamily: "'Cinzel', serif", fontSize: '11px', letterSpacing: '0.1em', padding: '13px 16px', outline: 'none', caretColor: '#c9a84c' }}
+          style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', color: 'rgba(255,255,255,0.85)', fontFamily: "'Cormorant Garamond', serif", fontSize: '15px', letterSpacing: '0.04em', padding: '13px 16px', outline: 'none', caretColor: '#c9a84c' }}
           onFocus={e => e.target.style.borderColor = 'rgba(201,168,76,0.4)'}
           onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.1)'} />
         <input value={password} onChange={e => setPassword(e.target.value)} type="password" placeholder="Password (min 6 characters)"
           autoCapitalize="none" autoCorrect="off" spellCheck={false}
-          style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', color: 'rgba(255,255,255,0.85)', fontFamily: "'Cinzel', serif", fontSize: '11px', letterSpacing: '0.1em', padding: '13px 16px', outline: 'none', caretColor: '#c9a84c' }}
+          style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', color: 'rgba(255,255,255,0.85)', fontFamily: "'Cormorant Garamond', serif", fontSize: '15px', letterSpacing: '0.04em', padding: '13px 16px', outline: 'none', caretColor: '#c9a84c' }}
           onFocus={e => e.target.style.borderColor = 'rgba(201,168,76,0.4)'}
           onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.1)'} />
         <input value={confirm} onChange={e => setConfirm(e.target.value)} type="password" placeholder="Confirm password"
           autoCapitalize="none" autoCorrect="off" spellCheck={false}
-          style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', color: 'rgba(255,255,255,0.85)', fontFamily: "'Cinzel', serif", fontSize: '11px', letterSpacing: '0.1em', padding: '13px 16px', outline: 'none', caretColor: '#c9a84c' }}
+          style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', color: 'rgba(255,255,255,0.85)', fontFamily: "'Cormorant Garamond', serif", fontSize: '15px', letterSpacing: '0.04em', padding: '13px 16px', outline: 'none', caretColor: '#c9a84c' }}
           onFocus={e => e.target.style.borderColor = 'rgba(201,168,76,0.4)'}
           onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
           onKeyDown={e => e.key === 'Enter' && void handleSignup()} />
