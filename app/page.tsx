@@ -30,6 +30,7 @@ import {
   getMyLetters,
 } from './lib/auth'
 import { playChime, startAmbient, stopAmbient, setAmbientMuted } from '../lib/sounds'
+import { AnimatePresence } from 'framer-motion'
 
 type Screen =
   | 'landing'
@@ -1260,127 +1261,142 @@ export default function Home() {
         </div>
       )}
 
-      {scribeOpen && (
-        <Scribe
-          recipientName={scribeRecipient}
-          senderName={hubName}
-          lettersSent={lettersSent}
-          onClose={() => { setScribeOpen(false); setNavResetSignal(s => s + 1) }}
-          onSend={async (letter) => {
-            try {
-              const voiceNoteUrl = letter.voiceNoteBlob ? await uploadVoiceNote(letter.voiceNoteBlob) : undefined
-              if (letter.capsuleDays) {
-                const myHub = await getMyHub()
-                if (!myHub) throw new Error('Could not get own hub')
-                const customArrivesAt = new Date(Date.now() + letter.capsuleDays * 24 * 60 * 60 * 1000)
-                await sendLetter(
-                  myHub.id,
-                  letter.body,
-                  letter.paperId,
-                  false,
-                  letter.subject,
-                  letter.fontId,
-                  letter.colorId,
-                  letter.paperColorId,
-                  letter.stampId,
-                  letter.envelopeId,
-                  customArrivesAt,
-                  letter.burnAfterReading,
-                  voiceNoteUrl,
-                  letter.voiceEffect,
-                  letter.handwritingStyle,
-                  letter.embellishmentId,
-                )
-              } else {
-                const allHubs = await getAllHubs();
-                const recipient = allHubs.find((hub) => hub.hub_name === letter.to);
-                const isUniverseLetter = !letter.to;
+      <AnimatePresence>
+        {scribeOpen && (
+          <Scribe
+            key="scribe"
+            recipientName={scribeRecipient}
+            senderName={hubName}
+            lettersSent={lettersSent}
+            onClose={() => { setScribeOpen(false); setNavResetSignal(s => s + 1) }}
+            onSend={async (letter) => {
+              try {
+                const voiceNoteUrl = letter.voiceNoteBlob ? await uploadVoiceNote(letter.voiceNoteBlob) : undefined
+                if (letter.capsuleDays) {
+                  const myHub = await getMyHub()
+                  if (!myHub) throw new Error('Could not get own hub')
+                  const customArrivesAt = new Date(Date.now() + letter.capsuleDays * 24 * 60 * 60 * 1000)
+                  await sendLetter(
+                    myHub.id,
+                    letter.body,
+                    letter.paperId,
+                    false,
+                    letter.subject,
+                    letter.fontId,
+                    letter.colorId,
+                    letter.paperColorId,
+                    letter.stampId,
+                    letter.envelopeId,
+                    customArrivesAt,
+                    letter.burnAfterReading,
+                    voiceNoteUrl,
+                    letter.voiceEffect,
+                    letter.handwritingStyle,
+                    letter.embellishmentId,
+                  )
+                } else {
+                  const allHubs = await getAllHubs();
+                  const recipient = allHubs.find((hub) => hub.hub_name === letter.to);
+                  const isUniverseLetter = !letter.to;
 
-                if (!isUniverseLetter && !recipient) {
-                  throw new Error('Recipient not found');
+                  if (!isUniverseLetter && !recipient) {
+                    throw new Error('Recipient not found');
+                  }
+
+                  await sendLetter(
+                    recipient?.id || null,
+                    letter.body,
+                    letter.paperId,
+                    isUniverseLetter,
+                    letter.subject,
+                    letter.fontId,
+                    letter.colorId,
+                    letter.paperColorId,
+                    letter.stampId,
+                    letter.envelopeId,
+                    undefined,
+                    letter.burnAfterReading,
+                    voiceNoteUrl,
+                    letter.voiceEffect,
+                    letter.handwritingStyle,
+                    letter.embellishmentId,
+                  );
                 }
 
-                await sendLetter(
-                  recipient?.id || null,
-                  letter.body,
-                  letter.paperId,
-                  isUniverseLetter,
-                  letter.subject,
-                  letter.fontId,
-                  letter.colorId,
-                  letter.paperColorId,
-                  letter.stampId,
-                  letter.envelopeId,
-                  undefined,
-                  letter.burnAfterReading,
-                  voiceNoteUrl,
-                  letter.voiceEffect,
-                  letter.handwritingStyle,
-                  letter.embellishmentId,
-                );
+                setLettersSent((prev) => prev + 1);
+                setSendFlashing(true);
+              } catch (err) {
+                console.error('Failed to send letter:', err);
               }
+            }}
+          />
+        )}
+      </AnimatePresence>
 
-              setLettersSent((prev) => prev + 1);
-              setSendFlashing(true);
-            } catch (err) {
-              console.error('Failed to send letter:', err);
-            }
-          }}
-        />
-      )}
+      <AnimatePresence>
+        {pagesOpen && (
+          <PagesAndInk
+            key="pages"
+            onClose={() => { setPagesOpen(false); setNavResetSignal(s => s + 1) }}
+          />
+        )}
+      </AnimatePresence>
 
-      {pagesOpen && (
-        <PagesAndInk
-          onClose={() => { setPagesOpen(false); setNavResetSignal(s => s + 1) }}
-        />
-      )}
+      <AnimatePresence>
+        {driftOpen && (
+          <DriftStream
+            key="drift"
+            senderName={hubName}
+            onClose={() => { setDriftOpen(false); setNavResetSignal(s => s + 1) }}
+          />
+        )}
+      </AnimatePresence>
 
-      {driftOpen && (
-        <DriftStream
-          senderName={hubName}
-          onClose={() => { setDriftOpen(false); setNavResetSignal(s => s + 1) }}
-        />
-      )}
+      <AnimatePresence>
+        {observatoryOpen && (
+          <Observatory
+            key="observatory"
+            onClose={() => { setObservatoryOpen(false); setNavResetSignal(s => s + 1) }}
+            onWriteLetter={(name) => {
+              setObservatoryOpen(false)
+              setScribeRecipient(name)
+              setScribeOpen(true)
+            }}
+          />
+        )}
+      </AnimatePresence>
 
-      {observatoryOpen && (
-        <Observatory
-          onClose={() => { setObservatoryOpen(false); setNavResetSignal(s => s + 1) }}
-          onWriteLetter={(name) => {
-            setObservatoryOpen(false)
-            setScribeRecipient(name)
-            setScribeOpen(true)
-          }}
-        />
-      )}
-
-      {profileOpen && (
-        <Profile
-          hubName={hubName}
-          bio={hubBio}
-          askAbout={hubAskAbout}
-          avatarUrl={hubAvatarUrl}
-          avatarPromptPending={hubAvatarPending}
-          regenCount={hubRegenCount}
-          hubCreatedAt={hubCreatedAt}
-          hubStyle={hubStyle}
-          hubColor={hubColor}
-          hubDecoration={hubDecoration}
-          hubGlowIntensity={hubGlowIntensity}
-          visitorBookEnabled={visitorBookEnabled}
-          onClose={() => { setProfileOpen(false); setNavResetSignal(s => s + 1) }}
-          onUpdateHub={({ hubName: nextHubName, bio: nextBio, askAbout: nextAskAbout, avatarUrl: nextAvatarUrl, hubStyle: nextHubStyle, hubColor: nextHubColor, hubDecoration: nextHubDecoration, hubGlowIntensity: nextHubGlowIntensity, visitorBookEnabled: nextVisitorBookEnabled }) => {
-            if (typeof nextHubName === 'string') setHubName(nextHubName)
-            if (typeof nextBio === 'string') setHubBio(nextBio)
-            if (typeof nextAskAbout === 'string') setHubAskAbout(nextAskAbout)
-            if (typeof nextAvatarUrl === 'string') setHubAvatarUrl(nextAvatarUrl)
-            if (nextHubStyle) setHubStyle(nextHubStyle)
-            if (nextHubColor) setHubColor(nextHubColor)
-            if (nextHubDecoration) setHubDecoration(nextHubDecoration)
-            if (nextHubGlowIntensity) setHubGlowIntensity(nextHubGlowIntensity)
-            if (typeof nextVisitorBookEnabled === 'boolean') setVisitorBookEnabled(nextVisitorBookEnabled)
-          }}
-        />
-      )}
+      <AnimatePresence>
+        {profileOpen && (
+          <Profile
+            key="profile"
+            hubName={hubName}
+            bio={hubBio}
+            askAbout={hubAskAbout}
+            avatarUrl={hubAvatarUrl}
+            avatarPromptPending={hubAvatarPending}
+            regenCount={hubRegenCount}
+            hubCreatedAt={hubCreatedAt}
+            hubStyle={hubStyle}
+            hubColor={hubColor}
+            hubDecoration={hubDecoration}
+            hubGlowIntensity={hubGlowIntensity}
+            visitorBookEnabled={visitorBookEnabled}
+            onClose={() => { setProfileOpen(false); setNavResetSignal(s => s + 1) }}
+            onUpdateHub={({ hubName: nextHubName, bio: nextBio, askAbout: nextAskAbout, avatarUrl: nextAvatarUrl, hubStyle: nextHubStyle, hubColor: nextHubColor, hubDecoration: nextHubDecoration, hubGlowIntensity: nextHubGlowIntensity, visitorBookEnabled: nextVisitorBookEnabled }) => {
+              if (typeof nextHubName === 'string') setHubName(nextHubName)
+              if (typeof nextBio === 'string') setHubBio(nextBio)
+              if (typeof nextAskAbout === 'string') setHubAskAbout(nextAskAbout)
+              if (typeof nextAvatarUrl === 'string') setHubAvatarUrl(nextAvatarUrl)
+              if (nextHubStyle) setHubStyle(nextHubStyle)
+              if (nextHubColor) setHubColor(nextHubColor)
+              if (nextHubDecoration) setHubDecoration(nextHubDecoration)
+              if (nextHubGlowIntensity) setHubGlowIntensity(nextHubGlowIntensity)
+              if (typeof nextVisitorBookEnabled === 'boolean') setVisitorBookEnabled(nextVisitorBookEnabled)
+            }}
+          />
+        )}
+      </AnimatePresence>
     </>
   )
 }

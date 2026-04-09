@@ -356,8 +356,8 @@ export default function Profile({
   const centerpiece = { symbol: hubStyleDef.icon, label: hubStyleDef.label }
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,5,0.97)', backdropFilter: 'blur(20px)', zIndex: 70, overflowY: 'auto' }}>
+    <motion.div initial={{ opacity: 0, scale: 1.04 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,5,0.88)', backdropFilter: 'blur(20px)', zIndex: 70, overflowY: 'auto' }}>
       <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', background: `radial-gradient(ellipse 70% 55% at 20% 30%, rgba(${hubGlowRgb},${hubGlowIntensityValue * 0.7}) 0%, transparent 60%), radial-gradient(ellipse 50% 60% at 80% 70%, rgba(${hubGlowRgb},${hubGlowIntensityValue * 0.35}) 0%, transparent 55%)` }} />
 
       {/* ── Ambient hub glow pulse ── */}

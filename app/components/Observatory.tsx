@@ -288,12 +288,12 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
   return (
     <motion.div
       ref={containerRef}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.6 }}
+      initial={{ opacity: 0, scale: 1.04 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.97 }}
+      transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
       onMouseMove={handleMouseMove}
-      style={{ position: 'fixed', inset: 0, background: '#03020a', zIndex: 70, overflow: 'hidden' }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(3,2,10,0.88)', backdropFilter: 'blur(18px)', zIndex: 70, overflow: 'hidden' }}
     >
       {/* ── Deep space background ── */}
       <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }} aria-hidden="true">

@@ -523,9 +523,9 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
   const stampCategories = [...new Set(STAMPS.map(s => s.category))]
 
   return (
-    <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }} transition={{ duration:0.4 }}
+    <motion.div initial={{ opacity:0, scale:1.04 }} animate={{ opacity:1, scale:1 }} exit={{ opacity:0, scale:0.98 }} transition={{ duration:0.5, ease:[0.22, 1, 0.36, 1] }}
       className="fixed-scroll-panel"
-      style={{ position:'fixed', inset:0, background:'rgba(0,0,5,0.97)', backdropFilter:'blur(20px)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'flex-start', zIndex:70, padding:'72px 20px 40px', overflowY:'auto' }}>
+      style={{ position:'fixed', inset:0, background:'rgba(0,0,5,0.88)', backdropFilter:'blur(20px)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'flex-start', zIndex:70, padding:'72px 20px 40px', overflowY:'auto' }}>
 
       {/* Sparkle particles */}
       {sparkles.map(s => (

@@ -289,10 +289,11 @@ function OpenLetterModal({ open, onClose, onBlocked }: {
 
   return (
     <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(3,2,10,0.92)', zIndex: 90, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 20px', backdropFilter: 'blur(8px)' }}
+      initial={{ opacity: 0, scale: 1.04 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.97 }}
+      transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(3,2,10,0.84)', zIndex: 90, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 20px', backdropFilter: 'blur(14px)' }}
       onClick={onClose}
     >
       <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'radial-gradient(ellipse 34% 28% at 24% 22%, rgba(162,92,190,0.12) 0%, transparent 72%), radial-gradient(ellipse 30% 24% at 74% 68%, rgba(255,142,88,0.1) 0%, transparent 72%), radial-gradient(ellipse 50% 36% at 50% 56%, rgba(72,40,120,0.16) 0%, transparent 80%)' }} />
