@@ -394,14 +394,113 @@ export default function Profile({
             </div>
           )}
           {currentAvatarUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={currentAvatarUrl} alt="Avatar" className="profile-avatar-fill"
-              style={{ filter: `drop-shadow(0 0 ${Math.round(hubGlowIntensityValue * 40)}px rgba(${hubGlowRgb},${hubGlowIntensityValue * 0.55}))` }}
-            />
+            <>
+              {/* Holographic projection cone — light beams rising from portal ring */}
+              <div style={{
+                position: 'absolute', bottom: '14%', left: '50%',
+                transform: 'translateX(-50%)',
+                width: '120%', height: '80%',
+                background: `radial-gradient(ellipse at 50% 100%, rgba(${hubGlowRgb},0.20) 0%, rgba(0,170,255,0.09) 20%, transparent 64%)`,
+                pointerEvents: 'none', zIndex: 2,
+                mixBlendMode: 'screen' as CSSProperties['mixBlendMode'],
+              }} />
+              {/* Pulsing secondary beam for depth */}
+              <motion.div
+                animate={{ opacity: [0.38, 0.72, 0.38] }}
+                transition={{ duration: 4.5, repeat: Infinity, ease: 'easeInOut' }}
+                style={{
+                  position: 'absolute', bottom: '14%', left: '50%',
+                  transform: 'translateX(-50%)',
+                  width: '80%', height: '62%',
+                  background: 'radial-gradient(ellipse at 50% 100%, rgba(0,160,255,0.16) 0%, transparent 70%)',
+                  pointerEvents: 'none', zIndex: 2,
+                  mixBlendMode: 'screen' as CSSProperties['mixBlendMode'],
+                  filter: 'blur(5px)',
+                }}
+              />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={currentAvatarUrl} alt="Avatar" className="profile-avatar-fill"
+                style={{
+                  filter: `brightness(1.08) saturate(0.82) drop-shadow(0 0 ${Math.round(hubGlowIntensityValue * 28)}px rgba(${hubGlowRgb},0.45)) drop-shadow(0 0 10px rgba(0,190,255,0.28))`,
+                  animation: 'holo-flicker 7s ease-in-out infinite',
+                }}
+              />
+              {/* Scanlines — moving horizontal lines give classic hologram texture */}
+              <div style={{
+                position: 'absolute', inset: 0, zIndex: 3, pointerEvents: 'none',
+                background: 'repeating-linear-gradient(to bottom, transparent 0px, transparent 3px, rgba(0,200,255,0.022) 3px, rgba(0,200,255,0.022) 4px)',
+                animation: 'holo-scan 10s linear infinite',
+              }} />
+              {/* Portal ring — flat ellipse on the "ground" at avatar feet */}
+              <motion.div
+                animate={{ opacity: [0.72, 1, 0.72] }}
+                transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
+                style={{ position: 'absolute', bottom: '14%', left: '50%', transform: 'translateX(-50%)', width: '74%', zIndex: 5, pointerEvents: 'none' }}
+              >
+                <svg width="100%" viewBox="0 0 200 58" overflow="visible" style={{ display: 'block' }}>
+                  <defs>
+                    <filter id="php-glow-wide" x="-70%" y="-70%" width="240%" height="240%">
+                      <feGaussianBlur in="SourceGraphic" stdDeviation="7" />
+                    </filter>
+                    <filter id="php-glow-soft" x="-40%" y="-40%" width="180%" height="180%">
+                      <feGaussianBlur in="SourceGraphic" stdDeviation="3" />
+                    </filter>
+                  </defs>
+                  {/* Broad colour halo matching hub theme */}
+                  <ellipse cx="100" cy="29" rx="95" ry="22" fill="none" stroke={`rgba(${hubGlowRgb},0.5)`} strokeWidth="10" filter="url(#php-glow-wide)" />
+                  {/* Teal accent halo */}
+                  <ellipse cx="100" cy="29" rx="95" ry="22" fill="none" stroke="rgba(0,210,255,0.35)" strokeWidth="5" filter="url(#php-glow-soft)" />
+                  {/* Main crisp ring */}
+                  <ellipse cx="100" cy="29" rx="94" ry="21" fill="none" stroke={`rgba(${hubGlowRgb},0.92)`} strokeWidth="1.3" />
+                  {/* Teal inner accent */}
+                  <ellipse cx="100" cy="29" rx="94" ry="21" fill="none" stroke="rgba(0,220,255,0.38)" strokeWidth="0.5" />
+                  {/* Auto-rotating dashed mid ring */}
+                  <ellipse cx="100" cy="29" rx="79" ry="17" fill="none" stroke={`rgba(${hubGlowRgb},0.38)`} strokeWidth="0.9" strokeDasharray="5 3.5">
+                    <animateTransform attributeName="transform" type="rotate" from="0 100 29" to="360 100 29" dur="20s" repeatCount="indefinite" />
+                  </ellipse>
+                  {/* Innermost fine ring */}
+                  <ellipse cx="100" cy="29" rx="61" ry="13" fill="none" stroke="rgba(0,210,255,0.20)" strokeWidth="0.7" />
+                  {/* Translucent inner fill */}
+                  <ellipse cx="100" cy="29" rx="94" ry="21" fill={`rgba(${hubGlowRgb},0.055)`} />
+                </svg>
+              </motion.div>
+            </>
           ) : (
-            <div className="profile-avatar-fill" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(180deg, rgba(20,25,60,0.8), rgba(5,8,20,0.9))' }}>
-              <div style={{ width: '100px', height: '100px', borderRadius: '50%', border: `1px solid rgba(${hubGlowRgb},0.3)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '40px', color: `rgba(${hubGlowRgb},0.8)` }}>{centerpiece.symbol}</div>
-            </div>
+            <>
+              {/* No-avatar: symbol floating above portal ring */}
+              <motion.div
+                animate={{ opacity: [0.72, 1, 0.72] }}
+                transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
+                style={{ position: 'absolute', bottom: '14%', left: '50%', transform: 'translateX(-50%)', width: '74%', zIndex: 5, pointerEvents: 'none' }}
+              >
+                <svg width="100%" viewBox="0 0 200 58" overflow="visible" style={{ display: 'block' }}>
+                  <defs>
+                    <filter id="php-glow-wide-e" x="-70%" y="-70%" width="240%" height="240%">
+                      <feGaussianBlur in="SourceGraphic" stdDeviation="7" />
+                    </filter>
+                    <filter id="php-glow-soft-e" x="-40%" y="-40%" width="180%" height="180%">
+                      <feGaussianBlur in="SourceGraphic" stdDeviation="3" />
+                    </filter>
+                  </defs>
+                  <ellipse cx="100" cy="29" rx="95" ry="22" fill="none" stroke={`rgba(${hubGlowRgb},0.5)`} strokeWidth="10" filter="url(#php-glow-wide-e)" />
+                  <ellipse cx="100" cy="29" rx="95" ry="22" fill="none" stroke="rgba(0,210,255,0.35)" strokeWidth="5" filter="url(#php-glow-soft-e)" />
+                  <ellipse cx="100" cy="29" rx="94" ry="21" fill="none" stroke={`rgba(${hubGlowRgb},0.92)`} strokeWidth="1.3" />
+                  <ellipse cx="100" cy="29" rx="79" ry="17" fill="none" stroke={`rgba(${hubGlowRgb},0.38)`} strokeWidth="0.9" strokeDasharray="5 3.5">
+                    <animateTransform attributeName="transform" type="rotate" from="0 100 29" to="360 100 29" dur="20s" repeatCount="indefinite" />
+                  </ellipse>
+                  <ellipse cx="100" cy="29" rx="94" ry="21" fill={`rgba(${hubGlowRgb},0.055)`} />
+                </svg>
+              </motion.div>
+              <div className="profile-avatar-fill" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(180deg, rgba(10,14,40,0.9), rgba(4,6,18,0.95))' }}>
+                <motion.div
+                  animate={{ y: [-6, 6, -6] }}
+                  transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+                  style={{ fontSize: '54px', lineHeight: 1, filter: `drop-shadow(0 0 18px rgba(${hubGlowRgb},0.75)) drop-shadow(0 0 8px rgba(0,200,255,0.4))`, animation: 'holo-flicker 7s ease-in-out infinite' }}
+                >
+                  {centerpiece.symbol}
+                </motion.div>
+              </div>
+            </>
           )}
         </motion.div>
 

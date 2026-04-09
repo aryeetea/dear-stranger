@@ -368,6 +368,20 @@ button, a, [role="button"] {
   to   { transform: translate(5%, -6%) scale(1.1); }
 }
 
+/* ── Holographic avatar effects ─────────────────────────────── */
+@keyframes holo-flicker {
+  0%, 88%, 92%, 96%, 100% { opacity: 1; }
+  89%  { opacity: 0.91; }
+  90%  { opacity: 1; }
+  93%  { opacity: 0.86; }
+  94%  { opacity: 1; }
+  97%  { opacity: 0.94; }
+}
+@keyframes holo-scan {
+  0%   { background-position: 0 0; }
+  100% { background-position: 0 80px; }
+}
+
 /* ── Body cosmic breathe ─────────────────────────────────────── */
 @keyframes body-breathe {
   0%   { background-position: 50% -15%, 85% 15%, 15% 85%; }
