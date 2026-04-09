@@ -670,7 +670,7 @@ function LetterModal({ letter, onClose, onReply, onArchive, onBurn, onDeleteForE
           )}
           {letter.direction === 'sent' && letter.status === 'arrived' && (
             <div style={{ padding: '16px 28px 20px', background: 'rgba(0,0,8,0.97)', borderTop: `1px solid ${colors.accent}38`, display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-              <button onClick={onArchive} style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.3em', color: 'rgba(255,255,255,0.45)', padding: '10px 24px', border: '1px solid rgba(255,255,255,0.18)', borderRadius: '2px', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase' }} onMouseEnter={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.72)' }} onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.45)' }}>{letter.status === 'archive' ? '★ Pinned' : '☆ Pin'}</button>
+              <button onClick={onArchive} style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.3em', color: 'rgba(255,255,255,0.45)', padding: '10px 24px', border: '1px solid rgba(255,255,255,0.18)', borderRadius: '2px', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase' }} onMouseEnter={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.72)' }} onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.45)' }}>{'☆ Pin'}</button>
               <div style={{ marginLeft: 'auto' }}>
                 {deleteConfirm ? (
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
