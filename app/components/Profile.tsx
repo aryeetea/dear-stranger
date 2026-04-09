@@ -344,7 +344,12 @@ export default function Profile({
   // ── Hub style visual map ──
   const hubTheme = HUB_COLOR_THEMES.find(t => t.id === selectedHubColor)
   const hubGlowRgb = hubTheme?.glow || '201,168,76'
-  const hubGlowIntensityValue = selectedGlowIntensity === 'none' ? 0 : selectedGlowIntensity === 'subtle' ? 0.25 : selectedGlowIntensity === 'normal' ? 0.5 : 0.85
+  const hubGlowIntensityValue =
+    selectedGlowIntensity === 'dim'
+      ? 0.25
+      : selectedGlowIntensity === 'normal'
+        ? 0.5
+        : 0.85
 
   const HUB_STYLE_CENTERPIECE: Record<string, { symbol: string; label: string; ambient: string }> = {
     portal:   { symbol: '✦', label: 'Portal', ambient: 'rgba(150,100,220,0.18)' },

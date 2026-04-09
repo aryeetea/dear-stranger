@@ -4,7 +4,7 @@ import type { HandwritingStyle, EmbellishmentId } from '../lib/letterEnrichments
 const MAX_HUB_NAME_LEN = 32
 const MAX_BIO_LEN = 300
 const MAX_ASK_LEN = 200
-const MAX_LETTER_BODY_LEN = 10000
+// No hard character limit — users can write as long as they want
 
 type HubRecord = {
   id: string
@@ -748,7 +748,6 @@ export async function sendLetter(
 
   const trimmedBody = body.trim()
   if (!trimmedBody) throw new Error('Letter body cannot be empty')
-  if (trimmedBody.length > MAX_LETTER_BODY_LEN) throw new Error(`Letter must be ${MAX_LETTER_BODY_LEN} characters or fewer.`)
 
   // Universe letters are instant — they float freely as shooting stars immediately.
   // Direct letters travel based on length: shorter letters arrive sooner.
@@ -900,9 +899,8 @@ export async function getMyLetters() {
 
     if (error) return { userId: user.id, transit: [], arrived: [], archive: [] }
 
-    const letters = (data || [])
-      .filter((l) => !(l.is_universe_letter && DRIFT_PAPER_IDS.includes((l as { paper_id?: string | null }).paper_id || '')))
-      as LetterRecord[]
+    const letters = ((data || [])
+      .filter((l) => !(l.is_universe_letter && DRIFT_PAPER_IDS.includes((l as { paper_id?: string | null }).paper_id || '')))) as LetterRecord[]
 
     return {
       userId: user.id,
@@ -915,12 +913,25 @@ export async function getMyLetters() {
   }
 }
 
-export async function archiveLetter(letterId: string) {
-  const { error } = await supabase
-    .from('letters')
-    .update({ status: 'archive' })
-    .eq('id', letterId)
-  if (error) throw error
+// ── Per-user pinning (client-local, stored in localStorage per user) ──
+export function getPinnedLetterIds(userId: string): Set<string> {
+  if (typeof window === 'undefined') return new Set()
+  try {
+    const raw = localStorage.getItem(`ds_pinned_${userId}`)
+    return raw ? new Set(JSON.parse(raw) as string[]) : new Set()
+  } catch { return new Set() }
+}
+
+export function pinLetter(letterId: string, userId: string): void {
+  const ids = getPinnedLetterIds(userId)
+  ids.add(letterId)
+  localStorage.setItem(`ds_pinned_${userId}`, JSON.stringify([...ids]))
+}
+
+export function unpinLetter(letterId: string, userId: string): void {
+  const ids = getPinnedLetterIds(userId)
+  ids.delete(letterId)
+  localStorage.setItem(`ds_pinned_${userId}`, JSON.stringify([...ids]))
 }
 
 export async function isGuestUser(): Promise<boolean> {
