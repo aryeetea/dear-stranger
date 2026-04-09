@@ -397,9 +397,9 @@ export default function Profile({
             <>
               {/* Holographic projection cone — light beams rising from portal ring */}
               <div style={{
-                position: 'absolute', bottom: '14%', left: '50%',
+                position: 'absolute', bottom: '10%', left: '50%',
                 transform: 'translateX(-50%)',
-                width: '120%', height: '80%',
+                width: '120%', height: '78%',
                 background: `radial-gradient(ellipse at 50% 100%, rgba(${hubGlowRgb},0.20) 0%, rgba(0,170,255,0.09) 20%, transparent 64%)`,
                 pointerEvents: 'none', zIndex: 2,
                 mixBlendMode: 'screen' as CSSProperties['mixBlendMode'],
@@ -409,33 +409,37 @@ export default function Profile({
                 animate={{ opacity: [0.38, 0.72, 0.38] }}
                 transition={{ duration: 4.5, repeat: Infinity, ease: 'easeInOut' }}
                 style={{
-                  position: 'absolute', bottom: '14%', left: '50%',
+                  position: 'absolute', bottom: '10%', left: '50%',
                   transform: 'translateX(-50%)',
-                  width: '80%', height: '62%',
+                  width: '80%', height: '60%',
                   background: 'radial-gradient(ellipse at 50% 100%, rgba(0,160,255,0.16) 0%, transparent 70%)',
                   pointerEvents: 'none', zIndex: 2,
                   mixBlendMode: 'screen' as CSSProperties['mixBlendMode'],
                   filter: 'blur(5px)',
                 }}
               />
+              {/* Avatar — top 85% of container so feet clear the ring */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={currentAvatarUrl} alt="Avatar" className="profile-avatar-fill"
+              <img src={currentAvatarUrl} alt="Avatar"
                 style={{
+                  position: 'absolute', top: 0, left: 0, right: 0,
+                  height: '85%', width: '100%',
+                  objectFit: 'contain', objectPosition: 'top center',
                   filter: `brightness(1.08) saturate(0.82) drop-shadow(0 0 ${Math.round(hubGlowIntensityValue * 28)}px rgba(${hubGlowRgb},0.45)) drop-shadow(0 0 10px rgba(0,190,255,0.28))`,
                   animation: 'holo-flicker 7s ease-in-out infinite',
                 }}
               />
-              {/* Scanlines — moving horizontal lines give classic hologram texture */}
+              {/* Scanlines */}
               <div style={{
                 position: 'absolute', inset: 0, zIndex: 3, pointerEvents: 'none',
                 background: 'repeating-linear-gradient(to bottom, transparent 0px, transparent 3px, rgba(0,200,255,0.022) 3px, rgba(0,200,255,0.022) 4px)',
                 animation: 'holo-scan 10s linear infinite',
               }} />
-              {/* Portal ring — flat ellipse on the "ground" at avatar feet */}
+              {/* Portal ring — at ground level, clearly below the feet */}
               <motion.div
                 animate={{ opacity: [0.72, 1, 0.72] }}
                 transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
-                style={{ position: 'absolute', bottom: '14%', left: '50%', transform: 'translateX(-50%)', width: '74%', zIndex: 5, pointerEvents: 'none' }}
+                style={{ position: 'absolute', bottom: '4%', left: '50%', transform: 'translateX(-50%)', width: '74%', zIndex: 5, pointerEvents: 'none' }}
               >
                 <svg width="100%" viewBox="0 0 200 58" overflow="visible" style={{ display: 'block' }}>
                   <defs>

@@ -1771,18 +1771,19 @@ export default function UniverseMap({
                   <div className="universe-hub-avatar-col" style={{ width: '42%', minHeight: '380px', background: 'linear-gradient(180deg, rgba(4,6,18,0.97), rgba(8,12,28,0.98))', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden', flexShrink: 0 }}>
                     {profile.hub.avatarUrl ? (
                       <>
-                        {/* Projection cone */}
-                        <div style={{ position: 'absolute', bottom: '15%', left: '50%', transform: 'translateX(-50%)', width: '120%', height: '78%', background: `radial-gradient(ellipse at 50% 100%, rgba(${cardGlowRgb},0.18) 0%, rgba(0,170,255,0.08) 22%, transparent 62%)`, pointerEvents: 'none', zIndex: 2, mixBlendMode: 'screen' }} />
+                        {/* Projection cone — rises from ring at bottom */}
+                        <div style={{ position: 'absolute', bottom: '10%', left: '50%', transform: 'translateX(-50%)', width: '120%', height: '75%', background: `radial-gradient(ellipse at 50% 100%, rgba(${cardGlowRgb},0.18) 0%, rgba(0,170,255,0.08) 22%, transparent 62%)`, pointerEvents: 'none', zIndex: 2, mixBlendMode: 'screen' }} />
                         <motion.div animate={{ opacity: [0.35, 0.68, 0.35] }} transition={{ duration: 4.5, repeat: Infinity, ease: 'easeInOut' }}
-                          style={{ position: 'absolute', bottom: '15%', left: '50%', transform: 'translateX(-50%)', width: '75%', height: '60%', background: 'radial-gradient(ellipse at 50% 100%, rgba(0,160,255,0.14) 0%, transparent 70%)', pointerEvents: 'none', zIndex: 2, mixBlendMode: 'screen', filter: 'blur(5px)' }} />
+                          style={{ position: 'absolute', bottom: '10%', left: '50%', transform: 'translateX(-50%)', width: '75%', height: '58%', background: 'radial-gradient(ellipse at 50% 100%, rgba(0,160,255,0.14) 0%, transparent 70%)', pointerEvents: 'none', zIndex: 2, mixBlendMode: 'screen', filter: 'blur(5px)' }} />
+                        {/* Avatar occupies top 85% — feet stay above the ring */}
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={profile.hub.avatarUrl} alt="Avatar"
-                          style={{ width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'top center', position: 'absolute', inset: 0, filter: `brightness(1.08) saturate(0.82) drop-shadow(0 0 20px rgba(${cardGlowRgb},0.4)) drop-shadow(0 0 8px rgba(0,190,255,0.25))`, animation: 'holo-flicker 7s ease-in-out infinite' }} />
+                          style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '85%', width: '100%', objectFit: 'contain', objectPosition: 'top center', filter: `brightness(1.08) saturate(0.82) drop-shadow(0 0 20px rgba(${cardGlowRgb},0.4)) drop-shadow(0 0 8px rgba(0,190,255,0.25))`, animation: 'holo-flicker 7s ease-in-out infinite' }} />
                         {/* Scanlines */}
                         <div style={{ position: 'absolute', inset: 0, zIndex: 3, pointerEvents: 'none', background: 'repeating-linear-gradient(to bottom, transparent 0px, transparent 3px, rgba(0,200,255,0.018) 3px, rgba(0,200,255,0.018) 4px)', animation: 'holo-scan 10s linear infinite' }} />
-                        {/* Portal ring */}
+                        {/* Portal ring — sits at ground level below the feet */}
                         <motion.div animate={{ opacity: [0.7, 1, 0.7] }} transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
-                          style={{ position: 'absolute', bottom: '15%', left: '50%', transform: 'translateX(-50%)', width: '70%', zIndex: 5, pointerEvents: 'none' }}>
+                          style={{ position: 'absolute', bottom: '4%', left: '50%', transform: 'translateX(-50%)', width: '78%', zIndex: 5, pointerEvents: 'none' }}>
                           <svg width="100%" viewBox="0 0 200 58" overflow="visible" style={{ display: 'block' }}>
                             <defs>
                               <filter id="uhc-glow-wide" x="-70%" y="-70%" width="240%" height="240%"><feGaussianBlur in="SourceGraphic" stdDeviation="7" /></filter>
