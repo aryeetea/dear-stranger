@@ -1,11 +1,67 @@
 'use client'
 
-import { useState } from 'react'
-import { motion } from 'framer-motion'
+import { useEffect, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { signIn, signInWithGoogle, signInWithDiscord, signOut } from '../lib/auth'
 
 function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback
+}
+
+function isInAppBrowser(): boolean {
+  if (typeof window === 'undefined') return false
+  const ua = navigator.userAgent
+  return /FBAN|FBAV|Instagram|Snapchat|Line\/|KAKAOTALK|Twitter\/|LinkedInApp|WhatsApp|wv\)|GSA\//.test(ua)
+}
+
+function InAppBrowserBanner() {
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => {
+    setVisible(isInAppBrowser())
+  }, [])
+
+  return (
+    <AnimatePresence>
+      {visible && (
+        <motion.div
+          initial={{ opacity: 0, y: -12 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -12 }}
+          style={{
+            position: 'fixed', top: 0, left: 0, right: 0, zIndex: 999,
+            background: 'rgba(180,120,0,0.96)',
+            backdropFilter: 'blur(10px)',
+            padding: '14px 20px 12px',
+            display: 'flex', flexDirection: 'column', gap: '6px',
+            borderBottom: '1px solid rgba(255,220,80,0.3)',
+          }}
+        >
+          <p style={{
+            fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.25em',
+            color: '#fff8e0', textTransform: 'uppercase', margin: 0,
+          }}>
+            ⚠ Open in your browser
+          </p>
+          <p style={{
+            fontFamily: "'IM Fell English', serif", fontStyle: 'italic',
+            fontSize: '13px', color: 'rgba(255,248,200,0.88)', margin: 0, lineHeight: 1.5,
+          }}>
+            Google and Discord sign-in won&apos;t work inside Snapchat, Instagram, or other apps.
+            Please open <strong>dearstranger.xyz</strong> in Safari or Chrome instead.
+          </p>
+          <button
+            onClick={() => setVisible(false)}
+            style={{
+              alignSelf: 'flex-end', background: 'none', border: 'none',
+              color: 'rgba(255,248,200,0.6)', fontSize: '18px', cursor: 'pointer',
+              position: 'absolute', top: '10px', right: '14px', lineHeight: 1,
+            }}
+          >×</button>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  )
 }
 
 function DiscordIcon() {
@@ -77,11 +133,13 @@ export function LoginScreen({
   }
 
   return (
-    <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }}
-      style={{ width: 'min(420px, 92vw)', zIndex: 2 }}>
-      <div style={{ textAlign: 'center', marginBottom: '36px' }}>
-        <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.5em', color: 'rgba(201,168,76,0.6)', textTransform: 'uppercase', marginBottom: '8px' }}>Dear Stranger</p>
-        <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '28px', color: 'rgba(255,255,255,0.88)', letterSpacing: '0.06em', marginBottom: '8px' }}>Welcome back</p>
+    <>
+      <InAppBrowserBanner />
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }}
+        style={{ width: 'min(420px, 92vw)', zIndex: 2 }}>
+        <div style={{ textAlign: 'center', marginBottom: '36px' }}>
+          <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.5em', color: 'rgba(201,168,76,0.6)', textTransform: 'uppercase', marginBottom: '8px' }}>Dear Stranger</p>
+          <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '28px', color: 'rgba(255,255,255,0.88)', letterSpacing: '0.06em', marginBottom: '8px' }}>Welcome back</p>
         <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(255,255,255,0.38)' }}>Your hub is waiting in the universe</p>
       </div>
 
@@ -143,7 +201,8 @@ export function LoginScreen({
           <span onClick={onGoToSignup} style={{ color: 'rgba(201,168,76,0.7)', cursor: 'pointer', textDecoration: 'underline' }}>Create a hub</span>
         </p>
       </div>
-    </motion.div>
+      </motion.div>
+    </>
   )
 }
 
@@ -202,11 +261,13 @@ export function SignupScreen({
   }
 
   return (
-    <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }}
-      style={{ width: 'min(420px, 92vw)', zIndex: 2 }}>
-      <div style={{ textAlign: 'center', marginBottom: '36px' }}>
-        <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.5em', color: 'rgba(201,168,76,0.6)', textTransform: 'uppercase', marginBottom: '8px' }}>Dear Stranger</p>
-        <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '28px', color: 'rgba(255,255,255,0.88)', letterSpacing: '0.06em', marginBottom: '8px' }}>Join the universe</p>
+    <>
+      <InAppBrowserBanner />
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }}
+        style={{ width: 'min(420px, 92vw)', zIndex: 2 }}>
+        <div style={{ textAlign: 'center', marginBottom: '36px' }}>
+          <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.5em', color: 'rgba(201,168,76,0.6)', textTransform: 'uppercase', marginBottom: '8px' }}>Dear Stranger</p>
+          <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '28px', color: 'rgba(255,255,255,0.88)', letterSpacing: '0.06em', marginBottom: '8px' }}>Join the universe</p>
         <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(255,255,255,0.38)' }}>A hub will be built for you</p>
       </div>
 
@@ -266,6 +327,7 @@ export function SignupScreen({
         {loading ? 'Preparing...' : 'Continue to Soul Mirror ✦'}
       </button>
 
-    </motion.div>
+      </motion.div>
+    </>
   )
 }
