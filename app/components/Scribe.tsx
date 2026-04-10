@@ -1087,7 +1087,7 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
             <motion.div
               initial={{ y:0, rotate:0, scale:1 }}
               animate={{ y:[0,-30,-280], x:[0,30,160], rotate:[0,-6,-22], scale:[1,0.9,0.18], opacity:[1,1,0] }}
-              transition={{ duration:1.9, ease:'easeIn' }}
+              transition={{ duration:3.5, ease:'easeIn' }}
               style={{ display:'inline-block', marginBottom:'24px', position:'relative' }}>
               <EnvelopeSVG id={selectedEnvelope} color={envelopeColor}/>
               {selectedStamp&&<div style={{ position:'absolute', top:'8px', right:'8px', transform:'rotate(3deg)' }}><StampSVG id={selectedStamp} size={32}/></div>}
