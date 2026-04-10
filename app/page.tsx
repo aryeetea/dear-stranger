@@ -462,7 +462,14 @@ function LetterDepartAnimation({ onDone }: { onDone: () => void }) {
 
 export default function Home() {
   const router = useRouter()
-  const [screen, setScreen] = useState<Screen>('loading')
+  // Persist screen in localStorage
+  const [screen, setScreen] = useState<Screen>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('ds_last_screen') as Screen | null
+      if (saved && ['universe','observatory','profile','scribe','drift','pagesOpen'].includes(saved)) return saved
+    }
+    return 'loading'
+  })
   const [hubName, setHubName] = useState('')
   const [hubBio, setHubBio] = useState('')
   const [hubAskAbout, setHubAskAbout] = useState('')
@@ -526,6 +533,10 @@ export default function Home() {
 
   useEffect(() => {
     screenRef.current = screen
+    // Save screen to localStorage for persistence
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('ds_last_screen', screen)
+    }
   }, [screen])
 
   // Auto-retry avatar generation when returning to universe with a pending description,
@@ -695,7 +706,10 @@ export default function Home() {
     let fallbackTimer: NodeJS.Timeout | null = null;
     async function checkSession() {
       try {
-        await routeFromSession()
+        // Only auto-route if not restoring from localStorage
+        if (screen === 'loading') {
+          await routeFromSession()
+        }
       } catch (err) {
         console.error('checkSession failed:', err)
         try {
@@ -705,15 +719,12 @@ export default function Home() {
         setScreen('landing')
         console.log('[checkSession] fallback to landing')
       } finally {
-        // Cancel the safety-net timer — routeFromSession already set the screen
         if (fallbackTimer) clearTimeout(fallbackTimer)
       }
     }
 
     checkSession()
 
-    // Safety-net: if routeFromSession somehow never resolves within 18s, go to landing.
-    // 18s > worst-case execution (5s timeout + 1.2s sleep + 5s retry = 11.2s).
     fallbackTimer = setTimeout(() => {
       if (screenRef.current === 'loading') {
         clearHubState()
@@ -732,11 +743,9 @@ export default function Home() {
         setIsGuest(false)
         setGuestBannerDismissed(false)
         setScreen('landing')
-        console.log('[authStateChange] SIGNED_OUT, go to landing')
         return
       }
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        // Re-route when OAuth callback fires (Google/Apple/Discord redirect)
         await routeFromSession()
       }
     })
@@ -746,7 +755,7 @@ export default function Home() {
       if (fallbackTimer) clearTimeout(fallbackTimer)
       authListener.subscription.unsubscribe()
     }
-  }, [clearHubState, routeFromSession])
+  }, [clearHubState, routeFromSession, screen])
 
   // Prevent browser back button from escaping the SPA when user is authenticated
   useEffect(() => {
