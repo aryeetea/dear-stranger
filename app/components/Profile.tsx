@@ -405,69 +405,151 @@ export default function Profile({
                 mixBlendMode: 'screen' as CSSProperties['mixBlendMode'],
               }} />
               {/* Pulsing secondary beam for depth */}
-              <motion.div
-                animate={{ opacity: [0.38, 0.72, 0.38] }}
-                transition={{ duration: 4.5, repeat: Infinity, ease: 'easeInOut' }}
-                style={{
-                  position: 'absolute', bottom: '10%', left: '50%',
-                  transform: 'translateX(-50%)',
-                  width: '80%', height: '60%',
-                  background: 'radial-gradient(ellipse at 50% 100%, rgba(0,160,255,0.16) 0%, transparent 70%)',
-                  pointerEvents: 'none', zIndex: 2,
-                  mixBlendMode: 'screen' as CSSProperties['mixBlendMode'],
-                  filter: 'blur(5px)',
-                }}
-              />
-              {/* Avatar — top 85% of container so feet clear the ring */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={currentAvatarUrl} alt="Avatar"
-                style={{
-                  position: 'absolute', top: 0, left: 0, right: 0,
-                  height: '85%', width: '100%',
-                  objectFit: 'contain', objectPosition: 'top center',
-                  filter: `brightness(1.08) saturate(0.82) drop-shadow(0 0 ${Math.round(hubGlowIntensityValue * 28)}px rgba(${hubGlowRgb},0.45)) drop-shadow(0 0 10px rgba(0,190,255,0.28))`,
-                  animation: 'holo-flicker 7s ease-in-out infinite',
-                }}
-              />
-              {/* Scanlines */}
-              <div style={{
-                position: 'absolute', inset: 0, zIndex: 3, pointerEvents: 'none',
-                background: 'repeating-linear-gradient(to bottom, transparent 0px, transparent 3px, rgba(0,200,255,0.022) 3px, rgba(0,200,255,0.022) 4px)',
-                animation: 'holo-scan 10s linear infinite',
-              }} />
-              {/* Portal ring — at ground level, clearly below the feet */}
-              <motion.div
-                animate={{ opacity: [0.72, 1, 0.72] }}
-                transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
-                style={{ position: 'absolute', bottom: '4%', left: '50%', transform: 'translateX(-50%)', width: '74%', zIndex: 5, pointerEvents: 'none' }}
-              >
-                <svg width="100%" viewBox="0 0 200 58" overflow="visible" style={{ display: 'block' }}>
-                  <defs>
-                    <filter id="php-glow-wide" x="-70%" y="-70%" width="240%" height="240%">
-                      <feGaussianBlur in="SourceGraphic" stdDeviation="7" />
-                    </filter>
-                    <filter id="php-glow-soft" x="-40%" y="-40%" width="180%" height="180%">
-                      <feGaussianBlur in="SourceGraphic" stdDeviation="3" />
-                    </filter>
-                  </defs>
-                  {/* Broad colour halo matching hub theme */}
-                  <ellipse cx="100" cy="29" rx="95" ry="22" fill="none" stroke={`rgba(${hubGlowRgb},0.5)`} strokeWidth="10" filter="url(#php-glow-wide)" />
-                  {/* Teal accent halo */}
-                  <ellipse cx="100" cy="29" rx="95" ry="22" fill="none" stroke="rgba(0,210,255,0.35)" strokeWidth="5" filter="url(#php-glow-soft)" />
-                  {/* Main crisp ring */}
-                  <ellipse cx="100" cy="29" rx="94" ry="21" fill="none" stroke={`rgba(${hubGlowRgb},0.92)`} strokeWidth="1.3" />
-                  {/* Teal inner accent */}
-                  <ellipse cx="100" cy="29" rx="94" ry="21" fill="none" stroke="rgba(0,220,255,0.38)" strokeWidth="0.5" />
-                  {/* Auto-rotating dashed mid ring */}
-                  <ellipse cx="100" cy="29" rx="79" ry="17" fill="none" stroke={`rgba(${hubGlowRgb},0.38)`} strokeWidth="0.9" strokeDasharray="5 3.5">
-                    <animateTransform attributeName="transform" type="rotate" from="0 100 29" to="360 100 29" dur="20s" repeatCount="indefinite" />
-                  </ellipse>
-                  {/* Innermost fine ring */}
-                  <ellipse cx="100" cy="29" rx="61" ry="13" fill="none" stroke="rgba(0,210,255,0.20)" strokeWidth="0.7" />
-                  {/* Translucent inner fill */}
-                  <ellipse cx="100" cy="29" rx="94" ry="21" fill={`rgba(${hubGlowRgb},0.055)`} />
-                </svg>
-              </motion.div>
+              <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6 }}
+  className="profile-avatar-col">
+
+  <div style={{ position: 'absolute', inset: 0, zIndex: 3, pointerEvents: 'none', background: 'linear-gradient(to right, transparent 65%, rgba(0,0,5,0.97) 100%), linear-gradient(to bottom, rgba(0,0,5,0.3) 0%, transparent 15%, transparent 85%, rgba(0,0,5,0.6) 100%)' }} />
+
+  {regenLoading && (
+    <div style={{ position: 'absolute', inset: 0, zIndex: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,5,0.7)', backdropFilter: 'blur(8px)' }}>
+      <div style={{ textAlign: 'center' }}>
+        <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+          style={{ width: '40px', height: '40px', borderRadius: '50%', border: '2px solid rgba(0,200,255,0.3)', borderTopColor: '#00c8ff', margin: '0 auto 16px' }} />
+        <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.3em', color: 'rgba(0,200,255,0.7)', textTransform: 'uppercase' }}>Reimagining...</p>
+      </div>
+    </div>
+  )}
+
+  {currentAvatarUrl ? (
+    <>
+      {/* ── Hologram base glow — cold teal rising from ground ── */}
+      <div style={{
+        position: 'absolute', bottom: 0, left: '50%',
+        transform: 'translateX(-50%)',
+        width: '100%', height: '70%',
+        background: 'radial-gradient(ellipse at 50% 100%, rgba(0,200,255,0.18) 0%, rgba(0,150,220,0.07) 35%, transparent 70%)',
+        pointerEvents: 'none', zIndex: 2,
+        mixBlendMode: 'screen' as CSSProperties['mixBlendMode'],
+      }} />
+
+      {/* ── Pulsing secondary beam ── */}
+      <motion.div
+        animate={{ opacity: [0.3, 0.65, 0.3] }}
+        transition={{ duration: 4.5, repeat: Infinity, ease: 'easeInOut' }}
+        style={{
+          position: 'absolute', bottom: 0, left: '50%',
+          transform: 'translateX(-50%)',
+          width: '60%', height: '50%',
+          background: 'radial-gradient(ellipse at 50% 100%, rgba(0,210,255,0.2) 0%, transparent 75%)',
+          pointerEvents: 'none', zIndex: 2,
+          mixBlendMode: 'screen' as CSSProperties['mixBlendMode'],
+          filter: 'blur(8px)',
+        }}
+      />
+
+      {/* ── Avatar ── */}
+      <img src={currentAvatarUrl} alt="Avatar"
+        style={{
+          position: 'absolute', top: 0, left: 0, right: 0,
+          height: '90%', width: '100%',
+          objectFit: 'contain', objectPosition: 'center top',
+          filter: 'brightness(1.06) saturate(0.78) drop-shadow(0 0 18px rgba(0,200,255,0.5)) drop-shadow(0 0 6px rgba(0,180,255,0.3))',
+          animation: 'holo-flicker 7s ease-in-out infinite',
+          zIndex: 3,
+        }}
+      />
+
+      {/* ── Scanlines ── */}
+      <div style={{
+        position: 'absolute', inset: 0, zIndex: 4, pointerEvents: 'none',
+        background: 'repeating-linear-gradient(to bottom, transparent 0px, transparent 3px, rgba(0,200,255,0.018) 3px, rgba(0,200,255,0.018) 4px)',
+        animation: 'holo-scan 12s linear infinite',
+      }} />
+
+      {/* ── Chromatic fringe — very subtle left/right color split ── */}
+      <div style={{
+        position: 'absolute', inset: 0, zIndex: 4, pointerEvents: 'none',
+        background: 'linear-gradient(to right, rgba(255,0,80,0.03) 0%, transparent 20%, transparent 80%, rgba(0,255,220,0.03) 100%)',
+      }} />
+
+      {/* ── Portal ring at ground level ── */}
+      <motion.div
+        animate={{ opacity: [0.65, 1, 0.65] }}
+        transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
+        style={{ position: 'absolute', bottom: '2%', left: '50%', transform: 'translateX(-50%)', width: '72%', zIndex: 5, pointerEvents: 'none' }}
+      >
+        <svg width="100%" viewBox="0 0 200 58" overflow="visible" style={{ display: 'block' }}>
+          <defs>
+            <filter id="ring-glow-wide" x="-70%" y="-70%" width="240%" height="240%">
+              <feGaussianBlur in="SourceGraphic" stdDeviation="8" />
+            </filter>
+            <filter id="ring-glow-soft" x="-40%" y="-40%" width="180%" height="180%">
+              <feGaussianBlur in="SourceGraphic" stdDeviation="3.5" />
+            </filter>
+          </defs>
+          {/* Broad teal halo */}
+          <ellipse cx="100" cy="29" rx="95" ry="22" fill="none" stroke="rgba(0,200,255,0.55)" strokeWidth="12" filter="url(#ring-glow-wide)" />
+          {/* Soft inner halo */}
+          <ellipse cx="100" cy="29" rx="95" ry="22" fill="none" stroke="rgba(0,220,255,0.4)" strokeWidth="5" filter="url(#ring-glow-soft)" />
+          {/* Main crisp ring */}
+          <ellipse cx="100" cy="29" rx="94" ry="21" fill="none" stroke="rgba(0,230,255,0.9)" strokeWidth="1.2" />
+          {/* Gold accent thin ring */}
+          <ellipse cx="100" cy="29" rx="94" ry="21" fill="none" stroke={`rgba(${hubGlowRgb},0.3)`} strokeWidth="0.5" />
+          {/* Auto-rotating dashed mid ring */}
+          <ellipse cx="100" cy="29" rx="79" ry="17" fill="none" stroke="rgba(0,200,255,0.35)" strokeWidth="0.9" strokeDasharray="5 3.5">
+            <animateTransform attributeName="transform" type="rotate" from="0 100 29" to="360 100 29" dur="18s" repeatCount="indefinite" />
+          </ellipse>
+          {/* Counter-rotating inner dashed ring */}
+          <ellipse cx="100" cy="29" rx="63" ry="14" fill="none" stroke={`rgba(${hubGlowRgb},0.22)`} strokeWidth="0.7" strokeDasharray="3 5">
+            <animateTransform attributeName="transform" type="rotate" from="360 100 29" to="0 100 29" dur="24s" repeatCount="indefinite" />
+          </ellipse>
+          {/* Translucent inner fill */}
+          <ellipse cx="100" cy="29" rx="94" ry="21" fill="rgba(0,200,255,0.04)" />
+        </svg>
+      </motion.div>
+    </>
+  ) : (
+    <>
+      {/* ── No avatar: floating symbol above portal ring ── */}
+      <motion.div
+        animate={{ opacity: [0.72, 1, 0.72] }}
+        transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
+        style={{ position: 'absolute', bottom: '14%', left: '50%', transform: 'translateX(-50%)', width: '72%', zIndex: 5, pointerEvents: 'none' }}
+      >
+        <svg width="100%" viewBox="0 0 200 58" overflow="visible" style={{ display: 'block' }}>
+          <defs>
+            <filter id="ring-glow-wide-e" x="-70%" y="-70%" width="240%" height="240%">
+              <feGaussianBlur in="SourceGraphic" stdDeviation="8" />
+            </filter>
+            <filter id="ring-glow-soft-e" x="-40%" y="-40%" width="180%" height="180%">
+              <feGaussianBlur in="SourceGraphic" stdDeviation="3.5" />
+            </filter>
+          </defs>
+          <ellipse cx="100" cy="29" rx="95" ry="22" fill="none" stroke="rgba(0,200,255,0.55)" strokeWidth="12" filter="url(#ring-glow-wide-e)" />
+          <ellipse cx="100" cy="29" rx="95" ry="22" fill="none" stroke="rgba(0,220,255,0.4)" strokeWidth="5" filter="url(#ring-glow-soft-e)" />
+          <ellipse cx="100" cy="29" rx="94" ry="21" fill="none" stroke="rgba(0,230,255,0.9)" strokeWidth="1.2" />
+          <ellipse cx="100" cy="29" rx="79" ry="17" fill="none" stroke="rgba(0,200,255,0.35)" strokeWidth="0.9" strokeDasharray="5 3.5">
+            <animateTransform attributeName="transform" type="rotate" from="0 100 29" to="360 100 29" dur="18s" repeatCount="indefinite" />
+          </ellipse>
+          <ellipse cx="100" cy="29" rx="63" ry="14" fill="none" stroke={`rgba(${hubGlowRgb},0.22)`} strokeWidth="0.7" strokeDasharray="3 5">
+            <animateTransform attributeName="transform" type="rotate" from="360 100 29" to="0 100 29" dur="24s" repeatCount="indefinite" />
+          </ellipse>
+          <ellipse cx="100" cy="29" rx="94" ry="21" fill="rgba(0,200,255,0.04)" />
+        </svg>
+      </motion.div>
+
+      <div className="profile-avatar-fill" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(180deg, rgba(6,10,32,0.95), rgba(2,5,16,0.98))' }}>
+        <motion.div
+          animate={{ y: [-6, 6, -6], filter: ['drop-shadow(0 0 14px rgba(0,200,255,0.6))', 'drop-shadow(0 0 28px rgba(0,220,255,0.9))', 'drop-shadow(0 0 14px rgba(0,200,255,0.6))'] }}
+          transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+          style={{ fontSize: '54px', lineHeight: 1, animation: 'holo-flicker 7s ease-in-out infinite' }}
+        >
+          {centerpiece.symbol}
+        </motion.div>
+      </div>
+    </>
+  )}
+</motion.div>
             </>
           ) : (
             <>
