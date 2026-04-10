@@ -918,21 +918,11 @@ export async function getMyLetters() {
 
     const now = new Date().toISOString()
 
-    // Auto-arrive received letters whose travel time has elapsed
-    await supabase
-      .from('letters')
-      .update({ status: 'arrived' })
-      .eq('recipient_id', user.id)
-      .eq('status', 'transit')
-      .lt('arrives_at', now)
-
-    // Auto-arrive sent letters too so the sender sees them move out of transit
-    await supabase
-      .from('letters')
-      .update({ status: 'arrived' })
-      .eq('sender_id', user.id)
-      .eq('status', 'transit')
-      .lt('arrives_at', now)
+    // Auto-arrive transit letters (both sent and received) in parallel
+    await Promise.allSettled([
+      supabase.from('letters').update({ status: 'arrived' }).eq('recipient_id', user.id).eq('status', 'transit').lt('arrives_at', now),
+      supabase.from('letters').update({ status: 'arrived' }).eq('sender_id', user.id).eq('status', 'transit').lt('arrives_at', now),
+    ])
 
     const { data, error } = await supabase
       .from('letters')

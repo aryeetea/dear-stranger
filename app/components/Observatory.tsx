@@ -199,9 +199,12 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
   const [zoomTarget, setZoomTarget] = useState<Letter | null>(null)
   const [countHovered, setCountHovered] = useState(false)
   const [pan, setPan] = useState({ x: 0, y: 0 })
-  const [isDragging, setIsDragging] = useState(false)
   const panRef = useRef({ x: 0, y: 0 })
   const containerRef = useRef<HTMLDivElement>(null)
+  const skyRef = useRef<HTMLDivElement>(null)
+  const bgSvgRef = useRef<SVGSVGElement>(null)
+  const twinkleRef = useRef<HTMLDivElement>(null)
+  const isDraggingRef = useRef(false)
 
   useEffect(() => {
     const timer = window.setInterval(() => setCurrentTime(Date.now()), 60000)
@@ -212,7 +215,12 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
     async function loadLetters() {
       try {
         setLoading(true)
-        const data = await getMyLetters()
+        const data = await Promise.race([
+          getMyLetters(),
+          new Promise<{ userId: string; transit: never[]; arrived: never[] }>((resolve) =>
+            setTimeout(() => resolve({ userId: '', transit: [], arrived: [] }), 10000)
+          ),
+        ])
         const userId = data.userId
         const mapLetter = (l: LetterRow): Letter => {
           const createdAt = l.created_at || new Date().toISOString()
@@ -269,24 +277,27 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
   }, [])
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!containerRef.current) return
+    if (!containerRef.current || isDraggingRef.current) return
     const rect = containerRef.current.getBoundingClientRect()
     setMousePos({ x: (e.clientX - rect.left) / rect.width, y: (e.clientY - rect.top) / rect.height })
   }, [])
 
-  // Drag via native DOM events — bypasses framer-motion's event interception
+  // Drag via native DOM events — direct DOM manipulation for 60fps smoothness
   useEffect(() => {
     const el = containerRef.current
     if (!el) return
     let dragging = false
     let startX = 0, startY = 0
     let originX = 0, originY = 0
+    let parallaxGroups: NodeListOf<SVGGElement> | null = null
 
     function onDown(e: PointerEvent) {
       if ((e.target as HTMLElement).closest('[data-letter],[data-no-pan]')) return
       dragging = true
+      isDraggingRef.current = true
       startX = e.clientX; startY = e.clientY
       originX = panRef.current.x; originY = panRef.current.y
+      parallaxGroups = bgSvgRef.current?.querySelectorAll<SVGGElement>('[data-parallax]') || null
       el!.setPointerCapture(e.pointerId)
       el!.style.cursor = 'grabbing'
     }
@@ -296,11 +307,19 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
       const dy = e.clientY - startY
       const next = clampPanOffset(originX + dx, originY + dy)
       panRef.current = next
-      setPan(next)
+      // Update all layers directly — zero React re-renders during drag
+      if (skyRef.current) skyRef.current.style.transform = `translate(${next.x}px, ${next.y}px)`
+      if (twinkleRef.current) twinkleRef.current.style.transform = `translate(${next.x * 0.6}px, ${next.y * 0.6}px)`
+      parallaxGroups?.forEach(g => {
+        const f = parseFloat(g.dataset.parallax || '0.5')
+        g.style.transform = `translate(${next.x * f}px, ${next.y * f}px)`
+      })
     }
     function onUp(e: PointerEvent) {
       if (!dragging) return
       dragging = false
+      isDraggingRef.current = false
+      setPan({ ...panRef.current })
       try { el!.releasePointerCapture(e.pointerId) } catch {}
       el!.style.cursor = 'grab'
     }
@@ -378,7 +397,7 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
       style={{ position: 'fixed', inset: 0, background: 'rgba(3,2,10,0.88)', backdropFilter: 'blur(18px)', zIndex: 70, overflow: 'hidden', cursor: 'grab', touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none' } as React.CSSProperties}
     >
       {/* ── Deep space background ── */}
-      <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }} aria-hidden="true">
+      <svg ref={bgSvgRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }} aria-hidden="true">
         <defs>
           <radialGradient id="obs-core" cx="50%" cy="50%" r="55%">
             <stop offset="0%" stopColor="rgba(60,30,90,0.18)" />
@@ -391,17 +410,17 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
           </radialGradient>
         </defs>
         <rect width="100%" height="100%" fill="url(#obs-core)" />
-        <g style={{ transform: `translate(${pan.x * 0.3 + p1x * 0.4}px, ${pan.y * 0.3 + p1y * 0.4}px)`, transition: 'transform 0.15s ease-out' }}>
+        <g data-parallax="0.3" style={{ transform: `translate(${pan.x * 0.3 + p1x * 0.4}px, ${pan.y * 0.3 + p1y * 0.4}px)` }}>
           {NEBULAE.map((n, i) => (
             <ellipse key={i} cx={`${n.x}%`} cy={`${n.y}%`} rx={`${n.rx}%`} ry={`${n.ry}%`} fill={`rgba(${n.color},${n.op})`} style={{ filter: 'blur(22px)' }} />
           ))}
         </g>
-        <g style={{ transform: `translate(${pan.x * 0.5 + p1x}px, ${pan.y * 0.5 + p1y}px)`, transition: 'transform 0.15s ease-out' }}>
+        <g data-parallax="0.5" style={{ transform: `translate(${pan.x * 0.5 + p1x}px, ${pan.y * 0.5 + p1y}px)` }}>
           {BG_STARS.slice(0, 80).map((s, i) => (
             <circle key={i} cx={`${s.x}%`} cy={`${s.y}%`} r={s.r} fill={`rgba(255,255,255,${s.opacity})`} />
           ))}
         </g>
-        <g style={{ transform: `translate(${pan.x * 0.7 + p2x}px, ${pan.y * 0.7 + p2y}px)`, transition: 'transform 0.15s ease-out' }}>
+        <g data-parallax="0.7" style={{ transform: `translate(${pan.x * 0.7 + p2x}px, ${pan.y * 0.7 + p2y}px)` }}>
           {BG_STARS.slice(80).map((s, i) => (
             <circle key={i} cx={`${s.x}%`} cy={`${s.y}%`} r={s.r * 0.7} fill={`rgba(255,255,255,${s.opacity * 0.7})`} />
           ))}
@@ -410,6 +429,7 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
       </svg>
 
       {/* ── Twinkling overlay stars ── */}
+      <div ref={twinkleRef} style={{ position: 'absolute', inset: 0, pointerEvents: 'none', transform: `translate(${pan.x * 0.6}px, ${pan.y * 0.6}px)` }}>
       {TWINKLE_STARS.map((s, i) => (
         <motion.div
           key={`tw-${i}`}
@@ -421,12 +441,13 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
             width: `${Math.max(s.r * 3, 1.5)}px`, height: `${Math.max(s.r * 3, 1.5)}px`,
             borderRadius: '50%',
             background: 'rgba(255,255,255,0.95)',
-            transform: `translate(calc(-50% + ${pan.x * 0.6}px), calc(-50% + ${pan.y * 0.6}px))`,
+            transform: 'translate(-50%, -50%)',
             pointerEvents: 'none',
             zIndex: 1,
           }}
         />
       ))}
+      </div>
 
       {/* ── Guidance hint ── */}
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }} style={{ position: 'absolute', top: '62px', left: '50%', transform: 'translateX(-50%)', textAlign: 'center', pointerEvents: 'none', zIndex: 2, whiteSpace: 'nowrap' }}>
@@ -584,6 +605,7 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
       )}
 
       {/* ── Celestial letter objects ── */}
+      <div ref={skyRef} style={{ position: 'absolute', inset: 0, transform: `translate(${pan.x}px, ${pan.y}px)` }}>
       {!loading && letters.map((letter, i) => {
         const pColor = PAPER_COLORS[letter.paperId] || PAPER_COLORS.ornate
         const isPinned = letter.status === 'pinned'
@@ -618,7 +640,7 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
             style={{
               position: 'absolute',
               left: `${cx}%`, top: `${cy}%`,
-              transform: `translate(-50%, -50%) translate(${pan.x + p2x * (isArrived ? 0.5 : 0.3)}px, ${pan.y + p2y * (isArrived ? 0.5 : 0.3)}px)`,
+              transform: `translate(-50%, -50%) translate(${p2x * (isArrived ? 0.5 : 0.3)}px, ${p2y * (isArrived ? 0.5 : 0.3)}px)`,
               cursor: isTransit ? 'default' : 'pointer',
               zIndex: isHovered ? 20 : 5,
             }}
@@ -738,7 +760,7 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
             initial={{ opacity: 0, scale: 0.92, y: 6 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ duration: 0.18 }}
             style={{
               position: 'absolute', left: `${tooltip.x}%`, top: `${tooltip.y}%`,
-              transform: `translate(${pan.x}px, ${pan.y}px) translate(${tooltip.x > 68 ? 'calc(-100% - 18px)' : '18px'}, ${tooltip.y > 68 ? 'calc(-100% - 8px)' : '8px'})`,
+              transform: `translate(${tooltip.x > 68 ? 'calc(-100% - 18px)' : '18px'}, ${tooltip.y > 68 ? 'calc(-100% - 8px)' : '8px'})`,
               zIndex: 30, pointerEvents: 'none', maxWidth: '220px',
               padding: '12px 14px', borderRadius: '14px',
               background: 'rgba(8,5,18,0.94)', border: `1px solid rgba(${PAPER_COLORS[tooltip.letter.paperId]?.glow || '230,199,110'},0.3)`,
@@ -767,6 +789,7 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
           </motion.div>
         )}
       </AnimatePresence>
+      </div>
 
       {/* ── Letter modal ── */}
       <AnimatePresence>
