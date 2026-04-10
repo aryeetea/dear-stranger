@@ -49,12 +49,27 @@ export default function LoginPage() {
   const router = useRouter()
 
   // If already authenticated with a hub, go straight to the universe
+
   useEffect(() => {
     getSession().then(async (session) => {
       if (!session) return
       try {
-        const hub = await getMyHub()
-        router.replace(hub ? '/' : '/')
+        let hub = await getMyHub()
+        if (!hub) {
+          // Fallback values for onboarding
+          const fallbackHubName = 'Your Hub'
+          const fallbackBio = 'A wanderer who arrived here quietly, carrying something unspoken.'
+          const fallbackAsk = 'Silence, slow mornings, and letters that take their time.'
+          try {
+            await createHubForCurrentUser(fallbackHubName, fallbackBio, fallbackAsk)
+            hub = await getMyHub()
+          } catch (err) {
+            // If hub creation fails, send to onboarding or show error
+            router.replace('/signup')
+            return
+          }
+        }
+        router.replace('/')
       } catch {
         router.replace('/')
       }
@@ -63,9 +78,27 @@ export default function LoginPage() {
     // Handle OAuth redirects (Discord/Google): after the provider redirects back,
     // Supabase exchanges the code asynchronously and fires SIGNED_IN — without this
     // listener the user would be stuck on the login screen until a manual refresh.
-    const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event) => {
       if (event === 'SIGNED_IN') {
-        router.replace('/')
+        // Repeat the same logic as above for OAuth
+        try {
+          let hub = await getMyHub()
+          if (!hub) {
+            const fallbackHubName = 'Your Hub'
+            const fallbackBio = 'A wanderer who arrived here quietly, carrying something unspoken.'
+            const fallbackAsk = 'Silence, slow mornings, and letters that take their time.'
+            try {
+              await createHubForCurrentUser(fallbackHubName, fallbackBio, fallbackAsk)
+              hub = await getMyHub()
+            } catch (err) {
+              router.replace('/signup')
+              return
+            }
+          }
+          router.replace('/')
+        } catch {
+          router.replace('/')
+        }
       }
     })
 
