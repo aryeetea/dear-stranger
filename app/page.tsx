@@ -709,17 +709,22 @@ export default function Home() {
   // Wait for Supabase auth hydration before routing
   useEffect(() => {
     let ignore = false;
-    let fallbackTimer: NodeJS.Timeout | null = null;
     let hydrated = false;
+    // 1. Try to hydrate immediately if session exists
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!hydrated && session) {
+        hydrated = true;
+        setAuthHydrated(true);
+        if (screen === 'loading') routeFromSession();
+      }
+    });
+    // 2. Listen for auth state change
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event) => {
       if (ignore) return;
       if (!hydrated) {
         hydrated = true;
         setAuthHydrated(true);
-        // Now safe to check session and route
-        if (screen === 'loading') {
-          await routeFromSession();
-        }
+        if (screen === 'loading') await routeFromSession();
       }
       if (event === 'SIGNED_OUT') {
         clearHubState();
@@ -734,7 +739,7 @@ export default function Home() {
         await routeFromSession();
       }
     });
-    // Fallback: if no event after 2s, assume hydrated
+    // 3. Fallback: always hydrate after 2s
     const fallback = setTimeout(() => {
       if (!hydrated) {
         hydrated = true;
