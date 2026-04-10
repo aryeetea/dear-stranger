@@ -428,6 +428,7 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
   const [sending, setSending] = useState(false)
   const [waxing, setWaxing] = useState(false)
   const [sent, setSent] = useState(false)
+  const [isAnonymous, setIsAnonymous] = useState(false)
   const [hoveredLetterId, setHoveredLetterId] = useState<string | null>(null)
   const [openingLetterId, setOpeningLetterId] = useState<string | null>(null)
   const lastTypeSoundRef = useRef<number>(0)
@@ -490,6 +491,7 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
         selectedHandwriting,
         selectedEmbellishment,
         handwrittenImageUrl,
+        isAnonymous,
       )
     } catch { /* silent */ }
     setSent(true)
@@ -825,24 +827,29 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
               {driftType === 'letter' && (
                 <p style={{ fontFamily, fontSize: '15px', fontStyle: 'italic', color: paper.subtext, marginTop: '10px', lineHeight: 1.8 }}>
                   Released into the drift,<br />
-                  <span style={{ color: paper.accent }}>{senderName || 'A Stranger'}</span>
+                  <span style={{ color: paper.accent }}>{isAnonymous ? 'A Stranger' : (senderName || 'A Stranger')}</span>
                 </p>
               )}
               {driftType === 'poem' && (
                 <p style={{ fontFamily, fontSize: '15px', fontStyle: 'italic', color: paper.subtext, marginTop: '10px', lineHeight: 1.8 }}>
-                  — <span style={{ color: paper.accent }}>{senderName || 'A Stranger'}</span>
+                  — <span style={{ color: paper.accent }}>{isAnonymous ? 'A Stranger' : (senderName || 'A Stranger')}</span>
                 </p>
               )}
               {driftType === 'journal' && (
                 <p style={{ fontFamily, fontSize: '15px', fontStyle: 'italic', color: paper.subtext, marginTop: '10px', lineHeight: 1.8 }}>
-                  — <span style={{ color: paper.accent }}>{senderName || 'A Stranger'}</span>
+                  — <span style={{ color: paper.accent }}>{isAnonymous ? 'A Stranger' : (senderName || 'A Stranger')}</span>
                 </p>
               )}
 
               <div style={{ height: '1px', background: paper.border, margin: '20px 0' }} />
 
               {/* send */}
-              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                <button
+                  onClick={() => setIsAnonymous(a => !a)}
+                  style={{ background: isAnonymous ? `${paper.accent}18` : 'transparent', border: `1px solid ${isAnonymous ? paper.accent : paper.border}`, color: isAnonymous ? paper.accent : paper.subtext, fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.24em', textTransform: 'uppercase', padding: '8px 16px', cursor: 'pointer', borderRadius: '2px', transition: 'all 0.2s' }}>
+                  👁 {isAnonymous ? 'Anonymous · On' : 'Send Anonymously'}
+                </button>
                 <motion.button
                   whileTap={{ scale: 0.97 }}
                   onClick={handleSend}

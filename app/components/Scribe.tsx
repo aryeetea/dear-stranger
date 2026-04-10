@@ -309,7 +309,7 @@ function formatCapsuleOpenDate(capsuleDays: number) {
 export default function Scribe({ recipientName, senderName, lettersSent = 0, onClose, onSend }: {
   recipientName?: string; senderName?: string; lettersSent?: number
   onClose?: () => void
-  onSend?: (letter: { to?: string; body: string; paperId: string; subject: string; fontId: string; colorId?: string; paperColorId?: string; stampId?: string; envelopeId?: string; capsuleDays?: number; burnAfterReading?: boolean; voiceNoteBlob?: Blob; voiceEffect?: VoiceEffect; handwritingStyle?: HandwritingStyle; embellishmentId?: EmbellishmentId; handwrittenImageBlob?: Blob }) => void
+  onSend?: (letter: { to?: string; body: string; paperId: string; subject: string; fontId: string; colorId?: string; paperColorId?: string; stampId?: string; envelopeId?: string; capsuleDays?: number; burnAfterReading?: boolean; voiceNoteBlob?: Blob; voiceEffect?: VoiceEffect; handwritingStyle?: HandwritingStyle; embellishmentId?: EmbellishmentId; handwrittenImageBlob?: Blob; anonymous?: boolean }) => void
 }) {
   const unlockedPapers = PAPERS.filter(p => p.unlocksAt <= lettersSent)
   const [selectedPaper, setSelectedPaper] = useState(unlockedPapers[0])
@@ -329,6 +329,7 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
   const [journalMode, setJournalMode] = useState(false)
   const [capsuleDays, setCapsuleDays] = useState<30|60|90>(30)
   const [burnAfterReading, setBurnAfterReading] = useState(false)
+  const [isAnonymous, setIsAnonymous] = useState(false)
   const [selectedHandwriting, setSelectedHandwriting] = useState<HandwritingStyle>('typed')
   const [selectedEmbellishment, setSelectedEmbellishment] = useState<EmbellishmentId>('none')
   const canvasRef = useRef<HandwritingCanvasRef>(null)
@@ -472,7 +473,7 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
     setSent(true)
     const handwrittenImageBlob = selectedHandwriting === 'handwritten' ? await canvasRef.current?.toBlob() : undefined
     setTimeout(() => {
-      onSend?.({ to: journalMode ? undefined : recipientName, body, paperId: selectedPaper.id, subject, fontId: selectedFont.id, colorId: selectedColor ?? undefined, paperColorId: selectedPaperColor ?? undefined, stampId: selectedStamp, envelopeId: selectedEnvelope, capsuleDays: journalMode ? capsuleDays : undefined, burnAfterReading: burnAfterReading || undefined, voiceNoteBlob: voiceNoteBlob ?? undefined, voiceEffect: voiceNoteBlob ? voiceEffect : undefined, handwritingStyle: selectedHandwriting, embellishmentId: selectedEmbellishment, handwrittenImageBlob: handwrittenImageBlob ?? undefined })
+      onSend?.({ to: journalMode ? undefined : recipientName, body, paperId: selectedPaper.id, subject, fontId: selectedFont.id, colorId: selectedColor ?? undefined, paperColorId: selectedPaperColor ?? undefined, stampId: selectedStamp, envelopeId: selectedEnvelope, capsuleDays: journalMode ? capsuleDays : undefined, burnAfterReading: burnAfterReading || undefined, voiceNoteBlob: voiceNoteBlob ?? undefined, voiceEffect: voiceNoteBlob ? voiceEffect : undefined, handwritingStyle: selectedHandwriting, embellishmentId: selectedEmbellishment, handwrittenImageBlob: handwrittenImageBlob ?? undefined, anonymous: (!recipientName && !journalMode) ? isAnonymous : undefined })
       onClose?.()
     }, 2400)
   }
@@ -516,11 +517,11 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
               <HandwritingCanvas ref={canvasRef} inkColor={effectiveInk.main} lineWidth={2} />
               <p style={{ fontFamily:fontFamily, fontStyle:'italic', fontSize:'15px', color:effectiveInk.secondary, marginTop:'10px', lineHeight:1.9, textShadow: '0 1px 6px #fff8, 0 0px 1px #fff4' }}>
                 Yours across the distance,<br/>
-                <span style={{ color:effectiveInk.accent }}>{senderName || 'A Stranger'}</span>
+                <span style={{ color:effectiveInk.accent }}>{(isAnonymous ? undefined : senderName) || 'A Stranger'}</span>
               </p>
             </div>
           ) : (
-            <LetterContent fontFamily={fontFamily} ink={effectiveInk} recipient={recipientName} senderName={senderName} date={today} body={pages[currentPage]} setBody={setPageBody} textareaRef={textareaRef} onKeyDown={handleTypingKey}/>
+            <LetterContent fontFamily={fontFamily} ink={effectiveInk} recipient={recipientName} senderName={isAnonymous ? undefined : senderName} date={today} body={pages[currentPage]} setBody={setPageBody} textareaRef={textareaRef} onKeyDown={handleTypingKey}/>
           )}
         </div>
       </div>
@@ -892,7 +893,7 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
               </div>
             )}
 
-            <div style={{ marginTop:'8px', marginBottom:'4px' }}>
+            <div style={{ marginTop:'8px', marginBottom:'4px', display:'flex', gap:'8px', flexWrap:'wrap' }}>
               <button
                 onClick={() => setBurnAfterReading(b => !b)}
                 style={{ background: burnAfterReading ? 'rgba(220,60,40,0.1)' : 'none', border: `1px solid ${burnAfterReading ? 'rgba(220,60,40,0.5)' : 'rgba(255,255,255,0.16)'}`, color: burnAfterReading ? '#e87060' : 'rgba(255,255,255,0.65)', fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.22em', textTransform: 'uppercase', padding: '5px 12px', cursor: 'pointer', borderRadius: '2px', transition: 'all 0.2s' }}
@@ -900,6 +901,15 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
                 onMouseLeave={e => { if (!burnAfterReading) { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.16)'; e.currentTarget.style.color = 'rgba(255,255,255,0.65)' } }}>
                 🔥 {burnAfterReading ? 'Burn After Reading · On' : 'Burn After Reading'}
               </button>
+              {!recipientName && !journalMode && (
+                <button
+                  onClick={() => setIsAnonymous(a => !a)}
+                  style={{ background: isAnonymous ? 'rgba(160,130,220,0.12)' : 'none', border: `1px solid ${isAnonymous ? 'rgba(160,130,220,0.5)' : 'rgba(255,255,255,0.16)'}`, color: isAnonymous ? 'rgba(200,180,255,0.9)' : 'rgba(255,255,255,0.65)', fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.22em', textTransform: 'uppercase', padding: '5px 12px', cursor: 'pointer', borderRadius: '2px', transition: 'all 0.2s' }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(160,130,220,0.5)'; e.currentTarget.style.color = 'rgba(200,180,255,0.9)' }}
+                  onMouseLeave={e => { if (!isAnonymous) { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.16)'; e.currentTarget.style.color = 'rgba(255,255,255,0.65)' } }}>
+                  👁 {isAnonymous ? 'Anonymous · On' : 'Send Anonymously'}
+                </button>
+              )}
             </div>
 
             <div style={{ marginTop:'10px', padding:'12px 14px', border:'1px solid rgba(230,199,110,0.14)', borderRadius:'6px', background:'rgba(255,255,255,0.03)' }}>

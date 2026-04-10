@@ -54,6 +54,7 @@ type UniverseLetterRow = {
   handwritten_image_url?: string | null
   embellishment_id?: string | null
   created_at?: string | null
+  is_anonymous?: boolean | null
   sender?: { hub_name?: string | null } | null
 }
 
@@ -420,7 +421,7 @@ export async function getUniverseLetters() {
   try {
     const { data, error } = await supabase
       .from('letters')
-      .select('id, sender_id, body, subject, paper_id, font_id, font_color, handwriting_style, handwritten_image_url, embellishment_id, sender:sender_id(hub_name)')
+      .select('id, sender_id, body, subject, paper_id, font_id, font_color, handwriting_style, handwritten_image_url, embellishment_id, is_anonymous, sender:sender_id(hub_name)')
       .eq('is_universe_letter', true)
       .order('created_at', { ascending: false })
       .limit(50)
@@ -430,7 +431,7 @@ export async function getUniverseLetters() {
     return ((data || []) as UniverseLetterRow[]).map((l) => ({
       id: l.id,
       senderId: (l.sender_id as string) || '',
-      senderName: l.sender?.hub_name || 'A Stranger',
+      senderName: l.is_anonymous ? 'A Stranger' : (l.sender?.hub_name || 'A Stranger'),
       body: (l.body as string) || '',
       preview: l.body ? (l.body.length > 80 ? `${l.body.slice(0, 80)}...` : l.body) : '',
       subject: l.subject || 'A letter for you',
@@ -454,7 +455,7 @@ export async function getDriftLetters() {
 
     let query = supabase
       .from('letters')
-      .select('id, sender_id, body, subject, paper_id, font_id, font_color, handwriting_style, handwritten_image_url, embellishment_id, created_at, sender:sender_id(hub_name)')
+      .select('id, sender_id, body, subject, paper_id, font_id, font_color, handwriting_style, handwritten_image_url, embellishment_id, created_at, is_anonymous, sender:sender_id(hub_name)')
       .eq('is_universe_letter', true)
       .in('paper_id', DRIFT_PAPER_IDS)
       .order('created_at', { ascending: false })
@@ -470,7 +471,7 @@ export async function getDriftLetters() {
     return ((data || []) as UniverseLetterRow[]).map((l) => ({
       id: l.id,
       senderId: (l.sender_id as string) || '',
-      senderName: l.sender?.hub_name || 'A Stranger',
+      senderName: l.is_anonymous ? 'A Stranger' : (l.sender?.hub_name || 'A Stranger'),
       body: (l.body as string) || '',
       preview: l.body ? (l.body.length > 80 ? `${l.body.slice(0, 80)}...` : l.body) : '',
       subject: l.subject || 'Untitled',
@@ -760,6 +761,7 @@ export async function sendLetter(
   handwritingStyle?: HandwritingStyle,
   embellishmentId?: EmbellishmentId,
   handwrittenImageUrl?: string,
+  isAnonymous?: boolean,
 ) {
   const {
     data: { user },
@@ -812,6 +814,7 @@ export async function sendLetter(
         handwriting_style: handwritingStyle || 'typed',
         ...(embellishmentId && embellishmentId !== 'none' ? { embellishment_id: embellishmentId } : {}),
         ...(handwrittenImageUrl ? { handwritten_image_url: handwrittenImageUrl } : {}),
+        ...(isAnonymous ? { is_anonymous: true } : {}),
       },
     ])
     .select()

@@ -1709,6 +1709,9 @@ export default function UniverseMap({
                 {tooltip.hub.name}
                 {tooltip.hub.hubStyle === 'telescope' && <span style={{ fontSize: '8px', opacity: 0.6, marginLeft: '6px' }}>· click to zoom</span>}
               </p>
+              {!tooltip.hub.isMe && tooltip.hub.visitorBookEnabled && (
+                <p style={{ fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.18em', color: 'rgba(230,199,110,0.5)', textTransform: 'uppercase', marginTop: '3px', whiteSpace: 'nowrap' }}>◉ keeps a visitor book</p>
+              )}
             </div>
           </motion.div>
         )}
@@ -1724,7 +1727,7 @@ export default function UniverseMap({
               style={{ background: 'rgba(8,10,28,0.97)', border: '1px solid rgba(201,168,76,0.35)', borderRadius: '12px', padding: '32px 36px 28px', width: 'min(520px, 92vw)', maxHeight: '80vh', display: 'flex', flexDirection: 'column', boxShadow: '0 0 80px rgba(201,168,76,0.12)', position: 'relative' }}>
               <div style={{ position: 'absolute', top: 0, left: '20%', right: '20%', height: '1px', background: 'linear-gradient(90deg, transparent, rgba(201,168,76,0.5), transparent)' }} />
               <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.4em', color: 'rgba(201,168,76,0.6)', textTransform: 'uppercase', marginBottom: '6px', flexShrink: 0 }}>✦ Universe Letter</p>
-              <p style={{ fontFamily: "'Cinzel', serif", fontSize: '11px', letterSpacing: '0.2em', color: 'rgba(255,255,255,0.6)', marginBottom: '20px', flexShrink: 0 }}>From · {starPreview.senderName}</p>
+              <p style={{ fontFamily: "'Cinzel', serif", fontSize: '11px', letterSpacing: '0.2em', color: 'rgba(255,255,255,0.4)', marginBottom: '20px', flexShrink: 0 }}>Found drifting through the universe</p>
               <div style={{ overflowY: 'auto', flex: 1, marginBottom: '24px', paddingRight: '6px', scrollbarWidth: 'thin', scrollbarColor: 'rgba(201,168,76,0.2) transparent' }}>
                 <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '17px', color: 'rgba(255,255,255,0.88)', lineHeight: 1.8 }}>
                   &ldquo;{starPreview.body}&rdquo;

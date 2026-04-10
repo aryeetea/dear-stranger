@@ -1351,6 +1351,7 @@ export default function Home() {
                     letter.handwritingStyle,
                     letter.embellishmentId,
                     handwrittenImageUrl,
+                    letter.anonymous,
                   );
                 }
 
