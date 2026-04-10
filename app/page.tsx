@@ -544,6 +544,7 @@ export default function Home() {
     setHubBio('')
     setHubAskAbout('')
     setHubAvatarUrl('')
+    setCurrentUserId('')
     setHubStyle('portal')
     setHubColor('gold')
     setHubDecoration('none')
@@ -558,6 +559,24 @@ export default function Home() {
     setDriftOpen(false)
     setPagesOpen(false)
     if (resetResume) setOnboardingResumeState(null)
+  }, [])
+
+  const hydrateHubState = useCallback((hub: HubWithMeta | null, userId?: string) => {
+    if (!hub) return
+    setCurrentUserId(userId || hub.id || '')
+    setHubName(hub.hub_name || '')
+    setHubBio(hub.bio || '')
+    setHubAskAbout(hub.ask_about || '')
+    setHubAvatarUrl(hub.avatar_url || '')
+    setHubAvatarPending(hub.avatar_prompt_pending || null)
+    setHubStyle((hub.hub_style as HubStyle) || 'portal')
+    setHubColor(coerceHubColor(hub.backdrop_id))
+    setHubDecoration((hub.decoration as HubDecoration) || 'none')
+    setHubGlowIntensity((hub.glow_intensity as HubGlowIntensity) || 'normal')
+    setLettersSent(hub.letters_sent || 0)
+    setVisitorBookEnabled(Boolean(hub.visitor_book_enabled))
+    setHubRegenCount(hub.regen_count || 0)
+    setHubCreatedAt(hub.created_at || '')
   }, [])
 
   useEffect(() => {
@@ -695,6 +714,7 @@ export default function Home() {
       }
 
       const userId = session.user?.id
+      setCurrentUserId(userId || '')
       let hub = null
       try {
         hub = await timeoutPromise(getMyHub(userId), 3000, 'getMyHub')
@@ -714,19 +734,7 @@ export default function Home() {
       }
 
       if (hub) {
-        setHubName(hub.hub_name || '')
-        setHubBio(hub.bio || '')
-        setHubAskAbout(hub.ask_about || '')
-        setHubAvatarUrl(hub.avatar_url || '')
-        setHubAvatarPending((hub as HubWithMeta).avatar_prompt_pending || null)
-        setHubStyle((hub.hub_style as HubStyle) || 'portal')
-        setHubColor(coerceHubColor(hub.backdrop_id))
-        setHubDecoration((hub.decoration as HubDecoration) || 'none')
-        setHubGlowIntensity((hub.glow_intensity as HubGlowIntensity) || 'normal')
-        setLettersSent(hub.letters_sent || 0)
-        setVisitorBookEnabled(Boolean((hub as HubWithMeta).visitor_book_enabled))
-        setHubRegenCount(hub.regen_count || 0)
-        setHubCreatedAt((hub as HubWithMeta).created_at || '')
+        hydrateHubState(hub as HubWithMeta, userId)
         setOnboardingError('')
         setOnboardingResumeState(null)
 
@@ -747,7 +755,7 @@ export default function Home() {
       setScreen('landing')
       console.log('[routeFromSession] fallback to landing')
     }
-  }, [clearHubState, restoreUniverseOverlay, setSavedOverlay])
+  }, [clearHubState, hydrateHubState, restoreUniverseOverlay, setSavedOverlay])
 
   // Wait for Supabase auth hydration before routing
   useEffect(() => {
@@ -767,6 +775,7 @@ export default function Home() {
               setScreen('landing')
               return
             }
+            setCurrentUserId(session.user?.id || '')
             let hub = null
             try {
               hub = await getMyHub(session.user?.id)
@@ -775,6 +784,7 @@ export default function Home() {
               setScreen('onboarding')
               return
             }
+            hydrateHubState(hub as HubWithMeta, session.user?.id)
             restoreUniverseOverlay()
           }
         }
@@ -824,7 +834,7 @@ export default function Home() {
       if (fallbackTimer) clearTimeout(fallbackTimer)
       authListener.subscription.unsubscribe()
     }
-  }, [clearHubState, restoreUniverseOverlay, routeFromSession, screen, setSavedOverlay])
+  }, [clearHubState, hydrateHubState, restoreUniverseOverlay, routeFromSession, screen, setSavedOverlay])
 
   // Only render main app after auth is hydrated
 
@@ -980,6 +990,7 @@ export default function Home() {
 
         const userId = session?.user?.id
 
+        setCurrentUserId(userId || '')
         setGeneratingStatus('Placing your hub in the universe...')
 
         await withTimeout(
