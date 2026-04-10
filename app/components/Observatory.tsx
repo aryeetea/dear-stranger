@@ -372,7 +372,8 @@ export default function Observatory({ onClose, onWriteLetter, lettersRefreshSign
   }
 
   function handleLetterClick(letter: Letter) {
-    if (letter.status === 'transit') return
+    const isRecentSentTransit = letter.direction === 'sent' && (Date.now() - new Date(letter.sentAt).getTime()) < RECENT_SENT_TRANSIT_MS
+    if (letter.status === 'transit' || isRecentSentTransit) return
     setReadIds(prev => {
       const next = new Set(prev)
       next.add(letter.id)
@@ -589,7 +590,8 @@ export default function Observatory({ onClose, onWriteLetter, lettersRefreshSign
       {!loading && letters.map((letter, i) => {
         const pColor = PAPER_COLORS[letter.paperId] || PAPER_COLORS.ornate
         const isPinned = letter.status === 'pinned'
-        const isTransit = !isPinned && letter.status === 'transit'
+        const isRecentSentTransit = letter.direction === 'sent' && (currentTime - new Date(letter.sentAt).getTime()) < RECENT_SENT_TRANSIT_MS
+        const isTransit = !isPinned && (letter.status === 'transit' || isRecentSentTransit)
         const isSent = !isPinned && !isTransit && letter.direction === 'sent'
         const isArrived = !isPinned && letter.status === 'arrived'
         const isNew = isArrived && !isSent && !readIds.has(letter.id) && (currentTime - new Date(letter.arrivedAt || letter.sentAt).getTime()) < 48 * 3600000
