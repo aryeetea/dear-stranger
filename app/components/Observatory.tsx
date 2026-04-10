@@ -211,6 +211,7 @@ export default function Observatory({ onClose, onWriteLetter, lettersRefreshSign
   }, [])
 
   useEffect(() => {
+    console.log('[Observatory] useEffect triggered, lettersRefreshSignal:', lettersRefreshSignal);
     async function loadLetters() {
       try {
         setLoading(true)

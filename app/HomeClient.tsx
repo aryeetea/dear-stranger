@@ -1451,7 +1451,11 @@ export default function Home() {
 
                 setLettersSent((prev) => prev + 1);
                 setSendFlashing(true);
-                setLettersRefreshSignal((sig) => sig + 1);
+                setLettersRefreshSignal((sig) => {
+                  const next = sig + 1;
+                  console.log('[HomeClient] lettersRefreshSignal incremented:', next);
+                  return next;
+                });
               } catch (err) {
                 console.error('Failed to send letter:', err);
               }
