@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import EntryScreen from './components/EntryScreen'
 import LandingPage from './components/LandingPage'
 import SoulMirror from './components/SoulMirror'
@@ -35,8 +36,6 @@ import { AnimatePresence } from 'framer-motion'
 type Screen =
   | 'landing'
   | 'entry'
-  | 'login'
-  | 'signup'
   | 'onboarding'
   | 'universe'
   | 'loading'
@@ -460,6 +459,7 @@ function LetterDepartAnimation({ onDone }: { onDone: () => void }) {
 }
 
 export default function Home() {
+  const router = useRouter()
   const [screen, setScreen] = useState<Screen>('loading')
   const [hubName, setHubName] = useState('')
   const [hubBio, setHubBio] = useState('')
@@ -617,6 +617,18 @@ export default function Home() {
       console.log('[routeFromSession] getSession result:', session)
 
       if (!session) {
+        // Check if the signup page stored pending credentials + onboarding intent
+        if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('ds_goto_onboarding') === '1') {
+          sessionStorage.removeItem('ds_goto_onboarding')
+          const raw = sessionStorage.getItem('ds_pending_creds')
+          if (raw) {
+            try { setPendingCredentials(JSON.parse(raw)) } catch {}
+          }
+          setOnboardingError('')
+          setScreen('onboarding')
+          console.log('[routeFromSession] no session but signup flow, go to onboarding')
+          return
+        }
         clearHubState()
         setScreen('landing')
         console.log('[routeFromSession] no session, go to landing')
@@ -1000,81 +1012,6 @@ export default function Home() {
     )
   }
 
-  if (screen === 'login') {
-    return (
-      <div
-        style={{
-          position: 'fixed',
-          inset: 0,
-          background: '#060a18',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <AuthBackground />
-        <LoginScreen
-          onSuccess={async () => {
-            setPendingCredentials(null)
-            setOnboardingResumeState(null)
-
-            const hub = await getMyHub()
-
-            if (hub) {
-              setHubName(hub.hub_name || '')
-              setHubBio(hub.bio || '')
-              setHubAskAbout(hub.ask_about || '')
-              setHubAvatarUrl(hub.avatar_url || '')
-              setHubAvatarPending((hub as HubWithMeta).avatar_prompt_pending || null)
-              setHubStyle((hub.hub_style as HubStyle) || 'portal')
-              setHubColor(coerceHubColor(hub.backdrop_id))
-              setHubDecoration((hub.decoration as HubDecoration) || 'none')
-              setHubGlowIntensity((hub.glow_intensity as HubGlowIntensity) || 'normal')
-              setLettersSent(hub.letters_sent || 0)
-              setVisitorBookEnabled(Boolean((hub as HubWithMeta).visitor_book_enabled))
-              setHubRegenCount(hub.regen_count || 0)
-              setHubCreatedAt((hub as HubWithMeta).created_at || '')
-              setScreen('universe')
-              return
-            }
-
-            setOnboardingError('')
-            setScreen('onboarding')
-          }}
-          onGoToSignup={() => {
-            setOnboardingError('')
-            setPendingCredentials(null)
-            setScreen('signup')
-          }}
-        />
-      </div>
-    )
-  }
-
-  if (screen === 'signup') {
-    return (
-      <div
-        style={{
-          position: 'fixed',
-          inset: 0,
-          background: '#060a18',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <AuthBackground />
-        <SignupScreen
-          onSuccess={() => {
-            setOnboardingError('')
-            setScreen('onboarding')
-          }}
-          setPendingCredentials={setPendingCredentials}
-        />
-      </div>
-    )
-  }
-
   return (
     <>
       {screen !== 'landing' && <NebulaBackground />}
@@ -1091,13 +1028,11 @@ export default function Home() {
         <LandingPage
           onEnter={() => {
             setOnboardingError('')
-            setPendingCredentials(null)
-            setScreen('signup')
+            router.push('/signup')
           }}
           onLogin={() => {
             setOnboardingError('')
-            setPendingCredentials(null)
-            setScreen('login')
+            router.push('/login')
           }}
           onGuest={() => {
             setIsGuest(true)
@@ -1111,13 +1046,11 @@ export default function Home() {
         <EntryScreen
           onEnter={() => {
             setOnboardingError('')
-            setPendingCredentials(null)
-            setScreen('signup')
+            router.push('/signup')
           }}
           onLogin={() => {
             setOnboardingError('')
-            setPendingCredentials(null)
-            setScreen('login')
+            router.push('/login')
           }}
           onGuest={() => {
             setIsGuest(true)
@@ -1141,15 +1074,13 @@ export default function Home() {
             setIsGuest(false)
             setGuestBannerDismissed(false)
             setOnboardingError('')
-            setPendingCredentials(null)
-            setScreen('signup')
+            router.push('/signup')
           }}
           onSignIn={() => {
             setIsGuest(false)
             setGuestBannerDismissed(false)
             setOnboardingError('')
-            setPendingCredentials(null)
-            setScreen('login')
+            router.push('/login')
           }}
           onDismiss={() => setGuestBannerDismissed(true)}
         />
@@ -1162,16 +1093,14 @@ export default function Home() {
             setIsGuest(false)
             setGuestBannerDismissed(false)
             setOnboardingError('')
-            setPendingCredentials(null)
-            setScreen('signup')
+            router.push('/signup')
           }}
           onSignIn={() => {
             setGuestNudgeOpen(false)
             setIsGuest(false)
             setGuestBannerDismissed(false)
             setOnboardingError('')
-            setPendingCredentials(null)
-            setScreen('login')
+            router.push('/login')
           }}
           onClose={() => setGuestNudgeOpen(false)}
         />

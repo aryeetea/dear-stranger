@@ -165,7 +165,9 @@ export async function signInWithGoogle() {
   const { error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined,
+      // Use the current page URL so pressing back from Google returns here,
+      // not to the landing scroll (e.g. comes back to /login or /signup).
+      redirectTo: typeof window !== 'undefined' ? window.location.href : undefined,
       queryParams: {
         prompt: 'select_account',
       },
@@ -179,7 +181,7 @@ export async function signInWithDiscord() {
   const { error } = await supabase.auth.signInWithOAuth({
     provider: 'discord',
     options: {
-      redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined,
+      redirectTo: typeof window !== 'undefined' ? window.location.href : undefined,
     },
   })
 

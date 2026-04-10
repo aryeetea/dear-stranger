@@ -22,13 +22,13 @@ const BG_STARS = Array.from({ length: 160 }, (_, i) => ({
   opacity: sr(i * 3 + 7) * 0.35 + 0.08,
 }))
 
-// ── Nebula patches ──
+// ── Nebula patches (subtle ambient only) ──
 const NEBULAE = [
-  { x: 12, y: 18, rx: 28, ry: 18, color: '104,52,150', op: 0.22 },
-  { x: 82, y: 24, rx: 22, ry: 14, color: '200,110,84', op: 0.14 },
-  { x: 72, y: 76, rx: 26, ry: 16, color: '80,130,200', op: 0.16 },
-  { x: 30, y: 82, rx: 18, ry: 12, color: '160,90,190', op: 0.14 },
-  { x: 55, y: 48, rx: 14, ry: 10, color: '255,182,110', op: 0.07 },
+  { x: 22, y: 22, rx: 18, ry: 12, color: '104,52,150', op: 0.07 },
+  { x: 80, y: 20, rx: 15, ry: 10, color: '200,110,84', op: 0.06 },
+  { x: 76, y: 74, rx: 16, ry: 10, color: '80,130,200', op: 0.06 },
+  { x: 28, y: 80, rx: 13, ry: 8,  color: '160,90,190', op: 0.05 },
+  { x: 55, y: 48, rx: 10, ry: 7,  color: '255,182,110', op: 0.05 },
 ]
 
 const FONT_FAMILIES: Record<string, string> = {
@@ -142,18 +142,25 @@ function formatObservatoryDate(dateString?: string) {
   return new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-// Assign each letter a stable celestial position
-// Left zone (8-32%): transit comets  |  Center (38-62%): arrived stars  |  Right (68-92%): archive
+// Assign each letter a stable celestial position via natural clustering
+// Sent: lower half (energy moving away)  |  Transit received: upper arc (crossing the dark)
+// Arrived received: center cluster  |  Pinned: elevated mid-field
 function assignCelestialPositions(letters: Letter[]): Letter[] {
   return letters.map((l, i) => {
     const seed = i * 17 + l.id.charCodeAt(0) * 3
     let cx: number, cy: number
-    if (l.status === 'transit') {
-      cx = 8 + sr(seed) * 24; cy = 18 + sr(seed + 1) * 64
-    } else if (l.status === 'arrived') {
-      cx = 38 + sr(seed) * 24; cy = 18 + sr(seed + 1) * 64
+    if (l.direction === 'sent') {
+      // Sent letters drift across the lower half — warm energy radiating outward
+      cx = 10 + sr(seed) * 80; cy = 56 + sr(seed + 1) * 26
+    } else if (l.status === 'transit') {
+      // Incoming comets arc across the upper sky
+      cx = 8 + sr(seed) * 84; cy = 10 + sr(seed + 1) * 32
+    } else if (l.status === 'archive') {
+      // Pinned stars rest steady in the mid-upper field
+      cx = 28 + sr(seed) * 44; cy = 16 + sr(seed + 1) * 34
     } else {
-      cx = 68 + sr(seed) * 24; cy = 18 + sr(seed + 1) * 64
+      // Arrived letters cluster around the center
+      cx = 22 + sr(seed) * 56; cy = 30 + sr(seed + 1) * 34
     }
     return { ...l, cx, cy }
   })
@@ -302,11 +309,16 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
             <stop offset="0%" stopColor="rgba(60,30,90,0.18)" />
             <stop offset="100%" stopColor="rgba(3,2,10,0)" />
           </radialGradient>
+          <radialGradient id="obs-anchor" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="rgba(201,168,76,0.1)" />
+            <stop offset="50%" stopColor="rgba(201,168,76,0.03)" />
+            <stop offset="100%" stopColor="rgba(0,0,0,0)" />
+          </radialGradient>
         </defs>
         <rect width="100%" height="100%" fill="url(#obs-core)" />
         <g style={{ transform: `translate(${p1x * 0.4}px, ${p1y * 0.4}px)`, transition: 'transform 0.6s ease-out' }}>
           {NEBULAE.map((n, i) => (
-            <ellipse key={i} cx={`${n.x}%`} cy={`${n.y}%`} rx={`${n.rx}%`} ry={`${n.ry}%`} fill={`rgba(${n.color},${n.op})`} style={{ filter: 'blur(32px)' }} />
+            <ellipse key={i} cx={`${n.x}%`} cy={`${n.y}%`} rx={`${n.rx}%`} ry={`${n.ry}%`} fill={`rgba(${n.color},${n.op})`} style={{ filter: 'blur(22px)' }} />
           ))}
         </g>
         <g style={{ transform: `translate(${p1x}px, ${p1y}px)`, transition: 'transform 0.5s ease-out' }}>
@@ -319,24 +331,13 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
             <circle key={i} cx={`${s.x}%`} cy={`${s.y}%`} r={s.r * 0.7} fill={`rgba(255,255,255,${s.opacity * 0.7})`} />
           ))}
         </g>
-        <line x1="33.5%" y1="5%" x2="33.5%" y2="95%" stroke="rgba(255,255,255,0.025)" strokeWidth="1" strokeDasharray="4 8" />
-        <line x1="66.5%" y1="5%" x2="66.5%" y2="95%" stroke="rgba(255,255,255,0.025)" strokeWidth="1" strokeDasharray="4 8" />
+        <ellipse cx="50%" cy="50%" rx="20%" ry="14%" fill="url(#obs-anchor)" />
       </svg>
 
-      {/* ── Zone labels ── */}
-      <div style={{ position: 'absolute', top: '56px', left: 0, right: 0, display: 'flex', pointerEvents: 'none', zIndex: 2 }}>
-        {[
-          { label: 'In Transit', sub: 'crossing the dark', count: transit.length, zone: 'transit', x: '16.75%' },
-          { label: 'Arrived', sub: 'glowing, waiting', count: arrived.length, zone: 'arrived', x: '50%' },
-          { label: 'Pinned', sub: 'held close, always', count: pinned.length, zone: 'archive', x: '83.25%' },
-        ].map(z => (
-          <div key={z.zone} style={{ position: 'absolute', left: z.x, transform: 'translateX(-50%)', textAlign: 'center', opacity: activeZone === z.zone ? 1 : 0.45, transition: 'opacity 0.3s' }}>
-            <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.45em', color: z.zone === 'arrived' ? '#e6c76e' : 'rgba(255,255,255,0.8)', textTransform: 'uppercase', marginBottom: '3px' }}>{z.label}</p>
-            <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '11px', color: 'rgba(255,255,255,0.3)' }}>{z.sub}</p>
-            <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', color: 'rgba(255,255,255,0.28)', marginTop: '2px' }}>{z.count}</p>
-          </div>
-        ))}
-      </div>
+      {/* ── Guidance hint ── */}
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }} style={{ position: 'absolute', top: '62px', left: '50%', transform: 'translateX(-50%)', textAlign: 'center', pointerEvents: 'none', zIndex: 2, whiteSpace: 'nowrap' }}>
+        <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '12px', color: 'rgba(255,255,255,0.2)', letterSpacing: '0.05em' }}>Drag to explore · Tap a star to read its light</p>
+      </motion.div>
 
       {/* ── Top bar ── */}
       <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 80, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 28px', pointerEvents: 'none' }}>
@@ -360,17 +361,33 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
       </motion.div>
 
       {/* ── "To the Universe" portal ── */}
-      <motion.div initial={{ opacity: 0, scale: 0 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.8, type: 'spring', stiffness: 200 }} style={{ position: 'absolute', bottom: '72px', right: '44px', zIndex: 10, cursor: 'pointer' }} onClick={() => { setPortalPulse(true); setTimeout(() => { setPortalPulse(false); onWriteLetter?.('') }, 600) }}>
+      <motion.div initial={{ opacity: 0, scale: 0 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.8, type: 'spring', stiffness: 200 }} style={{ position: 'absolute', bottom: '52px', right: '36px', zIndex: 10, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center' }} onClick={() => { setPortalPulse(true); setTimeout(() => { setPortalPulse(false); onWriteLetter?.('') }, 600) }}>
         <motion.div
-          animate={portalPulse ? { scale: [1, 2.2, 0.1], opacity: [1, 0.8, 0] } : { scale: [1, 1.12, 1], opacity: [0.85, 1, 0.85] }}
-          transition={portalPulse ? { duration: 0.55, ease: 'easeOut' } : { duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-          style={{ position: 'relative', width: '52px', height: '52px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          animate={portalPulse ? { scale: [1, 2.8, 0.1], opacity: [1, 0.8, 0] } : {}}
+          transition={portalPulse ? { duration: 0.6, ease: 'easeOut' } : {}}
+          style={{ position: 'relative', width: '80px', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
         >
-          <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '1px solid rgba(230,199,110,0.55)', boxShadow: '0 0 18px rgba(230,199,110,0.35), 0 0 40px rgba(230,199,110,0.15)' }} />
-          <div style={{ position: 'absolute', inset: '10px', borderRadius: '50%', border: '1px dashed rgba(230,199,110,0.3)' }} />
-          <span style={{ fontSize: '20px', position: 'relative', zIndex: 1, color: 'rgba(230,199,110,0.9)' }}>✦</span>
+          {/* Outer slow-pulse ring */}
+          <motion.div
+            animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.6, 0.3] }}
+            transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut' }}
+            style={{ position: 'absolute', inset: '-16px', borderRadius: '50%', border: '1px solid rgba(230,199,110,0.35)', pointerEvents: 'none' }}
+          />
+          {/* Main circle */}
+          <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '1.5px solid rgba(230,199,110,0.72)', boxShadow: '0 0 28px rgba(230,199,110,0.5), 0 0 60px rgba(230,199,110,0.22), inset 0 0 24px rgba(230,199,110,0.09)' }} />
+          {/* Inner rotating dashed ring */}
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 18, repeat: Infinity, ease: 'linear' }}
+            style={{ position: 'absolute', inset: '13px', borderRadius: '50%', border: '1px dashed rgba(230,199,110,0.42)', pointerEvents: 'none' }}
+          />
+          <span style={{ fontSize: '30px', position: 'relative', zIndex: 1, color: 'rgba(230,199,110,0.95)', filter: 'drop-shadow(0 0 10px rgba(230,199,110,0.65))' }}>✦</span>
         </motion.div>
-        <p style={{ fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.22em', color: 'rgba(230,199,110,0.65)', textTransform: 'uppercase', textAlign: 'center', marginTop: '6px', whiteSpace: 'nowrap' }}>To the Universe</p>
+        <motion.p
+          animate={{ opacity: [0.6, 1, 0.6] }}
+          transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut' }}
+          style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.28em', color: 'rgba(230,199,110,0.85)', textTransform: 'uppercase', textAlign: 'center', marginTop: '10px', whiteSpace: 'nowrap' }}
+        >To the Universe</motion.p>
       </motion.div>
 
       {/* ── Loading ── */}
@@ -391,15 +408,17 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
       {/* ── Celestial letter objects ── */}
       {!loading && letters.map((letter, i) => {
         const pColor = PAPER_COLORS[letter.paperId] || PAPER_COLORS.ornate
+        const isSent = letter.direction === 'sent'
+        const isPinned = letter.status === 'archive'
         const isTransit = letter.status === 'transit'
         const isArrived = letter.status === 'arrived'
-        const isNew = isArrived && (currentTime - new Date(letter.arrivedAt || letter.sentAt).getTime()) < 48 * 3600000
+        const isNew = isArrived && !isSent && (currentTime - new Date(letter.arrivedAt || letter.sentAt).getTime()) < 48 * 3600000
         const isHovered = hoveredId === letter.id
         const isZooming = zoomTarget?.id === letter.id
         const cx = letter.cx ?? 50
         const cy = letter.cy ?? 50
-        const baseSize = isTransit ? 7 : isArrived ? (isNew ? 11 : 8) : 5
-        const opacity = letter.status === 'archive' ? 0.42 : isTransit ? 0.75 : 1
+        const baseSize = isPinned ? 11 : isSent ? 8 : isTransit ? 7 : (isNew ? 12 : 9)
+        const opacity = isPinned ? 0.8 : isSent ? 0.85 : isTransit ? 0.72 : 1
 
         return (
           <motion.div
@@ -426,46 +445,77 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
           >
             {/* Glow aura */}
             <motion.div
-              animate={isArrived && isNew ? { opacity: [0.3, 0.7, 0.3], scale: [1, 1.3, 1] } : isArrived ? { opacity: [0.2, 0.45, 0.2] } : { opacity: isHovered ? 0.45 : 0.12 }}
-              transition={{ duration: isNew ? 2.2 : 3.5, repeat: Infinity, ease: 'easeInOut', delay: sr(i * 7) * 2 }}
-              style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', width: `${baseSize * 12}px`, height: `${baseSize * 12}px`, borderRadius: '50%', background: `radial-gradient(circle, rgba(${pColor.glow},0.5) 0%, rgba(${pColor.glow},0) 70%)`, pointerEvents: 'none' }}
+              animate={isSent ? { opacity: [0.2, 0.5, 0.2], scale: [1, 1.22, 1] } : isArrived && isNew ? { opacity: [0.3, 0.7, 0.3], scale: [1, 1.3, 1] } : isArrived ? { opacity: [0.2, 0.45, 0.2] } : isPinned ? { opacity: [0.25, 0.55, 0.25] } : { opacity: isHovered ? 0.45 : 0.12 }}
+              transition={{ duration: isSent ? 3.6 + sr(i * 7) * 1.5 : isNew ? 2.2 : 3.5, repeat: Infinity, ease: 'easeInOut', delay: sr(i * 7) * 2 }}
+              style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', width: `${baseSize * 12}px`, height: `${baseSize * 12}px`, borderRadius: '50%', background: `radial-gradient(circle, rgba(${isSent ? '255,185,65' : pColor.glow},0.5) 0%, rgba(${isSent ? '255,185,65' : pColor.glow},0) 70%)`, pointerEvents: 'none' }}
             />
+
+            {/* Hover ripple ring */}
+            <AnimatePresence>
+              {isHovered && (
+                <motion.div
+                  key="ripple"
+                  initial={{ opacity: 0.75, scale: 0.5 }}
+                  animate={{ opacity: 0, scale: 3.2 }}
+                  exit={{}}
+                  transition={{ duration: 0.65, ease: 'easeOut' }}
+                  style={{
+                    position: 'absolute', left: '50%', top: '50%',
+                    width: `${baseSize * 3}px`, height: `${baseSize * 3}px`,
+                    transform: 'translate(-50%, -50%)',
+                    borderRadius: '50%',
+                    border: `1px solid rgba(${isSent ? '255,185,65' : pColor.glow},0.9)`,
+                    pointerEvents: 'none',
+                  }}
+                />
+              )}
+            </AnimatePresence>
 
             {/* Comet tail for transit */}
             {isTransit && (
               <motion.div
                 animate={{ opacity: [0.4, 0.8, 0.4], scaleX: [0.8, 1.2, 0.8] }}
                 transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut', delay: sr(i * 5) * 1.5 }}
-                style={{ position: 'absolute', right: `${baseSize}px`, top: '50%', transform: 'translateY(-50%)', width: `${20 + (letter.travelProgress ?? 50) * 0.4}px`, height: '2px', background: `linear-gradient(to left, rgba(${pColor.glow},0.7), transparent)`, borderRadius: '1px', pointerEvents: 'none', transformOrigin: 'right center' }}
+                style={{ position: 'absolute', right: `${baseSize}px`, top: '50%', transform: 'translateY(-50%)', width: `${20 + (letter.travelProgress ?? 50) * 0.4}px`, height: '2px', background: `linear-gradient(to left, rgba(${isSent ? '255,185,65' : pColor.glow},0.7), transparent)`, borderRadius: '1px', pointerEvents: 'none', transformOrigin: 'right center' }}
               />
             )}
 
             {/* Star/comet body */}
             <motion.div
-              animate={isArrived ? { scale: [1, 1.15, 1], opacity: [0.9, 1, 0.9] } : isTransit ? { x: [-2, 2, -2] } : {}}
-              transition={{ duration: isArrived ? 2.8 + sr(i * 3) * 1.5 : 1.4, repeat: Infinity, ease: 'easeInOut', delay: sr(i * 11) * 2 }}
+              animate={isSent ? { scale: [1, 1.07, 1], opacity: [0.8, 0.97, 0.8] } : isPinned ? {} : isArrived ? { scale: [1, 1.15, 1], opacity: [0.9, 1, 0.9] } : isTransit ? { x: [-2, 2, -2] } : {}}
+              transition={{ duration: isSent ? 3.2 + sr(i * 3) * 1.5 : isArrived ? 2.8 + sr(i * 3) * 1.5 : 1.4, repeat: Infinity, ease: 'easeInOut', delay: sr(i * 11) * 2 }}
               style={{
                 width: `${isHovered ? baseSize * 2.4 : baseSize * 2}px`, height: `${isHovered ? baseSize * 2.4 : baseSize * 2}px`,
                 borderRadius: '50%',
-                background: isTransit
-                  ? `radial-gradient(circle, rgba(255,230,150,0.9) 0%, rgba(${pColor.glow},0.4) 60%, transparent 100%)`
-                  : isArrived
-                    ? `radial-gradient(circle, rgba(255,255,255,0.98) 0%, rgba(${pColor.glow},0.8) 40%, rgba(${pColor.glow},0) 100%)`
-                    : `radial-gradient(circle, rgba(180,180,220,0.7) 0%, rgba(140,140,180,0.18) 60%, transparent 100%)`,
+                background: isSent
+                  ? `radial-gradient(circle, rgba(255,200,70,0.95) 0%, rgba(201,155,40,0.55) 40%, transparent 100%)`
+                  : isPinned
+                    ? `radial-gradient(circle, rgba(255,248,220,0.98) 0%, rgba(${pColor.glow},0.75) 40%, transparent 100%)`
+                    : isTransit
+                      ? `radial-gradient(circle, rgba(200,220,255,0.9) 0%, rgba(${pColor.glow},0.4) 60%, transparent 100%)`
+                      : `radial-gradient(circle, rgba(255,255,255,0.98) 0%, rgba(${pColor.glow},0.8) 40%, rgba(${pColor.glow},0) 100%)`,
                 boxShadow: isHovered
-                  ? `0 0 ${baseSize * 4}px rgba(${pColor.glow},0.95), 0 0 ${baseSize * 8}px rgba(${pColor.glow},0.35)`
-                  : isArrived ? `0 0 ${baseSize * 2}px rgba(${pColor.glow},0.55)` : isTransit ? '0 0 6px rgba(255,230,150,0.45)' : 'none',
+                  ? `0 0 ${baseSize * 4}px rgba(${isSent ? '255,185,65' : pColor.glow},0.95), 0 0 ${baseSize * 8}px rgba(${isSent ? '255,185,65' : pColor.glow},0.4)`
+                  : isSent
+                    ? `0 0 ${baseSize * 2}px rgba(255,185,65,0.7), 0 0 ${baseSize * 5}px rgba(201,155,40,0.3)`
+                    : isPinned
+                      ? `0 0 ${baseSize * 2.5}px rgba(${pColor.glow},0.85), 0 0 ${baseSize * 5}px rgba(${pColor.glow},0.35)`
+                      : isArrived
+                        ? `0 0 ${baseSize * 2}px rgba(${pColor.glow},0.55)`
+                        : isTransit
+                          ? '0 0 6px rgba(200,220,255,0.45)'
+                          : 'none',
                 transition: 'box-shadow 0.3s, width 0.2s, height 0.2s',
               }}
             />
 
-            {/* 4-point diffraction spikes for arrived stars */}
-            {isArrived && [0, 90].map(rot => (
+            {/* 4-point diffraction spikes for arrived/pinned stars */}
+            {!isSent && (isArrived || isPinned) && [0, 90].map(rot => (
               <div key={rot} style={{
                 position: 'absolute', left: '50%', top: '50%',
                 transform: `translate(-50%, -50%) rotate(${rot}deg)`,
-                width: isHovered ? `${baseSize * 8}px` : `${baseSize * 4}px`, height: '1px',
-                background: `linear-gradient(to right, transparent, rgba(${pColor.glow},${isHovered ? 0.85 : 0.4}), transparent)`,
+                width: isHovered ? `${baseSize * 8}px` : `${isPinned ? baseSize * 5 : baseSize * 4}px`, height: '1px',
+                background: `linear-gradient(to right, transparent, rgba(${pColor.glow},${isHovered ? 0.85 : isPinned ? 0.65 : 0.4}), transparent)`,
                 transition: 'width 0.3s', pointerEvents: 'none',
               }} />
             ))}
