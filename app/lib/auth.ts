@@ -138,6 +138,13 @@ export async function signUpAndCreateHub(
   if (authError) throw authError
   if (!authData.user) throw new Error('Signup limit reached. Please try again in an hour, or contact support.')
 
+  // When Supabase email confirmation is enabled, signUp returns no session.
+  // The hub insert would fail without an authenticated session (RLS).
+  // Signal the caller to show a "check your email" screen instead.
+  if (!authData.session) {
+    throw new Error('PLEASE_CONFIRM_EMAIL')
+  }
+
   const { error: hubError } = await supabase.from('hubs').insert([
     {
       id: authData.user.id,

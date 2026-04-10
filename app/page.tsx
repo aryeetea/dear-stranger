@@ -40,6 +40,7 @@ type Screen =
   | 'universe'
   | 'loading'
   | 'generating'
+  | 'confirm_email'
 
 const STARS = Array.from({ length: 30 }, (_, i) => ({
   left: `${((i * 37 + 11) % 100)}%`,
@@ -497,6 +498,7 @@ export default function Home() {
     email: string
     password: string
   } | null>(null)
+  const [confirmEmail, setConfirmEmail] = useState('')
   const [onboardingError, setOnboardingError] = useState('')
   const [onboardingResumeState, setOnboardingResumeState] =
     useState<SoulMirrorResumeState | null>(null)
@@ -795,7 +797,13 @@ export default function Home() {
           } catch (signUpErr) {
             // Auth user may already exist from a previous partial attempt — sign in instead
             const msg = signUpErr instanceof Error ? signUpErr.message.toLowerCase() : ''
-            if (msg.includes('already registered') || msg.includes('already exists') || msg.includes('user already')) {
+            if (msg === 'please_confirm_email') {
+              // Email confirmation required — auth user created, no session yet
+              setConfirmEmail(pendingCredentials.email)
+              setPendingCredentials(null)
+              setScreen('confirm_email')
+              return
+            } else if (msg.includes('already registered') || msg.includes('already exists') || msg.includes('user already')) {
               signUpFailed = true
             } else if (msg.includes('signup limit') || msg.includes('no user returned')) {
               throw new Error('Signup limit reached. Please try again in an hour, or ask the app owner to create your account.')
@@ -805,13 +813,35 @@ export default function Home() {
           }
 
           if (signUpFailed) {
-            await signIn(pendingCredentials.email, pendingCredentials.password)
+            try {
+              await signIn(pendingCredentials.email, pendingCredentials.password)
+            } catch (signInErr) {
+              const signInMsg = signInErr instanceof Error ? signInErr.message.toLowerCase() : ''
+              if (signInMsg.includes('not confirmed') || signInMsg.includes('email not confirmed')) {
+                setConfirmEmail(pendingCredentials.email)
+                setPendingCredentials(null)
+                setScreen('confirm_email')
+                return
+              }
+              throw signInErr
+            }
           }
 
           session = await getSession()
 
           if (!session) {
-            await signIn(pendingCredentials.email, pendingCredentials.password)
+            try {
+              await signIn(pendingCredentials.email, pendingCredentials.password)
+            } catch (signInErr) {
+              const signInMsg = signInErr instanceof Error ? signInErr.message.toLowerCase() : ''
+              if (signInMsg.includes('not confirmed') || signInMsg.includes('email not confirmed')) {
+                setConfirmEmail(pendingCredentials.email)
+                setPendingCredentials(null)
+                setScreen('confirm_email')
+                return
+              }
+              throw signInErr
+            }
             session = await getSession()
           }
 
@@ -881,21 +911,20 @@ export default function Home() {
           }
         })()
       } catch (err) {
-        if (
-          err instanceof Error &&
-          err.message === 'That hub name is already taken. Choose another one.'
-        ) {
+        const errMsg = err instanceof Error ? err.message : ''
+        if (errMsg === 'PLEASE_CONFIRM_EMAIL') {
+          setConfirmEmail(pendingCredentials?.email ?? '')
+          setPendingCredentials(null)
+          setScreen('confirm_email')
+        } else if (errMsg === 'That hub name is already taken. Choose another one.') {
           setOnboardingResumeState({ ...resumeState, phase: 'hubname' })
+          setScreen('onboarding')
+          setOnboardingError(errMsg)
         } else {
           setOnboardingResumeState(resumeState)
+          setScreen('onboarding')
+          setOnboardingError(errMsg || 'Your hub could not be created yet. Please try again.')
         }
-
-        setScreen('onboarding')
-        setOnboardingError(
-          err instanceof Error
-            ? err.message
-            : 'Your hub could not be created yet. Please try again.',
-        )
       }
     } finally {
       onboardingInFlightRef.current = false
@@ -1008,6 +1037,43 @@ export default function Home() {
         </div>
 
         <style>{`@keyframes pulse { 0%, 100% { transform: scale(1); opacity: 0.6; } 50% { transform: scale(1.08); opacity: 1; } }`}</style>
+      </div>
+    )
+  }
+
+  if (screen === 'confirm_email') {
+    return (
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: '#060a18',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '20px',
+          padding: '32px',
+        }}
+      >
+        <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', background: 'radial-gradient(ellipse 70% 50% at 50% 45%, rgba(90,20,180,0.45) 0%, rgba(15,45,155,0.2) 55%, transparent 80%)' }} />
+        <div style={{ position: 'relative', zIndex: 2, textAlign: 'center', maxWidth: '420px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
+          <span style={{ fontSize: '36px', color: 'rgba(201,168,76,0.85)', filter: 'drop-shadow(0 0 12px rgba(201,168,76,0.4))' }}>✉</span>
+          <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.4em', color: 'rgba(201,168,76,0.7)', textTransform: 'uppercase' }}>Check your inbox</p>
+          <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '17px', color: 'rgba(255,255,255,0.75)', lineHeight: 1.6 }}>
+            A confirmation link has been sent to<br />
+            <span style={{ color: 'rgba(201,168,76,0.9)' }}>{confirmEmail}</span>
+          </p>
+          <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(255,255,255,0.35)', lineHeight: 1.6 }}>
+            Click the link in that email to activate your account, then return here to complete your hub.
+          </p>
+          <button
+            onClick={() => { setScreen('landing') }}
+            style={{ marginTop: '8px', background: 'none', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.45)', fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.3em', padding: '9px 20px', cursor: 'pointer', textTransform: 'uppercase' }}
+            onMouseEnter={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.75)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.3)' }}
+            onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.45)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)' }}
+          >← Back to start</button>
+        </div>
       </div>
     )
   }
