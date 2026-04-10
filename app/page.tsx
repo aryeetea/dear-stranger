@@ -709,6 +709,24 @@ export default function Home() {
         // Only auto-route if not restoring from localStorage
         if (screen === 'loading') {
           await routeFromSession()
+        } else {
+          // If restoring a screen that requires session/hub, check session first
+          const protectedScreens = ['universe','observatory','profile','scribe','drift','pagesOpen']
+          if (protectedScreens.includes(screen)) {
+            const session = await getSession()
+            if (!session) {
+              setScreen('landing')
+              return
+            }
+            let hub = null
+            try {
+              hub = await getMyHub(session.user?.id)
+            } catch {}
+            if (!hub) {
+              setScreen('onboarding')
+              return
+            }
+          }
         }
       } catch (err) {
         console.error('checkSession failed:', err)
