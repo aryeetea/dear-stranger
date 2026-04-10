@@ -406,9 +406,9 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }} style={{ position: 'absolute', bottom: '52px', left: '36px', zIndex: 10, pointerEvents: 'none', display: 'flex', flexDirection: 'column', gap: '9px' }}>
           {[
           { dot: `radial-gradient(circle, rgba(255,255,255,1) 0%, rgba(${RECEIVED_GLOW_RGB},0.9) 45%, transparent 100%)`, shadow: `0 0 7px 2px rgba(${RECEIVED_GLOW_RGB},0.6)`, label: 'Received', sub: 'arrived & waiting' },
-          { dot: `radial-gradient(circle, rgba(110,165,255,1) 0%, rgba(80,130,255,0.7) 45%, transparent 100%)`, shadow: `0 0 7px 2px rgba(110,165,255,0.65)`, label: 'In Transit', sub: 'crossing the dark' },
-          { dot: 'radial-gradient(circle, rgba(255,200,70,1) 0%, rgba(201,130,20,0.8) 45%, transparent 100%)', shadow: `0 0 7px 2px rgba(${SENT_GLOW_RGB},0.75)`, label: 'Sent', sub: 'energy moving away' },
-          { dot: `radial-gradient(circle, rgba(255,248,210,1) 0%, rgba(${RECEIVED_GLOW_RGB},0.9) 45%, transparent 100%)`, shadow: `0 0 8px 2px rgba(${RECEIVED_GLOW_RGB},0.9)`, label: 'Pinned', sub: 'held close, always' },
+          { dot: `radial-gradient(circle, rgba(100,170,255,1) 0%, rgba(60,110,240,0.7) 45%, transparent 100%)`, shadow: `0 0 7px 2px rgba(100,170,255,0.65)`, label: 'In Transit', sub: 'crossing the dark' },
+          { dot: 'radial-gradient(circle, rgba(255,180,40,1) 0%, rgba(200,120,10,0.8) 45%, transparent 100%)', shadow: `0 0 7px 2px rgba(${SENT_GLOW_RGB},0.75)`, label: 'Sent', sub: 'energy moving away' },
+          { dot: `radial-gradient(circle, rgba(230,200,255,1) 0%, rgba(180,140,240,0.9) 45%, transparent 100%)`, shadow: `0 0 8px 2px rgba(180,140,240,0.8)`, label: 'Pinned', sub: 'held close, always' },
         ].map(item => (
           <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div style={{ width: '16px', height: '16px', borderRadius: '50%', background: item.dot, flexShrink: 0, boxShadow: item.shadow }} />
@@ -490,7 +490,9 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
           ? SENT_GLOW_RGB
           : isTransit
             ? TRANSIT_GLOW_RGB
-            : pColor.glow
+            : isPinned
+              ? '220,180,255'
+              : RECEIVED_GLOW_RGB
         const driftX = isTransit ? (sr(i * 13) * 50) - 25 : 0
         const driftY = isTransit ? (sr(i * 17) * 24) - 12 : 0
         const driftDur = isTransit ? 22 + sr(i * 23) * 18 : 0
@@ -568,22 +570,22 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
                 width: `${isHovered ? baseSize * 2.4 : baseSize * 2}px`, height: `${isHovered ? baseSize * 2.4 : baseSize * 2}px`,
                 borderRadius: '50%',
                 background: isSent
-                  ? `radial-gradient(circle, rgba(255,200,70,0.95) 0%, rgba(201,155,40,0.55) 40%, transparent 100%)`
+                  ? `radial-gradient(circle, rgba(255,180,40,0.98) 0%, rgba(200,120,10,0.6) 45%, transparent 100%)`
                   : isPinned
-                    ? `radial-gradient(circle, rgba(255,248,220,0.98) 0%, rgba(${pColor.glow},0.75) 40%, transparent 100%)`
+                    ? `radial-gradient(circle, rgba(230,200,255,0.98) 0%, rgba(180,140,240,0.7) 45%, transparent 100%)`
                     : isTransit
-                      ? `radial-gradient(circle, rgba(110,165,255,0.95) 0%, rgba(80,130,255,0.5) 45%, rgba(${pColor.glow},0.2) 70%, transparent 100%)`
-                      : `radial-gradient(circle, rgba(255,255,255,0.98) 0%, rgba(${pColor.glow},0.8) 40%, rgba(${pColor.glow},0) 100%)`,
+                      ? `radial-gradient(circle, rgba(100,170,255,0.98) 0%, rgba(60,110,240,0.6) 50%, transparent 100%)`
+                      : `radial-gradient(circle, rgba(255,255,255,0.98) 0%, rgba(${RECEIVED_GLOW_RGB},0.75) 40%, transparent 100%)`,
                 boxShadow: isHovered
                   ? `0 0 ${baseSize * 4}px rgba(${statusGlowRgb},0.95), 0 0 ${baseSize * 8}px rgba(${statusGlowRgb},0.4)`
                   : isSent
-                    ? `0 0 ${baseSize * 2}px rgba(${SENT_GLOW_RGB},0.7), 0 0 ${baseSize * 5}px rgba(201,155,40,0.3)`
+                    ? `0 0 ${baseSize * 2}px rgba(${SENT_GLOW_RGB},0.8), 0 0 ${baseSize * 5}px rgba(200,120,10,0.35)`
                     : isPinned
-                      ? `0 0 ${baseSize * 2.5}px rgba(${pColor.glow},0.85), 0 0 ${baseSize * 5}px rgba(${pColor.glow},0.35)`
+                      ? `0 0 ${baseSize * 2.5}px rgba(180,140,240,0.85), 0 0 ${baseSize * 5}px rgba(160,120,220,0.4)`
                       : isArrived
-                        ? `0 0 ${baseSize * 2}px rgba(${pColor.glow},0.55)`
+                        ? `0 0 ${baseSize * 2}px rgba(${RECEIVED_GLOW_RGB},0.6)`
                         : isTransit
-                          ? `0 0 6px rgba(${TRANSIT_GLOW_RGB},0.45)`
+                          ? `0 0 6px rgba(100,170,255,0.55)`
                           : 'none',
                 transition: 'box-shadow 0.3s, width 0.2s, height 0.2s',
               }}
@@ -595,9 +597,22 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
                 position: 'absolute', left: '50%', top: '50%',
                 transform: `translate(-50%, -50%) rotate(${rot}deg)`,
                 width: isHovered ? `${baseSize * 8}px` : `${isPinned ? baseSize * 5 : baseSize * 4}px`, height: '1px',
-                background: `linear-gradient(to right, transparent, rgba(${pColor.glow},${isHovered ? 0.85 : isPinned ? 0.65 : 0.4}), transparent)`,
+                background: isPinned
+                  ? `linear-gradient(to right, transparent, rgba(180,140,240,${isHovered ? 0.85 : 0.65}), transparent)`
+                  : `linear-gradient(to right, transparent, rgba(${RECEIVED_GLOW_RGB},${isHovered ? 0.85 : 0.4}), transparent)`,
                 transition: 'width 0.3s', pointerEvents: 'none',
               }} />
+            ))}
+            {/* Extra 45° spikes for pinned only */}
+            {isPinned && [45, 135].map(rot => (
+              <div key={rot} style={{
+                position: 'absolute', left: '50%', top: '50%',
+                transform: `translate(-50%, -50%) rotate(${rot}deg)`,
+                width: isHovered ? `${baseSize * 6}px` : `${baseSize * 3.5}px`, height: '1px',
+                background: `linear-gradient(to right, transparent, rgba(180,140,240,${isHovered ? 0.7 : 0.45}), transparent)`,
+                transition: 'width 0.3s', pointerEvents: 'none',
+              }} />
+            ))}
             ))}            </motion.div>
           </motion.div>
         )
