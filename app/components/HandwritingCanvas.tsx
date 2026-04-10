@@ -264,7 +264,18 @@ const HandwritingCanvas = forwardRef<HandwritingCanvasRef, Props>(function Handw
   }), [hasContent, handleClear])
 
   return (
-    <div ref={containerRef} style={{ width: '100%', position: 'relative', ...style }}>
+    <div
+      ref={containerRef}
+      style={{
+        width: '100%',
+        position: 'relative',
+        WebkitUserSelect: 'none',
+        userSelect: 'none',
+        WebkitTouchCallout: 'none',
+        WebkitTapHighlightColor: 'transparent',
+        ...style,
+      }}
+    >
       {/* Toolbar */}
       <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap' }}>
         {[
@@ -296,11 +307,13 @@ const HandwritingCanvas = forwardRef<HandwritingCanvasRef, Props>(function Handw
 
       <canvas
         ref={canvasRef}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerLeave={handlePointerUp}
-        onPointerCancel={handlePointerUp}
+        onPointerDown={e => { handlePointerDown(e); e.stopPropagation(); }}
+        onPointerMove={e => { handlePointerMove(e); e.stopPropagation(); }}
+        onPointerUp={e => { handlePointerUp(e); e.stopPropagation(); }}
+        onPointerLeave={e => { handlePointerUp(e); e.stopPropagation(); }}
+        onPointerCancel={e => { handlePointerUp(e); e.stopPropagation(); }}
+        draggable={false}
+        tabIndex={-1}
         style={{
           width: '100%',
           display: 'block',
@@ -311,6 +324,10 @@ const HandwritingCanvas = forwardRef<HandwritingCanvasRef, Props>(function Handw
           border: '1.5px solid rgba(230,199,110,0.4)',
           position: 'relative',
           zIndex: 1,
+          WebkitUserSelect: 'none',
+          userSelect: 'none',
+          WebkitTouchCallout: 'none',
+          WebkitTapHighlightColor: 'transparent',
         }}
       />
 
