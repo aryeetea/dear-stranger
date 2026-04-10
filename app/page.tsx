@@ -807,12 +807,7 @@ export default function Home() {
       setScreen('generating')
       setGeneratingStatus('Crafting your soul mirror...')
 
-      try {
-        onboardingInFlightRef.current = true
-        setScreen('generating')
-        setGeneratingStatus('Crafting your soul mirror...')
-
-        let session = await getSession()
+      let session = await getSession()
 
         if (pendingCredentials) {
           let signUpFailed = false
@@ -943,21 +938,20 @@ export default function Home() {
             setAvatarGenerating(false)
           }
         })()
-      } catch (err) {
-        const errMsg = err instanceof Error ? err.message : ''
-        if (errMsg === 'PLEASE_CONFIRM_EMAIL') {
-          setConfirmEmail(pendingCredentials?.email ?? '')
-          setPendingCredentials(null)
-          setScreen('confirm_email')
-        } else if (errMsg === 'That hub name is already taken. Choose another one.') {
-          setOnboardingResumeState({ ...resumeState, phase: 'hubname' })
-          setScreen('onboarding')
-          setOnboardingError(errMsg)
-        } else {
-          setOnboardingResumeState(resumeState)
-          setScreen('onboarding')
-          setOnboardingError(errMsg || 'Your hub could not be created yet. Please try again.')
-        }
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : ''
+      if (errMsg === 'PLEASE_CONFIRM_EMAIL') {
+        setConfirmEmail(pendingCredentials?.email ?? '')
+        setPendingCredentials(null)
+        setScreen('confirm_email')
+      } else if (errMsg === 'That hub name is already taken. Choose another one.') {
+        setOnboardingResumeState({ ...resumeState, phase: 'hubname' })
+        setScreen('onboarding')
+        setOnboardingError(errMsg)
+      } else {
+        setOnboardingResumeState(resumeState)
+        setScreen('onboarding')
+        setOnboardingError(errMsg || 'Your hub could not be created yet. Please try again.')
       }
     } finally {
       onboardingInFlightRef.current = false

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import OpenAI from 'openai'
+import { createClient } from '@supabase/supabase-js'
 
 export const maxDuration = 120
 
@@ -54,6 +55,17 @@ export async function POST(req: Request) {
     const authHeader = req.headers.get('authorization')
     const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null
     if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    if (!supabaseUrl || !supabaseAnonKey) {
+      return NextResponse.json({ error: 'Server misconfiguration' }, { status: 500 })
+    }
+    const supabase = createClient(supabaseUrl, supabaseAnonKey)
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
     const body = await req.json() as { answers?: Record<string, unknown>; style?: string; userId?: string }
     const { answers, style, userId } = body

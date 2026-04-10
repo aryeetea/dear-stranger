@@ -191,12 +191,13 @@ export async function POST(req: Request) {
     }
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    if (supabaseUrl && supabaseAnonKey) {
-      const supabase = createClient(supabaseUrl, supabaseAnonKey)
-      const { data: { user }, error: userError } = await supabase.auth.getUser(token)
-      if (userError || !user) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-      }
+    if (!supabaseUrl || !supabaseAnonKey) {
+      return NextResponse.json({ error: 'Server misconfiguration' }, { status: 500 })
+    }
+    const supabase = createClient(supabaseUrl, supabaseAnonKey)
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token)
+    if (userError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const body = await req.json()
