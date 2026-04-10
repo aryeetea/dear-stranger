@@ -638,19 +638,19 @@ export default function Home() {
         return
       }
 
+      const userId = session.user?.id
       let hub = null
       try {
-        hub = await timeoutPromise(getMyHub(), 5000, 'getMyHub')
+        hub = await timeoutPromise(getMyHub(userId), 3000, 'getMyHub')
         console.log('[routeFromSession] getMyHub result:', hub)
       } catch (err) {
         console.error('[routeFromSession] getMyHub error:', err)
       }
 
-      // Retry once if hub fetch failed — could be a transient JWT/network issue
+      // Retry once if hub fetch failed — could be a transient network issue
       if (!hub) {
         try {
-          await new Promise(r => setTimeout(r, 1200))
-          hub = await timeoutPromise(getMyHub(), 5000, 'getMyHub retry')
+          hub = await timeoutPromise(getMyHub(userId), 3000, 'getMyHub retry')
           console.log('[routeFromSession] getMyHub retry result:', hub)
         } catch (err) {
           console.error('[routeFromSession] getMyHub retry error:', err)

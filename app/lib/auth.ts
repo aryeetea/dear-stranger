@@ -630,31 +630,35 @@ export async function getSession() {
   }
 }
 
-export async function getMyHub() {
+export async function getMyHub(userId?: string) {
   try {
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser()
+    let uid = userId
+    if (!uid) {
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser()
 
-    if (userError) {
-      if (
-        userError.message?.includes('Refresh Token') ||
-        userError.message?.includes('refresh_token')
-      ) {
-        try {
-          await supabase.auth.signOut()
-        } catch {}
+      if (userError) {
+        if (
+          userError.message?.includes('Refresh Token') ||
+          userError.message?.includes('refresh_token')
+        ) {
+          try {
+            await supabase.auth.signOut()
+          } catch {}
+        }
+        return null
       }
-      return null
-    }
 
-    if (!user) return null
+      if (!user) return null
+      uid = user.id
+    }
 
     const { data, error } = await supabase
       .from('hubs')
       .select('*')
-      .eq('id', user.id)
+      .eq('id', uid)
       .maybeSingle()
 
     if (error) {

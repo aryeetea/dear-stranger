@@ -70,11 +70,11 @@ export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: (
   const [titleOut, setTitleOut] = useState(false)
   useEffect(() => {
     const timers = [
-      setTimeout(() => setTitleOut(true), 5500),
-      setTimeout(() => setPhase(1), 6400),
-      setTimeout(() => setPhase(2), 8000),
-      setTimeout(() => setPhase(3), 9000),
-      setTimeout(() => setPhase(4), 10400),
+      setTimeout(() => setTitleOut(true), 2500),
+      setTimeout(() => setPhase(1), 3200),
+      setTimeout(() => setPhase(2), 4600),
+      setTimeout(() => setPhase(3), 5400),
+      setTimeout(() => setPhase(4), 6600),
     ]
     return () => timers.forEach(clearTimeout)
   }, [])

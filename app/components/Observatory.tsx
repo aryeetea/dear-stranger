@@ -146,6 +146,13 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max)
 }
 
+function clampPanOffset(x: number, y: number) {
+  return {
+    x: clamp(x, -180, 180),
+    y: clamp(y, -140, 140),
+  }
+}
+
 function formatObservatoryDate(dateString?: string) {
   if (!dateString) return 'Awaiting a timestamp'
   return new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
@@ -192,6 +199,7 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
   const [zoomTarget, setZoomTarget] = useState<Letter | null>(null)
   const [countHovered, setCountHovered] = useState(false)
   const [pan, setPan] = useState({ x: 0, y: 0 })
+  const [isDragging, setIsDragging] = useState(false)
   const isPanning = useRef(false)
   const panStart = useRef({ x: 0, y: 0 })
   const panOrigin = useRef({ x: 0, y: 0 })
@@ -266,24 +274,31 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
     if (!containerRef.current) return
     const rect = containerRef.current.getBoundingClientRect()
     setMousePos({ x: (e.clientX - rect.left) / rect.width, y: (e.clientY - rect.top) / rect.height })
-    if (isPanning.current) {
-      const dx = e.clientX - panStart.current.x
-      const dy = e.clientY - panStart.current.y
-      setPan({ x: panOrigin.current.x + dx, y: panOrigin.current.y + dy })
-    }
   }, [])
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
-    // Only start pan on background clicks (not on letter markers)
-    if ((e.target as HTMLElement).closest('[data-letter]')) return
+    if ((e.target as HTMLElement).closest('[data-letter],[data-no-pan]')) return
     isPanning.current = true
+    setIsDragging(true)
     panStart.current = { x: e.clientX, y: e.clientY }
     panOrigin.current = { ...pan }
-    ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+    ;(e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId)
   }, [pan])
 
-  const handlePointerUp = useCallback(() => {
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    if (!isPanning.current) return
+    const dx = e.clientX - panStart.current.x
+    const dy = e.clientY - panStart.current.y
+    setPan(clampPanOffset(panOrigin.current.x + dx, panOrigin.current.y + dy))
+  }, [])
+
+  const handlePointerUp = useCallback((e?: React.PointerEvent) => {
     isPanning.current = false
+    setIsDragging(false)
+    if (e) {
+      const target = e.currentTarget as HTMLElement
+      if (target.hasPointerCapture?.(e.pointerId)) target.releasePointerCapture(e.pointerId)
+    }
   }, [])
 
   function handlePin(letter: Letter) {
@@ -345,9 +360,11 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
       transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
       onMouseMove={handleMouseMove}
       onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(3,2,10,0.88)', backdropFilter: 'blur(18px)', zIndex: 70, overflow: 'hidden', cursor: 'grab' }}
+      onPointerLeave={handlePointerUp}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(3,2,10,0.88)', backdropFilter: 'blur(18px)', zIndex: 70, overflow: 'hidden', cursor: isDragging ? 'grabbing' : 'grab', touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none' }}
     >
       {/* ── Deep space background ── */}
       <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }} aria-hidden="true">
@@ -453,7 +470,7 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
             </motion.div>
           )}
         </motion.div>
-        <motion.button initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} onClick={onClose} style={{ pointerEvents: 'all', background: 'none', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.75)', fontFamily: "'Cinzel', serif", fontSize: 'clamp(8px, 1.2vw, 10px)', letterSpacing: '0.3em', padding: '8px 16px', cursor: 'pointer', textTransform: 'uppercase', minHeight: '44px', display: 'flex', alignItems: 'center' }} onMouseEnter={e => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.45)' }} onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.75)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)' }}>← Universe</motion.button>
+        <motion.button data-no-pan="true" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} onClick={onClose} style={{ pointerEvents: 'all', background: 'none', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.75)', fontFamily: "'Cinzel', serif", fontSize: 'clamp(8px, 1.2vw, 10px)', letterSpacing: '0.3em', padding: '8px 16px', cursor: 'pointer', textTransform: 'uppercase', minHeight: '44px', display: 'flex', alignItems: 'center' }} onMouseEnter={e => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.45)' }} onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.75)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)' }}>← Universe</motion.button>
       </div>
 
       {/* ── Latest Signal ── */}
@@ -510,7 +527,7 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
       </motion.div>
 
       {/* ── "To the Universe" portal ── */}
-      <motion.div initial={{ opacity: 0, scale: 0 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.8, type: 'spring', stiffness: 200 }} style={{ position: 'absolute', bottom: 'clamp(36px, 6vh, 52px)', right: 'clamp(14px, 3vw, 36px)', zIndex: 10, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center' }} onClick={() => { setPortalPulse(true); setTimeout(() => { setPortalPulse(false); onWriteLetter?.('') }, 600) }}>
+      <motion.div data-no-pan="true" initial={{ opacity: 0, scale: 0 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.8, type: 'spring', stiffness: 200 }} style={{ position: 'absolute', bottom: 'clamp(36px, 6vh, 52px)', right: 'clamp(14px, 3vw, 36px)', zIndex: 10, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center' }} onClick={() => { setPortalPulse(true); setTimeout(() => { setPortalPulse(false); onWriteLetter?.('') }, 600) }}>
         <motion.div
           animate={portalPulse ? { scale: [1, 2.8, 0.1], opacity: [1, 0.8, 0] } : {}}
           transition={portalPulse ? { duration: 0.6, ease: 'easeOut' } : {}}
@@ -711,7 +728,7 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
             initial={{ opacity: 0, scale: 0.92, y: 6 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ duration: 0.18 }}
             style={{
               position: 'absolute', left: `${tooltip.x}%`, top: `${tooltip.y}%`,
-              transform: `translate(${tooltip.x > 68 ? 'calc(-100% - 18px)' : '18px'}, ${tooltip.y > 68 ? 'calc(-100% - 8px)' : '8px'})`,
+              transform: `translate(${pan.x}px, ${pan.y}px) translate(${tooltip.x > 68 ? 'calc(-100% - 18px)' : '18px'}, ${tooltip.y > 68 ? 'calc(-100% - 8px)' : '8px'})`,
               zIndex: 30, pointerEvents: 'none', maxWidth: '220px',
               padding: '12px 14px', borderRadius: '14px',
               background: 'rgba(8,5,18,0.94)', border: `1px solid rgba(${PAPER_COLORS[tooltip.letter.paperId]?.glow || '230,199,110'},0.3)`,
