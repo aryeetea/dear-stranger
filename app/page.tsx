@@ -43,6 +43,8 @@ type Screen =
   | 'generating'
   | 'confirm_email'
 
+type UniverseOverlay = 'observatory' | 'profile' | 'drift' | 'pages' | null
+
 const STARS = Array.from({ length: 30 }, (_, i) => ({
   left: `${((i * 37 + 11) % 100)}%`,
   top: `${((i * 53 + 7) % 100)}%`,
@@ -51,6 +53,8 @@ const STARS = Array.from({ length: 30 }, (_, i) => ({
 }))
 
 const HUB_COLOR_IDS: HubColor[] = ['gold', 'sage', 'rose', 'azure', 'amber', 'violet', 'teal', 'sand']
+const LAST_SCREEN_KEY = 'ds_last_screen'
+const LAST_OVERLAY_KEY = 'ds_last_overlay'
 
 function coerceHubColor(value?: string | null): HubColor {
   return HUB_COLOR_IDS.includes(value as HubColor) ? (value as HubColor) : 'gold'
@@ -462,11 +466,10 @@ function LetterDepartAnimation({ onDone }: { onDone: () => void }) {
 
 export default function Home() {
   const router = useRouter()
-  // Persist screen in localStorage
   const [screen, setScreen] = useState<Screen>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('ds_last_screen') as Screen | null
-      if (saved && ['universe','observatory','profile','scribe','drift','pagesOpen'].includes(saved)) return saved
+      const saved = localStorage.getItem(LAST_SCREEN_KEY) as Screen | null
+      if (saved && ['universe', 'landing', 'entry', 'onboarding', 'confirm_email'].includes(saved)) return saved
     }
     return 'loading'
   })
@@ -514,6 +517,28 @@ export default function Home() {
   const screenRef = useRef<Screen>('loading')
   const onboardingInFlightRef = useRef(false)
 
+  const getSavedOverlay = useCallback((): UniverseOverlay => {
+    if (typeof window === 'undefined') return null
+    const saved = localStorage.getItem(LAST_OVERLAY_KEY)
+    return saved === 'observatory' || saved === 'profile' || saved === 'drift' || saved === 'pages'
+      ? saved
+      : null
+  }, [])
+
+  const setSavedOverlay = useCallback((overlay: UniverseOverlay) => {
+    if (typeof window === 'undefined') return
+    if (overlay) localStorage.setItem(LAST_OVERLAY_KEY, overlay)
+    else localStorage.removeItem(LAST_OVERLAY_KEY)
+  }, [])
+
+  const restoreUniverseOverlay = useCallback(() => {
+    const savedOverlay = getSavedOverlay()
+    setObservatoryOpen(savedOverlay === 'observatory')
+    setProfileOpen(savedOverlay === 'profile')
+    setDriftOpen(savedOverlay === 'drift')
+    setPagesOpen(savedOverlay === 'pages')
+  }, [getSavedOverlay])
+
   const clearHubState = useCallback((resetResume = true) => {
     setHubName('')
     setHubBio('')
@@ -528,16 +553,35 @@ export default function Home() {
     setHubRegenCount(0)
     setHubCreatedAt('')
     setHubAvatarPending(null)
+    setObservatoryOpen(false)
+    setProfileOpen(false)
+    setDriftOpen(false)
+    setPagesOpen(false)
     if (resetResume) setOnboardingResumeState(null)
   }, [])
 
   useEffect(() => {
     screenRef.current = screen
-    // Save screen to localStorage for persistence
     if (typeof window !== 'undefined') {
-      localStorage.setItem('ds_last_screen', screen)
+      localStorage.setItem(LAST_SCREEN_KEY, screen)
     }
   }, [screen])
+
+  useEffect(() => {
+    if (screen !== 'universe') {
+      setSavedOverlay(null)
+      return
+    }
+
+    const activeOverlay: UniverseOverlay =
+      observatoryOpen ? 'observatory'
+      : profileOpen ? 'profile'
+      : driftOpen ? 'drift'
+      : pagesOpen ? 'pages'
+      : null
+
+    setSavedOverlay(activeOverlay)
+  }, [driftOpen, observatoryOpen, pagesOpen, profileOpen, screen, setSavedOverlay])
 
   // Auto-retry avatar generation when returning to universe with a pending description,
   // or as a fallback for users who have no avatar and no pending prompt (use their bio).
@@ -644,6 +688,7 @@ export default function Home() {
           return
         }
         clearHubState()
+        setSavedOverlay(null)
         setScreen('landing')
         console.log('[routeFromSession] no session, go to landing')
         return
@@ -686,20 +731,23 @@ export default function Home() {
         setOnboardingResumeState(null)
 
         setScreen('universe')
+        restoreUniverseOverlay()
         console.log('[routeFromSession] session+hub, go to universe')
         return
       }
 
       clearHubState(false)
+      setSavedOverlay(null)
       setScreen('onboarding')
       console.log('[routeFromSession] session+no hub, go to onboarding')
     } catch (err) {
       console.error('[routeFromSession] error:', err)
       clearHubState()
+      setSavedOverlay(null)
       setScreen('landing')
       console.log('[routeFromSession] fallback to landing')
     }
-  }, [clearHubState])
+  }, [clearHubState, restoreUniverseOverlay, setSavedOverlay])
 
   // Wait for Supabase auth hydration before routing
   useEffect(() => {
@@ -712,7 +760,7 @@ export default function Home() {
           await routeFromSession()
         } else {
           // If restoring a screen that requires session/hub, check session first
-          const protectedScreens = ['universe','observatory','profile','scribe','drift','pagesOpen']
+          const protectedScreens = ['universe']
           if (protectedScreens.includes(screen)) {
             const session = await getSession()
             if (!session) {
@@ -761,6 +809,7 @@ export default function Home() {
         setOnboardingError('')
         setIsGuest(false)
         setGuestBannerDismissed(false)
+        setSavedOverlay(null)
         setScreen('landing')
         return
       }
@@ -774,7 +823,7 @@ export default function Home() {
       if (fallbackTimer) clearTimeout(fallbackTimer)
       authListener.subscription.unsubscribe()
     }
-  }, [clearHubState, routeFromSession, screen])
+  }, [clearHubState, routeFromSession, screen, setSavedOverlay])
 
   // Only render main app after auth is hydrated
 
