@@ -200,9 +200,7 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
   const [countHovered, setCountHovered] = useState(false)
   const [pan, setPan] = useState({ x: 0, y: 0 })
   const [isDragging, setIsDragging] = useState(false)
-  const isPanning = useRef(false)
-  const panStart = useRef({ x: 0, y: 0 })
-  const panOrigin = useRef({ x: 0, y: 0 })
+  const panRef = useRef({ x: 0, y: 0 })
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -276,28 +274,46 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
     setMousePos({ x: (e.clientX - rect.left) / rect.width, y: (e.clientY - rect.top) / rect.height })
   }, [])
 
-  const handlePointerDown = useCallback((e: React.PointerEvent) => {
-    if ((e.target as HTMLElement).closest('[data-letter],[data-no-pan]')) return
-    isPanning.current = true
-    setIsDragging(true)
-    panStart.current = { x: e.clientX, y: e.clientY }
-    panOrigin.current = { ...pan }
-    ;(e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId)
-  }, [pan])
+  // Drag via native DOM events — bypasses framer-motion's event interception
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    let dragging = false
+    let startX = 0, startY = 0
+    let originX = 0, originY = 0
 
-  const handlePointerMove = useCallback((e: React.PointerEvent) => {
-    if (!isPanning.current) return
-    const dx = e.clientX - panStart.current.x
-    const dy = e.clientY - panStart.current.y
-    setPan(clampPanOffset(panOrigin.current.x + dx, panOrigin.current.y + dy))
-  }, [])
+    function onDown(e: PointerEvent) {
+      if ((e.target as HTMLElement).closest('[data-letter],[data-no-pan]')) return
+      dragging = true
+      startX = e.clientX; startY = e.clientY
+      originX = panRef.current.x; originY = panRef.current.y
+      el!.setPointerCapture(e.pointerId)
+      el!.style.cursor = 'grabbing'
+    }
+    function onMove(e: PointerEvent) {
+      if (!dragging) return
+      const dx = e.clientX - startX
+      const dy = e.clientY - startY
+      const next = clampPanOffset(originX + dx, originY + dy)
+      panRef.current = next
+      setPan(next)
+    }
+    function onUp(e: PointerEvent) {
+      if (!dragging) return
+      dragging = false
+      try { el!.releasePointerCapture(e.pointerId) } catch {}
+      el!.style.cursor = 'grab'
+    }
 
-  const handlePointerUp = useCallback((e?: React.PointerEvent) => {
-    isPanning.current = false
-    setIsDragging(false)
-    if (e) {
-      const target = e.currentTarget as HTMLElement
-      if (target.hasPointerCapture?.(e.pointerId)) target.releasePointerCapture(e.pointerId)
+    el.addEventListener('pointerdown', onDown)
+    el.addEventListener('pointermove', onMove)
+    el.addEventListener('pointerup', onUp)
+    el.addEventListener('pointercancel', onUp)
+    return () => {
+      el.removeEventListener('pointerdown', onDown)
+      el.removeEventListener('pointermove', onMove)
+      el.removeEventListener('pointerup', onUp)
+      el.removeEventListener('pointercancel', onUp)
     }
   }, [])
 
@@ -359,12 +375,7 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
       exit={{ opacity: 0, scale: 0.97 }}
       transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
       onMouseMove={handleMouseMove}
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onPointerCancel={handlePointerUp}
-      onPointerLeave={handlePointerUp}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(3,2,10,0.88)', backdropFilter: 'blur(18px)', zIndex: 70, overflow: 'hidden', cursor: isDragging ? 'grabbing' : 'grab', touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none' }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(3,2,10,0.88)', backdropFilter: 'blur(18px)', zIndex: 70, overflow: 'hidden', cursor: 'grab', touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none' } as React.CSSProperties}
     >
       {/* ── Deep space background ── */}
       <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }} aria-hidden="true">
@@ -380,17 +391,17 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
           </radialGradient>
         </defs>
         <rect width="100%" height="100%" fill="url(#obs-core)" />
-        <g style={{ transform: `translate(${p1x * 0.4}px, ${p1y * 0.4}px)`, transition: 'transform 0.6s ease-out' }}>
+        <g style={{ transform: `translate(${pan.x * 0.3 + p1x * 0.4}px, ${pan.y * 0.3 + p1y * 0.4}px)`, transition: 'transform 0.15s ease-out' }}>
           {NEBULAE.map((n, i) => (
             <ellipse key={i} cx={`${n.x}%`} cy={`${n.y}%`} rx={`${n.rx}%`} ry={`${n.ry}%`} fill={`rgba(${n.color},${n.op})`} style={{ filter: 'blur(22px)' }} />
           ))}
         </g>
-        <g style={{ transform: `translate(${p1x}px, ${p1y}px)`, transition: 'transform 0.5s ease-out' }}>
+        <g style={{ transform: `translate(${pan.x * 0.5 + p1x}px, ${pan.y * 0.5 + p1y}px)`, transition: 'transform 0.15s ease-out' }}>
           {BG_STARS.slice(0, 80).map((s, i) => (
             <circle key={i} cx={`${s.x}%`} cy={`${s.y}%`} r={s.r} fill={`rgba(255,255,255,${s.opacity})`} />
           ))}
         </g>
-        <g style={{ transform: `translate(${p2x}px, ${p2y}px)`, transition: 'transform 0.4s ease-out' }}>
+        <g style={{ transform: `translate(${pan.x * 0.7 + p2x}px, ${pan.y * 0.7 + p2y}px)`, transition: 'transform 0.15s ease-out' }}>
           {BG_STARS.slice(80).map((s, i) => (
             <circle key={i} cx={`${s.x}%`} cy={`${s.y}%`} r={s.r * 0.7} fill={`rgba(255,255,255,${s.opacity * 0.7})`} />
           ))}
@@ -410,7 +421,7 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
             width: `${Math.max(s.r * 3, 1.5)}px`, height: `${Math.max(s.r * 3, 1.5)}px`,
             borderRadius: '50%',
             background: 'rgba(255,255,255,0.95)',
-            transform: 'translate(-50%, -50%)',
+            transform: `translate(calc(-50% + ${pan.x * 0.6}px), calc(-50% + ${pan.y * 0.6}px))`,
             pointerEvents: 'none',
             zIndex: 1,
           }}
@@ -608,7 +619,6 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
               position: 'absolute',
               left: `${cx}%`, top: `${cy}%`,
               transform: `translate(-50%, -50%) translate(${pan.x + p2x * (isArrived ? 0.5 : 0.3)}px, ${pan.y + p2y * (isArrived ? 0.5 : 0.3)}px)`,
-              transition: isPanning.current ? 'none' : 'transform 0.45s ease-out',
               cursor: isTransit ? 'default' : 'pointer',
               zIndex: isHovered ? 20 : 5,
             }}
