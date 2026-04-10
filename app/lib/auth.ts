@@ -421,6 +421,7 @@ export async function getUniverseLetters() {
       .from('letters')
       .select('id, sender_id, body, subject, paper_id, font_id, font_color, handwriting_style, handwritten_image_url, embellishment_id, is_anonymous, sender:sender_id(hub_name)')
       .eq('is_universe_letter', true)
+      .eq('status', 'arrived')
       .order('created_at', { ascending: false })
       .limit(50)
 
@@ -778,13 +779,13 @@ export async function sendLetter(
   if (!trimmedBody && handwritingStyle !== 'handwritten') throw new Error('Letter body cannot be empty')
   if (handwritingStyle === 'handwritten' && !handwrittenImageUrl) throw new Error('Handwritten image required')
 
-  // Universe letters are instant — they float freely as shooting stars immediately.
-  // Direct letters travel based on length: shorter letters arrive sooner.
+  // Letters travel based on length: shorter letters arrive sooner.
   const arrivesAt = customArrivesAt ? new Date(customArrivesAt.getTime()) : new Date()
-  if (!isUniverseLetter && !customArrivesAt) {
+  if (!customArrivesAt) {
     const len = trimmedBody.length
     let minHours: number, maxHours: number
-    if (len < 200)        { minHours = 2;  maxHours = 6   }  // ~2–6 hours
+    if (isUniverseLetter) { minHours = 1;  maxHours = 3   }  // universe drift starts sooner
+    else if (len < 200)   { minHours = 2;  maxHours = 6   }  // ~2–6 hours
     else if (len < 500)   { minHours = 6;  maxHours = 18  }  // ~6–18 hours
     else if (len < 1000)  { minHours = 18; maxHours = 36  }  // ~18–36 hours
     else if (len < 2000)  { minHours = 36; maxHours = 72  }  // ~1.5–3 days
@@ -792,7 +793,7 @@ export async function sendLetter(
     const travelHours = minHours + Math.floor(Math.random() * (maxHours - minHours + 1))
     arrivesAt.setTime(arrivesAt.getTime() + travelHours * 60 * 60 * 1000)
   }
-  const initialStatus = isUniverseLetter ? 'arrived' : 'transit'
+  const initialStatus = 'transit'
 
   const { data, error } = await supabase
     .from('letters')
@@ -922,6 +923,7 @@ export async function getMyLetters() {
     await Promise.allSettled([
       supabase.from('letters').update({ status: 'arrived' }).eq('recipient_id', user.id).eq('status', 'transit').lt('arrives_at', now),
       supabase.from('letters').update({ status: 'arrived' }).eq('sender_id', user.id).eq('status', 'transit').lt('arrives_at', now),
+      supabase.from('letters').update({ status: 'arrived' }).eq('is_universe_letter', true).eq('status', 'transit').lt('arrives_at', now),
     ])
 
     const { data, error } = await supabase

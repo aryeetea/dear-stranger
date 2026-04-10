@@ -231,8 +231,8 @@ export default function Observatory({ onClose, onWriteLetter, lettersRefreshSign
           const rawProgress = totalMs > 0 ? ((nowMs - createdMs) / totalMs) * 100 : 100
           const direction: 'sent' | 'received' = l.sender_id === userId ? 'sent' : 'received'
           const baseStatus: Letter['status'] = l.status === 'transit' || l.status === 'arrived' ? l.status : 'arrived'
-          const isDirectFutureLetter = !l.is_universe_letter && Boolean(l.arrives_at) && nowMs < arrivesMs
-          const effectiveStatus: Letter['status'] = isDirectFutureLetter ? 'transit' : baseStatus
+          const hasFutureArrival = Boolean(l.arrives_at) && nowMs < arrivesMs
+          const effectiveStatus: Letter['status'] = hasFutureArrival ? 'transit' : baseStatus
           return {
             id: l.id,
             from: direction === 'received' ? (l.sender?.hub_name || 'Unknown Sender') : (l.sender?.hub_name || 'You'),
