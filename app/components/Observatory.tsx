@@ -579,8 +579,8 @@ export default function Observatory({ onClose, onWriteLetter, lettersRefreshSign
       {!loading && letters.map((letter, i) => {
         const pColor = PAPER_COLORS[letter.paperId] || PAPER_COLORS.ornate
         const isPinned = letter.status === 'pinned'
-        const isSent = !isPinned && letter.direction === 'sent'
         const isTransit = !isPinned && letter.status === 'transit'
+        const isSent = !isPinned && !isTransit && letter.direction === 'sent'
         const isArrived = !isPinned && letter.status === 'arrived'
         const isNew = isArrived && !isSent && !readIds.has(letter.id) && (currentTime - new Date(letter.arrivedAt || letter.sentAt).getTime()) < 48 * 3600000
         const isHovered = hoveredId === letter.id
