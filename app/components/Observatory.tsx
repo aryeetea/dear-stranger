@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { getMyLetters, pinLetter, unpinLetter, getPinnedLetterIds, deleteLetter, deleteLetterForEveryone } from '../lib/auth'
+import { getMyLetters, pinLetter, unpinLetter, getPinnedLetterIds, deleteLetter, deleteLetterForEveryone, getSession } from '../lib/auth'
 import { playAudioWithEffect, type VoiceEffect } from '../../lib/audioEffects'
 import { playWaxSeal } from '../../lib/sounds'
 import { PAPER_TONES, PAPER_INK, renderLetterPaper } from '../lib/letterPapers'
@@ -187,6 +187,7 @@ function assignCelestialPositions(letters: Letter[]): Letter[] {
 export default function Observatory({ onClose, onWriteLetter, lettersRefreshSignal }: { onClose?: () => void; onWriteLetter?: (name: string) => void; lettersRefreshSignal?: number }) {
   const [openLetter, setOpenLetter] = useState<Letter | null>(null)
   const [letters, setLetters] = useState<Letter[]>([])
+  const [fetchError, setFetchError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [currentUserId, setCurrentUserId] = useState('')
   const [currentTime, setCurrentTime] = useState(() => Date.now())
@@ -580,8 +581,8 @@ export default function Observatory({ onClose, onWriteLetter, lettersRefreshSign
       {/* ── Empty state ── */}
       {!loading && letters.length === 0 && (
         <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '14px', zIndex: 5 }}>
-          <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '20px', color: 'rgba(255,255,255,0.38)' }}>The sky is quiet.</p>
-          <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(255,255,255,0.2)' }}>Write a letter and watch it become a star.</p>
+          <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '20px', color: 'rgba(255,255,255,0.38)' }}>{fetchError ? fetchError : 'The sky is quiet.'}</p>
+          {!fetchError && <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(255,255,255,0.2)' }}>Write a letter and watch it become a star.</p>}
         </div>
       )}
 
@@ -831,79 +832,98 @@ function ModalEnvelope({ id }: { id: string }) {
 
 function LetterModal({ letter, onClose, onReply, onPin, onBurn, onDeleteForEveryone }: {
   letter: Letter; onClose: () => void; onReply?: (name: string) => void; onPin?: () => void; onBurn?: () => void; onDeleteForEveryone?: () => void
-  // onPin toggles pin/unpin
-}) {
-  const colors = PAPER_COLORS[letter.paperId] || PAPER_COLORS.ornate
-  const bodyFont = (letter.fontId && FONT_FAMILIES[letter.fontId]) || "'Cormorant Garamond', serif"
-  const paperBg = letter.paperColor ? (PAPER_TONES.find(t => t.id === letter.paperColor)?.bg ?? undefined) : undefined
-  const defaultInk = PAPER_INK[letter.paperId]?.main ?? '#180e04'
-  const bodyColor = (letter.fontColor && FONT_COLOR_MAP[letter.fontColor]) ? FONT_COLOR_MAP[letter.fontColor] : defaultInk
-  const writingStyle = getHandwritingStyleStyles(letter.handwritingStyle || 'typed')
-  const isReceivedLetter = letter.direction === 'received' && (letter.status === 'arrived' || letter.status === 'pinned')
-  const isBurnReceived = isReceivedLetter && !!letter.burnAfterReading
-  const [burnConfirmed, setBurnConfirmed] = useState(false)
-  const [deleteConfirm, setDeleteConfirm] = useState(false)
-  const [isPlayingVoice, setIsPlayingVoice] = useState(false)
-  const [openPhase, setOpenPhase] = useState<'warning' | 'envelope' | 'letter'>(
-    isBurnReceived ? 'warning' : isReceivedLetter ? 'envelope' : 'letter'
-  )
-  const handleClose = () => { if (burnConfirmed) onBurn?.(); onClose() }
-
   useEffect(() => {
-    if (!isReceivedLetter || isBurnReceived) return
-    playWaxSeal()
-    const t = setTimeout(() => setOpenPhase('letter'), 1600)
-    return () => clearTimeout(t)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  async function handlePlayVoiceNote() {
-    if (!letter.voiceNoteUrl || isPlayingVoice) return
-    setIsPlayingVoice(true)
-    try { await playAudioWithEffect(letter.voiceNoteUrl, letter.voiceEffect || 'raw', () => setIsPlayingVoice(false)) }
-    catch { setIsPlayingVoice(false) }
-  }
-
-  return (
-    <motion.div data-no-pan="true" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={handleClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,5,0.88)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 90, padding: 'clamp(10px, 2vw, 20px)' }}>
-      {openPhase === 'warning' && isBurnReceived && (
-        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} onClick={e => e.stopPropagation()} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '24px', textAlign: 'center', padding: '20px', maxWidth: '320px' }}>
-          <motion.div animate={{ scale: [1, 1.08, 1] }} transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }} style={{ fontSize: '52px', filter: 'drop-shadow(0 0 20px rgba(255,80,40,0.7))' }}>🔥</motion.div>
-          <p style={{ fontFamily: "'Cinzel', serif", fontSize: '11px', letterSpacing: '0.35em', color: '#e87060', textTransform: 'uppercase' }}>Burn After Reading</p>
-          <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '15px', color: 'rgba(255,255,255,0.82)', lineHeight: 1.75 }}>This letter will be destroyed once you read it.<br />There is no going back.</p>
-          <div style={{ display: 'flex', gap: '12px' }}>
-            <button onClick={() => { setBurnConfirmed(true); setOpenPhase('envelope'); playWaxSeal(); setTimeout(() => setOpenPhase('letter'), 1600) }} style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.3em', color: '#e87060', padding: '10px 20px', border: '1px solid rgba(220,60,40,0.55)', borderRadius: '2px', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase' }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(220,60,40,0.1)' }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>Open & Destroy ✶</button>
-            <button onClick={onClose} style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.3em', color: 'rgba(255,255,255,0.45)', padding: '10px 20px', border: '1px solid rgba(255,255,255,0.18)', borderRadius: '2px', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase' }} onMouseEnter={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.72)' }} onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.45)' }}>Keep Sealed</button>
-          </div>
-        </motion.div>
-      )}
-      {openPhase === 'envelope' && isReceivedLetter && (
-        <motion.div initial={{ opacity: 0, scale: 0.85 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} onClick={e => e.stopPropagation()} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '28px' }}>
-          <motion.div animate={{ y: [0, -6, 0] }} transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }} style={{ opacity: 0.9 }}>
-            <svg width="160" height="110" viewBox="0 0 120 80">
-              <rect x="2" y="20" width="116" height="58" rx="3" fill={`${colors.accent}18`} stroke={`${colors.accent}60`} strokeWidth="1.2"/>
-              <motion.path d="M2 20 L60 56 L118 20 Z" initial={{ d: 'M2 20 L60 56 L118 20 Z' }} animate={{ d: ['M2 20 L60 56 L118 20 Z', 'M2 20 L60 6 L118 20 Z'] }} transition={{ duration: 1.2, ease: 'easeInOut' }} fill={`${colors.accent}15`} stroke={`${colors.accent}45`} strokeWidth="1"/>
-              <path d="M2 78 L60 46 L118 78" fill="none" stroke={`${colors.accent}30`} strokeWidth="1"/>
-            </svg>
-          </motion.div>
-          <motion.p animate={{ opacity: [0.6, 1, 0.6] }} transition={{ duration: 1.5, repeat: Infinity }} style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.4em', color: colors.accent, textTransform: 'uppercase' }}>Breaking the seal...</motion.p>
-        </motion.div>
-      )}
-      {(openPhase === 'letter' || !isReceivedLetter) && (
-        <motion.div initial={{ opacity: 0, scale: 0.95, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 8 }} transition={{ duration: 0.35 }} onClick={e => e.stopPropagation()} style={{ width: 'min(600px, 92vw)', maxHeight: '80vh', overflowY: 'auto', borderRadius: '3px', boxShadow: `0 16px 60px rgba(0,0,0,0.9), 0 0 40px ${colors.accent}20`, position: 'relative' }}>
-          <button onClick={handleClose} style={{ position: 'absolute', top: '16px', right: '16px', background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', opacity: 0.6, color: defaultInk, zIndex: 10 }} onMouseEnter={e => { e.currentTarget.style.opacity = '0.95' }} onMouseLeave={e => { e.currentTarget.style.opacity = '0.6' }}>×</button>
-          {renderLetterPaper(letter.paperId, paperBg, (
-            <div style={{ position: 'relative' }}>
-              {renderLetterEmbellishment(letter.embellishmentId, colors.accent, 'read')}
-              <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.4em', color: colors.accent, textTransform: 'uppercase', marginBottom: '20px', opacity: 0.88 }}>{letter.direction === 'received' ? `From · ${letter.from}` : `To · ${letter.to}`}</p>
-              <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '11px', opacity: 0.76, marginBottom: '20px', color: bodyColor }}>{new Date(letter.arrivedAt || letter.sentAt).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
-              <p style={{ fontFamily: bodyFont, fontSize: '17px', fontStyle: 'italic', color: bodyColor, opacity: 0.9, marginBottom: '16px', lineHeight: 1.8 }}>{letter.direction === 'received' ? (letter.isUniverseLetter ? 'Dear Stranger,' : `Dear ${letter.to},`) : `Dear ${letter.to},`}</p>
-              {letter.handwritingStyle === 'handwritten' && letter.handwrittenImageUrl ? (
-                <div style={{ margin: '16px 0' }}>
-                  <img src={letter.handwrittenImageUrl} alt="Handwritten letter" style={{ width: '100%', height: 'auto', borderRadius: '4px' }} />
-                </div>
-              ) : (
-                letter.body.split('\n\n— ✦ —\n\n').map((page, i, arr) => (
+    let cancelled = false;
+    async function loadLettersWithRetry(retries = 2) {
+      setLoading(true);
+      setFetchError(null);
+      try {
+        // Ensure user is authenticated
+        const session = await getSession();
+        if (!session || !session.user) {
+          setFetchError('You must be logged in to see your letters.');
+          setLetters([]);
+          setLoading(false);
+          return;
+        }
+        let data = null;
+        for (let attempt = 0; attempt <= retries; ++attempt) {
+          data = await getMyLetters();
+          if ((data.transit && data.transit.length) || (data.arrived && data.arrived.length)) break;
+          if (attempt < retries) await new Promise(res => setTimeout(res, 1000));
+        }
+        if (!data || (!data.transit.length && !data.arrived.length)) {
+          setFetchError('No letters found. Try sending or receiving a letter!');
+          setLetters([]);
+          setLoading(false);
+          return;
+        }
+        const userId = data.userId;
+        const mapLetter = (l: LetterRow): Letter => {
+          const createdAt = l.created_at || new Date().toISOString();
+          const createdMs = new Date(createdAt).getTime();
+          const nowMs = Date.now();
+          const isMine = l.sender_id === userId;
+          const legacyUniverseTransit = Boolean(l.is_universe_letter) && isMine && nowMs - createdMs < LEGACY_UNIVERSE_TRANSIT_MS;
+          const recentSentTransit = isMine && nowMs - createdMs < RECENT_SENT_TRANSIT_MS;
+          const arrivesMs = legacyUniverseTransit
+            ? createdMs + LEGACY_UNIVERSE_TRANSIT_MS
+            : l.arrives_at
+              ? new Date(l.arrives_at).getTime()
+              : createdMs;
+          const totalMs = arrivesMs - createdMs;
+          const rawProgress = totalMs > 0 ? ((nowMs - createdMs) / totalMs) * 100 : 100;
+          const direction: 'sent' | 'received' = isMine ? 'sent' : 'received';
+          const baseStatus: Letter['status'] = l.status === 'transit' || l.status === 'arrived' ? l.status : 'arrived';
+          const hasFutureArrival = nowMs < arrivesMs;
+          const effectiveStatus: Letter['status'] = (hasFutureArrival || recentSentTransit) ? 'transit' : baseStatus;
+          return {
+            id: l.id,
+            from: direction === 'received' ? (l.sender?.hub_name || 'Unknown Sender') : (l.sender?.hub_name || 'You'),
+            to: direction === 'sent' ? (l.recipient?.hub_name || (l.is_universe_letter ? 'The Universe' : 'Unknown')) : (l.recipient?.hub_name || 'You'),
+            preview: l.subject || 'A letter for you',
+            body: l.body || '',
+            paperId: l.paper_id || 'ornate',
+            fontId: l.font_id || undefined,
+            fontColor: l.font_color || undefined,
+            paperColor: l.paper_color || undefined,
+            stampId: l.stamp_id || undefined,
+            envelopeId: l.envelope_id || undefined,
+            sentAt: createdAt,
+            arrivedAt: l.arrives_at || undefined,
+            status: effectiveStatus,
+            direction,
+            travelProgress: effectiveStatus === 'transit' ? clamp(Math.floor(rawProgress), 0, 100) : undefined,
+            isUniverseLetter: l.is_universe_letter ?? false,
+            burnAfterReading: l.burn_after_reading ?? false,
+            voiceNoteUrl: l.voice_note_url || undefined,
+            voiceEffect: (l.voice_effect as VoiceEffect | null) || undefined,
+            handwritingStyle: (l.handwriting_style as HandwritingStyle | null) || 'typed',
+            handwrittenImageUrl: l.handwritten_image_url || undefined,
+            embellishmentId: (l.embellishment_id as EmbellishmentId | null) || 'none',
+          };
+        };
+        setCurrentUserId(userId);
+        const pinnedIds = getPinnedLetterIds(userId);
+        const applyPin = (l: Letter): Letter => pinnedIds.has(l.id) ? { ...l, status: 'pinned' as const } : l;
+        const all: Letter[] = [
+          ...(data.transit || []).map(mapLetter).map(applyPin),
+          ...(data.arrived || []).map(mapLetter).map(applyPin),
+        ];
+        setLetters(assignCelestialPositions(all));
+        setFetchError(null);
+      } catch (err) {
+        if (!cancelled) {
+          setFetchError('Failed to load letters. Please try again.');
+          setLetters([]);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    loadLettersWithRetry();
+    return () => { cancelled = true; };
+  }, [lettersRefreshSignal]);
                 <div key={i} style={writingStyle}>
                   <p style={{ fontFamily: bodyFont, fontSize: 'clamp(15px,2vw,18px)', lineHeight: 2, letterSpacing: '0.02em', color: bodyColor, opacity: 0.98, whiteSpace: 'pre-wrap', overflowWrap: 'break-word', wordBreak: 'break-word' }}>{page}</p>
                   {i < arr.length - 1 && <div style={{ textAlign: 'center', margin: '24px 0', opacity: 0.4 }}><span style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.4em', color: colors.accent }}>— ✦ —</span></div>}
