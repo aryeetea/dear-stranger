@@ -99,12 +99,33 @@ export function LoginScreen({
   onSuccess: () => void
   onGoToSignup: () => void
 }) {
+
   const [error, setError] = useState('')
   const [googleLoading, setGoogleLoading] = useState(false)
   const [discordLoading, setDiscordLoading] = useState(false)
   const [magicEmail, setMagicEmail] = useState('')
   const [magicLoading, setMagicLoading] = useState(false)
   const [magicSent, setMagicSent] = useState(false)
+
+  // Reset loading states on mount
+  useEffect(() => {
+    setGoogleLoading(false)
+    setDiscordLoading(false)
+    setMagicLoading(false)
+  }, [])
+
+  // Reset loading states on Supabase OAuth event
+  useEffect(() => {
+    // Import supabase directly here to avoid circular import
+    import('../../lib/supabase').then(({ supabase }) => {
+      const { data: authListener } = supabase.auth.onAuthStateChange(() => {
+        setGoogleLoading(false)
+        setDiscordLoading(false)
+        setMagicLoading(false)
+      })
+      return () => authListener.subscription.unsubscribe()
+    })
+  }, [])
 
   const anyLoading = googleLoading || discordLoading || magicLoading
 
