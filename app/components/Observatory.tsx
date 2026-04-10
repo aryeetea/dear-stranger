@@ -88,7 +88,6 @@ const PAPER_COLORS: Record<string, { accent: string; glow: string }> = Object.fr
 const SENT_GLOW_RGB = '255,185,65'
 const TRANSIT_GLOW_RGB = '200,220,255'
 const RECEIVED_GLOW_RGB = '230,199,110'
-const LEGACY_UNIVERSE_TRANSIT_MS = 3 * 60 * 60 * 1000
 const RECENT_SENT_TRANSIT_MS = 3 * 60 * 60 * 1000
 
 interface Letter {
@@ -229,19 +228,17 @@ export default function Observatory({ onClose, onWriteLetter, lettersRefreshSign
           const createdMs = new Date(createdAt).getTime()
           const nowMs = Date.now()
           const isMine = l.sender_id === userId
-          const legacyUniverseTransit = Boolean(l.is_universe_letter) && isMine && nowMs - createdMs < LEGACY_UNIVERSE_TRANSIT_MS
-          const recentSentTransit = isMine && nowMs - createdMs < RECENT_SENT_TRANSIT_MS
-          const arrivesMs = legacyUniverseTransit
-            ? createdMs + LEGACY_UNIVERSE_TRANSIT_MS
-            : l.arrives_at
-              ? new Date(l.arrives_at).getTime()
-              : createdMs
+          const isUniverseLetter = Boolean(l.is_universe_letter)
+          const recentSentTransit = isMine && !isUniverseLetter && nowMs - createdMs < RECENT_SENT_TRANSIT_MS
+          const arrivesMs = l.arrives_at ? new Date(l.arrives_at).getTime() : createdMs
           const totalMs = arrivesMs - createdMs
           const rawProgress = totalMs > 0 ? ((nowMs - createdMs) / totalMs) * 100 : 100
           const direction: 'sent' | 'received' = isMine ? 'sent' : 'received'
           const baseStatus: Letter['status'] = l.status === 'transit' || l.status === 'arrived' ? l.status : 'arrived'
           const hasFutureArrival = nowMs < arrivesMs
-          const effectiveStatus: Letter['status'] = (hasFutureArrival || recentSentTransit) ? 'transit' : baseStatus
+          const effectiveStatus: Letter['status'] = isUniverseLetter
+            ? 'arrived'
+            : (hasFutureArrival || recentSentTransit) ? 'transit' : baseStatus
           return {
             id: l.id,
             from: direction === 'received' ? (l.sender?.hub_name || 'Unknown Sender') : (l.sender?.hub_name || 'You'),
@@ -259,7 +256,7 @@ export default function Observatory({ onClose, onWriteLetter, lettersRefreshSign
             status: effectiveStatus,
             direction,
             travelProgress: effectiveStatus === 'transit' ? clamp(Math.floor(rawProgress), 0, 100) : undefined,
-            isUniverseLetter: l.is_universe_letter ?? false,
+            isUniverseLetter,
             burnAfterReading: l.burn_after_reading ?? false,
             voiceNoteUrl: l.voice_note_url || undefined,
             voiceEffect: (l.voice_effect as VoiceEffect | null) || undefined,
@@ -372,7 +369,7 @@ export default function Observatory({ onClose, onWriteLetter, lettersRefreshSign
   }
 
   function handleLetterClick(letter: Letter) {
-    const isRecentSentTransit = letter.direction === 'sent' && (Date.now() - new Date(letter.sentAt).getTime()) < RECENT_SENT_TRANSIT_MS
+    const isRecentSentTransit = !letter.isUniverseLetter && letter.direction === 'sent' && (Date.now() - new Date(letter.sentAt).getTime()) < RECENT_SENT_TRANSIT_MS
     if (letter.status === 'transit' || isRecentSentTransit) return
     setReadIds(prev => {
       const next = new Set(prev)
@@ -590,7 +587,7 @@ export default function Observatory({ onClose, onWriteLetter, lettersRefreshSign
       {!loading && letters.map((letter, i) => {
         const pColor = PAPER_COLORS[letter.paperId] || PAPER_COLORS.ornate
         const isPinned = letter.status === 'pinned'
-        const isRecentSentTransit = letter.direction === 'sent' && (currentTime - new Date(letter.sentAt).getTime()) < RECENT_SENT_TRANSIT_MS
+        const isRecentSentTransit = !letter.isUniverseLetter && letter.direction === 'sent' && (currentTime - new Date(letter.sentAt).getTime()) < RECENT_SENT_TRANSIT_MS
         const isTransit = !isPinned && (letter.status === 'transit' || isRecentSentTransit)
         const isSent = !isPinned && !isTransit && letter.direction === 'sent'
         const isArrived = !isPinned && letter.status === 'arrived'

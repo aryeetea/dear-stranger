@@ -847,86 +847,73 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
               </div>
             )}
 
-            {renderPaper()}
-
-            {/* Page navigation */}
-            {pages.length > 1 && (
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginTop:'10px', padding:'8px 4px', borderTop:'1px solid rgba(255,255,255,0.08)' }}>
-                <div style={{ display:'flex', alignItems:'center', gap:'6px' }}>
-                  <button onClick={()=>{ setCurrentPage(p=>Math.max(0,p-1)); setTimeout(()=>textareaRef.current?.focus(),100) }}
-                    disabled={currentPage===0}
-                    style={{ background:'none', border:'1px solid rgba(255,255,255,0.14)', color:currentPage===0?'rgba(255,255,255,0.22)':'rgba(255,255,255,0.7)', fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.15em', padding:'4px 9px', cursor:currentPage===0?'default':'pointer', borderRadius:'2px' }}>
-                    ← Prev
-                  </button>
-                  <span style={{ fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.2em', color:'rgba(255,255,255,0.55)', whiteSpace:'nowrap' }}>
-                    Page {currentPage+1} / {pages.length}
-                  </span>
-                  <button onClick={()=>{ setCurrentPage(p=>Math.min(pages.length-1,p+1)); setTimeout(()=>textareaRef.current?.focus(),100) }}
-                    disabled={currentPage===pages.length-1}
-                    style={{ background:'none', border:'1px solid rgba(255,255,255,0.14)', color:currentPage===pages.length-1?'rgba(255,255,255,0.22)':'rgba(255,255,255,0.7)', fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.15em', padding:'4px 9px', cursor:currentPage===pages.length-1?'default':'pointer', borderRadius:'2px' }}>
-                    Next →
-                  </button>
+            <div style={{ marginBottom:'16px', padding:'14px', border:'1px solid rgba(230,199,110,0.14)', borderRadius:'8px', background:'linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.018))', boxShadow:'0 16px 48px rgba(0,0,0,0.24)' }}>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:'12px', flexWrap:'wrap', marginBottom:'12px' }}>
+                <div>
+                  <p style={{ fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.28em', color:'#e6c76e', textTransform:'uppercase', margin:'0 0 4px' }}>Letter Setup</p>
+                  <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'12px', color:'rgba(255,255,255,0.56)', margin:0 }}>
+                    {recipientName ? `Traveling to ${recipientName}` : journalMode ? `Opening for you on ${formatCapsuleOpenDate(capsuleDays)}` : 'Released instantly into the universe'}
+                  </p>
                 </div>
-                {pages.length > 1 && pages[currentPage].trim() === '' && (
-                  <button onClick={()=>{ setPages(prev=>prev.filter((_,i)=>i!==currentPage)); setCurrentPage(p=>Math.max(0,p-1)) }}
-                    style={{ background:'none', border:'1px solid rgba(220,80,80,0.35)', color:'rgba(220,80,80,0.65)', fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.15em', padding:'4px 9px', cursor:'pointer', borderRadius:'2px' }}>
-                    Remove Page
+                <motion.button onClick={handleRelease} disabled={!body.trim()||releasing} whileTap={body.trim()?{scale:0.97}:{}}
+                  style={{ padding:'10px 18px', background:body.trim()?'rgba(230,199,110,0.08)':'transparent', border:`1px solid ${body.trim()?'rgba(230,199,110,0.55)':'rgba(255,255,255,0.12)'}`, color:body.trim()?'#e6c76e':'rgba(255,255,255,0.42)', fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.2em', textTransform:'uppercase', cursor:body.trim()?'pointer':'default', borderRadius:'999px', opacity:releasing?0.6:1 }}
+                  onMouseEnter={e=>{if(!body.trim())return;e.currentTarget.style.background='rgba(230,199,110,0.13)';e.currentTarget.style.borderColor='#e6c76e'}}
+                  onMouseLeave={e=>{e.currentTarget.style.background=body.trim()?'rgba(230,199,110,0.08)':'transparent';e.currentTarget.style.borderColor=body.trim()?'rgba(230,199,110,0.55)':'rgba(255,255,255,0.12)'}}>
+                  {releasing ? 'Sealing' : recipientName ? `Send to ${recipientName}` : journalMode ? 'Seal for Myself' : 'Release'}
+                </motion.button>
+              </div>
+
+              <div style={{ display:'flex', alignItems:'center', gap:'6px', flexWrap:'wrap', marginBottom:'12px' }}>
+                {[
+                  { label:selectedPaper.label, action:()=>setView('papers'), icon:'Paper' },
+                  { label:selectedFont.label, action:()=>setView('fonts'), icon:'Script' },
+                  { label:selectedStamp ? STAMPS.find(s=>s.id===selectedStamp)?.label || 'Stamp' : 'Stamp', action:()=>setView('stamps'), icon:'Stamp' },
+                  { label:selectedColor ? FONT_COLORS.find(c=>c.id===selectedColor)?.label || 'Ink' : 'Ink', action:()=>setView('colors'), icon:'Ink' },
+                  { label:selectedPaperColor ? PAPER_TONES.find(t=>t.id===selectedPaperColor)?.label || 'Tone' : 'Tone', action:()=>setView('paper-color'), icon:'Tone' },
+                  { label:ENVELOPES.find(e=>e.id===selectedEnvelope)?.label||'Envelope', action:()=>setView('envelopes'), icon:'Envelope' },
+                ].map((btn,i)=>(
+                  <button key={i} onClick={btn.action}
+                    style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.13)', color:'rgba(255,255,255,0.78)', fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.13em', textTransform:'uppercase', padding:'6px 9px', cursor:'pointer', borderRadius:'999px', whiteSpace:'nowrap' }}
+                    onMouseEnter={e=>{e.currentTarget.style.color='rgba(255,255,255,0.98)';e.currentTarget.style.borderColor='rgba(230,199,110,0.32)';e.currentTarget.style.background='rgba(230,199,110,0.06)'}}
+                    onMouseLeave={e=>{e.currentTarget.style.color='rgba(255,255,255,0.78)';e.currentTarget.style.borderColor='rgba(255,255,255,0.13)';e.currentTarget.style.background='rgba(255,255,255,0.03)'}}>
+                    {btn.icon}: {btn.label}
+                  </button>
+                ))}
+              </div>
+
+              <div style={{ display:'flex', gap:'8px', flexWrap:'wrap', marginBottom:'12px' }}>
+                {!recipientName && (
+                  <button onClick={() => setJournalMode(j => !j)}
+                    style={{ background:journalMode?'rgba(230,199,110,0.1)':'none', border:`1px solid ${journalMode?'rgba(230,199,110,0.45)':'rgba(255,255,255,0.14)'}`, color:journalMode?'#e6c76e':'rgba(255,255,255,0.62)', fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.18em', textTransform:'uppercase', padding:'6px 10px', cursor:'pointer', borderRadius:'999px', transition:'all 0.2s' }}>
+                    {journalMode ? 'Writing to Myself' : 'Write to Myself'}
+                  </button>
+                )}
+                <button
+                  onClick={() => setBurnAfterReading(b => !b)}
+                  style={{ background: burnAfterReading ? 'rgba(220,60,40,0.1)' : 'none', border: `1px solid ${burnAfterReading ? 'rgba(220,60,40,0.5)' : 'rgba(255,255,255,0.14)'}`, color: burnAfterReading ? '#e87060' : 'rgba(255,255,255,0.62)', fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.18em', textTransform: 'uppercase', padding: '6px 10px', cursor: 'pointer', borderRadius: '999px', transition: 'all 0.2s' }}>
+                  {burnAfterReading ? 'Burn After Reading On' : 'Burn After Reading'}
+                </button>
+                {!recipientName && !journalMode && (
+                  <button
+                    onClick={() => setIsAnonymous(a => !a)}
+                    style={{ background: isAnonymous ? 'rgba(160,130,220,0.12)' : 'none', border: `1px solid ${isAnonymous ? 'rgba(160,130,220,0.5)' : 'rgba(255,255,255,0.14)'}`, color: isAnonymous ? 'rgba(200,180,255,0.9)' : 'rgba(255,255,255,0.62)', fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.18em', textTransform: 'uppercase', padding: '6px 10px', cursor: 'pointer', borderRadius: '999px', transition: 'all 0.2s' }}>
+                    {isAnonymous ? 'Anonymous On' : 'Send Anonymously'}
                   </button>
                 )}
               </div>
-            )}
 
-            {selectedStamp && (
-              <div style={{ display:'flex', justifyContent:'flex-end', marginTop:'-8px', marginBottom:'4px' }}>
-                <div style={{ opacity:0.85 }}><StampSVG id={selectedStamp} size={48}/></div>
-              </div>
-            )}
-
-            {!recipientName && (
-              <div style={{ marginTop:'8px', marginBottom:'4px', display:'flex', flexDirection:'column', alignItems:'flex-start', gap:'7px' }}>
-                <button onClick={() => setJournalMode(j => !j)}
-                  style={{ background:journalMode?'rgba(230,199,110,0.1)':'none', border:`1px solid ${journalMode?'rgba(230,199,110,0.45)':'rgba(255,255,255,0.16)'}`, color:journalMode?'#e6c76e':'rgba(255,255,255,0.65)', fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.22em', textTransform:'uppercase', padding:'5px 12px', cursor:'pointer', borderRadius:'2px', transition:'all 0.2s' }}
-                  onMouseEnter={e=>{e.currentTarget.style.borderColor='rgba(230,199,110,0.45)';e.currentTarget.style.color='#e6c76e'}}
-                  onMouseLeave={e=>{if(!journalMode){e.currentTarget.style.borderColor='rgba(255,255,255,0.16)';e.currentTarget.style.color='rgba(255,255,255,0.65)'}}}>
-                  {journalMode ? '📓 Writing to Myself' : '📓 Write to Myself'}
-                </button>
-                {journalMode && (
-                  <div style={{ display:'flex', alignItems:'center', gap:'8px', flexWrap:'wrap' }}>
-                    <span style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'11px', color:'rgba(255,255,255,0.5)' }}>Open in:</span>
-                    {([30, 60, 90] as const).map(d => (
-                      <button key={d} onClick={() => setCapsuleDays(d)}
-                        style={{ background:capsuleDays===d?'rgba(230,199,110,0.15)':'none', border:`1px solid ${capsuleDays===d?'rgba(230,199,110,0.55)':'rgba(255,255,255,0.16)'}`, color:capsuleDays===d?'#e6c76e':'rgba(255,255,255,0.65)', fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.18em', padding:'5px 10px', cursor:'pointer', borderRadius:'2px' }}>
-                        {d}d
-                      </button>
-                    ))}
-                    <span style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'11px', color:'rgba(255,255,255,0.38)' }}>
-                      · opens {formatCapsuleOpenDate(capsuleDays)}
-                    </span>
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div style={{ marginTop:'8px', marginBottom:'4px', display:'flex', gap:'8px', flexWrap:'wrap' }}>
-              <button
-                onClick={() => setBurnAfterReading(b => !b)}
-                style={{ background: burnAfterReading ? 'rgba(220,60,40,0.1)' : 'none', border: `1px solid ${burnAfterReading ? 'rgba(220,60,40,0.5)' : 'rgba(255,255,255,0.16)'}`, color: burnAfterReading ? '#e87060' : 'rgba(255,255,255,0.65)', fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.22em', textTransform: 'uppercase', padding: '5px 12px', cursor: 'pointer', borderRadius: '2px', transition: 'all 0.2s' }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(220,60,40,0.5)'; e.currentTarget.style.color = '#e87060' }}
-                onMouseLeave={e => { if (!burnAfterReading) { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.16)'; e.currentTarget.style.color = 'rgba(255,255,255,0.65)' } }}>
-                🔥 {burnAfterReading ? 'Burn After Reading · On' : 'Burn After Reading'}
-              </button>
-              {!recipientName && !journalMode && (
-                <button
-                  onClick={() => setIsAnonymous(a => !a)}
-                  style={{ background: isAnonymous ? 'rgba(160,130,220,0.12)' : 'none', border: `1px solid ${isAnonymous ? 'rgba(160,130,220,0.5)' : 'rgba(255,255,255,0.16)'}`, color: isAnonymous ? 'rgba(200,180,255,0.9)' : 'rgba(255,255,255,0.65)', fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.22em', textTransform: 'uppercase', padding: '5px 12px', cursor: 'pointer', borderRadius: '2px', transition: 'all 0.2s' }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(160,130,220,0.5)'; e.currentTarget.style.color = 'rgba(200,180,255,0.9)' }}
-                  onMouseLeave={e => { if (!isAnonymous) { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.16)'; e.currentTarget.style.color = 'rgba(255,255,255,0.65)' } }}>
-                  👁 {isAnonymous ? 'Anonymous · On' : 'Send Anonymously'}
-                </button>
+              {journalMode && !recipientName && (
+                <div style={{ display:'flex', alignItems:'center', gap:'8px', flexWrap:'wrap', margin:'-2px 0 12px' }}>
+                  <span style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'11px', color:'rgba(255,255,255,0.5)' }}>Open in:</span>
+                  {([30, 60, 90] as const).map(d => (
+                    <button key={d} onClick={() => setCapsuleDays(d)}
+                      style={{ background:capsuleDays===d?'rgba(230,199,110,0.15)':'none', border:`1px solid ${capsuleDays===d?'rgba(230,199,110,0.55)':'rgba(255,255,255,0.16)'}`, color:capsuleDays===d?'#e6c76e':'rgba(255,255,255,0.65)', fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.18em', padding:'5px 10px', cursor:'pointer', borderRadius:'999px' }}>
+                      {d}d
+                    </button>
+                  ))}
+                </div>
               )}
-            </div>
 
-            <div style={{ marginTop:'10px', padding:'12px 14px', border:'1px solid rgba(230,199,110,0.14)', borderRadius:'6px', background:'rgba(255,255,255,0.03)' }}>
               <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(150px, 1fr))', gap:'10px' }}>
                 <div>
                   <p style={{ fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.24em', color:'#e6c76e', textTransform:'uppercase', margin:'0 0 8px' }}>Letter Form</p>
@@ -964,10 +951,9 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
                   </div>
                 </div>
               </div>
-            </div>
 
-            <div style={{ marginTop:'8px', padding:'12px 14px', border:'1px solid rgba(140,160,255,0.16)', borderRadius:'6px', background:'rgba(30,34,70,0.12)' }}>
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:'12px', flexWrap:'wrap' }}>
+              <div style={{ marginTop:'10px', padding:'11px 12px', border:'1px solid rgba(140,160,255,0.14)', borderRadius:'6px', background:'rgba(30,34,70,0.1)' }}>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:'12px', flexWrap:'wrap' }}>
                 <div>
                   <p style={{ fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.24em', color:'rgba(180,195,255,0.88)', textTransform:'uppercase', margin:'0 0 4px' }}>Voice Note From The Void</p>
                   <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'11px', color:'rgba(255,255,255,0.55)', margin:0 }}>Optional, up to 30 seconds</p>
@@ -996,20 +982,22 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
                 </div>
               </div>
 
-              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(120px, 1fr))', gap:'8px', marginTop:'12px' }}>
-                {VOICE_EFFECT_OPTIONS.map(option => {
-                  const isSelected = voiceEffect === option.id
-                  return (
-                    <button
-                      key={option.id}
-                      onClick={() => setVoiceEffect(option.id)}
-                      style={{ textAlign:'left', padding:'8px 10px', background:isSelected ? 'rgba(180,195,255,0.12)' : 'rgba(255,255,255,0.02)', border:`1px solid ${isSelected ? 'rgba(180,195,255,0.45)' : 'rgba(255,255,255,0.08)'}`, borderRadius:'4px', cursor:'pointer' }}>
-                      <p style={{ fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.18em', color:isSelected ? 'rgba(210,220,255,0.95)' : 'rgba(255,255,255,0.78)', textTransform:'uppercase', margin:'0 0 4px' }}>{option.label}</p>
-                      <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'10px', color:'rgba(255,255,255,0.48)', margin:0 }}>{option.desc}</p>
-                    </button>
-                  )
-                })}
-              </div>
+                {(voiceNoteBlob || isRecordingVoice) && (
+                  <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(120px, 1fr))', gap:'8px', marginTop:'12px' }}>
+                    {VOICE_EFFECT_OPTIONS.map(option => {
+                      const isSelected = voiceEffect === option.id
+                      return (
+                        <button
+                          key={option.id}
+                          onClick={() => setVoiceEffect(option.id)}
+                          style={{ textAlign:'left', padding:'8px 10px', background:isSelected ? 'rgba(180,195,255,0.12)' : 'rgba(255,255,255,0.02)', border:`1px solid ${isSelected ? 'rgba(180,195,255,0.45)' : 'rgba(255,255,255,0.08)'}`, borderRadius:'4px', cursor:'pointer' }}>
+                          <p style={{ fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.18em', color:isSelected ? 'rgba(210,220,255,0.95)' : 'rgba(255,255,255,0.78)', textTransform:'uppercase', margin:'0 0 4px' }}>{option.label}</p>
+                          <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'10px', color:'rgba(255,255,255,0.48)', margin:0 }}>{option.desc}</p>
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
 
               {isRecordingVoice && (
                 <p style={{ fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.2em', color:'rgba(255,140,140,0.88)', textTransform:'uppercase', margin:'12px 0 0' }}>
@@ -1026,39 +1014,36 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
               {voiceError && (
                 <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'11px', color:'rgba(255,150,150,0.82)', margin:'10px 0 0' }}>{voiceError}</p>
               )}
+              </div>
             </div>
 
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:'12px', flexWrap:'wrap', gap:'8px' }}>
-              <div style={{ display:'flex', alignItems:'center', gap:'6px', flexWrap:'wrap' }}>
-                {[
-                  { label:selectedPaper.label, action:()=>setView('papers'), icon:'📄' },
-                  { label:selectedFont.label, action:()=>setView('fonts'), icon:'✒' },
-                  { label:selectedStamp ? STAMPS.find(s=>s.id===selectedStamp)?.label || 'Stamp' : 'Stamp', action:()=>setView('stamps'), icon:'🔖' },
-                  { label:selectedColor ? FONT_COLORS.find(c=>c.id===selectedColor)?.label || 'Ink' : 'Ink', action:()=>setView('colors'), icon:'🎨' },
-                  { label:selectedPaperColor ? PAPER_TONES.find(t=>t.id===selectedPaperColor)?.label || 'Paper Tone' : 'Paper Tone', action:()=>setView('paper-color'), icon:'🗒' },
-                  { label:ENVELOPES.find(e=>e.id===selectedEnvelope)?.label||'Envelope', action:()=>setView('envelopes'), icon:'✉' },
-                ].map((btn,i)=>(
-                  <button key={i} onClick={btn.action}
-                    style={{ background:'none', border:'1px solid rgba(255,255,255,0.18)', color:'rgba(255,255,255,0.8)', fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.15em', textTransform:'uppercase', padding:'5px 9px', cursor:'pointer', borderRadius:'2px', whiteSpace:'nowrap' }}
-                    onMouseEnter={e=>{e.currentTarget.style.color='rgba(255,255,255,0.98)';e.currentTarget.style.borderColor='rgba(255,255,255,0.32)';e.currentTarget.style.background='rgba(255,255,255,0.04)'}}
-                    onMouseLeave={e=>{e.currentTarget.style.color='rgba(255,255,255,0.8)';e.currentTarget.style.borderColor='rgba(255,255,255,0.18)';e.currentTarget.style.background='none'}}>
-                    {btn.icon} {btn.label}
+            {pages.length > 1 && (
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'12px', padding:'8px 4px', borderBottom:'1px solid rgba(255,255,255,0.08)' }}>
+                <div style={{ display:'flex', alignItems:'center', gap:'6px' }}>
+                  <button onClick={()=>{ setCurrentPage(p=>Math.max(0,p-1)); setTimeout(()=>textareaRef.current?.focus(),100) }}
+                    disabled={currentPage===0}
+                    style={{ background:'none', border:'1px solid rgba(255,255,255,0.14)', color:currentPage===0?'rgba(255,255,255,0.22)':'rgba(255,255,255,0.7)', fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.15em', padding:'4px 9px', cursor:currentPage===0?'default':'pointer', borderRadius:'2px' }}>
+                    Prev
                   </button>
-                ))}
-                <span style={{ fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.15em', color:'rgba(255,255,255,0.56)', textTransform:'uppercase', padding:'5px 0', whiteSpace:'nowrap' }}>
-                  ✍ {HANDWRITING_STYLES.find(style=>style.id===selectedHandwriting)?.label || 'Typed'}
-                </span>
-                <span style={{ fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.15em', color:'rgba(255,255,255,0.56)', textTransform:'uppercase', padding:'5px 0', whiteSpace:'nowrap' }}>
-                  ❋ {LETTER_EMBELLISHMENTS.find(embellishment=>embellishment.id===selectedEmbellishment)?.label || 'None'}
-                </span>
+                  <span style={{ fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.2em', color:'rgba(255,255,255,0.55)', whiteSpace:'nowrap' }}>
+                    Page {currentPage+1} / {pages.length}
+                  </span>
+                  <button onClick={()=>{ setCurrentPage(p=>Math.min(pages.length-1,p+1)); setTimeout(()=>textareaRef.current?.focus(),100) }}
+                    disabled={currentPage===pages.length-1}
+                    style={{ background:'none', border:'1px solid rgba(255,255,255,0.14)', color:currentPage===pages.length-1?'rgba(255,255,255,0.22)':'rgba(255,255,255,0.7)', fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.15em', padding:'4px 9px', cursor:currentPage===pages.length-1?'default':'pointer', borderRadius:'2px' }}>
+                    Next
+                  </button>
+                </div>
+                {pages.length > 1 && pages[currentPage].trim() === '' && (
+                  <button onClick={()=>{ setPages(prev=>prev.filter((_,i)=>i!==currentPage)); setCurrentPage(p=>Math.max(0,p-1)) }}
+                    style={{ background:'none', border:'1px solid rgba(220,80,80,0.35)', color:'rgba(220,80,80,0.65)', fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.15em', padding:'4px 9px', cursor:'pointer', borderRadius:'2px' }}>
+                    Remove Page
+                  </button>
+                )}
               </div>
-              <motion.button onClick={handleRelease} disabled={!body.trim()||releasing} whileTap={body.trim()?{scale:0.97}:{}}
-                style={{ padding:'11px 22px', background:'transparent', border:`1px solid ${body.trim()?'rgba(230,199,110,0.55)':'rgba(255,255,255,0.12)'}`, color:body.trim()?'#e6c76e':'rgba(255,255,255,0.42)', fontFamily:"'Cinzel', serif", fontSize:'10px', letterSpacing:'0.22em', textTransform:'uppercase', cursor:body.trim()?'pointer':'default', borderRadius:'2px', opacity:releasing?0.6:1 }}
-                onMouseEnter={e=>{if(!body.trim())return;e.currentTarget.style.background='rgba(230,199,110,0.08)';e.currentTarget.style.borderColor='#e6c76e'}}
-                onMouseLeave={e=>{e.currentTarget.style.background='transparent';e.currentTarget.style.borderColor=body.trim()?'rgba(230,199,110,0.55)':'rgba(255,255,255,0.12)'}}>
-                {releasing ? 'Sealing ✦' : recipientName ? `Send to ${recipientName} ✦` : journalMode ? 'Seal for Myself ✦' : 'Release into the Universe ✦'}
-              </motion.button>
-            </div>
+            )}
+
+            {renderPaper()}
           </motion.div>
         )}
 

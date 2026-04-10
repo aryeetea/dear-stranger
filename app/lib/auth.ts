@@ -745,11 +745,10 @@ export async function sendLetter(
   if (handwritingStyle === 'handwritten' && !handwrittenImageUrl) throw new Error('Handwritten image required')
 
   const arrivesAt = customArrivesAt ? new Date(customArrivesAt.getTime()) : new Date()
-  if (!customArrivesAt) {
+  if (!customArrivesAt && !isUniverseLetter) {
     const len = trimmedBody.length
     let minHours: number, maxHours: number
-    if (isUniverseLetter)   { minHours = 1;  maxHours = 3   }
-    else if (len < 200)     { minHours = 2;  maxHours = 6   }
+    if (len < 200)          { minHours = 2;  maxHours = 6   }
     else if (len < 500)     { minHours = 6;  maxHours = 18  }
     else if (len < 1000)    { minHours = 18; maxHours = 36  }
     else if (len < 2000)    { minHours = 36; maxHours = 72  }
@@ -768,7 +767,7 @@ export async function sendLetter(
         paper_id: paperId,
         is_universe_letter: isUniverseLetter,
         arrives_at: arrivesAt.toISOString(),
-        status: 'transit',
+        status: isUniverseLetter ? 'arrived' : 'transit',
         subject,
         font_id: fontId,
         ...(fontColor ? { font_color: fontColor } : {}),
@@ -881,7 +880,7 @@ export async function getMyLetters() {
     await Promise.allSettled([
       supabase.from('letters').update({ status: 'arrived' }).eq('recipient_id', user.id).eq('status', 'transit').lt('arrives_at', now),
       supabase.from('letters').update({ status: 'arrived' }).eq('sender_id', user.id).eq('status', 'transit').lt('arrives_at', now),
-      supabase.from('letters').update({ status: 'arrived' }).eq('is_universe_letter', true).eq('status', 'transit').lt('arrives_at', now),
+      supabase.from('letters').update({ status: 'arrived' }).eq('is_universe_letter', true).eq('status', 'transit'),
     ])
 
     const { data, error } = await supabase
