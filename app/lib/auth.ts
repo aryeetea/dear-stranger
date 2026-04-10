@@ -4,7 +4,6 @@ import type { HandwritingStyle, EmbellishmentId } from '../lib/letterEnrichments
 const MAX_HUB_NAME_LEN = 32
 const MAX_BIO_LEN = 300
 const MAX_ASK_LEN = 200
-// No hard character limit — users can write as long as they want
 
 type HubRecord = {
   id: string
@@ -140,9 +139,6 @@ export async function signUpAndCreateHub(
   if (authError) throw authError
   if (!authData.user) throw new Error('Signup limit reached. Please try again in an hour, or contact support.')
 
-  // When Supabase email confirmation is enabled, signUp returns no session.
-  // The hub insert would fail without an authenticated session (RLS).
-  // Signal the caller to show a "check your email" screen instead.
   if (!authData.session) {
     throw new Error('PLEASE_CONFIRM_EMAIL')
   }
@@ -180,7 +176,6 @@ export async function signInWithGoogle() {
       },
     },
   })
-
   if (error) throw error
 }
 
@@ -191,7 +186,6 @@ export async function signInWithDiscord() {
       redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined,
     },
   })
-
   if (error) throw error
 }
 
@@ -202,7 +196,6 @@ export async function signInWithMagicLink(email: string) {
       emailRedirectTo: typeof window !== 'undefined' ? window.location.origin : undefined,
     },
   })
-
   if (error) throw error
 }
 
@@ -314,7 +307,6 @@ export async function deleteAccount(): Promise<{ success: boolean; error?: strin
     })
 
     const { error: hubError } = await supabase.from('hubs').delete().eq('id', userId)
-
     if (hubError) throw new Error(`Hub delete failed: ${hubError.message}`)
 
     await supabase.auth.signOut()
@@ -554,8 +546,6 @@ export async function getVisitorBook(limit = 18): Promise<VisitorBookEntry[]> {
   }))
 }
 
-// ─── Block / unblock ─────────────────────────────────────────────────────────
-
 export async function blockUser(blockedId: string) {
   const { data: { user }, error: userError } = await supabase.auth.getUser()
   if (userError) throw userError
@@ -631,6 +621,7 @@ export async function getSession() {
   }
 }
 
+// ── FIXED: removed aggressive signOut calls — transient errors no longer wipe the session ──
 export async function getMyHub(userId?: string) {
   try {
     let uid = userId
@@ -640,18 +631,7 @@ export async function getMyHub(userId?: string) {
         error: userError,
       } = await supabase.auth.getUser()
 
-      if (userError) {
-        if (
-          userError.message?.includes('Refresh Token') ||
-          userError.message?.includes('refresh_token')
-        ) {
-          try {
-            await supabase.auth.signOut()
-          } catch {}
-        }
-        return null
-      }
-
+      if (userError) return null
       if (!user) return null
       uid = user.id
     }
@@ -662,24 +642,9 @@ export async function getMyHub(userId?: string) {
       .eq('id', uid)
       .maybeSingle()
 
-    if (error) {
-      if (
-        error.message?.includes('JWT') ||
-        error.message?.includes('Refresh Token') ||
-        error.message?.includes('refresh_token')
-      ) {
-        try {
-          await supabase.auth.signOut()
-        } catch {}
-      }
-      return null
-    }
-
+    if (error) return null
     return data || null
   } catch {
-    try {
-      await supabase.auth.signOut()
-    } catch {}
     return null
   }
 }
@@ -779,21 +744,19 @@ export async function sendLetter(
   if (!trimmedBody && handwritingStyle !== 'handwritten') throw new Error('Letter body cannot be empty')
   if (handwritingStyle === 'handwritten' && !handwrittenImageUrl) throw new Error('Handwritten image required')
 
-  // Letters travel based on length: shorter letters arrive sooner.
   const arrivesAt = customArrivesAt ? new Date(customArrivesAt.getTime()) : new Date()
   if (!customArrivesAt) {
     const len = trimmedBody.length
     let minHours: number, maxHours: number
-    if (isUniverseLetter) { minHours = 1;  maxHours = 3   }  // universe drift starts sooner
-    else if (len < 200)   { minHours = 2;  maxHours = 6   }  // ~2–6 hours
-    else if (len < 500)   { minHours = 6;  maxHours = 18  }  // ~6–18 hours
-    else if (len < 1000)  { minHours = 18; maxHours = 36  }  // ~18–36 hours
-    else if (len < 2000)  { minHours = 36; maxHours = 72  }  // ~1.5–3 days
-    else                  { minHours = 72; maxHours = 120 }  // ~3–5 days
+    if (isUniverseLetter)   { minHours = 1;  maxHours = 3   }
+    else if (len < 200)     { minHours = 2;  maxHours = 6   }
+    else if (len < 500)     { minHours = 6;  maxHours = 18  }
+    else if (len < 1000)    { minHours = 18; maxHours = 36  }
+    else if (len < 2000)    { minHours = 36; maxHours = 72  }
+    else                    { minHours = 72; maxHours = 120 }
     const travelHours = minHours + Math.floor(Math.random() * (maxHours - minHours + 1))
     arrivesAt.setTime(arrivesAt.getTime() + travelHours * 60 * 60 * 1000)
   }
-  const initialStatus = 'transit'
 
   const { data, error } = await supabase
     .from('letters')
@@ -805,7 +768,7 @@ export async function sendLetter(
         paper_id: paperId,
         is_universe_letter: isUniverseLetter,
         arrives_at: arrivesAt.toISOString(),
-        status: initialStatus,
+        status: 'transit',
         subject,
         font_id: fontId,
         ...(fontColor ? { font_color: fontColor } : {}),
@@ -829,17 +792,13 @@ export async function sendLetter(
 export async function deleteLetter(letterId: string) {
   const { data: { user }, error: userError } = await supabase.auth.getUser()
   if (userError || !user) throw new Error('Not authenticated')
-  const { error } = await supabase
-    .from('letters')
-    .delete()
-    .eq('id', letterId)
+  const { error } = await supabase.from('letters').delete().eq('id', letterId)
   if (error) throw error
 }
 
 export async function deleteLetterForEveryone(letterId: string) {
   const { data: { user }, error: userError } = await supabase.auth.getUser()
   if (userError || !user) throw new Error('Not authenticated')
-  // Verify the user is involved in this letter before deleting it
   const { data: letter, error: fetchError } = await supabase
     .from('letters')
     .select('id')
@@ -919,7 +878,6 @@ export async function getMyLetters() {
 
     const now = new Date().toISOString()
 
-    // Auto-arrive transit letters (both sent and received) in parallel
     await Promise.allSettled([
       supabase.from('letters').update({ status: 'arrived' }).eq('recipient_id', user.id).eq('status', 'transit').lt('arrives_at', now),
       supabase.from('letters').update({ status: 'arrived' }).eq('sender_id', user.id).eq('status', 'transit').lt('arrives_at', now),
@@ -947,7 +905,6 @@ export async function getMyLetters() {
   }
 }
 
-// ── Per-user pinning (client-local, stored in localStorage per user) ──
 export function getPinnedLetterIds(userId: string): Set<string> {
   if (typeof window === 'undefined') return new Set()
   try {
@@ -973,7 +930,6 @@ export async function isGuestUser(): Promise<boolean> {
     const {
       data: { user },
     } = await supabase.auth.getUser()
-
     if (!user) return true
     return (user as { is_anonymous?: boolean }).is_anonymous === true
   } catch {
