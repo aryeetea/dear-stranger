@@ -88,6 +88,7 @@ const PAPER_COLORS: Record<string, { accent: string; glow: string }> = Object.fr
 const SENT_GLOW_RGB = '255,185,65'
 const TRANSIT_GLOW_RGB = '200,220,255'
 const RECEIVED_GLOW_RGB = '230,199,110'
+const LEGACY_UNIVERSE_TRANSIT_MS = 3 * 60 * 60 * 1000
 
 interface Letter {
   id: string
@@ -224,14 +225,19 @@ export default function Observatory({ onClose, onWriteLetter, lettersRefreshSign
         const userId = data.userId
         const mapLetter = (l: LetterRow): Letter => {
           const createdAt = l.created_at || new Date().toISOString()
-          const arrivesMs = l.arrives_at ? new Date(l.arrives_at).getTime() : new Date(createdAt).getTime()
           const createdMs = new Date(createdAt).getTime()
           const nowMs = Date.now()
+          const legacyUniverseTransit = Boolean(l.is_universe_letter) && l.sender_id === userId && nowMs - createdMs < LEGACY_UNIVERSE_TRANSIT_MS
+          const arrivesMs = legacyUniverseTransit
+            ? createdMs + LEGACY_UNIVERSE_TRANSIT_MS
+            : l.arrives_at
+              ? new Date(l.arrives_at).getTime()
+              : createdMs
           const totalMs = arrivesMs - createdMs
           const rawProgress = totalMs > 0 ? ((nowMs - createdMs) / totalMs) * 100 : 100
           const direction: 'sent' | 'received' = l.sender_id === userId ? 'sent' : 'received'
           const baseStatus: Letter['status'] = l.status === 'transit' || l.status === 'arrived' ? l.status : 'arrived'
-          const hasFutureArrival = Boolean(l.arrives_at) && nowMs < arrivesMs
+          const hasFutureArrival = nowMs < arrivesMs
           const effectiveStatus: Letter['status'] = hasFutureArrival ? 'transit' : baseStatus
           return {
             id: l.id,
