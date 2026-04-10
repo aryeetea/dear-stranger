@@ -454,31 +454,7 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
         <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '12px', color: 'rgba(255,255,255,0.2)', letterSpacing: '0.05em' }}>Tap a letter to read its light</p>
       </motion.div>
 
-      {/* ── Zone labels ── */}
-      {transit.length > 0 && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.9 }} style={{ position: 'absolute', top: '8%', left: '50%', transform: 'translateX(-50%)', pointerEvents: 'none', zIndex: 2, textAlign: 'center' }}>
-          <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.5em', color: 'rgba(120,185,255,0.55)', textTransform: 'uppercase' }}>In Transit</p>
-          <div style={{ width: '44px', height: '1px', background: 'linear-gradient(to right, transparent, rgba(120,185,255,0.35), transparent)', margin: '5px auto 0' }} />
-        </motion.div>
-      )}
-      {pinned.length > 0 && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.95 }} style={{ position: 'absolute', top: '20%', left: '7%', pointerEvents: 'none', zIndex: 2 }}>
-          <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.45em', color: 'rgba(200,160,255,0.55)', textTransform: 'uppercase' }}>Pinned</p>
-          <div style={{ width: '36px', height: '1px', background: 'linear-gradient(to right, rgba(200,160,255,0.35), transparent)', marginTop: '5px' }} />
-        </motion.div>
-      )}
-      {arrived.length > 0 && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.0 }} style={{ position: 'absolute', top: '40%', right: '5%', pointerEvents: 'none', zIndex: 2, textAlign: 'right' }}>
-          <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.45em', color: 'rgba(255,220,100,0.6)', textTransform: 'uppercase' }}>Received from</p>
-          <div style={{ width: '36px', height: '1px', background: 'linear-gradient(to left, rgba(255,220,100,0.35), transparent)', marginTop: '5px', marginLeft: 'auto' }} />
-        </motion.div>
-      )}
-      {sentCount > 0 && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.05 }} style={{ position: 'absolute', bottom: '20%', left: '50%', transform: 'translateX(-50%)', pointerEvents: 'none', zIndex: 2, textAlign: 'center' }}>
-          <div style={{ width: '44px', height: '1px', background: 'linear-gradient(to right, transparent, rgba(255,190,60,0.35), transparent)', margin: '0 auto 5px' }} />
-          <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.5em', color: 'rgba(255,190,60,0.55)', textTransform: 'uppercase' }}>Sent to</p>
-        </motion.div>
-      )}
+      {/* ── Zone labels removed ── */}
 
       {/* ── Top bar ── */}
       <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 80, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 'clamp(12px, 2.5vw, 18px) clamp(14px, 3vw, 28px)', pointerEvents: 'none' }}>
@@ -505,52 +481,46 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
         <motion.button data-no-pan="true" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} onClick={onClose} style={{ pointerEvents: 'all', background: 'none', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.75)', fontFamily: "'Cinzel', serif", fontSize: 'clamp(8px, 1.2vw, 10px)', letterSpacing: '0.3em', padding: '8px 16px', cursor: 'pointer', textTransform: 'uppercase', minHeight: '44px', display: 'flex', alignItems: 'center' }} onMouseEnter={e => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.45)' }} onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.75)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)' }}>← Universe</motion.button>
       </div>
 
-      {/* ── Latest Signal ── */}
-      {(() => {
-        const signals = [...transit, ...arrived, ...pinned].sort((a, b) =>
-          new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime()
-        )
-        const latest = signals[0]
-        if (!latest) return null
-        const isLatestTransit = latest.status === 'transit'
-        const glowRgb = isLatestTransit ? TRANSIT_GLOW_RGB : (PAPER_COLORS[latest.paperId]?.glow || '230,199,110')
-        const elapsed = currentTime - new Date(latest.sentAt).getTime()
-        const daysIn = Math.floor(elapsed / 86400000)
-        const hoursIn = Math.floor(elapsed / 3600000)
-        const transitLabel = daysIn >= 1
-          ? `${daysIn} day${daysIn !== 1 ? 's' : ''} crossing the dark`
-          : hoursIn >= 1
-            ? `${hoursIn} hour${hoursIn !== 1 ? 's' : ''} crossing the dark`
-            : 'just departed'
-        return (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }} style={{ position: 'absolute', bottom: 'clamp(36px, 6vh, 52px)', left: 'clamp(14px, 3vw, 36px)', zIndex: 10, pointerEvents: 'none', maxWidth: '200px' }}>
-            <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.45em', color: 'rgba(255,255,255,0.22)', textTransform: 'uppercase', marginBottom: '10px' }}>Latest Signal</p>
-            <div style={{ borderLeft: `1px solid rgba(${glowRgb},0.28)`, paddingLeft: '12px' }}>
-              <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.28em', color: `rgba(${glowRgb},0.68)`, textTransform: 'uppercase', marginBottom: '5px' }}>
-                {latest.direction === 'received' ? `From · ${latest.from}` : `To · ${latest.to}`}
-              </p>
-              {isLatestTransit ? (
-                <>
-                  <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '12px', color: `rgba(${TRANSIT_GLOW_RGB},0.55)`, lineHeight: 1.5, marginBottom: '5px' }}>{transitLabel}</p>
-                  <div style={{ width: '100%', height: '1px', background: `rgba(${TRANSIT_GLOW_RGB},0.15)`, borderRadius: '1px', marginBottom: '6px' }}>
-                    <div style={{ width: `${latest.travelProgress ?? 0}%`, height: '100%', background: `rgba(${TRANSIT_GLOW_RGB},0.55)` }} />
-                  </div>
-                  {latest.arrivedAt && <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.2em', color: `rgba(${TRANSIT_GLOW_RGB},0.35)`, textTransform: 'uppercase' }}>Arriving · {formatObservatoryDate(latest.arrivedAt)}</p>}
-                </>
-              ) : (
-                <>
-                  <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '12px', color: 'rgba(255,255,255,0.5)', lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', marginBottom: '6px' }}>
-                    {latest.preview}
-                  </p>
-                  <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.2em', color: 'rgba(255,255,255,0.2)', textTransform: 'uppercase' }}>
-                    {formatObservatoryDate(latest.arrivedAt || latest.sentAt)}
-                  </p>
-                </>
-              )}
+      {/* ── Star type legend ── */}
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }} style={{ position: 'absolute', bottom: 'clamp(36px, 6vh, 52px)', left: 'clamp(14px, 3vw, 36px)', zIndex: 10, pointerEvents: 'none' }}>
+        <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.45em', color: 'rgba(255,255,255,0.22)', textTransform: 'uppercase', marginBottom: '12px' }}>Star Types</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {/* Received */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ position: 'relative', width: '18px', height: '18px', flexShrink: 0 }}>
+              <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: `radial-gradient(circle, rgba(255,255,255,0.98) 0%, rgba(${RECEIVED_GLOW_RGB},0.75) 40%, transparent 100%)`, boxShadow: `0 0 6px rgba(${RECEIVED_GLOW_RGB},0.6)` }} />
+              <div style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', width: '26px', height: '1px', background: `linear-gradient(to right, transparent, rgba(${RECEIVED_GLOW_RGB},0.4), transparent)` }} />
+              <div style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%) rotate(90deg)', width: '26px', height: '1px', background: `linear-gradient(to right, transparent, rgba(${RECEIVED_GLOW_RGB},0.4), transparent)` }} />
             </div>
-          </motion.div>
-        )
-      })()}
+            <span style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.25em', color: `rgba(${RECEIVED_GLOW_RGB},0.65)`, textTransform: 'uppercase' }}>Received</span>
+          </div>
+          {/* Sent */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ position: 'relative', width: '16px', height: '16px', flexShrink: 0 }}>
+              <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: `radial-gradient(circle, rgba(255,180,40,0.98) 0%, rgba(200,120,10,0.6) 45%, transparent 100%)`, boxShadow: `0 0 6px rgba(${SENT_GLOW_RGB},0.8)` }} />
+            </div>
+            <span style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.25em', color: `rgba(${SENT_GLOW_RGB},0.65)`, textTransform: 'uppercase' }}>Sent</span>
+          </div>
+          {/* In Transit */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ position: 'relative', width: '14px', height: '14px', flexShrink: 0 }}>
+              <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: `radial-gradient(circle, rgba(100,170,255,0.98) 0%, rgba(60,110,240,0.6) 50%, transparent 100%)`, boxShadow: '0 0 6px rgba(100,170,255,0.55)' }} />
+              <div style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)', width: '16px', height: '2px', background: `linear-gradient(to left, rgba(${TRANSIT_GLOW_RGB},0.7), transparent)`, borderRadius: '1px' }} />
+            </div>
+            <span style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.25em', color: `rgba(${TRANSIT_GLOW_RGB},0.55)`, textTransform: 'uppercase' }}>In Transit</span>
+          </div>
+          {/* Pinned */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ position: 'relative', width: '22px', height: '22px', flexShrink: 0 }}>
+              <div style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', width: '14px', height: '14px', borderRadius: '50%', background: `radial-gradient(circle, rgba(230,200,255,0.98) 0%, rgba(180,140,240,0.7) 45%, transparent 100%)`, boxShadow: '0 0 8px rgba(180,140,240,0.85)' }} />
+              {[0, 90, 45, 135].map(rot => (
+                <div key={rot} style={{ position: 'absolute', left: '50%', top: '50%', transform: `translate(-50%, -50%) rotate(${rot}deg)`, width: rot < 90 ? '22px' : '16px', height: '1px', background: `linear-gradient(to right, transparent, rgba(180,140,240,${rot < 90 ? 0.65 : 0.45}), transparent)`, pointerEvents: 'none' }} />
+              ))}
+            </div>
+            <span style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.25em', color: 'rgba(200,160,255,0.55)', textTransform: 'uppercase' }}>Pinned</span>
+          </div>
+        </div>
+      </motion.div>
 
       {/* ── Observatory title hint ── */}
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} style={{ position: 'absolute', left: '50%', bottom: 'clamp(12px, 3vh, 28px)', transform: 'translateX(-50%)', textAlign: 'center', pointerEvents: 'none', zIndex: 3 }}>
@@ -884,7 +854,7 @@ function LetterModal({ letter, onClose, onReply, onPin, onBurn, onDeleteForEvery
   }
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={handleClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,5,0.88)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 90, padding: 'clamp(10px, 2vw, 20px)' }}>
+    <motion.div data-no-pan="true" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={handleClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,5,0.88)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 90, padding: 'clamp(10px, 2vw, 20px)' }}>
       {openPhase === 'warning' && isBurnReceived && (
         <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} onClick={e => e.stopPropagation()} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '24px', textAlign: 'center', padding: '20px', maxWidth: '320px' }}>
           <motion.div animate={{ scale: [1, 1.08, 1] }} transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }} style={{ fontSize: '52px', filter: 'drop-shadow(0 0 20px rgba(255,80,40,0.7))' }}>🔥</motion.div>
