@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { getDriftLetters, sendLetter, blockUser, isBlocked } from '../lib/auth'
 import { playLetterSend, playTypingSound, playWaxSeal } from '../../lib/sounds'
 import { HANDWRITING_STYLES, LETTER_EMBELLISHMENTS, getHandwritingStyleStyles, renderLetterEmbellishment, type HandwritingStyle, type EmbellishmentId } from '../lib/letterEnrichments'
+import HandwritingCanvas, { type HandwritingCanvasRef } from './HandwritingCanvas'
+import { uploadHandwrittenImage } from '../lib/auth'
 
 // ─── Drift-exclusive paper styles ────────────────────────────────────────────
 const DRIFT_PAPERS = [
@@ -93,6 +95,7 @@ interface DriftLetter {
   fontId: string
   fontColor?: string
   handwritingStyle?: HandwritingStyle
+  handwrittenImageUrl?: string
   embellishmentId?: EmbellishmentId
   createdAt?: string
 }
@@ -356,9 +359,15 @@ function OpenLetterModal({ open, onClose, onBlocked }: {
             {formatDriftTime(open.createdAt)}
           </p>
           <div style={{ height: '1px', background: p.border, marginBottom: '24px' }} />
-          <p style={{ ...writingStyle, fontFamily: f.family, fontSize: 'clamp(14px,1.8vw,16px)', color: resolvedInk, lineHeight: 2.0, whiteSpace: 'pre-wrap', margin: 0 }}>
-            {phase === 'read' ? open.body.slice(0, visibleChars) : ''}
-          </p>
+          {open.handwritingStyle === 'handwritten' && open.handwrittenImageUrl ? (
+            <div style={{ margin: '16px 0' }}>
+              <img src={open.handwrittenImageUrl} alt="Handwritten letter" style={{ width: '100%', height: 'auto', borderRadius: '4px' }} />
+            </div>
+          ) : (
+            <p style={{ ...writingStyle, fontFamily: f.family, fontSize: 'clamp(14px,1.8vw,16px)', color: resolvedInk, lineHeight: 2.0, whiteSpace: 'pre-wrap', margin: 0 }}>
+              {phase === 'read' ? open.body.slice(0, visibleChars) : ''}
+            </p>
+          )}
 
           {/* block section */}
           <div style={{ marginTop: '32px', display: 'flex', justifyContent: 'flex-end' }}>
@@ -423,6 +432,7 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
   const [openingLetterId, setOpeningLetterId] = useState<string | null>(null)
   const lastTypeSoundRef = useRef<number>(0)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const driftCanvasRef = useRef<HandwritingCanvasRef>(null)
 
   useEffect(() => {
     getDriftLetters().then((data) => {
@@ -445,7 +455,8 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
   }
 
   async function handleSend() {
-    if (!body.trim()) return
+    if (selectedHandwriting === 'typed' && !body.trim()) return
+    if (selectedHandwriting === 'handwritten' && driftCanvasRef.current?.isEmpty()) return
     if (!subject.trim()) { setSubjectError(true); setTimeout(() => setSubjectError(false), 3000); return }
     setSubjectError(false)
     setWaxing(true)
@@ -456,6 +467,11 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
     playLetterSend()
     await new Promise(r => setTimeout(r, 1800))
     try {
+      let handwrittenImageUrl: string | undefined
+      if (selectedHandwriting === 'handwritten') {
+        const blob = await driftCanvasRef.current?.toBlob()
+        if (blob) handwrittenImageUrl = await uploadHandwrittenImage(blob)
+      }
       await sendLetter(
         null,
         body,
@@ -469,8 +485,11 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
         undefined,
         undefined,
         undefined,
+        undefined,
+        undefined,
         selectedHandwriting,
         selectedEmbellishment,
+        handwrittenImageUrl,
       )
     } catch { /* silent */ }
     setSent(true)
@@ -723,12 +742,12 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
 
                 <div style={{ padding: '14px 14px 12px', background: 'linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02))', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '18px' }}>
                 <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.22em', color: '#e6c76e', textTransform: 'uppercase', margin: '0 0 8px' }}>Letter Form</p>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(128px, 1fr))', gap: '8px' }}>
+                <div style={{ display: 'flex', gap: '8px' }}>
                   {HANDWRITING_STYLES.map(style => {
                     const isSelected = selectedHandwriting === style.id
                     return (
-                      <button key={style.id} onClick={() => setSelectedHandwriting(style.id)} style={{ textAlign: 'left', minHeight: '84px', padding: '10px 10px 9px', background: isSelected ? 'linear-gradient(180deg, rgba(230,199,110,0.16), rgba(230,199,110,0.08))' : 'rgba(255,255,255,0.02)', border: `1px solid ${isSelected ? 'rgba(230,199,110,0.35)' : 'rgba(255,255,255,0.08)'}`, borderRadius: '12px', cursor: 'pointer', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                        <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.14em', color: isSelected ? '#e6c76e' : 'rgba(255,255,255,0.78)', textTransform: 'uppercase', margin: '0 0 2px' }}>{style.label}</p>
+                      <button key={style.id} onClick={() => setSelectedHandwriting(style.id)} style={{ flex: 1, textAlign: 'center', minHeight: '64px', padding: '10px 10px 9px', background: isSelected ? 'linear-gradient(180deg, rgba(230,199,110,0.16), rgba(230,199,110,0.08))' : 'rgba(255,255,255,0.02)', border: `1px solid ${isSelected ? 'rgba(230,199,110,0.35)' : 'rgba(255,255,255,0.08)'}`, borderRadius: '12px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                        <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.14em', color: isSelected ? '#e6c76e' : 'rgba(255,255,255,0.78)', textTransform: 'uppercase', margin: '0 0 2px' }}>{style.id === 'typed' ? '⌨ ' : '✎ '}{style.label}</p>
                         <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '10px', color: 'rgba(255,255,255,0.44)', margin: 0 }}>{style.desc}</p>
                       </button>
                     )
@@ -782,21 +801,25 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
               )}
 
               {/* body */}
-              <textarea
-                ref={textareaRef}
-                value={body}
-                onChange={e => setBody(e.target.value)}
-                onKeyDown={handleTypingKey}
-                placeholder={driftType === 'letter' ? 'Your letter begins here...' : driftType === 'poem' ? 'Let it pour out...' : 'Write freely...'}
-                maxLength={6000}
-                style={{
-                  ...writeStyle,
-                  width: '100%', minHeight: '220px', background: 'transparent', border: 'none', outline: 'none',
-                  color: inkColor, fontFamily, fontSize: 'clamp(14px,1.8vw,16px)', lineHeight: 2,
-                  resize: 'none', letterSpacing: '0.01em', caretColor: paper.accent,
-                  boxSizing: 'border-box',
-                }}
-              />
+              {selectedHandwriting === 'handwritten' ? (
+                <HandwritingCanvas ref={driftCanvasRef} inkColor={inkColor} lineWidth={2} />
+              ) : (
+                <textarea
+                  ref={textareaRef}
+                  value={body}
+                  onChange={e => setBody(e.target.value)}
+                  onKeyDown={handleTypingKey}
+                  placeholder={driftType === 'letter' ? 'Your letter begins here...' : driftType === 'poem' ? 'Let it pour out...' : 'Write freely...'}
+                  maxLength={6000}
+                  style={{
+                    ...writeStyle,
+                    width: '100%', minHeight: '220px', background: 'transparent', border: 'none', outline: 'none',
+                    color: inkColor, fontFamily, fontSize: 'clamp(14px,1.8vw,16px)', lineHeight: 2,
+                    resize: 'none', letterSpacing: '0.01em', caretColor: paper.accent,
+                    boxSizing: 'border-box',
+                  }}
+                />
+              )}
 
               {/* sign-off */}
               {driftType === 'letter' && (
@@ -823,10 +846,10 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
                 <motion.button
                   whileTap={{ scale: 0.97 }}
                   onClick={handleSend}
-                  disabled={!body.trim()}
+                  disabled={selectedHandwriting === 'typed' ? !body.trim() : false}
                   style={{
-                    background: 'transparent', border: `1px solid ${body.trim() ? paper.accent : paper.border}`,
-                    color: body.trim() ? paper.accent : paper.subtext, fontFamily: "'Cinzel', serif",
+                    background: 'transparent', border: `1px solid ${(selectedHandwriting === 'typed' ? body.trim() : true) ? paper.accent : paper.border}`,
+                    color: (selectedHandwriting === 'typed' ? body.trim() : true) ? paper.accent : paper.subtext, fontFamily: "'Cinzel', serif",
                     fontSize: '10px', letterSpacing: '0.32em', textTransform: 'uppercase',
                     padding: '12px 28px', cursor: body.trim() ? 'pointer' : 'default', borderRadius: '2px',
                     transition: 'all 0.2s',

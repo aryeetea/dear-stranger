@@ -1,14 +1,11 @@
 import type { CSSProperties, ReactNode } from 'react'
 
-export type HandwritingStyle = 'typed' | 'steady' | 'slanted' | 'lush' | 'diary'
+export type HandwritingStyle = 'typed' | 'handwritten'
 export type EmbellishmentId = 'none' | 'pressed-flower' | 'margin-stars' | 'constellation' | 'ribbon-thread' | 'tea-stain'
 
 export const HANDWRITING_STYLES: { id: HandwritingStyle; label: string; desc: string }[] = [
-  { id: 'typed', label: 'Typed', desc: 'Set cleanly, without handwriting texture' },
-  { id: 'steady', label: 'Steady Hand', desc: 'Clean and deliberate' },
-  { id: 'slanted', label: 'Slanted Ink', desc: 'A little swept and breathy' },
-  { id: 'lush', label: 'Lush Script', desc: 'Softly dramatic and ornate' },
-  { id: 'diary', label: 'Diary Hand', desc: 'Intimate, close, and restless' },
+  { id: 'typed', label: 'Typed', desc: 'A clean typeset letter' },
+  { id: 'handwritten', label: 'Handwritten', desc: 'Draw freely on the page' },
 ]
 
 export const LETTER_EMBELLISHMENTS: { id: EmbellishmentId; label: string; desc: string }[] = [
@@ -20,40 +17,18 @@ export const LETTER_EMBELLISHMENTS: { id: EmbellishmentId; label: string; desc: 
   { id: 'tea-stain', label: 'Tea Stain', desc: 'A ring from a slow evening' },
 ]
 
-export function getHandwritingStyleStyles(style: HandwritingStyle): CSSProperties {
-  switch (style) {
-    case 'typed':
-      return {
-        letterSpacing: '0.01em',
-        transform: 'none',
-        fontStyle: 'normal',
-        textShadow: 'none',
-        filter: 'none',
-      }
-    case 'slanted':
-      return {
-        fontStyle: 'italic',
-        letterSpacing: '0.03em',
-        transform: 'rotate(-0.45deg)',
-      }
-    case 'lush':
-      return {
-        letterSpacing: '0.035em',
-        lineHeight: 2.12,
-        transform: 'rotate(0.35deg)',
-        textShadow: '0.35px 0 rgba(0,0,0,0.08)',
-      }
-    case 'diary':
-      return {
-        letterSpacing: '0.018em',
-        transform: 'rotate(-0.18deg)',
-        filter: 'saturate(0.94)',
-      }
-    default:
-      return {
-        letterSpacing: '0.02em',
-      }
+export function getHandwritingStyleStyles(style: HandwritingStyle | string): CSSProperties {
+  if (style === 'typed') {
+    return {
+      letterSpacing: '0.01em',
+      transform: 'none',
+      fontStyle: 'normal',
+      textShadow: 'none',
+      filter: 'none',
+    }
   }
+  // For 'handwritten' or any legacy style, return minimal styling
+  return { letterSpacing: '0.02em' }
 }
 
 export function renderLetterEmbellishment(

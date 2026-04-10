@@ -111,6 +111,7 @@ interface Letter {
   voiceNoteUrl?: string
   voiceEffect?: VoiceEffect
   handwritingStyle?: HandwritingStyle
+  handwrittenImageUrl?: string
   embellishmentId?: EmbellishmentId
   cx?: number
   cy?: number
@@ -137,6 +138,7 @@ type LetterRow = {
   voice_note_url?: string | null
   voice_effect?: string | null
   handwriting_style?: string | null
+  handwritten_image_url?: string | null
   embellishment_id?: string | null
 }
 
@@ -234,6 +236,7 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
             voiceNoteUrl: l.voice_note_url || undefined,
             voiceEffect: (l.voice_effect as VoiceEffect | null) || undefined,
             handwritingStyle: (l.handwriting_style as HandwritingStyle | null) || 'typed',
+            handwrittenImageUrl: l.handwritten_image_url || undefined,
             embellishmentId: (l.embellishment_id as EmbellishmentId | null) || 'none',
           }
         }
@@ -778,12 +781,18 @@ function LetterModal({ letter, onClose, onReply, onPin, onBurn, onDeleteForEvery
               <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.4em', color: colors.accent, textTransform: 'uppercase', marginBottom: '20px', opacity: 0.88 }}>{letter.direction === 'received' ? `From · ${letter.from}` : `To · ${letter.to}`}</p>
               <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '11px', opacity: 0.76, marginBottom: '20px', color: bodyColor }}>{new Date(letter.arrivedAt || letter.sentAt).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
               <p style={{ fontFamily: bodyFont, fontSize: '17px', fontStyle: 'italic', color: bodyColor, opacity: 0.9, marginBottom: '16px', lineHeight: 1.8 }}>{letter.direction === 'received' ? (letter.isUniverseLetter ? 'Dear Stranger,' : `Dear ${letter.to},`) : `Dear ${letter.to},`}</p>
-              {letter.body.split('\n\n— ✦ —\n\n').map((page, i, arr) => (
+              {letter.handwritingStyle === 'handwritten' && letter.handwrittenImageUrl ? (
+                <div style={{ margin: '16px 0' }}>
+                  <img src={letter.handwrittenImageUrl} alt="Handwritten letter" style={{ width: '100%', height: 'auto', borderRadius: '4px' }} />
+                </div>
+              ) : (
+                letter.body.split('\n\n— ✦ —\n\n').map((page, i, arr) => (
                 <div key={i} style={writingStyle}>
                   <p style={{ fontFamily: bodyFont, fontSize: 'clamp(15px,2vw,18px)', lineHeight: 2, letterSpacing: '0.02em', color: bodyColor, opacity: 0.98, whiteSpace: 'pre-wrap', overflowWrap: 'break-word', wordBreak: 'break-word' }}>{page}</p>
                   {i < arr.length - 1 && <div style={{ textAlign: 'center', margin: '24px 0', opacity: 0.4 }}><span style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.4em', color: colors.accent }}>— ✦ —</span></div>}
                 </div>
-              ))}
+                ))
+              )}
               {letter.voiceNoteUrl && (
                 <div style={{ marginTop: '22px', padding: '14px 16px', border: `1px solid ${colors.accent}30`, borderRadius: '6px', background: 'rgba(10,10,24,0.18)' }}>
                   <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.28em', color: colors.accent, textTransform: 'uppercase', margin: '0 0 6px' }}>Voice Note</p>

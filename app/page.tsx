@@ -25,6 +25,7 @@ import {
   getAllHubs,
   sendLetter,
   uploadVoiceNote,
+  uploadHandwrittenImage,
   updateHub,
   signIn,
   uploadAvatarToStorage,
@@ -1271,6 +1272,7 @@ export default function Home() {
             onSend={async (letter) => {
               try {
                 const voiceNoteUrl = letter.voiceNoteBlob ? await uploadVoiceNote(letter.voiceNoteBlob) : undefined
+                const handwrittenImageUrl = letter.handwrittenImageBlob ? await uploadHandwrittenImage(letter.handwrittenImageBlob) : undefined
                 if (letter.capsuleDays) {
                   const myHub = await getMyHub()
                   if (!myHub) throw new Error('Could not get own hub')
@@ -1292,6 +1294,7 @@ export default function Home() {
                     letter.voiceEffect,
                     letter.handwritingStyle,
                     letter.embellishmentId,
+                    handwrittenImageUrl,
                   )
                 } else {
                   const allHubs = await getAllHubs();
@@ -1319,6 +1322,7 @@ export default function Home() {
                     letter.voiceEffect,
                     letter.handwritingStyle,
                     letter.embellishmentId,
+                    handwrittenImageUrl,
                   );
                 }
 

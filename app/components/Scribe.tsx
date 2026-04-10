@@ -13,6 +13,7 @@ import {
   type HandwritingStyle,
   type EmbellishmentId,
 } from '../lib/letterEnrichments'
+import HandwritingCanvas, { type HandwritingCanvasRef } from './HandwritingCanvas'
 
 const SCRIBE_STARS = Array.from({ length: 20 }, (_, i) => ({
   width: `${(i % 3) * 0.45 + 0.3}px`,
@@ -308,7 +309,7 @@ function formatCapsuleOpenDate(capsuleDays: number) {
 export default function Scribe({ recipientName, senderName, lettersSent = 0, onClose, onSend }: {
   recipientName?: string; senderName?: string; lettersSent?: number
   onClose?: () => void
-  onSend?: (letter: { to?: string; body: string; paperId: string; subject: string; fontId: string; colorId?: string; paperColorId?: string; stampId?: string; envelopeId?: string; capsuleDays?: number; burnAfterReading?: boolean; voiceNoteBlob?: Blob; voiceEffect?: VoiceEffect; handwritingStyle?: HandwritingStyle; embellishmentId?: EmbellishmentId }) => void
+  onSend?: (letter: { to?: string; body: string; paperId: string; subject: string; fontId: string; colorId?: string; paperColorId?: string; stampId?: string; envelopeId?: string; capsuleDays?: number; burnAfterReading?: boolean; voiceNoteBlob?: Blob; voiceEffect?: VoiceEffect; handwritingStyle?: HandwritingStyle; embellishmentId?: EmbellishmentId; handwrittenImageBlob?: Blob }) => void
 }) {
   const unlockedPapers = PAPERS.filter(p => p.unlocksAt <= lettersSent)
   const [selectedPaper, setSelectedPaper] = useState(unlockedPapers[0])
@@ -328,8 +329,9 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
   const [journalMode, setJournalMode] = useState(false)
   const [capsuleDays, setCapsuleDays] = useState<30|60|90>(30)
   const [burnAfterReading, setBurnAfterReading] = useState(false)
-  const [selectedHandwriting, setSelectedHandwriting] = useState<HandwritingStyle>('steady')
+  const [selectedHandwriting, setSelectedHandwriting] = useState<HandwritingStyle>('typed')
   const [selectedEmbellishment, setSelectedEmbellishment] = useState<EmbellishmentId>('none')
+  const canvasRef = useRef<HandwritingCanvasRef>(null)
   const [voiceEffect, setVoiceEffect] = useState<VoiceEffect>('raw')
   const [voiceNoteBlob, setVoiceNoteBlob] = useState<Blob | null>(null)
   const [voiceNoteUrl, setVoiceNoteUrl] = useState<string | null>(null)
@@ -452,7 +454,8 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
   }
 
   async function handleRelease() {
-    if (!body.trim()) return
+    if (selectedHandwriting === 'typed' && !body.trim()) return
+    if (selectedHandwriting === 'handwritten' && canvasRef.current?.isEmpty()) return
     if (!subject.trim()) {
       setSubjectError(true)
       setTimeout(() => setSubjectError(false), 3500)
@@ -467,8 +470,9 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
     playLetterSend()
     await new Promise(r => setTimeout(r, 2200))
     setSent(true)
+    const handwrittenImageBlob = selectedHandwriting === 'handwritten' ? await canvasRef.current?.toBlob() : undefined
     setTimeout(() => {
-      onSend?.({ to: journalMode ? undefined : recipientName, body, paperId: selectedPaper.id, subject, fontId: selectedFont.id, colorId: selectedColor ?? undefined, paperColorId: selectedPaperColor ?? undefined, stampId: selectedStamp, envelopeId: selectedEnvelope, capsuleDays: journalMode ? capsuleDays : undefined, burnAfterReading: burnAfterReading || undefined, voiceNoteBlob: voiceNoteBlob ?? undefined, voiceEffect: voiceNoteBlob ? voiceEffect : undefined, handwritingStyle: selectedHandwriting, embellishmentId: selectedEmbellishment })
+      onSend?.({ to: journalMode ? undefined : recipientName, body, paperId: selectedPaper.id, subject, fontId: selectedFont.id, colorId: selectedColor ?? undefined, paperColorId: selectedPaperColor ?? undefined, stampId: selectedStamp, envelopeId: selectedEnvelope, capsuleDays: journalMode ? capsuleDays : undefined, burnAfterReading: burnAfterReading || undefined, voiceNoteBlob: voiceNoteBlob ?? undefined, voiceEffect: voiceNoteBlob ? voiceEffect : undefined, handwritingStyle: selectedHandwriting, embellishmentId: selectedEmbellishment, handwrittenImageBlob: handwrittenImageBlob ?? undefined })
       onClose?.()
     }, 2400)
   }
@@ -502,8 +506,22 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
     const content = (
       <div style={{ position:'relative' }}>
         {renderLetterEmbellishment(selectedEmbellishment, effectiveInk.accent, 'compose')}
-        <div style={getHandwritingStyleStyles(selectedHandwriting)}>
-          <LetterContent fontFamily={fontFamily} ink={effectiveInk} recipient={recipientName} senderName={senderName} date={today} body={pages[currentPage]} setBody={setPageBody} textareaRef={textareaRef} onKeyDown={handleTypingKey}/>
+        <div style={selectedHandwriting === 'typed' ? getHandwritingStyleStyles(selectedHandwriting) : {}}>
+          {selectedHandwriting === 'handwritten' ? (
+            <div>
+              <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'12px', color:effectiveInk.secondary, marginBottom:'16px', textShadow: '0 1px 6px #fff8, 0 0px 1px #fff4' }}>{today}</p>
+              <p style={{ fontFamily:fontFamily, fontSize:'18px', fontStyle:'italic', color:effectiveInk.secondary, marginBottom:'18px', lineHeight:1.8, textShadow: '0 1px 6px #fff8, 0 0px 1px #fff4' }}>
+                {recipientName ? `Dear ${recipientName},` : 'Dear Stranger,'}
+              </p>
+              <HandwritingCanvas ref={canvasRef} inkColor={effectiveInk.main} lineWidth={2} />
+              <p style={{ fontFamily:fontFamily, fontStyle:'italic', fontSize:'15px', color:effectiveInk.secondary, marginTop:'10px', lineHeight:1.9, textShadow: '0 1px 6px #fff8, 0 0px 1px #fff4' }}>
+                Yours across the distance,<br/>
+                <span style={{ color:effectiveInk.accent }}>{senderName || 'A Stranger'}</span>
+              </p>
+            </div>
+          ) : (
+            <LetterContent fontFamily={fontFamily} ink={effectiveInk} recipient={recipientName} senderName={senderName} date={today} body={pages[currentPage]} setBody={setPageBody} textareaRef={textareaRef} onKeyDown={handleTypingKey}/>
+          )}
         </div>
       </div>
     )
@@ -888,15 +906,15 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
               <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(150px, 1fr))', gap:'10px' }}>
                 <div>
                   <p style={{ fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.24em', color:'#e6c76e', textTransform:'uppercase', margin:'0 0 8px' }}>Letter Form</p>
-                  <div style={{ display:'flex', flexDirection:'column', gap:'6px' }}>
+                  <div style={{ display:'flex', gap:'6px' }}>
                     {HANDWRITING_STYLES.map(style => {
                       const isSelected = selectedHandwriting === style.id
                       return (
                         <button
                           key={style.id}
                           onClick={() => setSelectedHandwriting(style.id)}
-                          style={{ textAlign:'left', padding:'8px 10px', background:isSelected ? 'rgba(230,199,110,0.12)' : 'rgba(255,255,255,0.02)', border:`1px solid ${isSelected ? 'rgba(230,199,110,0.35)' : 'rgba(255,255,255,0.08)'}`, borderRadius:'4px', cursor:'pointer' }}>
-                          <p style={{ fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.16em', color:isSelected ? '#e6c76e' : 'rgba(255,255,255,0.78)', textTransform:'uppercase', margin:'0 0 3px' }}>{style.label}</p>
+                          style={{ flex:1, textAlign:'center', padding:'10px 10px', background:isSelected ? 'rgba(230,199,110,0.12)' : 'rgba(255,255,255,0.02)', border:`1px solid ${isSelected ? 'rgba(230,199,110,0.35)' : 'rgba(255,255,255,0.08)'}`, borderRadius:'4px', cursor:'pointer' }}>
+                          <p style={{ fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.16em', color:isSelected ? '#e6c76e' : 'rgba(255,255,255,0.78)', textTransform:'uppercase', margin:'0 0 3px' }}>{style.id === 'typed' ? '⌨ ' : '✎ '}{style.label}</p>
                           <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'10px', color:'rgba(255,255,255,0.46)', margin:0 }}>{style.desc}</p>
                         </button>
                       )
@@ -922,9 +940,6 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
                   </div>
                 </div>
               </div>
-              <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'11px', color:'rgba(255,255,255,0.44)', margin:'10px 0 0' }}>
-                Choose Typed for a cleaner typeset letter, or one of the handwritten forms for a more personal page.
-              </p>
             </div>
 
             <div style={{ marginTop:'8px', padding:'12px 14px', border:'1px solid rgba(140,160,255,0.16)', borderRadius:'6px', background:'rgba(30,34,70,0.12)' }}>

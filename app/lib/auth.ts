@@ -51,6 +51,7 @@ type UniverseLetterRow = {
   font_id?: string | null
   font_color?: string | null
   handwriting_style?: string | null
+  handwritten_image_url?: string | null
   embellishment_id?: string | null
   created_at?: string | null
   sender?: { hub_name?: string | null } | null
@@ -419,7 +420,7 @@ export async function getUniverseLetters() {
   try {
     const { data, error } = await supabase
       .from('letters')
-      .select('id, sender_id, body, subject, paper_id, font_id, font_color, handwriting_style, embellishment_id, sender:sender_id(hub_name)')
+      .select('id, sender_id, body, subject, paper_id, font_id, font_color, handwriting_style, handwritten_image_url, embellishment_id, sender:sender_id(hub_name)')
       .eq('is_universe_letter', true)
       .order('created_at', { ascending: false })
       .limit(50)
@@ -437,6 +438,7 @@ export async function getUniverseLetters() {
       fontId: (l.font_id as string) || 'im-fell',
       fontColor: (l.font_color as string) || undefined,
       handwritingStyle: (l.handwriting_style as string) || 'typed',
+      handwrittenImageUrl: (l.handwritten_image_url as string) || undefined,
       embellishmentId: (l.embellishment_id as string) || 'none',
     }))
   } catch {
@@ -452,7 +454,7 @@ export async function getDriftLetters() {
 
     let query = supabase
       .from('letters')
-      .select('id, sender_id, body, subject, paper_id, font_id, font_color, handwriting_style, embellishment_id, created_at, sender:sender_id(hub_name)')
+      .select('id, sender_id, body, subject, paper_id, font_id, font_color, handwriting_style, handwritten_image_url, embellishment_id, created_at, sender:sender_id(hub_name)')
       .eq('is_universe_letter', true)
       .in('paper_id', DRIFT_PAPER_IDS)
       .order('created_at', { ascending: false })
@@ -476,6 +478,7 @@ export async function getDriftLetters() {
       fontId: (l.font_id as string) || 'almendra',
       fontColor: (l.font_color as string) || undefined,
       handwritingStyle: (l.handwriting_style as string) || 'typed',
+      handwrittenImageUrl: (l.handwritten_image_url as string) || undefined,
       embellishmentId: (l.embellishment_id as string) || 'none',
       createdAt: (l.created_at as string) || undefined,
     }))
@@ -756,6 +759,7 @@ export async function sendLetter(
   voiceEffect?: string,
   handwritingStyle?: HandwritingStyle,
   embellishmentId?: EmbellishmentId,
+  handwrittenImageUrl?: string,
 ) {
   const {
     data: { user },
@@ -767,7 +771,8 @@ export async function sendLetter(
   if (!isUniverseLetter && !recipientId) throw new Error('Recipient required')
 
   const trimmedBody = body.trim()
-  if (!trimmedBody) throw new Error('Letter body cannot be empty')
+  if (!trimmedBody && handwritingStyle !== 'handwritten') throw new Error('Letter body cannot be empty')
+  if (handwritingStyle === 'handwritten' && !handwrittenImageUrl) throw new Error('Handwritten image required')
 
   // Universe letters are instant — they float freely as shooting stars immediately.
   // Direct letters travel based on length: shorter letters arrive sooner.
@@ -806,6 +811,7 @@ export async function sendLetter(
         ...(voiceNoteUrl ? { voice_note_url: voiceNoteUrl, voice_effect: voiceEffect || 'raw' } : {}),
         handwriting_style: handwritingStyle || 'typed',
         ...(embellishmentId && embellishmentId !== 'none' ? { embellishment_id: embellishmentId } : {}),
+        ...(handwrittenImageUrl ? { handwritten_image_url: handwrittenImageUrl } : {}),
       },
     ])
     .select()
@@ -849,6 +855,18 @@ export async function uploadVoiceNote(blob: Blob): Promise<string> {
     .upload(path, blob, { contentType: blob.type || 'audio/webm' })
   if (error) throw error
   const { data: urlData } = supabase.storage.from('voice-notes').getPublicUrl(path)
+  return urlData.publicUrl
+}
+
+export async function uploadHandwrittenImage(blob: Blob): Promise<string> {
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+  if (userError || !user) throw new Error('Not authenticated')
+  const path = `${user.id}/${Date.now()}.png`
+  const { error } = await supabase.storage
+    .from('handwritten-letters')
+    .upload(path, blob, { contentType: 'image/png' })
+  if (error) throw error
+  const { data: urlData } = supabase.storage.from('handwritten-letters').getPublicUrl(path)
   return urlData.publicUrl
 }
 
