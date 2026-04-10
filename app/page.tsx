@@ -461,6 +461,11 @@ function LetterDepartAnimation({ onDone }: { onDone: () => void }) {
 }
 
 export default function Home() {
+  // Track if Supabase auth is hydrated
+  const [authHydrated, setAuthHydrated] = useState(false)
+  if (!authHydrated) {
+    return <div style={{width:'100vw',height:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'#0a0a16'}}><span style={{color:'#e6c76e',fontFamily:'Cinzel,serif',fontSize:24}}>Loading...</span></div>;
+  }
   const router = useRouter()
   // Persist screen in localStorage
   const [screen, setScreen] = useState<Screen>(() => {
@@ -470,8 +475,6 @@ export default function Home() {
     }
     return 'loading'
   })
-  // Track if Supabase auth is hydrated
-  const [authHydrated, setAuthHydrated] = useState(false)
   const [hubName, setHubName] = useState('')
   const [hubBio, setHubBio] = useState('')
   const [hubAskAbout, setHubAskAbout] = useState('')
