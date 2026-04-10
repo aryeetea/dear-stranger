@@ -405,13 +405,13 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
       {/* ── Star type legend ── */}
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }} style={{ position: 'absolute', bottom: '52px', left: '36px', zIndex: 10, pointerEvents: 'none', display: 'flex', flexDirection: 'column', gap: '9px' }}>
           {[
-          { dot: `radial-gradient(circle, rgba(255,255,255,0.98) 0%, rgba(${RECEIVED_GLOW_RGB},0.8) 40%, rgba(${RECEIVED_GLOW_RGB},0) 100%)`, shadow: `0 0 5px rgba(${RECEIVED_GLOW_RGB},0.55)`, label: 'Received', sub: 'arrived & waiting' },
-          { dot: `radial-gradient(circle, rgba(${TRANSIT_GLOW_RGB},0.9) 0%, rgba(${RECEIVED_GLOW_RGB},0.4) 60%, transparent 100%)`, shadow: `0 0 6px rgba(${TRANSIT_GLOW_RGB},0.45)`, label: 'In Transit', sub: 'crossing the dark' },
-          { dot: 'radial-gradient(circle, rgba(255,200,70,0.95) 0%, rgba(201,155,40,0.55) 40%, transparent 100%)', shadow: `0 0 6px rgba(${SENT_GLOW_RGB},0.7)`, label: 'Sent', sub: 'energy moving away' },
-          { dot: `radial-gradient(circle, rgba(255,248,220,0.98) 0%, rgba(${RECEIVED_GLOW_RGB},0.75) 40%, transparent 100%)`, shadow: `0 0 7px rgba(${RECEIVED_GLOW_RGB},0.85)`, label: 'Pinned', sub: 'held close, always' },
+          { dot: `radial-gradient(circle, rgba(255,255,255,1) 0%, rgba(${RECEIVED_GLOW_RGB},0.9) 45%, transparent 100%)`, shadow: `0 0 7px 2px rgba(${RECEIVED_GLOW_RGB},0.6)`, label: 'Received', sub: 'arrived & waiting' },
+          { dot: `radial-gradient(circle, rgba(110,165,255,1) 0%, rgba(80,130,255,0.7) 45%, transparent 100%)`, shadow: `0 0 7px 2px rgba(110,165,255,0.65)`, label: 'In Transit', sub: 'crossing the dark' },
+          { dot: 'radial-gradient(circle, rgba(255,200,70,1) 0%, rgba(201,130,20,0.8) 45%, transparent 100%)', shadow: `0 0 7px 2px rgba(${SENT_GLOW_RGB},0.75)`, label: 'Sent', sub: 'energy moving away' },
+          { dot: `radial-gradient(circle, rgba(255,248,210,1) 0%, rgba(${RECEIVED_GLOW_RGB},0.9) 45%, transparent 100%)`, shadow: `0 0 8px 2px rgba(${RECEIVED_GLOW_RGB},0.9)`, label: 'Pinned', sub: 'held close, always' },
         ].map(item => (
           <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: item.dot, flexShrink: 0, boxShadow: item.shadow }} />
+            <div style={{ width: '16px', height: '16px', borderRadius: '50%', background: item.dot, flexShrink: 0, boxShadow: item.shadow }} />
             <div>
               <span style={{ fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.3em', color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase' }}>{item.label}</span>
               <span style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '10px', color: 'rgba(255,255,255,0.22)', marginLeft: '7px' }}>{item.sub}</span>
@@ -572,7 +572,7 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
                   : isPinned
                     ? `radial-gradient(circle, rgba(255,248,220,0.98) 0%, rgba(${pColor.glow},0.75) 40%, transparent 100%)`
                     : isTransit
-                      ? `radial-gradient(circle, rgba(200,220,255,0.9) 0%, rgba(${pColor.glow},0.4) 60%, transparent 100%)`
+                      ? `radial-gradient(circle, rgba(110,165,255,0.95) 0%, rgba(80,130,255,0.5) 45%, rgba(${pColor.glow},0.2) 70%, transparent 100%)`
                       : `radial-gradient(circle, rgba(255,255,255,0.98) 0%, rgba(${pColor.glow},0.8) 40%, rgba(${pColor.glow},0) 100%)`,
                 boxShadow: isHovered
                   ? `0 0 ${baseSize * 4}px rgba(${statusGlowRgb},0.95), 0 0 ${baseSize * 8}px rgba(${statusGlowRgb},0.4)`
