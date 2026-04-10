@@ -570,20 +570,27 @@ export default function Profile({
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '14px', flexWrap: 'wrap' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{ position: 'relative', width: '40px', height: '40px', filter: 'drop-shadow(0 0 6px #c9a84c88)' }}>
-                  <svg width="40" height="40" viewBox="0 0 40 40" style={{ transform: 'rotate(-90deg)' }}>
-                    <circle cx="20" cy="20" r="16" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="3" />
-                    <circle cx="20" cy="20" r="16" fill="none" stroke="#ffe07a" strokeWidth="4"
-                      strokeDasharray={`${2 * Math.PI * 16}`}
-                      strokeDashoffset={`${2 * Math.PI * 16 * (1 - refreshProgress / 100)}`}
-                      strokeLinecap="round" style={{ filter: 'drop-shadow(0 0 4px #ffe07a)', opacity: 0.92 }} />
+                <div style={{ position: 'relative', width: '44px', height: '44px', filter: 'drop-shadow(0 0 12px #fffbe6), drop-shadow(0 0 18px #ffe07a), drop-shadow(0 0 24px #00ffe7)' }}>
+                  <svg width="44" height="44" viewBox="0 0 44 44" style={{ transform: 'rotate(-90deg)' }}>
+                    <defs>
+                      <linearGradient id="soul-neon" x1="0" y1="0" x2="1" y2="1">
+                        <stop offset="0%" stopColor="#fffbe6" />
+                        <stop offset="60%" stopColor="#ffe07a" />
+                        <stop offset="100%" stopColor="#00ffe7" />
+                      </linearGradient>
+                    </defs>
+                    <circle cx="22" cy="22" r="18" fill="none" stroke="rgba(255,255,255,0.13)" strokeWidth="4" />
+                    <circle cx="22" cy="22" r="18" fill="none" stroke="url(#soul-neon)" strokeWidth="5"
+                      strokeDasharray={`${2 * Math.PI * 18}`}
+                      strokeDashoffset={`${2 * Math.PI * 18 * (1 - refreshProgress / 100)}`}
+                      strokeLinecap="round" style={{ filter: 'drop-shadow(0 0 10px #ffe07a), drop-shadow(0 0 18px #00ffe7)', opacity: 1 }} />
                   </svg>
                   <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-                    <span style={{ fontFamily: "'Cinzel', serif", fontSize: '13px', fontWeight: 700, color: '#ffe07a', textShadow: '0 0 6px #c9a84c, 0 1px 0 #fff8' }}>{daysLeft}</span>
-                    <span style={{ fontFamily: "'Cinzel', serif", fontSize: '7px', color: '#c9a84c', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: '-2px' }}>days</span>
+                    <span style={{ fontFamily: "'Cinzel', serif", fontSize: '15px', fontWeight: 800, color: '#fffbe6', textShadow: '0 0 10px #ffe07a, 0 0 18px #00ffe7, 0 1px 0 #fff8' }}>{daysLeft}</span>
+                    <span style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', color: '#00ffe7', letterSpacing: '0.12em', textTransform: 'uppercase', marginTop: '-2px', textShadow: '0 0 8px #00ffe7' }}>days</span>
                   </div>
                 </div>
-                <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.22em', color: '#ffe07a', textTransform: 'uppercase', textShadow: '0 0 6px #c9a84c, 0 1px 0 #fff8' }}>Soul Cycle</p>
+                <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.25em', color: '#00ffe7', textTransform: 'uppercase', textShadow: '0 0 10px #ffe07a, 0 0 18px #00ffe7, 0 1px 0 #fff8' }}>Soul Cycle</p>
               </div>
               {attemptsLeft > 0 ? (
                 <button onClick={() => setShowRegenInput(v => !v)} disabled={regenLoading}
