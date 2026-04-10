@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { HUB_COLOR_THEMES, HUB_STYLES, HUB_DECORATIONS, type HubColor, type HubStyle, type HubDecoration } from './UniverseMap'
 import { supabase } from '../../lib/supabase'
+import { sendLetter } from '../lib/auth'
 
 const MIN_EXCHANGES = 5
 const MAX_EXCHANGES = 20
@@ -36,6 +37,13 @@ const RULES = [
   { icon: '🌀', title: 'Your Soul Mirror is sealed for 90 days', desc: 'On your first day, the mirror gives you three chances to shape how you appear. After the third, your form is fixed. After 90 days the mirror opens again. Your presence here should feel considered, not constantly edited. You are not a profile. You are a place.' },
   { icon: '◉', title: 'Your hub style and voice are yours', desc: 'During onboarding you choose how your hub looks and how the mirror speaks to you. You can update your bio and ask-about anytime from your profile — but your hub form should feel chosen, not constantly rebuilt.' },
   { icon: '🌍', title: 'This space is for everyone — but it started for students', desc: 'Dear Stranger was built with college students in mind — the 2am questions, the distance from home, the strange intimacy of sharing a campus with thousands of strangers. But if you found your way here, you are welcome.' },
+]
+
+const FIRST_LETTER_PROMPTS = [
+  { id: 'brought',  q: 'What brought you here?',                    placeholder: 'something restless, a longing...' },
+  { id: 'carry',    q: 'What do you carry quietly?',                placeholder: 'a weight, a thought, a memory...' },
+  { id: 'know',     q: 'What should a stranger know about you?',    placeholder: 'one true thing...' },
+  { id: 'seeking',  q: 'What are you looking for?',                 placeholder: 'warmth, witness, something real...' },
 ]
 
 const STYLE_BACKGROUNDS: Record<string, { base: string; gradient: string }> = {
@@ -93,7 +101,7 @@ export interface SoulMirrorResumeState {
   decoration?: string
 }
 
-type Phase = 'mode' | 'voice' | 'style' | 'chat' | 'freeform' | 'bio' | 'askabout' | 'hubstyle' | 'hubname' | 'welcome'
+type Phase = 'mode' | 'voice' | 'style' | 'chat' | 'freeform' | 'bio' | 'askabout' | 'hubstyle' | 'hubname' | 'firstletter' | 'firstletter_preview' | 'welcome'
 
 interface SoulMirrorProps {
   isReturning?: boolean
@@ -133,6 +141,12 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
   const [hubName, setHubName] = useState(resumeState?.hubName || '')
   const [bio, setBio] = useState(resumeState?.bio || '')
   const [askAbout, setAskAbout] = useState(resumeState?.askAbout || '')
+  const [firstLetterAnswers, setFirstLetterAnswers] = useState(['', '', '', ''])
+  const [generatedLetter, setGeneratedLetter] = useState('')
+  const [letterGenerating, setLetterGenerating] = useState(false)
+  const [letterError, setLetterError] = useState('')
+  const [letterSending, setLetterSending] = useState(false)
+  const [letterReleased, setLetterReleased] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const hasInitialized = useRef(false)
 
@@ -225,6 +239,46 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
       selectedDecoration,
     )
   }
+
+  const generateFirstLetter = useCallback(async () => {
+    setLetterGenerating(true)
+    setLetterError('')
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      const res = await fetch('/api/generate-first-letter', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ answers: firstLetterAnswers, hubName: hubName.trim() }),
+      })
+      const data = await res.json() as { letter?: string; error?: string }
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
+      setGeneratedLetter(data.letter ?? '')
+      setPhase('firstletter_preview')
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : ''
+      setLetterError(msg || 'Something went wrong. Please try again.')
+    } finally {
+      setLetterGenerating(false)
+    }
+  }, [firstLetterAnswers, hubName])
+
+  const releaseFirstLetter = useCallback(async () => {
+    setLetterSending(true)
+    setLetterError('')
+    try {
+      await sendLetter(null, generatedLetter, 'parchment', true, 'A stranger has arrived')
+      setLetterReleased(true)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : ''
+      setLetterError(msg || 'Could not release your letter. You can still enter the universe.')
+    } finally {
+      setLetterSending(false)
+    }
+  }, [generatedLetter])
 
   const currentBg = selectedStyle ? (STYLE_BACKGROUNDS[selectedStyle.id] ?? DEFAULT_BG) : DEFAULT_BG
 
@@ -691,19 +745,133 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
             <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: 'clamp(18px,3vw,24px)', color: 'rgba(255,255,255,0.92)', lineHeight: 1.6, marginBottom: '8px' }}>What would you name your place in the universe?</p>
             <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '15px', color: 'rgba(255,255,255,0.4)', marginBottom: '28px' }}>This is how others will find you on the map.</p>
             <input autoFocus value={hubName} onChange={e => setHubName(e.target.value)} placeholder="Your hub name..."
-              onKeyDown={e => { if (e.key === 'Enter' && hubName.trim()) setPhase('welcome') }}
+              onKeyDown={e => { if (e.key === 'Enter' && hubName.trim()) setPhase('firstletter') }}
               style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.94)', fontFamily: "'Cormorant Garamond', serif", fontSize: '22px', padding: '10px 4px', outline: 'none', textAlign: 'center', letterSpacing: '0.08em', caretColor: '#e6c76e', marginBottom: '28px' }}
               onFocus={e => { e.target.style.borderBottomColor = '#e6c76e' }}
               onBlur={e => { e.target.style.borderBottomColor = 'rgba(255,255,255,0.2)' }} />
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px' }}>
               <button onClick={() => setPhase('hubstyle')} style={backBtn}>← Back</button>
-              <button onClick={() => hubName.trim() && setPhase('welcome')} disabled={!hubName.trim()}
+              <button onClick={() => hubName.trim() && setPhase('firstletter')} disabled={!hubName.trim()}
                 style={{ width: '100%', padding: '14px', background: 'transparent', border: '1px solid rgba(230,199,110,0.42)', color: hubName.trim() ? '#e6c76e' : 'rgba(230,199,110,0.3)', fontFamily: "'Cinzel', serif", fontSize: '11px', letterSpacing: '0.3em', textTransform: 'uppercase', cursor: hubName.trim() ? 'pointer' : 'default', borderRadius: '4px' }}
                 onMouseEnter={e => { if (hubName.trim()) e.currentTarget.style.background = 'rgba(230,199,110,0.08)' }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
                 Continue
               </button>
             </div>
+          </motion.div>
+        )}
+
+        {phase === 'firstletter' && (
+          <motion.div key="firstletter" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.4 }}
+            style={{ ...cardStyle, width: 'min(540px, 95vw)', padding: 'clamp(36px,5vw,52px)' }}>
+            <GoldLines />
+            <div style={{ textAlign: 'center', marginBottom: '28px' }}>
+              <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.5em', color: 'rgba(201,168,76,0.6)', textTransform: 'uppercase', marginBottom: '8px' }}>Before you enter</p>
+              <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: 'clamp(18px,2.8vw,24px)', color: 'rgba(255,255,255,0.92)', lineHeight: 1.5, marginBottom: '8px' }}>Write your first letter</p>
+              <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '15px', color: 'rgba(255,255,255,0.45)', lineHeight: 1.65 }}>Four questions. Brief answers. The universe crafts the rest — then releases it anonymously into the drift as your introduction.</p>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '28px' }}>
+              {FIRST_LETTER_PROMPTS.map((prompt, i) => (
+                <div key={prompt.id}>
+                  <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.22em', color: '#e6c76e', textTransform: 'uppercase', marginBottom: '8px' }}>{prompt.q}</p>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type="text"
+                      value={firstLetterAnswers[i]}
+                      onChange={e => {
+                        const val = e.target.value.slice(0, 50)
+                        setFirstLetterAnswers(prev => prev.map((a, idx) => idx === i ? val : a))
+                      }}
+                      placeholder={prompt.placeholder}
+                      maxLength={50}
+                      style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '8px', color: 'rgba(255,255,255,0.9)', fontFamily: "'Cormorant Garamond', serif", fontSize: '16px', padding: '10px 52px 10px 14px', outline: 'none', caretColor: '#e6c76e', boxSizing: 'border-box' }}
+                      onFocus={e => { e.target.style.borderColor = 'rgba(230,199,110,0.4)' }}
+                      onBlur={e => { e.target.style.borderColor = 'rgba(255,255,255,0.12)' }}
+                    />
+                    <span style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', fontFamily: "'Cinzel', serif", fontSize: '9px', color: firstLetterAnswers[i].length >= 45 ? 'rgba(230,140,80,0.8)' : 'rgba(255,255,255,0.2)', pointerEvents: 'none' }}>
+                      {firstLetterAnswers[i].length}/50
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {letterError && (
+              <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(235,140,140,0.85)', textAlign: 'center', marginBottom: '16px' }}>{letterError}</p>
+            )}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <button onClick={() => setPhase('hubname')} style={backBtn}>← Back</button>
+              <motion.button
+                onClick={() => void generateFirstLetter()}
+                disabled={firstLetterAnswers.some(a => !a.trim()) || letterGenerating}
+                whileTap={{ scale: 0.97 }}
+                style={{ padding: '13px 28px', background: firstLetterAnswers.every(a => a.trim()) && !letterGenerating ? 'rgba(230,199,110,0.12)' : 'rgba(255,255,255,0.04)', border: `1px solid ${firstLetterAnswers.every(a => a.trim()) ? 'rgba(230,199,110,0.5)' : 'rgba(255,255,255,0.1)'}`, color: firstLetterAnswers.every(a => a.trim()) ? '#e6c76e' : 'rgba(255,255,255,0.3)', fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.25em', textTransform: 'uppercase', cursor: firstLetterAnswers.every(a => a.trim()) && !letterGenerating ? 'pointer' : 'default', borderRadius: '4px', transition: 'all 0.2s' }}>
+                {letterGenerating ? 'Writing...' : 'Generate my letter ✦'}
+              </motion.button>
+            </div>
+          </motion.div>
+        )}
+
+        {phase === 'firstletter_preview' && (
+          <motion.div key="firstletter_preview" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.5 }}
+            style={{ ...cardStyle, width: 'min(540px, 95vw)', padding: 'clamp(36px,5vw,52px)' }}>
+            <GoldLines />
+            {!letterReleased ? (
+              <>
+                <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+                  <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.5em', color: 'rgba(201,168,76,0.6)', textTransform: 'uppercase', marginBottom: '8px' }}>Your first letter</p>
+                  <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '16px', color: 'rgba(255,255,255,0.5)' }}>Read it once. Then release it.</p>
+                </div>
+                {letterGenerating ? (
+                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center', justifyContent: 'center', padding: '48px 0', marginBottom: '28px' }}>
+                    {[0, 1, 2].map(i => (
+                      <motion.div key={i} animate={{ opacity: [0.3, 1, 0.3], y: [0, -3, 0] }} transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.2 }}
+                        style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'rgba(230,199,110,0.8)' }} />
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ background: 'linear-gradient(160deg, #fdf6e0, #f8efcc)', borderRadius: '8px', padding: '28px 24px', marginBottom: '28px', boxShadow: 'inset 0 1px 4px rgba(0,0,0,0.06), 0 2px 16px rgba(0,0,0,0.3)' }}>
+                    <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '15px', color: '#3a2a14', lineHeight: 1.9, whiteSpace: 'pre-wrap', margin: 0 }}>{generatedLetter}</p>
+                  </div>
+                )}
+                {letterError && (
+                  <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(235,140,140,0.85)', textAlign: 'center', marginBottom: '16px' }}>{letterError}</p>
+                )}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
+                  <button
+                    onClick={() => void generateFirstLetter()}
+                    disabled={letterGenerating || letterSending}
+                    style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.35)', fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.2em', textTransform: 'uppercase', cursor: letterGenerating || letterSending ? 'default' : 'pointer', padding: '8px 0' }}
+                    onMouseEnter={e => { if (!letterGenerating && !letterSending) e.currentTarget.style.color = 'rgba(255,255,255,0.6)' }}
+                    onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.35)' }}>
+                    {letterGenerating ? 'Writing...' : '↻ Regenerate'}
+                  </button>
+                  <motion.button
+                    onClick={() => void releaseFirstLetter()}
+                    disabled={letterSending || letterGenerating}
+                    whileTap={{ scale: 0.97 }}
+                    style={{ padding: '13px 24px', background: 'rgba(230,199,110,0.12)', border: '1px solid rgba(230,199,110,0.5)', color: letterSending || letterGenerating ? 'rgba(230,199,110,0.4)' : '#e6c76e', fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.25em', textTransform: 'uppercase', cursor: letterSending || letterGenerating ? 'default' : 'pointer', borderRadius: '4px', transition: 'all 0.2s' }}>
+                    {letterSending ? 'Releasing...' : 'Release into the drift ✦'}
+                  </motion.button>
+                </div>
+              </>
+            ) : (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6 }} style={{ textAlign: 'center', padding: '20px 0' }}>
+                <motion.p initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} style={{ fontSize: '34px', marginBottom: '22px' }}>✦</motion.p>
+                <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: 'clamp(18px,2.8vw,22px)', color: 'rgba(255,255,255,0.9)', lineHeight: 1.6, marginBottom: '12px' }}>Your letter is drifting.</p>
+                <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '15px', color: 'rgba(255,255,255,0.45)', lineHeight: 1.7, marginBottom: '40px' }}>A stranger will find it. They won&apos;t know it was your first day.</p>
+                <motion.button
+                  onClick={() => setPhase('welcome')}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.5 }}
+                  whileTap={{ scale: 0.98 }}
+                  style={{ padding: '14px 36px', background: 'transparent', border: '1px solid rgba(230,199,110,0.55)', color: '#e6c76e', fontFamily: "'Cinzel', serif", fontSize: '11px', letterSpacing: '0.35em', textTransform: 'uppercase', cursor: 'pointer', borderRadius: '4px' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(230,199,110,0.1)'; e.currentTarget.style.boxShadow = '0 0 28px rgba(230,199,110,0.18)' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.boxShadow = 'none' }}>
+                  Enter the Universe ✦
+                </motion.button>
+              </motion.div>
+            )}
           </motion.div>
         )}
 
