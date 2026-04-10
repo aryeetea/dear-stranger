@@ -72,7 +72,7 @@ export default function SignupPage() {
           if (typeof sessionStorage !== 'undefined') {
             sessionStorage.setItem('ds_goto_onboarding', '1')
           }
-          router.push('/')
+          router.replace('/')
         }}
         setPendingCredentials={(creds) => {
           if (typeof sessionStorage === 'undefined') return

@@ -646,6 +646,17 @@ export default function Home() {
         console.error('[routeFromSession] getMyHub error:', err)
       }
 
+      // Retry once if hub fetch failed — could be a transient JWT/network issue
+      if (!hub) {
+        try {
+          await new Promise(r => setTimeout(r, 1200))
+          hub = await timeoutPromise(getMyHub(), 7000, 'getMyHub retry')
+          console.log('[routeFromSession] getMyHub retry result:', hub)
+        } catch (err) {
+          console.error('[routeFromSession] getMyHub retry error:', err)
+        }
+      }
+
       if (hub) {
         setHubName(hub.hub_name || '')
         setHubBio(hub.bio || '')
@@ -732,6 +743,23 @@ export default function Home() {
       authListener.subscription.unsubscribe()
     }
   }, [clearHubState, routeFromSession])
+
+  // Prevent browser back button from escaping the SPA when user is authenticated
+  useEffect(() => {
+    const activeScreens = ['universe', 'observatory', 'drift', 'profile', 'scribe', 'soulMirror']
+    if (!activeScreens.includes(screen)) return
+
+    // Push a duplicate history entry so back stays on the same page
+    window.history.pushState({ dsScreen: screen }, '')
+
+    const handlePopState = () => {
+      // Re-push state to trap back button inside the app
+      window.history.pushState({ dsScreen: screen }, '')
+    }
+
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [screen])
 
   async function handleOnboardingComplete(
     answers: Record<number, string>,
