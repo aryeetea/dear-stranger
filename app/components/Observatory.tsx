@@ -22,6 +22,9 @@ const BG_STARS = Array.from({ length: 160 }, (_, i) => ({
   opacity: sr(i * 3 + 7) * 0.35 + 0.08,
 }))
 
+// ── Twinkle stars (subset that animate opacity) ──
+const TWINKLE_STARS = BG_STARS.filter((_, i) => i % 4 === 2)
+
 // ── Nebula patches (subtle ambient only) ──
 const NEBULAE = [
   { x: 22, y: 22, rx: 18, ry: 12, color: '104,52,150', op: 0.07 },
@@ -181,6 +184,7 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
   const [portalPulse, setPortalPulse] = useState(false)
   const [activeZone, setActiveZone] = useState<string | null>(null)
   const [zoomTarget, setZoomTarget] = useState<Letter | null>(null)
+  const [countHovered, setCountHovered] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -294,6 +298,8 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
   const arrived = letters.filter(l => l.status === 'arrived')
   const pinned = letters.filter(l => l.status === 'archive')
   const total = letters.length
+  const sentCount = letters.filter(l => l.direction === 'sent').length
+  const receivedCount = letters.filter(l => l.direction === 'received' && l.status !== 'transit').length
   const newlyArrived = arrived.filter(l => !readIds.has(l.id) && (currentTime - new Date(l.arrivedAt || l.sentAt).getTime()) < 48 * 3600000)
 
   const p1x = (mousePos.x - 0.5) * 14
@@ -343,6 +349,25 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
         <ellipse cx="50%" cy="50%" rx="20%" ry="14%" fill="url(#obs-anchor)" />
       </svg>
 
+      {/* ── Twinkling overlay stars ── */}
+      {TWINKLE_STARS.map((s, i) => (
+        <motion.div
+          key={`tw-${i}`}
+          animate={{ opacity: [s.opacity * 0.3, Math.min(s.opacity * 2.6, 0.88), s.opacity * 0.5, s.opacity * 1.9, s.opacity * 0.3] }}
+          transition={{ duration: 2.5 + sr(i * 31) * 3.5, repeat: Infinity, ease: 'easeInOut', delay: sr(i * 43) * 6 }}
+          style={{
+            position: 'absolute',
+            left: `${s.x}%`, top: `${s.y}%`,
+            width: `${Math.max(s.r * 3, 1.5)}px`, height: `${Math.max(s.r * 3, 1.5)}px`,
+            borderRadius: '50%',
+            background: 'rgba(255,255,255,0.95)',
+            transform: 'translate(-50%, -50%)',
+            pointerEvents: 'none',
+            zIndex: 1,
+          }}
+        />
+      ))}
+
       {/* ── Guidance hint ── */}
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }} style={{ position: 'absolute', top: '62px', left: '50%', transform: 'translateX(-50%)', textAlign: 'center', pointerEvents: 'none', zIndex: 2, whiteSpace: 'nowrap' }}>
         <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '12px', color: 'rgba(255,255,255,0.2)', letterSpacing: '0.05em' }}>Drag to explore · Tap a star to read its light</p>
@@ -351,8 +376,18 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
       {/* ── Top bar ── */}
       <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 80, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 28px', pointerEvents: 'none' }}>
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} style={{ display: 'flex', gap: '8px', pointerEvents: 'all' }}>
-          <div style={{ padding: '7px 14px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '999px', backdropFilter: 'blur(10px)' }}>
-            <span style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.28em', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>{total} {total === 1 ? 'letter' : 'letters'}</span>
+          <div
+            onMouseEnter={() => setCountHovered(true)}
+            onMouseLeave={() => setCountHovered(false)}
+            style={{ padding: '7px 14px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '999px', backdropFilter: 'blur(10px)', cursor: 'default' }}
+          >
+            {countHovered && total > 0 ? (
+              <span style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.18em', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>
+                {[receivedCount > 0 && `${receivedCount} received`, sentCount > 0 && `${sentCount} sent`, transit.length > 0 && `${transit.length} transit`].filter(Boolean).join(' · ')}
+              </span>
+            ) : (
+              <span style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.28em', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>{total} {total === 1 ? 'letter' : 'letters'}</span>
+            )}
           </div>
           {newlyArrived.length > 0 && (
             <motion.div animate={{ opacity: [0.75, 1, 0.75] }} transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }} style={{ padding: '7px 14px', background: 'rgba(230,199,110,0.1)', border: '1px solid rgba(230,199,110,0.4)', borderRadius: '999px', backdropFilter: 'blur(10px)' }}>
@@ -447,6 +482,9 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
         const cy = letter.cy ?? 50
         const baseSize = isPinned ? 11 : isSent ? 8 : isTransit ? 7 : (isNew ? 12 : 9)
         const opacity = isPinned ? 0.8 : isSent ? 0.85 : isTransit ? 0.72 : 1
+        const driftX = isTransit ? (sr(i * 13) * 50) - 25 : 0
+        const driftY = isTransit ? (sr(i * 17) * 24) - 12 : 0
+        const driftDur = isTransit ? 22 + sr(i * 23) * 18 : 0
 
         return (
           <motion.div
@@ -459,18 +497,23 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
               left: `${cx}%`, top: `${cy}%`,
               transform: `translate(-50%, -50%) translate(${p2x * (isArrived ? 0.5 : 0.3)}px, ${p2y * (isArrived ? 0.5 : 0.3)}px)`,
               transition: 'transform 0.45s ease-out',
-              cursor: isTransit ? 'default' : 'pointer',
+              cursor: 'pointer',
               zIndex: isHovered ? 20 : 5,
             }}
             onClick={() => handleLetterClick(letter)}
             onMouseEnter={() => {
-              if (isTransit) return
               setHoveredId(letter.id)
               setTooltip({ letter, x: cx, y: cy })
               setActiveZone(letter.status)
             }}
             onMouseLeave={() => { setHoveredId(null); setTooltip(null); setActiveZone(null) }}
+            onTouchStart={() => { setHoveredId(letter.id); setTooltip({ letter, x: cx, y: cy }); setActiveZone(letter.status) }}
+            onTouchEnd={() => { setHoveredId(null); setTooltip(null); setActiveZone(null) }}
           >
+            <motion.div
+              animate={isTransit ? { x: [0, driftX, 0], y: [0, driftY, 0] } : {}}
+              transition={isTransit ? { duration: driftDur, repeat: Infinity, ease: 'easeInOut' } : {}}
+            >
             {/* Glow aura */}
             <motion.div
               animate={isSent ? { opacity: [0.2, 0.5, 0.2], scale: [1, 1.22, 1] } : isArrived && isNew ? { opacity: [0.3, 0.7, 0.3], scale: [1, 1.3, 1] } : isArrived ? { opacity: [0.2, 0.45, 0.2] } : isPinned ? { opacity: [0.25, 0.55, 0.25] } : { opacity: isHovered ? 0.45 : 0.12 }}
@@ -510,7 +553,7 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
 
             {/* Star/comet body */}
             <motion.div
-              animate={isSent ? { scale: [1, 1.07, 1], opacity: [0.8, 0.97, 0.8] } : isPinned ? {} : isArrived ? { scale: [1, 1.15, 1], opacity: [0.9, 1, 0.9] } : isTransit ? { x: [-2, 2, -2] } : {}}
+              animate={isSent ? { scale: [1, 1.07, 1], opacity: [0.8, 0.97, 0.8] } : isPinned ? {} : isArrived ? { scale: [1, 1.15, 1], opacity: [0.9, 1, 0.9] } : isTransit ? { scale: [1, 1.06, 1] } : {}}
               transition={{ duration: isSent ? 3.2 + sr(i * 3) * 1.5 : isArrived ? 2.8 + sr(i * 3) * 1.5 : 1.4, repeat: Infinity, ease: 'easeInOut', delay: sr(i * 11) * 2 }}
               style={{
                 width: `${isHovered ? baseSize * 2.4 : baseSize * 2}px`, height: `${isHovered ? baseSize * 2.4 : baseSize * 2}px`,
@@ -546,7 +589,7 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
                 background: `linear-gradient(to right, transparent, rgba(${pColor.glow},${isHovered ? 0.85 : isPinned ? 0.65 : 0.4}), transparent)`,
                 transition: 'width 0.3s', pointerEvents: 'none',
               }} />
-            ))}
+            ))}            </motion.div>
           </motion.div>
         )
       })}
@@ -576,7 +619,10 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
               {formatObservatoryDate(tooltip.letter.arrivedAt || tooltip.letter.sentAt)}
             </p>
             {tooltip.letter.status === 'transit' && (
-              <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '11px', color: 'rgba(255,220,140,0.65)', marginTop: '5px' }}>traveling · {tooltip.letter.travelProgress ?? 0}%</p>
+              <div style={{ marginTop: '5px' }}>
+                <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '11px', color: 'rgba(255,220,140,0.65)' }}>crossing the dark · {tooltip.letter.travelProgress ?? 0}%</p>
+                {tooltip.letter.arrivedAt && <p style={{ fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.2em', color: 'rgba(255,220,140,0.4)', marginTop: '3px', textTransform: 'uppercase' }}>Arriving · {formatObservatoryDate(tooltip.letter.arrivedAt)}</p>}
+              </div>
             )}
           </motion.div>
         )}
