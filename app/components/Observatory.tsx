@@ -377,8 +377,38 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
 
       {/* ── Guidance hint ── */}
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }} style={{ position: 'absolute', top: '62px', left: '50%', transform: 'translateX(-50%)', textAlign: 'center', pointerEvents: 'none', zIndex: 2, whiteSpace: 'nowrap' }}>
-        <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '12px', color: 'rgba(255,255,255,0.2)', letterSpacing: '0.05em' }}>Drag to explore · Tap a star to read its light</p>
+        <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '12px', color: 'rgba(255,255,255,0.2)', letterSpacing: '0.05em' }}>Tap a letter to read its light</p>
       </motion.div>
+
+      {/* ── Zone labels ── */}
+      {/* In Transit — top arc, blue */}
+      {transit.length > 0 && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.9 }} style={{ position: 'absolute', top: '10%', left: '50%', transform: 'translateX(-50%)', pointerEvents: 'none', zIndex: 2, textAlign: 'center' }}>
+          <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.55em', color: 'rgba(100,170,255,0.28)', textTransform: 'uppercase' }}>In Transit</p>
+          <div style={{ width: '40px', height: '1px', background: 'linear-gradient(to right, transparent, rgba(100,170,255,0.18), transparent)', margin: '4px auto 0' }} />
+        </motion.div>
+      )}
+      {/* Pinned — mid-upper left, lavender */}
+      {pinned.length > 0 && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.95 }} style={{ position: 'absolute', top: '22%', left: '8%', pointerEvents: 'none', zIndex: 2 }}>
+          <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.5em', color: 'rgba(180,140,240,0.30)', textTransform: 'uppercase' }}>Pinned</p>
+          <div style={{ width: '32px', height: '1px', background: 'linear-gradient(to right, rgba(180,140,240,0.18), transparent)', marginTop: '4px' }} />
+        </motion.div>
+      )}
+      {/* Received — center right, gold */}
+      {arrived.length > 0 && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.0 }} style={{ position: 'absolute', top: '42%', right: '6%', pointerEvents: 'none', zIndex: 2, textAlign: 'right' }}>
+          <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.5em', color: 'rgba(230,199,110,0.30)', textTransform: 'uppercase' }}>Received</p>
+          <div style={{ width: '32px', height: '1px', background: 'linear-gradient(to left, rgba(230,199,110,0.18), transparent)', marginTop: '4px', marginLeft: 'auto' }} />
+        </motion.div>
+      )}
+      {/* Sent — lower half, amber */}
+      {sentCount > 0 && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.05 }} style={{ position: 'absolute', bottom: '22%', left: '50%', transform: 'translateX(-50%)', pointerEvents: 'none', zIndex: 2, textAlign: 'center' }}>
+          <div style={{ width: '40px', height: '1px', background: 'linear-gradient(to right, transparent, rgba(255,180,40,0.18), transparent)', margin: '0 auto 4px' }} />
+          <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.55em', color: 'rgba(255,180,40,0.28)', textTransform: 'uppercase' }}>Sent</p>
+        </motion.div>
+      )}
 
       {/* ── Top bar ── */}
       <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 80, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 'clamp(12px, 2.5vw, 18px) clamp(14px, 3vw, 28px)', pointerEvents: 'none' }}>
