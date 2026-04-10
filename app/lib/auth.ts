@@ -195,6 +195,17 @@ export async function signInWithDiscord() {
   if (error) throw error
 }
 
+export async function signInWithMagicLink(email: string) {
+  const { error } = await supabase.auth.signInWithOtp({
+    email,
+    options: {
+      emailRedirectTo: typeof window !== 'undefined' ? window.location.origin : undefined,
+    },
+  })
+
+  if (error) throw error
+}
+
 export async function createHubForCurrentUser(
   hubName: string,
   bio: string,

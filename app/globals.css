@@ -115,12 +115,14 @@ input::placeholder {
 /* Profile responsive layout */
 .profile-layout {
   display: flex;
+  flex-direction: column;
   min-height: 100vh;
   position: relative;
   z-index: 2;
 }
 .profile-avatar-col {
-  width: 42%;
+  width: 100%;
+  height: min(60vw, 360px);
   flex-shrink: 0;
   position: relative;
   overflow: hidden;
@@ -132,21 +134,13 @@ input::placeholder {
   object-fit: contain;
   object-position: top center;
   display: block;
-  min-height: 100vh;
 }
 .profile-info-col {
   flex: 1;
-  padding: clamp(60px, 8vh, 100px) clamp(28px, 5vw, 60px) 80px;
+  padding: 28px 20px 60px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-}
-@media (max-width: 767px) {
-  body { overflow: auto; }
-  .profile-layout { flex-direction: column; }
-  .profile-avatar-col { width: 100%; height: min(60vw, 320px); }
-  .profile-avatar-fill { min-height: 0; height: 100%; }
-  .profile-info-col { padding: 28px 20px 60px; overflow-y: visible; }
 }
 
 /* UniverseMap hub profile card */

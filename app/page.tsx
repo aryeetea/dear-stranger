@@ -719,6 +719,10 @@ export default function Home() {
         console.log('[authStateChange] SIGNED_OUT, go to landing')
         return
       }
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        // Re-route when OAuth callback fires (Google/Apple/Discord redirect)
+        await routeFromSession()
+      }
     })
 
     return () => {

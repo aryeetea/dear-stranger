@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { signIn, signInWithGoogle, signInWithDiscord, signOut } from '../lib/auth'
+import { signInWithGoogle, signInWithDiscord, signInWithMagicLink, signOut } from '../lib/auth'
 
 function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback
@@ -83,6 +83,15 @@ function GoogleIcon() {
   )
 }
 
+function MailIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(201,168,76,0.9)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="4" width="20" height="16" rx="2" />
+      <path d="M22 4L12 13 2 4" />
+    </svg>
+  )
+}
+
 export function LoginScreen({
   onSuccess,
   onGoToSignup,
@@ -90,25 +99,14 @@ export function LoginScreen({
   onSuccess: () => void
   onGoToSignup: () => void
 }) {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
   const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
   const [discordLoading, setDiscordLoading] = useState(false)
+  const [magicEmail, setMagicEmail] = useState('')
+  const [magicLoading, setMagicLoading] = useState(false)
+  const [magicSent, setMagicSent] = useState(false)
 
-  async function handleLogin() {
-    if (!email.trim() || !password) { setError('Please fill in all fields.'); return }
-    setLoading(true); setError('')
-    try {
-      await signOut()
-      await signIn(email.trim(), password)
-      onSuccess()
-    } catch (err: unknown) {
-      const message = getErrorMessage(err, 'Login failed.')
-      setError(message.includes('Invalid login') ? 'Incorrect email or password.' : message)
-    } finally { setLoading(false) }
-  }
+  const anyLoading = googleLoading || discordLoading || magicLoading
 
   async function handleGoogle() {
     setGoogleLoading(true); setError('')
@@ -132,6 +130,38 @@ export function LoginScreen({
     }
   }
 
+  async function handleMagicLink() {
+    if (!magicEmail.trim()) { setError('Enter your email address.'); return }
+    setMagicLoading(true); setError('')
+    try {
+      await signInWithMagicLink(magicEmail.trim())
+      setMagicSent(true)
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Could not send magic link.'))
+    } finally {
+      setMagicLoading(false)
+    }
+  }
+
+  if (magicSent) {
+    return (
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}
+        style={{ width: 'min(420px, 92vw)', zIndex: 2, textAlign: 'center' }}>
+        <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.5em', color: 'rgba(201,168,76,0.6)', textTransform: 'uppercase', marginBottom: '12px' }}>Dear Stranger</p>
+        <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '24px', color: 'rgba(255,255,255,0.88)', letterSpacing: '0.06em', marginBottom: '12px' }}>Check your inbox</p>
+        <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(255,255,255,0.5)', lineHeight: 1.6, marginBottom: '24px' }}>
+          A magic link has been sent to<br />
+          <span style={{ color: 'rgba(201,168,76,0.8)' }}>{magicEmail}</span><br />
+          Click it to enter the universe.
+        </p>
+        <button onClick={() => { setMagicSent(false); setMagicEmail('') }}
+          style={{ background: 'none', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.5)', fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.2em', textTransform: 'uppercase', padding: '10px 22px', cursor: 'pointer', borderRadius: '4px' }}>
+          Use a different email
+        </button>
+      </motion.div>
+    )
+  }
+
   return (
     <>
       <InAppBrowserBanner />
@@ -140,67 +170,65 @@ export function LoginScreen({
         <div style={{ textAlign: 'center', marginBottom: '36px' }}>
           <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.5em', color: 'rgba(201,168,76,0.6)', textTransform: 'uppercase', marginBottom: '8px' }}>Dear Stranger</p>
           <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '28px', color: 'rgba(255,255,255,0.88)', letterSpacing: '0.06em', marginBottom: '8px' }}>Welcome back</p>
-        <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(255,255,255,0.38)' }}>Your hub is waiting in the universe</p>
-      </div>
+          <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(255,255,255,0.38)' }}>Your hub is waiting in the universe</p>
+        </div>
 
-      {/* Google */}
-      <button onClick={handleGoogle} disabled={googleLoading || discordLoading || loading}
-        style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '13px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.82)', fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase', cursor: 'pointer', borderRadius: '4px', marginBottom: '10px', transition: 'all 0.2s' }}
-        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.22)' }}
-        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)' }}>
-        <GoogleIcon />
-        {googleLoading ? 'Connecting...' : 'Continue with Google'}
-      </button>
+        {/* Magic link email */}
+        <div style={{ marginBottom: '16px' }}>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <input
+              type="email"
+              placeholder="your@email.com"
+              value={magicEmail}
+              onChange={e => setMagicEmail(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleMagicLink()}
+              disabled={anyLoading}
+              style={{ flex: 1, padding: '12px 14px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.88)', fontFamily: "'IM Fell English', serif", fontSize: '14px', borderRadius: '4px', outline: 'none' }}
+            />
+            <button onClick={handleMagicLink} disabled={anyLoading}
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 18px', background: 'rgba(201,168,76,0.12)', border: '1px solid rgba(201,168,76,0.35)', color: 'rgba(201,168,76,0.9)', fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.15em', textTransform: 'uppercase', cursor: 'pointer', borderRadius: '4px', whiteSpace: 'nowrap', transition: 'all 0.2s' }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(201,168,76,0.22)'; e.currentTarget.style.borderColor = 'rgba(201,168,76,0.6)' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(201,168,76,0.12)'; e.currentTarget.style.borderColor = 'rgba(201,168,76,0.35)' }}>
+              <MailIcon />
+              {magicLoading ? 'Sending...' : 'Send link'}
+            </button>
+          </div>
+        </div>
 
-      {/* Discord */}
-      <button onClick={handleDiscord} disabled={discordLoading || googleLoading || loading}
-        style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '13px', background: 'rgba(88,101,242,0.1)', border: '1px solid rgba(88,101,242,0.35)', color: 'rgba(255,255,255,0.82)', fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase', cursor: 'pointer', borderRadius: '4px', marginBottom: '16px', transition: 'all 0.2s' }}
-        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(88,101,242,0.2)'; e.currentTarget.style.borderColor = 'rgba(88,101,242,0.6)' }}
-        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(88,101,242,0.1)'; e.currentTarget.style.borderColor = 'rgba(88,101,242,0.35)' }}>
-        <DiscordIcon />
-        {discordLoading ? 'Connecting...' : 'Continue with Discord'}
-      </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '4px 0 16px' }}>
+          <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.08)' }} />
+          <span style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '12px', color: 'rgba(255,255,255,0.25)' }}>or</span>
+          <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.08)' }} />
+        </div>
 
-      {/* Divider */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-        <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.08)' }} />
-        <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.25em', color: 'rgba(255,255,255,0.2)', textTransform: 'uppercase' }}>or</p>
-        <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.08)' }} />
-      </div>
+        {/* Google */}
+        <button onClick={handleGoogle} disabled={anyLoading}
+          style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '13px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.82)', fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase', cursor: 'pointer', borderRadius: '4px', marginBottom: '10px', transition: 'all 0.2s' }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.22)' }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)' }}>
+          <GoogleIcon />
+          {googleLoading ? 'Connecting...' : 'Continue with Google'}
+        </button>
 
-      {/* Email */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
-        <input value={email} onChange={e => setEmail(e.target.value)} type="email" placeholder="Email address"
-          autoCapitalize="none" autoCorrect="off" spellCheck={false}
-          style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', color: 'rgba(255,255,255,0.85)', fontFamily: "'Cormorant Garamond', serif", fontSize: '15px', letterSpacing: '0.04em', padding: '13px 16px', outline: 'none', caretColor: '#c9a84c' }}
-          onFocus={e => e.target.style.borderColor = 'rgba(201,168,76,0.4)'}
-          onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
-          onKeyDown={e => e.key === 'Enter' && void handleLogin()} />
-        <input value={password} onChange={e => setPassword(e.target.value)} type="password" placeholder="Password"
-          autoCapitalize="none" autoCorrect="off" spellCheck={false}
-          style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', color: 'rgba(255,255,255,0.85)', fontFamily: "'Cormorant Garamond', serif", fontSize: '15px', letterSpacing: '0.04em', padding: '13px 16px', outline: 'none', caretColor: '#c9a84c' }}
-          onFocus={e => e.target.style.borderColor = 'rgba(201,168,76,0.4)'}
-          onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
-          onKeyDown={e => e.key === 'Enter' && void handleLogin()} />
-      </div>
+        {/* Discord */}
+        <button onClick={handleDiscord} disabled={anyLoading}
+          style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '13px', background: 'rgba(88,101,242,0.1)', border: '1px solid rgba(88,101,242,0.35)', color: 'rgba(255,255,255,0.82)', fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase', cursor: 'pointer', borderRadius: '4px', marginBottom: '16px', transition: 'all 0.2s' }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(88,101,242,0.2)'; e.currentTarget.style.borderColor = 'rgba(88,101,242,0.6)' }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(88,101,242,0.1)'; e.currentTarget.style.borderColor = 'rgba(88,101,242,0.35)' }}>
+          <DiscordIcon />
+          {discordLoading ? 'Connecting...' : 'Continue with Discord'}
+        </button>
 
-      {error && (
-        <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(220,100,100,0.85)', marginBottom: '14px', textAlign: 'center' }}>{error}</p>
-      )}
+        {error && (
+          <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(220,100,100,0.85)', marginBottom: '14px', textAlign: 'center' }}>{error}</p>
+        )}
 
-      <button onClick={() => void handleLogin()} disabled={loading || googleLoading || discordLoading}
-        style={{ width: '100%', padding: '14px', background: 'transparent', border: '1px solid rgba(201,168,76,0.5)', color: '#c9a84c', fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.3em', textTransform: 'uppercase', cursor: 'pointer', borderRadius: '4px', marginBottom: '20px', opacity: loading ? 0.6 : 1, transition: 'all 0.2s' }}
-        onMouseEnter={e => { if (!loading) e.currentTarget.style.background = 'rgba(201,168,76,0.08)' }}
-        onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
-        {loading ? 'Signing in...' : 'Sign In ✦'}
-      </button>
-
-      <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(255,255,255,0.35)' }}>
-          New to the universe?{' '}
-          <span onClick={onGoToSignup} style={{ color: 'rgba(201,168,76,0.7)', cursor: 'pointer', textDecoration: 'underline' }}>Create a hub</span>
-        </p>
-      </div>
+        <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(255,255,255,0.35)' }}>
+            New to the universe?{' '}
+            <span onClick={onGoToSignup} style={{ color: 'rgba(201,168,76,0.7)', cursor: 'pointer', textDecoration: 'underline' }}>Create a hub</span>
+          </p>
+        </div>
       </motion.div>
     </>
   )
@@ -213,28 +241,14 @@ export function SignupScreen({
   onSuccess: () => void
   setPendingCredentials: (creds: { email: string; password: string } | null) => void
 }) {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [confirm, setConfirm] = useState('')
   const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
   const [discordLoading, setDiscordLoading] = useState(false)
+  const [magicEmail, setMagicEmail] = useState('')
+  const [magicLoading, setMagicLoading] = useState(false)
+  const [magicSent, setMagicSent] = useState(false)
 
-  async function handleSignup() {
-    if (!email.trim() || !password || !confirm) { setError('Please fill in all fields.'); return }
-    if (password !== confirm) { setError('Passwords do not match.'); return }
-    if (password.length < 6) { setError('Password must be at least 6 characters.'); return }
-    setLoading(true); setError('')
-    try {
-      await signOut()
-      // Store credentials so onboarding can use them to create the real account
-      setPendingCredentials({ email: email.trim(), password })
-      onSuccess()
-    } catch (err: unknown) {
-      setError(getErrorMessage(err, 'Signup failed.'))
-    } finally { setLoading(false) }
-  }
+  const anyLoading = googleLoading || discordLoading || magicLoading
 
   async function handleGoogle() {
     setGoogleLoading(true); setError('')
@@ -260,6 +274,38 @@ export function SignupScreen({
     }
   }
 
+  async function handleMagicLink() {
+    if (!magicEmail.trim()) { setError('Enter your email address.'); return }
+    setMagicLoading(true); setError('')
+    try {
+      await signInWithMagicLink(magicEmail.trim())
+      setMagicSent(true)
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Could not send magic link.'))
+    } finally {
+      setMagicLoading(false)
+    }
+  }
+
+  if (magicSent) {
+    return (
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}
+        style={{ width: 'min(420px, 92vw)', zIndex: 2, textAlign: 'center' }}>
+        <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.5em', color: 'rgba(201,168,76,0.6)', textTransform: 'uppercase', marginBottom: '12px' }}>Dear Stranger</p>
+        <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '24px', color: 'rgba(255,255,255,0.88)', letterSpacing: '0.06em', marginBottom: '12px' }}>Check your inbox</p>
+        <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(255,255,255,0.5)', lineHeight: 1.6, marginBottom: '24px' }}>
+          A magic link has been sent to<br />
+          <span style={{ color: 'rgba(201,168,76,0.8)' }}>{magicEmail}</span><br />
+          Click it to enter the universe.
+        </p>
+        <button onClick={() => { setMagicSent(false); setMagicEmail('') }}
+          style={{ background: 'none', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.5)', fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.2em', textTransform: 'uppercase', padding: '10px 22px', cursor: 'pointer', borderRadius: '4px' }}>
+          Use a different email
+        </button>
+      </motion.div>
+    )
+  }
+
   return (
     <>
       <InAppBrowserBanner />
@@ -268,64 +314,58 @@ export function SignupScreen({
         <div style={{ textAlign: 'center', marginBottom: '36px' }}>
           <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.5em', color: 'rgba(201,168,76,0.6)', textTransform: 'uppercase', marginBottom: '8px' }}>Dear Stranger</p>
           <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '28px', color: 'rgba(255,255,255,0.88)', letterSpacing: '0.06em', marginBottom: '8px' }}>Join the universe</p>
-        <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(255,255,255,0.38)' }}>A hub will be built for you</p>
-      </div>
+          <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(255,255,255,0.38)' }}>A hub will be built for you</p>
+        </div>
 
-      {/* Google */}
-      <button onClick={handleGoogle} disabled={googleLoading || discordLoading || loading}
-        style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '13px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.82)', fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase', cursor: 'pointer', borderRadius: '4px', marginBottom: '10px', transition: 'all 0.2s' }}
-        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.22)' }}
-        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)' }}>
-        <GoogleIcon />
-        {googleLoading ? 'Connecting...' : 'Continue with Google'}
-      </button>
+        {/* Magic link email */}
+        <div style={{ marginBottom: '16px' }}>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <input
+              type="email"
+              placeholder="your@email.com"
+              value={magicEmail}
+              onChange={e => setMagicEmail(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleMagicLink()}
+              disabled={anyLoading}
+              style={{ flex: 1, padding: '12px 14px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.88)', fontFamily: "'IM Fell English', serif", fontSize: '14px', borderRadius: '4px', outline: 'none' }}
+            />
+            <button onClick={handleMagicLink} disabled={anyLoading}
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 18px', background: 'rgba(201,168,76,0.12)', border: '1px solid rgba(201,168,76,0.35)', color: 'rgba(201,168,76,0.9)', fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.15em', textTransform: 'uppercase', cursor: 'pointer', borderRadius: '4px', whiteSpace: 'nowrap', transition: 'all 0.2s' }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(201,168,76,0.22)'; e.currentTarget.style.borderColor = 'rgba(201,168,76,0.6)' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(201,168,76,0.12)'; e.currentTarget.style.borderColor = 'rgba(201,168,76,0.35)' }}>
+              <MailIcon />
+              {magicLoading ? 'Sending...' : 'Send link'}
+            </button>
+          </div>
+        </div>
 
-      {/* Discord */}
-      <button onClick={handleDiscord} disabled={discordLoading || googleLoading || loading}
-        style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '13px', background: 'rgba(88,101,242,0.1)', border: '1px solid rgba(88,101,242,0.35)', color: 'rgba(255,255,255,0.82)', fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase', cursor: 'pointer', borderRadius: '4px', marginBottom: '16px', transition: 'all 0.2s' }}
-        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(88,101,242,0.2)'; e.currentTarget.style.borderColor = 'rgba(88,101,242,0.6)' }}
-        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(88,101,242,0.1)'; e.currentTarget.style.borderColor = 'rgba(88,101,242,0.35)' }}>
-        <DiscordIcon />
-        {discordLoading ? 'Connecting...' : 'Continue with Discord'}
-      </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '4px 0 16px' }}>
+          <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.08)' }} />
+          <span style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '12px', color: 'rgba(255,255,255,0.25)' }}>or</span>
+          <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.08)' }} />
+        </div>
 
-      {/* Divider */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-        <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.08)' }} />
-        <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.25em', color: 'rgba(255,255,255,0.2)', textTransform: 'uppercase' }}>or</p>
-        <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.08)' }} />
-      </div>
+        {/* Google */}
+        <button onClick={handleGoogle} disabled={anyLoading}
+          style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '13px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.82)', fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase', cursor: 'pointer', borderRadius: '4px', marginBottom: '10px', transition: 'all 0.2s' }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.22)' }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)' }}>
+          <GoogleIcon />
+          {googleLoading ? 'Connecting...' : 'Continue with Google'}
+        </button>
 
-      {/* Fields */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
-        <input value={email} onChange={e => setEmail(e.target.value)} type="email" placeholder="Email address"
-          autoCapitalize="none" autoCorrect="off" spellCheck={false}
-          style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', color: 'rgba(255,255,255,0.85)', fontFamily: "'Cormorant Garamond', serif", fontSize: '15px', letterSpacing: '0.04em', padding: '13px 16px', outline: 'none', caretColor: '#c9a84c' }}
-          onFocus={e => e.target.style.borderColor = 'rgba(201,168,76,0.4)'}
-          onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.1)'} />
-        <input value={password} onChange={e => setPassword(e.target.value)} type="password" placeholder="Password (min 6 characters)"
-          autoCapitalize="none" autoCorrect="off" spellCheck={false}
-          style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', color: 'rgba(255,255,255,0.85)', fontFamily: "'Cormorant Garamond', serif", fontSize: '15px', letterSpacing: '0.04em', padding: '13px 16px', outline: 'none', caretColor: '#c9a84c' }}
-          onFocus={e => e.target.style.borderColor = 'rgba(201,168,76,0.4)'}
-          onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.1)'} />
-        <input value={confirm} onChange={e => setConfirm(e.target.value)} type="password" placeholder="Confirm password"
-          autoCapitalize="none" autoCorrect="off" spellCheck={false}
-          style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', color: 'rgba(255,255,255,0.85)', fontFamily: "'Cormorant Garamond', serif", fontSize: '15px', letterSpacing: '0.04em', padding: '13px 16px', outline: 'none', caretColor: '#c9a84c' }}
-          onFocus={e => e.target.style.borderColor = 'rgba(201,168,76,0.4)'}
-          onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
-          onKeyDown={e => e.key === 'Enter' && void handleSignup()} />
-      </div>
+        {/* Discord */}
+        <button onClick={handleDiscord} disabled={anyLoading}
+          style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '13px', background: 'rgba(88,101,242,0.1)', border: '1px solid rgba(88,101,242,0.35)', color: 'rgba(255,255,255,0.82)', fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase', cursor: 'pointer', borderRadius: '4px', marginBottom: '16px', transition: 'all 0.2s' }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(88,101,242,0.2)'; e.currentTarget.style.borderColor = 'rgba(88,101,242,0.6)' }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(88,101,242,0.1)'; e.currentTarget.style.borderColor = 'rgba(88,101,242,0.35)' }}>
+          <DiscordIcon />
+          {discordLoading ? 'Connecting...' : 'Continue with Discord'}
+        </button>
 
-      {error && (
-        <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(220,100,100,0.85)', marginBottom: '14px', textAlign: 'center' }}>{error}</p>
-      )}
-
-      <button onClick={() => void handleSignup()} disabled={loading || googleLoading || discordLoading}
-        style={{ width: '100%', padding: '14px', background: 'transparent', border: '1px solid rgba(201,168,76,0.5)', color: '#c9a84c', fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.3em', textTransform: 'uppercase', cursor: 'pointer', borderRadius: '4px', marginBottom: '20px', opacity: loading ? 0.6 : 1, transition: 'all 0.2s' }}
-        onMouseEnter={e => { if (!loading) e.currentTarget.style.background = 'rgba(201,168,76,0.08)' }}
-        onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
-        {loading ? 'Preparing...' : 'Continue to Soul Mirror ✦'}
-      </button>
+        {error && (
+          <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(220,100,100,0.85)', marginBottom: '14px', textAlign: 'center' }}>{error}</p>
+        )}
 
       </motion.div>
     </>
