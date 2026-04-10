@@ -189,37 +189,42 @@ const HandwritingCanvas = forwardRef<HandwritingCanvasRef, Props>(function Handw
   }), [hasContent, handleClear])
 
   return (
-    <div ref={containerRef} style={{ width: '100%', ...style }}>
+    <div ref={containerRef} style={{ width: '100%', position: 'relative', ...style }}>
       {/* Toolbar */}
-      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', zIndex: 2, position: 'relative' }}>
         <button
           onClick={() => setTool('pen')}
           style={{
-            fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.18em', textTransform: 'uppercase',
-            padding: '5px 12px', cursor: 'pointer', borderRadius: '2px', transition: 'all 0.15s',
-            background: tool === 'pen' ? 'rgba(230,199,110,0.12)' : 'transparent',
-            border: `1px solid ${tool === 'pen' ? 'rgba(230,199,110,0.5)' : 'rgba(255,255,255,0.16)'}`,
-            color: tool === 'pen' ? '#e6c76e' : 'rgba(255,255,255,0.6)',
+            fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.18em', textTransform: 'uppercase',
+            padding: '7px 18px', cursor: 'pointer', borderRadius: '4px', transition: 'all 0.15s',
+            background: tool === 'pen' ? '#fffbe6' : '#f6e7c6',
+            border: `2px solid ${tool === 'pen' ? '#e6c76e' : '#d6c090'}`,
+            color: tool === 'pen' ? '#b48a1a' : '#a08a50',
+            fontWeight: tool === 'pen' ? 700 : 400,
+            boxShadow: tool === 'pen' ? '0 2px 8px 0 rgba(230,199,110,0.10)' : 'none',
           }}>
           ✎ Pen
         </button>
         <button
           onClick={() => setTool('eraser')}
           style={{
-            fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.18em', textTransform: 'uppercase',
-            padding: '5px 12px', cursor: 'pointer', borderRadius: '2px', transition: 'all 0.15s',
-            background: tool === 'eraser' ? 'rgba(230,199,110,0.12)' : 'transparent',
-            border: `1px solid ${tool === 'eraser' ? 'rgba(230,199,110,0.5)' : 'rgba(255,255,255,0.16)'}`,
-            color: tool === 'eraser' ? '#e6c76e' : 'rgba(255,255,255,0.6)',
+            fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.18em', textTransform: 'uppercase',
+            padding: '7px 18px', cursor: 'pointer', borderRadius: '4px', transition: 'all 0.15s',
+            background: tool === 'eraser' ? '#fffbe6' : '#f6e7c6',
+            border: `2px solid ${tool === 'eraser' ? '#e6c76e' : '#d6c090'}`,
+            color: tool === 'eraser' ? '#b48a1a' : '#a08a50',
+            fontWeight: tool === 'eraser' ? 700 : 400,
+            boxShadow: tool === 'eraser' ? '0 2px 8px 0 rgba(230,199,110,0.10)' : 'none',
           }}>
           ◯ Eraser
         </button>
         <button
           onClick={handleUndo}
           style={{
-            fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.18em', textTransform: 'uppercase',
-            padding: '5px 12px', cursor: 'pointer', borderRadius: '2px', transition: 'all 0.15s',
-            background: 'transparent', border: '1px solid rgba(255,255,255,0.16)', color: 'rgba(255,255,255,0.6)',
+            fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.18em', textTransform: 'uppercase',
+            padding: '7px 18px', cursor: 'pointer', borderRadius: '4px', transition: 'all 0.15s',
+            background: '#f6e7c6', border: '2px solid #d6c090', color: '#a08a50',
+            fontWeight: 400,
           }}>
           ↩ Undo
         </button>
@@ -227,15 +232,17 @@ const HandwritingCanvas = forwardRef<HandwritingCanvasRef, Props>(function Handw
           onClick={handleClear}
           disabled={!hasContent}
           style={{
-            fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.18em', textTransform: 'uppercase',
-            padding: '5px 12px', cursor: hasContent ? 'pointer' : 'default', borderRadius: '2px', transition: 'all 0.15s',
-            background: 'transparent', border: '1px solid rgba(255,255,255,0.16)',
-            color: hasContent ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.2)',
+            fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.18em', textTransform: 'uppercase',
+            padding: '7px 18px', cursor: hasContent ? 'pointer' : 'default', borderRadius: '4px', transition: 'all 0.15s',
+            background: '#f6e7c6', border: '2px solid #d6c090',
+            color: hasContent ? '#a08a50' : '#e6e0c0',
+            fontWeight: 400,
+            opacity: hasContent ? 1 : 0.5,
           }}>
           ✕ Clear
         </button>
       </div>
-      {/* Canvas */}
+      {/* Canvas - ensure it is above any background lines and visible */}
       <canvas
         ref={canvasRef}
         onPointerDown={handlePointerDown}
@@ -249,12 +256,19 @@ const HandwritingCanvas = forwardRef<HandwritingCanvasRef, Props>(function Handw
           borderRadius: '4px',
           touchAction: 'none',
           cursor: tool === 'eraser' ? 'crosshair' : 'crosshair',
-          background: 'transparent',
+          background: '#fff', // Make canvas background white for visibility
+          border: '1.5px solid #e6c76e', // Add border for visibility
+          boxShadow: '0 2px 12px 0 rgba(0,0,0,0.04)',
+          position: 'relative',
+          zIndex: 1,
+          display: 'block',
+          pointerEvents: 'auto',
         }}
       />
       <p style={{
         fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '11px',
         color: 'rgba(255,255,255,0.35)', margin: '6px 0 0', textAlign: 'center',
+        zIndex: 2, position: 'relative',
       }}>
         Draw with your finger, stylus, or mouse
       </p>
