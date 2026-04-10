@@ -69,21 +69,25 @@ const FONT_COLOR_MAP: Record<string, string> = {
   'slate': '#161620', 'teak': '#3a1c06', 'navy': '#060a28',
 }
 
-const PAPER_COLORS: Record<string, { accent: string; glow: string }> = {
-  ornate:           { accent: '#e6c76e', glow: '230,199,110' },
-  floral:           { accent: '#e8a0c0', glow: '232,160,192' },
-  notepad:          { accent: '#8ab4e8', glow: '138,180,232' },
-  scrapbook:        { accent: '#c8a060', glow: '200,160,96' },
-  ribbon:           { accent: '#e87070', glow: '232,112,112' },
-  postage:          { accent: '#a080c8', glow: '160,128,200' },
-  sakura:           { accent: '#f0a0c0', glow: '240,160,192' },
-  aged:             { accent: '#b89050', glow: '184,144,80' },
-  watercolor:       { accent: '#a090d0', glow: '160,144,208' },
-  graph:            { accent: '#6090c8', glow: '96,144,200' },
-  blueprint:        { accent: '#80c0ff', glow: '128,192,255' },
-  'midnight-scroll':{ accent: '#b090e0', glow: '176,144,224' },
-  'rice-paper':     { accent: '#b09060', glow: '176,144,96' },
+function hexToRgbString(hex: string) {
+  const normalized = hex.replace('#', '')
+  if (normalized.length !== 6) return '230,199,110'
+  const r = Number.parseInt(normalized.slice(0, 2), 16)
+  const g = Number.parseInt(normalized.slice(2, 4), 16)
+  const b = Number.parseInt(normalized.slice(4, 6), 16)
+  return `${r},${g},${b}`
 }
+
+const PAPER_COLORS: Record<string, { accent: string; glow: string }> = Object.fromEntries(
+  Object.entries(PAPER_INK).map(([paperId, ink]) => [
+    paperId,
+    { accent: ink.accent, glow: hexToRgbString(ink.accent) },
+  ]),
+)
+
+const SENT_GLOW_RGB = '255,185,65'
+const TRANSIT_GLOW_RGB = '200,220,255'
+const RECEIVED_GLOW_RGB = '230,199,110'
 
 interface Letter {
   id: string
@@ -400,11 +404,11 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
 
       {/* ── Star type legend ── */}
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }} style={{ position: 'absolute', bottom: '52px', left: '36px', zIndex: 10, pointerEvents: 'none', display: 'flex', flexDirection: 'column', gap: '9px' }}>
-        {[
-          { dot: 'radial-gradient(circle, rgba(255,255,255,0.98) 0%, rgba(230,199,110,0.65) 50%, transparent 100%)', shadow: '0 0 5px rgba(230,199,110,0.45)', label: 'Received', sub: 'arrived & waiting' },
-          { dot: 'radial-gradient(circle, rgba(200,220,255,0.92) 0%, rgba(200,220,255,0.25) 55%, transparent 100%)', shadow: '0 0 5px rgba(200,220,255,0.5)', label: 'In Transit', sub: 'crossing the dark' },
-          { dot: 'radial-gradient(circle, rgba(255,200,70,0.95) 0%, rgba(201,155,40,0.6) 50%, transparent 100%)', shadow: '0 0 6px rgba(255,185,65,0.6)', label: 'Sent', sub: 'energy moving away' },
-          { dot: 'radial-gradient(circle, rgba(255,248,220,0.98) 0%, rgba(230,199,110,0.82) 50%, transparent 100%)', shadow: '0 0 7px rgba(230,199,110,0.7)', label: 'Pinned', sub: 'held close, always' },
+          {[
+          { dot: `radial-gradient(circle, rgba(255,255,255,0.98) 0%, rgba(${RECEIVED_GLOW_RGB},0.65) 50%, transparent 100%)`, shadow: `0 0 5px rgba(${RECEIVED_GLOW_RGB},0.45)`, label: 'Received', sub: 'arrived & waiting' },
+          { dot: `radial-gradient(circle, rgba(${TRANSIT_GLOW_RGB},0.92) 0%, rgba(${TRANSIT_GLOW_RGB},0.25) 55%, transparent 100%)`, shadow: `0 0 5px rgba(${TRANSIT_GLOW_RGB},0.5)`, label: 'In Transit', sub: 'crossing the dark' },
+          { dot: 'radial-gradient(circle, rgba(255,200,70,0.95) 0%, rgba(201,155,40,0.6) 50%, transparent 100%)', shadow: `0 0 6px rgba(${SENT_GLOW_RGB},0.6)`, label: 'Sent', sub: 'energy moving away' },
+          { dot: `radial-gradient(circle, rgba(255,248,220,0.98) 0%, rgba(${RECEIVED_GLOW_RGB},0.82) 50%, transparent 100%)`, shadow: `0 0 7px rgba(${RECEIVED_GLOW_RGB},0.7)`, label: 'Pinned', sub: 'held close, always' },
         ].map(item => (
           <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: item.dot, flexShrink: 0, boxShadow: item.shadow }} />
@@ -482,6 +486,11 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
         const cy = letter.cy ?? 50
         const baseSize = isPinned ? 11 : isSent ? 8 : isTransit ? 7 : (isNew ? 12 : 9)
         const opacity = isPinned ? 0.8 : isSent ? 0.85 : isTransit ? 0.72 : 1
+        const statusGlowRgb = isSent
+          ? SENT_GLOW_RGB
+          : isTransit
+            ? TRANSIT_GLOW_RGB
+            : pColor.glow
         const driftX = isTransit ? (sr(i * 13) * 50) - 25 : 0
         const driftY = isTransit ? (sr(i * 17) * 24) - 12 : 0
         const driftDur = isTransit ? 22 + sr(i * 23) * 18 : 0
@@ -518,7 +527,7 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
             <motion.div
               animate={isSent ? { opacity: [0.2, 0.5, 0.2], scale: [1, 1.22, 1] } : isArrived && isNew ? { opacity: [0.3, 0.7, 0.3], scale: [1, 1.3, 1] } : isArrived ? { opacity: [0.2, 0.45, 0.2] } : isPinned ? { opacity: [0.25, 0.55, 0.25] } : { opacity: isHovered ? 0.45 : 0.12 }}
               transition={{ duration: isSent ? 3.6 + sr(i * 7) * 1.5 : isNew ? 2.2 : 3.5, repeat: Infinity, ease: 'easeInOut', delay: sr(i * 7) * 2 }}
-              style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', width: `${baseSize * 12}px`, height: `${baseSize * 12}px`, borderRadius: '50%', background: `radial-gradient(circle, rgba(${isSent ? '255,185,65' : pColor.glow},0.5) 0%, rgba(${isSent ? '255,185,65' : pColor.glow},0) 70%)`, pointerEvents: 'none' }}
+              style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', width: `${baseSize * 12}px`, height: `${baseSize * 12}px`, borderRadius: '50%', background: `radial-gradient(circle, rgba(${statusGlowRgb},0.5) 0%, rgba(${statusGlowRgb},0) 70%)`, pointerEvents: 'none' }}
             />
 
             {/* Hover ripple ring */}
@@ -535,7 +544,7 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
                     width: `${baseSize * 3}px`, height: `${baseSize * 3}px`,
                     transform: 'translate(-50%, -50%)',
                     borderRadius: '50%',
-                    border: `1px solid rgba(${isSent ? '255,185,65' : pColor.glow},0.9)`,
+                    border: `1px solid rgba(${statusGlowRgb},0.9)`,
                     pointerEvents: 'none',
                   }}
                 />
@@ -547,7 +556,7 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
               <motion.div
                 animate={{ opacity: [0.4, 0.8, 0.4], scaleX: [0.8, 1.2, 0.8] }}
                 transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut', delay: sr(i * 5) * 1.5 }}
-                style={{ position: 'absolute', right: `${baseSize}px`, top: '50%', transform: 'translateY(-50%)', width: `${20 + (letter.travelProgress ?? 50) * 0.4}px`, height: '2px', background: `linear-gradient(to left, rgba(${isSent ? '255,185,65' : pColor.glow},0.7), transparent)`, borderRadius: '1px', pointerEvents: 'none', transformOrigin: 'right center' }}
+                style={{ position: 'absolute', right: `${baseSize}px`, top: '50%', transform: 'translateY(-50%)', width: `${20 + (letter.travelProgress ?? 50) * 0.4}px`, height: '2px', background: `linear-gradient(to left, rgba(${statusGlowRgb},0.7), transparent)`, borderRadius: '1px', pointerEvents: 'none', transformOrigin: 'right center' }}
               />
             )}
 
@@ -566,15 +575,15 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
                       ? `radial-gradient(circle, rgba(200,220,255,0.9) 0%, rgba(${pColor.glow},0.4) 60%, transparent 100%)`
                       : `radial-gradient(circle, rgba(255,255,255,0.98) 0%, rgba(${pColor.glow},0.8) 40%, rgba(${pColor.glow},0) 100%)`,
                 boxShadow: isHovered
-                  ? `0 0 ${baseSize * 4}px rgba(${isSent ? '255,185,65' : pColor.glow},0.95), 0 0 ${baseSize * 8}px rgba(${isSent ? '255,185,65' : pColor.glow},0.4)`
+                  ? `0 0 ${baseSize * 4}px rgba(${statusGlowRgb},0.95), 0 0 ${baseSize * 8}px rgba(${statusGlowRgb},0.4)`
                   : isSent
-                    ? `0 0 ${baseSize * 2}px rgba(255,185,65,0.7), 0 0 ${baseSize * 5}px rgba(201,155,40,0.3)`
+                    ? `0 0 ${baseSize * 2}px rgba(${SENT_GLOW_RGB},0.7), 0 0 ${baseSize * 5}px rgba(201,155,40,0.3)`
                     : isPinned
                       ? `0 0 ${baseSize * 2.5}px rgba(${pColor.glow},0.85), 0 0 ${baseSize * 5}px rgba(${pColor.glow},0.35)`
                       : isArrived
                         ? `0 0 ${baseSize * 2}px rgba(${pColor.glow},0.55)`
                         : isTransit
-                          ? '0 0 6px rgba(200,220,255,0.45)'
+                          ? `0 0 6px rgba(${TRANSIT_GLOW_RGB},0.45)`
                           : 'none',
                 transition: 'box-shadow 0.3s, width 0.2s, height 0.2s',
               }}
@@ -620,8 +629,8 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
             </p>
             {tooltip.letter.status === 'transit' && (
               <div style={{ marginTop: '5px' }}>
-                <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '11px', color: 'rgba(255,220,140,0.65)' }}>crossing the dark · {tooltip.letter.travelProgress ?? 0}%</p>
-                {tooltip.letter.arrivedAt && <p style={{ fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.2em', color: 'rgba(255,220,140,0.4)', marginTop: '3px', textTransform: 'uppercase' }}>Arriving · {formatObservatoryDate(tooltip.letter.arrivedAt)}</p>}
+                <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '11px', color: `rgba(${TRANSIT_GLOW_RGB},0.78)` }}>crossing the dark · {tooltip.letter.travelProgress ?? 0}%</p>
+                {tooltip.letter.arrivedAt && <p style={{ fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.2em', color: `rgba(${TRANSIT_GLOW_RGB},0.52)`, marginTop: '3px', textTransform: 'uppercase' }}>Arriving · {formatObservatoryDate(tooltip.letter.arrivedAt)}</p>}
               </div>
             )}
           </motion.div>
