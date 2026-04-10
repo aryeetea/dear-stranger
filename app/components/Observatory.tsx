@@ -407,12 +407,21 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
 
       {/* ── Latest Signal ── */}
       {(() => {
-        const signals = [...arrived, ...pinned].sort((a, b) =>
-          new Date(b.arrivedAt || b.sentAt).getTime() - new Date(a.arrivedAt || a.sentAt).getTime()
+        const signals = [...transit, ...arrived, ...pinned].sort((a, b) =>
+          new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime()
         )
         const latest = signals[0]
         if (!latest) return null
-        const glowRgb = PAPER_COLORS[latest.paperId]?.glow || '230,199,110'
+        const isLatestTransit = latest.status === 'transit'
+        const glowRgb = isLatestTransit ? TRANSIT_GLOW_RGB : (PAPER_COLORS[latest.paperId]?.glow || '230,199,110')
+        const elapsed = currentTime - new Date(latest.sentAt).getTime()
+        const daysIn = Math.floor(elapsed / 86400000)
+        const hoursIn = Math.floor(elapsed / 3600000)
+        const transitLabel = daysIn >= 1
+          ? `${daysIn} day${daysIn !== 1 ? 's' : ''} crossing the dark`
+          : hoursIn >= 1
+            ? `${hoursIn} hour${hoursIn !== 1 ? 's' : ''} crossing the dark`
+            : 'just departed'
         return (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }} style={{ position: 'absolute', bottom: 'clamp(36px, 6vh, 52px)', left: 'clamp(14px, 3vw, 36px)', zIndex: 10, pointerEvents: 'none', maxWidth: '200px' }}>
             <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.45em', color: 'rgba(255,255,255,0.22)', textTransform: 'uppercase', marginBottom: '10px' }}>Latest Signal</p>
@@ -420,12 +429,24 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
               <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.28em', color: `rgba(${glowRgb},0.68)`, textTransform: 'uppercase', marginBottom: '5px' }}>
                 {latest.direction === 'received' ? `From · ${latest.from}` : `To · ${latest.to}`}
               </p>
-              <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '12px', color: 'rgba(255,255,255,0.5)', lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', marginBottom: '6px' }}>
-                {latest.preview}
-              </p>
-              <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.2em', color: 'rgba(255,255,255,0.2)', textTransform: 'uppercase' }}>
-                {formatObservatoryDate(latest.arrivedAt || latest.sentAt)}
-              </p>
+              {isLatestTransit ? (
+                <>
+                  <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '12px', color: `rgba(${TRANSIT_GLOW_RGB},0.55)`, lineHeight: 1.5, marginBottom: '5px' }}>{transitLabel}</p>
+                  <div style={{ width: '100%', height: '1px', background: `rgba(${TRANSIT_GLOW_RGB},0.15)`, borderRadius: '1px', marginBottom: '6px' }}>
+                    <div style={{ width: `${latest.travelProgress ?? 0}%`, height: '100%', background: `rgba(${TRANSIT_GLOW_RGB},0.55)` }} />
+                  </div>
+                  {latest.arrivedAt && <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.2em', color: `rgba(${TRANSIT_GLOW_RGB},0.35)`, textTransform: 'uppercase' }}>Arriving · {formatObservatoryDate(latest.arrivedAt)}</p>}
+                </>
+              ) : (
+                <>
+                  <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '12px', color: 'rgba(255,255,255,0.5)', lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', marginBottom: '6px' }}>
+                    {latest.preview}
+                  </p>
+                  <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.2em', color: 'rgba(255,255,255,0.2)', textTransform: 'uppercase' }}>
+                    {formatObservatoryDate(latest.arrivedAt || latest.sentAt)}
+                  </p>
+                </>
+              )}
             </div>
           </motion.div>
         )
@@ -573,57 +594,34 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
               />
             )}
 
-            {/* Star/comet body */}
-            <motion.div
-              animate={isSent ? { scale: [1, 1.07, 1], opacity: [0.8, 0.97, 0.8] } : isPinned ? {} : isArrived ? { scale: [1, 1.15, 1], opacity: [0.9, 1, 0.9] } : isTransit ? { scale: [1, 1.06, 1] } : {}}
-              transition={{ duration: isSent ? 3.2 + sr(i * 3) * 1.5 : isArrived ? 2.8 + sr(i * 3) * 1.5 : 1.4, repeat: Infinity, ease: 'easeInOut', delay: sr(i * 11) * 2 }}
-              style={{
-                width: `${isHovered && !isTransit ? baseSize * 2.4 : baseSize * 2}px`, height: `${isHovered && !isTransit ? baseSize * 2.4 : baseSize * 2}px`,
-                borderRadius: '50%',
-                background: isSent
-                  ? `radial-gradient(circle, rgba(255,180,40,0.98) 0%, rgba(200,120,10,0.6) 45%, transparent 100%)`
-                  : isPinned
-                    ? `radial-gradient(circle, rgba(230,200,255,0.98) 0%, rgba(180,140,240,0.7) 45%, transparent 100%)`
-                    : isTransit
-                      ? `radial-gradient(circle, rgba(100,170,255,0.98) 0%, rgba(60,110,240,0.6) 50%, transparent 100%)`
-                      : `radial-gradient(circle, rgba(255,255,255,0.98) 0%, rgba(${RECEIVED_GLOW_RGB},0.75) 40%, transparent 100%)`,
-                boxShadow: isHovered && !isTransit
-                  ? `0 0 ${baseSize * 4}px rgba(${statusGlowRgb},0.95), 0 0 ${baseSize * 8}px rgba(${statusGlowRgb},0.4)`
-                  : isSent
-                    ? `0 0 ${baseSize * 2}px rgba(${SENT_GLOW_RGB},0.8), 0 0 ${baseSize * 5}px rgba(200,120,10,0.35)`
-                    : isPinned
-                      ? `0 0 ${baseSize * 2.5}px rgba(180,140,240,0.85), 0 0 ${baseSize * 5}px rgba(160,120,220,0.4)`
-                      : isArrived
-                        ? `0 0 ${baseSize * 2}px rgba(${RECEIVED_GLOW_RGB},0.6)`
-                        : isTransit
-                          ? `0 0 6px rgba(100,170,255,0.55)`
-                          : 'none',
-                transition: 'box-shadow 0.3s, width 0.2s, height 0.2s',
-              }}
-            />
-
-            {/* 4-point diffraction spikes for arrived/pinned stars */}
-            {!isSent && (isArrived || isPinned) && [0, 90].map(rot => (
-              <div key={rot} style={{
-                position: 'absolute', left: '50%', top: '50%',
-                transform: `translate(-50%, -50%) rotate(${rot}deg)`,
-                width: isHovered ? `${baseSize * 8}px` : `${isPinned ? baseSize * 5 : baseSize * 4}px`, height: '1px',
-                background: isPinned
-                  ? `linear-gradient(to right, transparent, rgba(180,140,240,${isHovered ? 0.85 : 0.65}), transparent)`
-                  : `linear-gradient(to right, transparent, rgba(${RECEIVED_GLOW_RGB},${isHovered ? 0.85 : 0.4}), transparent)`,
-                transition: 'width 0.3s', pointerEvents: 'none',
-              }} />
-            ))}
-            {/* Extra 45° spikes for pinned only */}
-            {isPinned && [45, 135].map(rot => (
-              <div key={rot} style={{
-                position: 'absolute', left: '50%', top: '50%',
-                transform: `translate(-50%, -50%) rotate(${rot}deg)`,
-                width: isHovered ? `${baseSize * 6}px` : `${baseSize * 3.5}px`, height: '1px',
-                background: `linear-gradient(to right, transparent, rgba(180,140,240,${isHovered ? 0.7 : 0.45}), transparent)`,
-                transition: 'width 0.3s', pointerEvents: 'none',
-              }} />
-            ))}
+            {/* ── Envelope marker ── */}
+            {(() => {
+              const envW = isHovered && !isTransit ? baseSize * 2.8 : baseSize * 2.3
+              const envH = envW * 0.72
+              const strokeC = `rgba(${statusGlowRgb},0.88)`
+              const fadeC = `rgba(${statusGlowRgb},0.38)`
+              const fillC = `rgba(${statusGlowRgb},0.09)`
+              const glowFilter = isHovered && !isTransit
+                ? `drop-shadow(0 0 ${baseSize * 1.8}px rgba(${statusGlowRgb},0.95)) drop-shadow(0 0 ${baseSize * 3.2}px rgba(${statusGlowRgb},0.45))`
+                : isSent ? `drop-shadow(0 0 ${baseSize * 1}px rgba(${SENT_GLOW_RGB},0.8))`
+                : isPinned ? `drop-shadow(0 0 ${baseSize * 1.2}px rgba(180,140,240,0.85))`
+                : isArrived ? `drop-shadow(0 0 ${baseSize * 0.9}px rgba(${RECEIVED_GLOW_RGB},0.6))`
+                : `drop-shadow(0 0 4px rgba(${TRANSIT_GLOW_RGB},0.45))`
+              return (
+                <motion.svg
+                  animate={isSent ? { scale: [1, 1.07, 1], opacity: [0.8, 0.97, 0.8] } : isPinned ? {} : isArrived ? { scale: [1, 1.12, 1], opacity: [0.9, 1, 0.9] } : isTransit ? { scale: [1, 1.05, 1] } : {}}
+                  transition={{ duration: isSent ? 3.2 + sr(i * 3) * 1.5 : isArrived ? 2.8 + sr(i * 3) * 1.5 : 1.4, repeat: Infinity, ease: 'easeInOut', delay: sr(i * 11) * 2 }}
+                  width={`${envW}px`} height={`${envH}px`} viewBox="0 0 28 20"
+                  style={{ display: 'block', filter: glowFilter, transition: 'filter 0.3s, width 0.2s, height 0.2s', overflow: 'visible' }}
+                >
+                  <rect x="0.5" y="4" width="27" height="15.5" rx="1.5" fill={fillC} stroke={strokeC} strokeWidth="0.9"/>
+                  <path d="M0.5 4 L14 13 L27.5 4" fill="none" stroke={strokeC} strokeWidth="0.9"/>
+                  <path d="M0.5 19.5 L9 12.5 M27.5 19.5 L19 12.5" fill="none" stroke={fadeC} strokeWidth="0.7"/>
+                  {isPinned && <circle cx="14" cy="11" r="2" fill={`rgba(${statusGlowRgb},0.75)`}/>}
+                  {isNew && <circle cx="22" cy="5.5" r="2.5" fill="rgba(230,199,110,0.92)" stroke="rgba(255,230,140,0.8)" strokeWidth="0.5"/>}
+                </motion.svg>
+              )
+            })()}
             </motion.div>
           </motion.div>
         )
