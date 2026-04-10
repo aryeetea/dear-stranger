@@ -974,12 +974,24 @@ export default function Home() {
           justifyContent: 'center',
         }}
       >
+        {/* Orbit ring */}
+        <div style={{
+          position: 'absolute',
+          width: '48px',
+          height: '48px',
+          borderRadius: '50%',
+          border: '1px solid rgba(201,168,76,0.15)',
+          borderTopColor: 'rgba(201,168,76,0.55)',
+          animation: 'ds-loading-orbit 1.6s linear infinite',
+        }} />
+        {/* Central star */}
         <div
           style={{
             fontFamily: "'Cinzel', serif",
-            fontSize: '11px',
+            fontSize: '13px',
             letterSpacing: '0.4em',
-            color: 'rgba(201,168,76,0.4)',
+            color: 'rgba(201,168,76,0.75)',
+            animation: 'ds-loading-pulse 2.2s ease-in-out infinite',
           }}
         >
           ✦

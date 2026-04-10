@@ -391,6 +391,16 @@ button, a, [role="button"] {
   100% { background-position: 48% -18%, 88% 12%, 12% 88%; }
 }
 
+/* ── Loading screen pulse ────────────────────────────────────── */
+@keyframes ds-loading-pulse {
+  0%, 100% { opacity: 0.25; transform: scale(0.9); }
+  50%       { opacity: 0.85; transform: scale(1.2); }
+}
+@keyframes ds-loading-orbit {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
 /* ── Screen warp flash ───────────────────────────────────────── */
 @keyframes warp-flash {
   0%   { opacity: 0; transform: scale(0.92); }

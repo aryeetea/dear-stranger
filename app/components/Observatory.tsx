@@ -191,6 +191,10 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
   const [activeZone, setActiveZone] = useState<string | null>(null)
   const [zoomTarget, setZoomTarget] = useState<Letter | null>(null)
   const [countHovered, setCountHovered] = useState(false)
+  const [pan, setPan] = useState({ x: 0, y: 0 })
+  const isPanning = useRef(false)
+  const panStart = useRef({ x: 0, y: 0 })
+  const panOrigin = useRef({ x: 0, y: 0 })
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -262,6 +266,24 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
     if (!containerRef.current) return
     const rect = containerRef.current.getBoundingClientRect()
     setMousePos({ x: (e.clientX - rect.left) / rect.width, y: (e.clientY - rect.top) / rect.height })
+    if (isPanning.current) {
+      const dx = e.clientX - panStart.current.x
+      const dy = e.clientY - panStart.current.y
+      setPan({ x: panOrigin.current.x + dx, y: panOrigin.current.y + dy })
+    }
+  }, [])
+
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    // Only start pan on background clicks (not on letter markers)
+    if ((e.target as HTMLElement).closest('[data-letter]')) return
+    isPanning.current = true
+    panStart.current = { x: e.clientX, y: e.clientY }
+    panOrigin.current = { ...pan }
+    ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+  }, [pan])
+
+  const handlePointerUp = useCallback(() => {
+    isPanning.current = false
   }, [])
 
   function handlePin(letter: Letter) {
@@ -322,7 +344,10 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
       exit={{ opacity: 0, scale: 0.97 }}
       transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
       onMouseMove={handleMouseMove}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(3,2,10,0.88)', backdropFilter: 'blur(18px)', zIndex: 70, overflow: 'hidden' }}
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(3,2,10,0.88)', backdropFilter: 'blur(18px)', zIndex: 70, overflow: 'hidden', cursor: 'grab' }}
     >
       {/* ── Deep space background ── */}
       <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }} aria-hidden="true">
@@ -381,32 +406,28 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
       </motion.div>
 
       {/* ── Zone labels ── */}
-      {/* In Transit — top arc, blue */}
       {transit.length > 0 && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.9 }} style={{ position: 'absolute', top: '10%', left: '50%', transform: 'translateX(-50%)', pointerEvents: 'none', zIndex: 2, textAlign: 'center' }}>
-          <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.55em', color: 'rgba(100,170,255,0.28)', textTransform: 'uppercase' }}>In Transit</p>
-          <div style={{ width: '40px', height: '1px', background: 'linear-gradient(to right, transparent, rgba(100,170,255,0.18), transparent)', margin: '4px auto 0' }} />
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.9 }} style={{ position: 'absolute', top: '8%', left: '50%', transform: 'translateX(-50%)', pointerEvents: 'none', zIndex: 2, textAlign: 'center' }}>
+          <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.5em', color: 'rgba(120,185,255,0.55)', textTransform: 'uppercase' }}>In Transit</p>
+          <div style={{ width: '44px', height: '1px', background: 'linear-gradient(to right, transparent, rgba(120,185,255,0.35), transparent)', margin: '5px auto 0' }} />
         </motion.div>
       )}
-      {/* Pinned — mid-upper left, lavender */}
       {pinned.length > 0 && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.95 }} style={{ position: 'absolute', top: '22%', left: '8%', pointerEvents: 'none', zIndex: 2 }}>
-          <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.5em', color: 'rgba(180,140,240,0.30)', textTransform: 'uppercase' }}>Pinned</p>
-          <div style={{ width: '32px', height: '1px', background: 'linear-gradient(to right, rgba(180,140,240,0.18), transparent)', marginTop: '4px' }} />
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.95 }} style={{ position: 'absolute', top: '20%', left: '7%', pointerEvents: 'none', zIndex: 2 }}>
+          <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.45em', color: 'rgba(200,160,255,0.55)', textTransform: 'uppercase' }}>Pinned</p>
+          <div style={{ width: '36px', height: '1px', background: 'linear-gradient(to right, rgba(200,160,255,0.35), transparent)', marginTop: '5px' }} />
         </motion.div>
       )}
-      {/* Received — center right, gold */}
       {arrived.length > 0 && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.0 }} style={{ position: 'absolute', top: '42%', right: '6%', pointerEvents: 'none', zIndex: 2, textAlign: 'right' }}>
-          <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.5em', color: 'rgba(230,199,110,0.30)', textTransform: 'uppercase' }}>Received</p>
-          <div style={{ width: '32px', height: '1px', background: 'linear-gradient(to left, rgba(230,199,110,0.18), transparent)', marginTop: '4px', marginLeft: 'auto' }} />
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.0 }} style={{ position: 'absolute', top: '40%', right: '5%', pointerEvents: 'none', zIndex: 2, textAlign: 'right' }}>
+          <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.45em', color: 'rgba(255,220,100,0.6)', textTransform: 'uppercase' }}>Received from</p>
+          <div style={{ width: '36px', height: '1px', background: 'linear-gradient(to left, rgba(255,220,100,0.35), transparent)', marginTop: '5px', marginLeft: 'auto' }} />
         </motion.div>
       )}
-      {/* Sent — lower half, amber */}
       {sentCount > 0 && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.05 }} style={{ position: 'absolute', bottom: '22%', left: '50%', transform: 'translateX(-50%)', pointerEvents: 'none', zIndex: 2, textAlign: 'center' }}>
-          <div style={{ width: '40px', height: '1px', background: 'linear-gradient(to right, transparent, rgba(255,180,40,0.18), transparent)', margin: '0 auto 4px' }} />
-          <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.55em', color: 'rgba(255,180,40,0.28)', textTransform: 'uppercase' }}>Sent</p>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.05 }} style={{ position: 'absolute', bottom: '20%', left: '50%', transform: 'translateX(-50%)', pointerEvents: 'none', zIndex: 2, textAlign: 'center' }}>
+          <div style={{ width: '44px', height: '1px', background: 'linear-gradient(to right, transparent, rgba(255,190,60,0.35), transparent)', margin: '0 auto 5px' }} />
+          <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.5em', color: 'rgba(255,190,60,0.55)', textTransform: 'uppercase' }}>Sent to</p>
         </motion.div>
       )}
 
@@ -565,11 +586,12 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
             initial={{ opacity: 0, scale: 0 }}
             animate={isZooming ? { opacity: 0, scale: 4 } : { opacity, scale: 1 }}
             transition={isZooming ? { duration: 0.45, ease: 'easeIn' } : { delay: i * 0.04, type: 'spring', stiffness: 280, damping: 24 }}
+            data-letter="true"
             style={{
               position: 'absolute',
               left: `${cx}%`, top: `${cy}%`,
-              transform: `translate(-50%, -50%) translate(${p2x * (isArrived ? 0.5 : 0.3)}px, ${p2y * (isArrived ? 0.5 : 0.3)}px)`,
-              transition: 'transform 0.45s ease-out',
+              transform: `translate(-50%, -50%) translate(${pan.x + p2x * (isArrived ? 0.5 : 0.3)}px, ${pan.y + p2y * (isArrived ? 0.5 : 0.3)}px)`,
+              transition: isPanning.current ? 'none' : 'transform 0.45s ease-out',
               cursor: isTransit ? 'default' : 'pointer',
               zIndex: isHovered ? 20 : 5,
             }}
@@ -624,34 +646,58 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
               />
             )}
 
-            {/* ── Envelope marker ── */}
-            {(() => {
-              const envW = isHovered && !isTransit ? baseSize * 2.8 : baseSize * 2.3
-              const envH = envW * 0.72
-              const strokeC = `rgba(${statusGlowRgb},0.88)`
-              const fadeC = `rgba(${statusGlowRgb},0.38)`
-              const fillC = `rgba(${statusGlowRgb},0.09)`
-              const glowFilter = isHovered && !isTransit
-                ? `drop-shadow(0 0 ${baseSize * 1.8}px rgba(${statusGlowRgb},0.95)) drop-shadow(0 0 ${baseSize * 3.2}px rgba(${statusGlowRgb},0.45))`
-                : isSent ? `drop-shadow(0 0 ${baseSize * 1}px rgba(${SENT_GLOW_RGB},0.8))`
-                : isPinned ? `drop-shadow(0 0 ${baseSize * 1.2}px rgba(180,140,240,0.85))`
-                : isArrived ? `drop-shadow(0 0 ${baseSize * 0.9}px rgba(${RECEIVED_GLOW_RGB},0.6))`
-                : `drop-shadow(0 0 4px rgba(${TRANSIT_GLOW_RGB},0.45))`
-              return (
-                <motion.svg
-                  animate={isSent ? { scale: [1, 1.07, 1], opacity: [0.8, 0.97, 0.8] } : isPinned ? {} : isArrived ? { scale: [1, 1.12, 1], opacity: [0.9, 1, 0.9] } : isTransit ? { scale: [1, 1.05, 1] } : {}}
-                  transition={{ duration: isSent ? 3.2 + sr(i * 3) * 1.5 : isArrived ? 2.8 + sr(i * 3) * 1.5 : 1.4, repeat: Infinity, ease: 'easeInOut', delay: sr(i * 11) * 2 }}
-                  width={`${envW}px`} height={`${envH}px`} viewBox="0 0 28 20"
-                  style={{ display: 'block', filter: glowFilter, transition: 'filter 0.3s, width 0.2s, height 0.2s', overflow: 'visible' }}
-                >
-                  <rect x="0.5" y="4" width="27" height="15.5" rx="1.5" fill={fillC} stroke={strokeC} strokeWidth="0.9"/>
-                  <path d="M0.5 4 L14 13 L27.5 4" fill="none" stroke={strokeC} strokeWidth="0.9"/>
-                  <path d="M0.5 19.5 L9 12.5 M27.5 19.5 L19 12.5" fill="none" stroke={fadeC} strokeWidth="0.7"/>
-                  {isPinned && <circle cx="14" cy="11" r="2" fill={`rgba(${statusGlowRgb},0.75)`}/>}
-                  {isNew && <circle cx="22" cy="5.5" r="2.5" fill="rgba(230,199,110,0.92)" stroke="rgba(255,230,140,0.8)" strokeWidth="0.5"/>}
-                </motion.svg>
-              )
-            })()}
+            {/* Star body */}
+            <motion.div
+              animate={isSent ? { scale: [1, 1.07, 1], opacity: [0.8, 0.97, 0.8] } : isPinned ? {} : isArrived ? { scale: [1, 1.15, 1], opacity: [0.9, 1, 0.9] } : isTransit ? { scale: [1, 1.06, 1] } : {}}
+              transition={{ duration: isSent ? 3.2 + sr(i * 3) * 1.5 : isArrived ? 2.8 + sr(i * 3) * 1.5 : 1.4, repeat: Infinity, ease: 'easeInOut', delay: sr(i * 11) * 2 }}
+              style={{
+                width: `${isHovered && !isTransit ? baseSize * 2.4 : baseSize * 2}px`,
+                height: `${isHovered && !isTransit ? baseSize * 2.4 : baseSize * 2}px`,
+                borderRadius: '50%',
+                background: isSent
+                  ? `radial-gradient(circle, rgba(255,180,40,0.98) 0%, rgba(200,120,10,0.6) 45%, transparent 100%)`
+                  : isPinned
+                    ? `radial-gradient(circle, rgba(230,200,255,0.98) 0%, rgba(180,140,240,0.7) 45%, transparent 100%)`
+                    : isTransit
+                      ? `radial-gradient(circle, rgba(100,170,255,0.98) 0%, rgba(60,110,240,0.6) 50%, transparent 100%)`
+                      : `radial-gradient(circle, rgba(255,255,255,0.98) 0%, rgba(${RECEIVED_GLOW_RGB},0.75) 40%, transparent 100%)`,
+                boxShadow: isHovered && !isTransit
+                  ? `0 0 ${baseSize * 4}px rgba(${statusGlowRgb},0.95), 0 0 ${baseSize * 8}px rgba(${statusGlowRgb},0.4)`
+                  : isSent
+                    ? `0 0 ${baseSize * 2}px rgba(${SENT_GLOW_RGB},0.8), 0 0 ${baseSize * 5}px rgba(200,120,10,0.35)`
+                    : isPinned
+                      ? `0 0 ${baseSize * 2.5}px rgba(180,140,240,0.85), 0 0 ${baseSize * 5}px rgba(160,120,220,0.4)`
+                      : isArrived
+                        ? `0 0 ${baseSize * 2}px rgba(${RECEIVED_GLOW_RGB},0.6)`
+                        : isTransit
+                          ? `0 0 6px rgba(100,170,255,0.55)`
+                          : 'none',
+                transition: 'box-shadow 0.3s, width 0.2s, height 0.2s',
+              }}
+            />
+
+            {/* 4-point diffraction spikes for arrived/pinned */}
+            {!isSent && (isArrived || isPinned) && [0, 90].map(rot => (
+              <div key={rot} style={{
+                position: 'absolute', left: '50%', top: '50%',
+                transform: `translate(-50%, -50%) rotate(${rot}deg)`,
+                width: isHovered ? `${baseSize * 8}px` : `${isPinned ? baseSize * 5 : baseSize * 4}px`, height: '1px',
+                background: isPinned
+                  ? `linear-gradient(to right, transparent, rgba(180,140,240,${isHovered ? 0.85 : 0.65}), transparent)`
+                  : `linear-gradient(to right, transparent, rgba(${RECEIVED_GLOW_RGB},${isHovered ? 0.85 : 0.4}), transparent)`,
+                transition: 'width 0.3s', pointerEvents: 'none',
+              }} />
+            ))}
+            {/* Extra 45° spikes for pinned */}
+            {isPinned && [45, 135].map(rot => (
+              <div key={rot} style={{
+                position: 'absolute', left: '50%', top: '50%',
+                transform: `translate(-50%, -50%) rotate(${rot}deg)`,
+                width: isHovered ? `${baseSize * 6}px` : `${baseSize * 3.5}px`, height: '1px',
+                background: `linear-gradient(to right, transparent, rgba(180,140,240,${isHovered ? 0.7 : 0.45}), transparent)`,
+                transition: 'width 0.3s', pointerEvents: 'none',
+              }} />
+            ))}
             </motion.div>
           </motion.div>
         )
