@@ -640,7 +640,7 @@ export default function Home() {
 
       let hub = null
       try {
-        hub = await timeoutPromise(getMyHub(), 7000, 'getMyHub')
+        hub = await timeoutPromise(getMyHub(), 5000, 'getMyHub')
         console.log('[routeFromSession] getMyHub result:', hub)
       } catch (err) {
         console.error('[routeFromSession] getMyHub error:', err)
@@ -650,7 +650,7 @@ export default function Home() {
       if (!hub) {
         try {
           await new Promise(r => setTimeout(r, 1200))
-          hub = await timeoutPromise(getMyHub(), 7000, 'getMyHub retry')
+          hub = await timeoutPromise(getMyHub(), 5000, 'getMyHub retry')
           console.log('[routeFromSession] getMyHub retry result:', hub)
         } catch (err) {
           console.error('[routeFromSession] getMyHub retry error:', err)
@@ -704,19 +704,23 @@ export default function Home() {
         clearHubState()
         setScreen('landing')
         console.log('[checkSession] fallback to landing')
+      } finally {
+        // Cancel the safety-net timer — routeFromSession already set the screen
+        if (fallbackTimer) clearTimeout(fallbackTimer)
       }
     }
 
     checkSession()
 
-    // Fallback: if still loading after 10s, go to entry
+    // Safety-net: if routeFromSession somehow never resolves within 18s, go to landing.
+    // 18s > worst-case execution (5s timeout + 1.2s sleep + 5s retry = 11.2s).
     fallbackTimer = setTimeout(() => {
       if (screenRef.current === 'loading') {
         clearHubState()
         setScreen('landing')
-        console.log('[fallbackTimer] loading >10s, go to landing')
+        console.log('[fallbackTimer] loading >18s, go to landing')
       }
-    }, 10000)
+    }, 18000)
 
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event) => {
       if (ignore) return;
