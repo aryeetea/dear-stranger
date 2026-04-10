@@ -475,10 +475,10 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
       {/* ── Celestial letter objects ── */}
       {!loading && letters.map((letter, i) => {
         const pColor = PAPER_COLORS[letter.paperId] || PAPER_COLORS.ornate
-        const isSent = letter.direction === 'sent'
         const isPinned = letter.status === 'archive'
-        const isTransit = letter.status === 'transit'
-        const isArrived = letter.status === 'arrived'
+        const isSent = !isPinned && letter.direction === 'sent'
+        const isTransit = !isPinned && letter.status === 'transit'
+        const isArrived = !isPinned && letter.status === 'arrived'
         const isNew = isArrived && !isSent && !readIds.has(letter.id) && (currentTime - new Date(letter.arrivedAt || letter.sentAt).getTime()) < 48 * 3600000
         const isHovered = hoveredId === letter.id
         const isZooming = zoomTarget?.id === letter.id
@@ -486,12 +486,12 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
         const cy = letter.cy ?? 50
         const baseSize = isPinned ? 11 : isSent ? 8 : isTransit ? 7 : (isNew ? 12 : 9)
         const opacity = isPinned ? 0.8 : isSent ? 0.85 : isTransit ? 0.72 : 1
-        const statusGlowRgb = isSent
-          ? SENT_GLOW_RGB
-          : isTransit
-            ? TRANSIT_GLOW_RGB
-            : isPinned
-              ? '220,180,255'
+        const statusGlowRgb = isPinned
+          ? '220,180,255'
+          : isSent
+            ? SENT_GLOW_RGB
+            : isTransit
+              ? TRANSIT_GLOW_RGB
               : RECEIVED_GLOW_RGB
         const driftX = isTransit ? (sr(i * 13) * 50) - 25 : 0
         const driftY = isTransit ? (sr(i * 17) * 24) - 12 : 0
