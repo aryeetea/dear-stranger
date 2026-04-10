@@ -470,6 +470,8 @@ export default function Home() {
     }
     return 'loading'
   })
+  // Track if Supabase auth is hydrated
+  const [authHydrated, setAuthHydrated] = useState(false)
   const [hubName, setHubName] = useState('')
   const [hubBio, setHubBio] = useState('')
   const [hubAskAbout, setHubAskAbout] = useState('')
@@ -701,79 +703,53 @@ export default function Home() {
     }
   }, [clearHubState])
 
+  // Wait for Supabase auth hydration before routing
   useEffect(() => {
     let ignore = false;
     let fallbackTimer: NodeJS.Timeout | null = null;
-    async function checkSession() {
-      try {
-        // Only auto-route if not restoring from localStorage
-        if (screen === 'loading') {
-          await routeFromSession()
-        } else {
-          // If restoring a screen that requires session/hub, check session first
-          const protectedScreens = ['universe','observatory','profile','scribe','drift','pagesOpen']
-          if (protectedScreens.includes(screen)) {
-            const session = await getSession()
-            if (!session) {
-              setScreen('landing')
-              return
-            }
-            let hub = null
-            try {
-              hub = await getMyHub(session.user?.id)
-            } catch {}
-            if (!hub) {
-              setScreen('onboarding')
-              return
-            }
-          }
-        }
-      } catch (err) {
-        console.error('checkSession failed:', err)
-        try {
-          await signOut()
-        } catch {}
-        clearHubState()
-        setScreen('landing')
-        console.log('[checkSession] fallback to landing')
-      } finally {
-        if (fallbackTimer) clearTimeout(fallbackTimer)
-      }
-    }
-
-    checkSession()
-
-    fallbackTimer = setTimeout(() => {
-      if (screenRef.current === 'loading') {
-        clearHubState()
-        setScreen('landing')
-        console.log('[fallbackTimer] loading >18s, go to landing')
-      }
-    }, 18000)
-
+    let hydrated = false;
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event) => {
       if (ignore) return;
-      console.log('[authStateChange]', event)
+      if (!hydrated) {
+        hydrated = true;
+        setAuthHydrated(true);
+        // Now safe to check session and route
+        if (screen === 'loading') {
+          await routeFromSession();
+        }
+      }
       if (event === 'SIGNED_OUT') {
-        clearHubState()
-        setPendingCredentials(null)
-        setOnboardingError('')
-        setIsGuest(false)
-        setGuestBannerDismissed(false)
-        setScreen('landing')
-        return
+        clearHubState();
+        setPendingCredentials(null);
+        setOnboardingError('');
+        setIsGuest(false);
+        setGuestBannerDismissed(false);
+        setScreen('landing');
+        return;
       }
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        await routeFromSession()
+        await routeFromSession();
       }
-    })
-
+    });
+    // Fallback: if no event after 2s, assume hydrated
+    const fallback = setTimeout(() => {
+      if (!hydrated) {
+        hydrated = true;
+        setAuthHydrated(true);
+        if (screen === 'loading') routeFromSession();
+      }
+    }, 2000);
     return () => {
-      ignore = true
-      if (fallbackTimer) clearTimeout(fallbackTimer)
-      authListener.subscription.unsubscribe()
-    }
-  }, [clearHubState, routeFromSession, screen])
+      ignore = true;
+      clearTimeout(fallback);
+      authListener.subscription.unsubscribe();
+    };
+  }, [clearHubState, routeFromSession, screen]);
+
+  // Only render main app after auth is hydrated
+  if (!authHydrated) {
+    return <div style={{width:'100vw',height:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'#0a0a16'}}><span style={{color:'#e6c76e',fontFamily:'Cinzel,serif',fontSize:24}}>Loading...</span></div>;
+  }
 
   // Prevent browser back button from escaping the SPA when user is authenticated
   useEffect(() => {

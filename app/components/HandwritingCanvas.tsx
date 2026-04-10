@@ -256,8 +256,8 @@ const HandwritingCanvas = forwardRef<HandwritingCanvasRef, Props>(function Handw
           borderRadius: '4px',
           touchAction: 'none',
           cursor: tool === 'eraser' ? 'crosshair' : 'crosshair',
-          background: '#fff', // Make canvas background white for visibility
-          border: '1.5px solid #e6c76e', // Add border for visibility
+          background: 'transparent', // Transparent so paper shows through
+          border: '1.5px solid #e6c76e',
           boxShadow: '0 2px 12px 0 rgba(0,0,0,0.04)',
           position: 'relative',
           zIndex: 1,
