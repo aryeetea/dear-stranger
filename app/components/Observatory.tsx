@@ -613,7 +613,7 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
                 transition: 'width 0.3s', pointerEvents: 'none',
               }} />
             ))}
-            ))}            </motion.div>
+            </motion.div>
           </motion.div>
         )
       })}
