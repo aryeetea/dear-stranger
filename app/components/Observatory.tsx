@@ -405,10 +405,10 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
       {/* ── Star type legend ── */}
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }} style={{ position: 'absolute', bottom: '52px', left: '36px', zIndex: 10, pointerEvents: 'none', display: 'flex', flexDirection: 'column', gap: '9px' }}>
           {[
-          { dot: `radial-gradient(circle, rgba(255,255,255,0.98) 0%, rgba(${RECEIVED_GLOW_RGB},0.65) 50%, transparent 100%)`, shadow: `0 0 5px rgba(${RECEIVED_GLOW_RGB},0.45)`, label: 'Received', sub: 'arrived & waiting' },
-          { dot: `radial-gradient(circle, rgba(${TRANSIT_GLOW_RGB},0.92) 0%, rgba(${RECEIVED_GLOW_RGB},0.35) 60%, transparent 100%)`, shadow: `0 0 5px rgba(${TRANSIT_GLOW_RGB},0.5)`, label: 'In Transit', sub: 'crossing the dark' },
-          { dot: 'radial-gradient(circle, rgba(255,200,70,0.95) 0%, rgba(201,155,40,0.6) 50%, transparent 100%)', shadow: `0 0 6px rgba(${SENT_GLOW_RGB},0.6)`, label: 'Sent', sub: 'energy moving away' },
-          { dot: `radial-gradient(circle, rgba(255,248,220,0.98) 0%, rgba(${RECEIVED_GLOW_RGB},0.82) 50%, transparent 100%)`, shadow: `0 0 7px rgba(${RECEIVED_GLOW_RGB},0.7)`, label: 'Pinned', sub: 'held close, always' },
+          { dot: `radial-gradient(circle, rgba(255,255,255,0.98) 0%, rgba(${RECEIVED_GLOW_RGB},0.8) 40%, rgba(${RECEIVED_GLOW_RGB},0) 100%)`, shadow: `0 0 5px rgba(${RECEIVED_GLOW_RGB},0.55)`, label: 'Received', sub: 'arrived & waiting' },
+          { dot: `radial-gradient(circle, rgba(${TRANSIT_GLOW_RGB},0.9) 0%, rgba(${RECEIVED_GLOW_RGB},0.4) 60%, transparent 100%)`, shadow: `0 0 6px rgba(${TRANSIT_GLOW_RGB},0.45)`, label: 'In Transit', sub: 'crossing the dark' },
+          { dot: 'radial-gradient(circle, rgba(255,200,70,0.95) 0%, rgba(201,155,40,0.55) 40%, transparent 100%)', shadow: `0 0 6px rgba(${SENT_GLOW_RGB},0.7)`, label: 'Sent', sub: 'energy moving away' },
+          { dot: `radial-gradient(circle, rgba(255,248,220,0.98) 0%, rgba(${RECEIVED_GLOW_RGB},0.75) 40%, transparent 100%)`, shadow: `0 0 7px rgba(${RECEIVED_GLOW_RGB},0.85)`, label: 'Pinned', sub: 'held close, always' },
         ].map(item => (
           <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: item.dot, flexShrink: 0, boxShadow: item.shadow }} />
