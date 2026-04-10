@@ -775,6 +775,7 @@ export default function Home() {
               setScreen('onboarding')
               return
             }
+            restoreUniverseOverlay()
           }
         }
       } catch (err) {
@@ -823,7 +824,7 @@ export default function Home() {
       if (fallbackTimer) clearTimeout(fallbackTimer)
       authListener.subscription.unsubscribe()
     }
-  }, [clearHubState, routeFromSession, screen, setSavedOverlay])
+  }, [clearHubState, restoreUniverseOverlay, routeFromSession, screen, setSavedOverlay])
 
   // Only render main app after auth is hydrated
 
