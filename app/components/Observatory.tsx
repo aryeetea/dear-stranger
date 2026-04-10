@@ -231,22 +231,8 @@ export default function Observatory({ onClose, onWriteLetter, lettersRefreshSign
           const rawProgress = totalMs > 0 ? ((nowMs - createdMs) / totalMs) * 100 : 100
           const direction: 'sent' | 'received' = l.sender_id === userId ? 'sent' : 'received'
           const baseStatus: Letter['status'] = l.status === 'transit' || l.status === 'arrived' ? l.status : 'arrived'
-          const effectiveStatus = direction === 'received' && baseStatus === 'transit' && l.arrives_at && nowMs >= arrivesMs ? 'arrived' : baseStatus
-          const debugObj = {
-            id: l.id,
-            l_status: l.status,
-            direction,
-            baseStatus,
-            effectiveStatus,
-            arrives_at: l.arrives_at,
-            created_at: l.created_at,
-            sender_id: l.sender_id,
-            userId,
-          }
-          if (l.status === 'transit' || effectiveStatus === 'transit') {
-            // eslint-disable-next-line no-console
-            console.log('[Observatory][mapLetter] Transit letter debug:', debugObj)
-          }
+          const isDirectFutureLetter = !l.is_universe_letter && Boolean(l.arrives_at) && nowMs < arrivesMs
+          const effectiveStatus: Letter['status'] = isDirectFutureLetter ? 'transit' : baseStatus
           return {
             id: l.id,
             from: direction === 'received' ? (l.sender?.hub_name || 'Unknown Sender') : (l.sender?.hub_name || 'You'),
