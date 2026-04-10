@@ -30,10 +30,17 @@ function getMirrorCycle(createdAt?: string) {
 // ── Inject holographic keyframes once ──
 const HOLO_STYLES = `
 @keyframes holo-flicker {
-  0%, 89%, 91%, 93%, 95%, 100% { opacity: 1; filter: brightness(1.08) saturate(0.82); }
-  90% { opacity: 0.82; filter: brightness(1.22) saturate(1.1) hue-rotate(4deg); }
-  92% { opacity: 0.91; filter: brightness(0.96) saturate(0.7); }
-  94% { opacity: 0.87; filter: brightness(1.15) saturate(1.05) hue-rotate(-3deg); }
+  0%, 100%  { opacity: 1; filter: brightness(1.1) saturate(0.7); }
+  5%        { opacity: 0.6; filter: brightness(1.5) saturate(1.3) hue-rotate(8deg); }
+  5.5%      { opacity: 1; filter: brightness(1.1) saturate(0.7); }
+  30%       { opacity: 0.95; filter: brightness(1.0) saturate(0.65); }
+  31%       { opacity: 0.55; filter: brightness(1.6) saturate(1.4) hue-rotate(-6deg); }
+  31.3%     { opacity: 0.9; filter: brightness(1.1) saturate(0.75); }
+  60%       { opacity: 1; filter: brightness(1.08) saturate(0.7); }
+  85%       { opacity: 0.92; filter: brightness(1.05) saturate(0.65); }
+  85.4%     { opacity: 0.48; filter: brightness(1.7) saturate(1.5) hue-rotate(10deg); }
+  85.8%     { opacity: 0.7; filter: brightness(0.85) saturate(0.5); }
+  86.2%     { opacity: 1; filter: brightness(1.1) saturate(0.7); }
 }
 @keyframes holo-scan {
   0%   { transform: translateY(-100%); }
@@ -50,6 +57,15 @@ const HOLO_STYLES = `
 @keyframes holo-shimmer {
   0%   { background-position: -200% center; }
   100% { background-position:  200% center; }
+}
+@keyframes holo-glitch {
+  0%, 100%  { clip-path: inset(0 0 0 0); transform: translateX(0); }
+  10%       { clip-path: inset(15% 0 75% 0); transform: translateX(-3px); }
+  10.5%     { clip-path: inset(0 0 0 0); transform: translateX(0); }
+  40%       { clip-path: inset(60% 0 5% 0); transform: translateX(4px); }
+  40.3%     { clip-path: inset(0 0 0 0); transform: translateX(0); }
+  72%       { clip-path: inset(30% 0 40% 0); transform: translateX(-2px); }
+  72.4%     { clip-path: inset(0 0 0 0); transform: translateX(0); }
 }
 `
 
@@ -488,7 +504,7 @@ export default function Profile({
                 alt="Avatar"
                 style={{
                   position: 'absolute',
-                  bottom: '11%',   // sit just above the portal ring
+                  bottom: '5%',
                   left: '50%',
                   transform: 'translateX(-50%)',
                   height: '82%',
@@ -510,7 +526,7 @@ export default function Profile({
 
               {/* ── RGB aberration edge overlay ── */}
               <div style={{
-                position: 'absolute', bottom: '11%', left: '50%',
+                position: 'absolute', bottom: '5%', left: '50%',
                 transform: 'translateX(-50%)',
                 height: '82%', width: '100%',
                 zIndex: 4, pointerEvents: 'none',
@@ -557,7 +573,7 @@ export default function Profile({
                 animate={{ opacity: [0.78, 1, 0.78], scale: [0.995, 1.005, 0.995] }}
                 transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
                 style={{
-                  position: 'absolute', bottom: '3.5%', left: '50%',
+                  position: 'absolute', bottom: '1%', left: '50%',
                   transform: 'translateX(-50%)',
                   width: '80%', zIndex: 6, pointerEvents: 'none',
                 }}
