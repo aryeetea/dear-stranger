@@ -53,7 +53,6 @@ const STARS = Array.from({ length: 30 }, (_, i) => ({
 }))
 
 const HUB_COLOR_IDS: HubColor[] = ['gold', 'sage', 'rose', 'azure', 'amber', 'violet', 'teal', 'sand']
-const LAST_SCREEN_KEY = 'ds_last_screen'
 const LAST_OVERLAY_KEY = 'ds_last_overlay'
 
 function coerceHubColor(value?: string | null): HubColor {
@@ -466,13 +465,7 @@ function LetterDepartAnimation({ onDone }: { onDone: () => void }) {
 
 export default function Home() {
   const router = useRouter()
-  const [screen, setScreen] = useState<Screen>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(LAST_SCREEN_KEY) as Screen | null
-      if (saved && ['universe', 'landing', 'confirm_email'].includes(saved)) return saved
-    }
-    return 'loading'
-  })
+  const [screen, setScreen] = useState<Screen>('loading')
   const [hubName, setHubName] = useState('')
   const [hubBio, setHubBio] = useState('')
   const [hubAskAbout, setHubAskAbout] = useState('')
@@ -495,10 +488,7 @@ export default function Home() {
   const [pagesOpen, setPagesOpen] = useState(false)
   const [driftOpen, setDriftOpen] = useState(false)
   const [navResetSignal, setNavResetSignal] = useState(0)
-  const [ambientMuted, setAmbientMutedState] = useState(() => {
-    if (typeof window === 'undefined') return false
-    return localStorage.getItem('ds_ambient_muted') === '1'
-  })
+  const [ambientMuted, setAmbientMutedState] = useState(false)
   const [isGuest, setIsGuest] = useState(false)
   const [currentUserId, setCurrentUserId] = useState('')
   const [guestBannerDismissed, setGuestBannerDismissed] = useState(false)
@@ -516,6 +506,11 @@ export default function Home() {
 
   const screenRef = useRef<Screen>('loading')
   const onboardingInFlightRef = useRef(false)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    setAmbientMutedState(localStorage.getItem('ds_ambient_muted') === '1')
+  }, [])
 
   const getSavedOverlay = useCallback((): UniverseOverlay => {
     if (typeof window === 'undefined') return null
@@ -581,9 +576,6 @@ export default function Home() {
 
   useEffect(() => {
     screenRef.current = screen
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(LAST_SCREEN_KEY, screen)
-    }
   }, [screen])
 
   useEffect(() => {

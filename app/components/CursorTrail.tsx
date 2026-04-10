@@ -14,16 +14,25 @@ interface Particle {
 
 export default function CursorTrail() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [isTouch] = useState(() => typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches)
+  const [isTouch, setIsTouch] = useState<boolean | null>(null)
 
   useEffect(() => {
+    const mediaQuery = window.matchMedia('(pointer: coarse)')
+    const updateIsTouch = () => setIsTouch(mediaQuery.matches)
+    updateIsTouch()
+
+    const handleChange = () => updateIsTouch()
+    mediaQuery.addEventListener?.('change', handleChange)
+
     // Skip the canvas entirely on touch / coarse-pointer devices (mobile, tablet)
-    if (window.matchMedia('(pointer: coarse)').matches) {
-      return
+    if (mediaQuery.matches) {
+      return () => mediaQuery.removeEventListener?.('change', handleChange)
     }
 
     const canvas = canvasRef.current
-    if (!canvas) return
+    if (!canvas) {
+      return () => mediaQuery.removeEventListener?.('change', handleChange)
+    }
     const ctx = canvas.getContext('2d')!
 
     const resize = () => {
@@ -75,10 +84,13 @@ export default function CursorTrail() {
       cancelAnimationFrame(frame)
       window.removeEventListener('resize', resize)
       window.removeEventListener('mousemove', onMove)
+      mediaQuery.removeEventListener?.('change', handleChange)
     }
   }, [])
 
-  return isTouch ? null : (
+  if (isTouch !== false) return null
+
+  return (
     <canvas
       ref={canvasRef}
       style={{
