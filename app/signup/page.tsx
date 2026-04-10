@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { SignupScreen } from '../components/AuthScreens'
 import { getSession } from '../lib/auth'
+import { supabase } from '../../lib/supabase'
 
 const STARS = Array.from({ length: 30 }, (_, i) => ({
   left: `${((i * 37 + 11) % 100)}%`,
@@ -52,6 +53,19 @@ export default function SignupPage() {
     getSession().then((session) => {
       if (session) router.replace('/')
     })
+
+    // Handle OAuth redirects (Discord/Google): after the provider redirects back,
+    // Supabase exchanges the code asynchronously and fires SIGNED_IN — without this
+    // listener the user would be stuck on the signup screen until a manual refresh.
+    const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN') {
+        router.replace('/')
+      }
+    })
+
+    return () => {
+      authListener.subscription.unsubscribe()
+    }
   }, [router])
 
   return (
