@@ -249,7 +249,7 @@ function LetterContent({ fontFamily, ink, recipient, senderName, date, body, set
       </p>
       <textarea ref={textareaRef} value={body} onChange={e=>setBody(e.target.value)} onKeyDown={onKeyDown}
         placeholder="Begin your letter here..."
-        style={{ width:'100%', minHeight:'252px', height:'auto', background:'transparent', border:'none', outline:'none', color:ink.main, caretColor:ink.accent, fontFamily, fontSize:'16px', lineHeight:2, resize:'none', overflow:'hidden', letterSpacing:'0.01em', textShadow: '0 1px 6px #fff8, 0 0px 1px #fff4', overflowWrap:'break-word', wordBreak:'break-word' }}/>
+        style={{ width:'100%', minHeight:'252px', maxHeight:'min(52vh, 480px)', background:'transparent', border:'none', outline:'none', color:ink.main, caretColor:ink.accent, fontFamily, fontSize:'16px', lineHeight:2, resize:'none', overflowY:'auto', overflowX:'hidden', WebkitOverflowScrolling:'touch', overscrollBehavior:'contain', letterSpacing:'0.01em', textShadow: '0 1px 6px #fff8, 0 0px 1px #fff4', overflowWrap:'break-word', wordBreak:'break-word' }}/>
       <p style={{ fontFamily, fontStyle:'italic', fontSize:'15px', color:ink.secondary, marginTop:'10px', lineHeight:1.9, textShadow: '0 1px 6px #fff8, 0 0px 1px #fff4' }}>
         Yours across the distance,<br/>
         <span style={{ color:ink.accent }}>{senderName || 'A Stranger'}</span>
