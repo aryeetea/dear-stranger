@@ -172,6 +172,9 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
   const [loading, setLoading] = useState(true)
   const [currentUserId, setCurrentUserId] = useState('')
   const [currentTime, setCurrentTime] = useState(() => Date.now())
+  const [readIds, setReadIds] = useState<Set<string>>(() => {
+    try { return new Set(JSON.parse(localStorage.getItem('ds_read_letters') || '[]')) } catch { return new Set() }
+  })
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const [tooltip, setTooltip] = useState<{ letter: Letter; x: number; y: number } | null>(null)
   const [mousePos, setMousePos] = useState({ x: 0.5, y: 0.5 })
@@ -277,6 +280,12 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
 
   function handleLetterClick(letter: Letter) {
     if (letter.status === 'transit') return
+    setReadIds(prev => {
+      const next = new Set(prev)
+      next.add(letter.id)
+      try { localStorage.setItem('ds_read_letters', JSON.stringify([...next])) } catch {}
+      return next
+    })
     setZoomTarget(letter)
     setTimeout(() => { setZoomTarget(null); setOpenLetter(letter) }, 480)
   }
@@ -285,7 +294,7 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
   const arrived = letters.filter(l => l.status === 'arrived')
   const pinned = letters.filter(l => l.status === 'archive')
   const total = letters.length
-  const newlyArrived = arrived.filter(l => (currentTime - new Date(l.arrivedAt || l.sentAt).getTime()) < 48 * 3600000)
+  const newlyArrived = arrived.filter(l => !readIds.has(l.id) && (currentTime - new Date(l.arrivedAt || l.sentAt).getTime()) < 48 * 3600000)
 
   const p1x = (mousePos.x - 0.5) * 14
   const p1y = (mousePos.y - 0.5) * 10
@@ -354,6 +363,24 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
         <motion.button initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} onClick={onClose} style={{ pointerEvents: 'all', background: 'none', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.75)', fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.3em', padding: '8px 16px', cursor: 'pointer', textTransform: 'uppercase' }} onMouseEnter={e => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.45)' }} onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.75)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)' }}>← Universe</motion.button>
       </div>
 
+      {/* ── Star type legend ── */}
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }} style={{ position: 'absolute', bottom: '52px', left: '36px', zIndex: 10, pointerEvents: 'none', display: 'flex', flexDirection: 'column', gap: '9px' }}>
+        {[
+          { dot: 'radial-gradient(circle, rgba(255,255,255,0.95) 0%, rgba(200,160,255,0.7) 50%, transparent 100%)', shadow: '0 0 4px rgba(200,160,255,0.5)', label: 'Received', sub: 'arrived & waiting' },
+          { dot: 'radial-gradient(circle, rgba(200,220,255,0.9) 0%, rgba(120,160,240,0.5) 50%, transparent 100%)', shadow: '0 0 4px rgba(160,200,255,0.5)', label: 'In Transit', sub: 'crossing the dark' },
+          { dot: 'radial-gradient(circle, rgba(255,200,70,0.95) 0%, rgba(201,155,40,0.6) 50%, transparent 100%)', shadow: '0 0 6px rgba(255,185,65,0.6)', label: 'Sent', sub: 'energy moving away' },
+          { dot: 'radial-gradient(circle, rgba(255,248,220,0.98) 0%, rgba(230,199,110,0.75) 50%, transparent 100%)', shadow: '0 0 6px rgba(230,199,110,0.6)', label: 'Pinned', sub: 'held close, always' },
+        ].map(item => (
+          <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: item.dot, flexShrink: 0, boxShadow: item.shadow }} />
+            <div>
+              <span style={{ fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.3em', color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase' }}>{item.label}</span>
+              <span style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '10px', color: 'rgba(255,255,255,0.22)', marginLeft: '7px' }}>{item.sub}</span>
+            </div>
+          </div>
+        ))}
+      </motion.div>
+
       {/* ── Observatory title hint ── */}
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} style={{ position: 'absolute', left: '50%', bottom: '28px', transform: 'translateX(-50%)', textAlign: 'center', pointerEvents: 'none', zIndex: 3 }}>
         <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.6em', color: 'rgba(255,234,196,0.4)', textTransform: 'uppercase', marginBottom: '4px' }}>The Observatory</p>
@@ -387,7 +414,8 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
           animate={{ opacity: [0.6, 1, 0.6] }}
           transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut' }}
           style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.28em', color: 'rgba(230,199,110,0.85)', textTransform: 'uppercase', textAlign: 'center', marginTop: '10px', whiteSpace: 'nowrap' }}
-        >To the Universe</motion.p>
+        >Write to Universe</motion.p>
+        <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '10px', color: 'rgba(230,199,110,0.4)', textAlign: 'center', marginTop: '3px', whiteSpace: 'nowrap' }}>compose a letter to a stranger</p>
       </motion.div>
 
       {/* ── Loading ── */}
@@ -412,7 +440,7 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
         const isPinned = letter.status === 'archive'
         const isTransit = letter.status === 'transit'
         const isArrived = letter.status === 'arrived'
-        const isNew = isArrived && !isSent && (currentTime - new Date(letter.arrivedAt || letter.sentAt).getTime()) < 48 * 3600000
+        const isNew = isArrived && !isSent && !readIds.has(letter.id) && (currentTime - new Date(letter.arrivedAt || letter.sentAt).getTime()) < 48 * 3600000
         const isHovered = hoveredId === letter.id
         const isZooming = zoomTarget?.id === letter.id
         const cx = letter.cx ?? 50
