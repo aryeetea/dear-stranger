@@ -405,23 +405,31 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
         <motion.button initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} onClick={onClose} style={{ pointerEvents: 'all', background: 'none', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.75)', fontFamily: "'Cinzel', serif", fontSize: 'clamp(8px, 1.2vw, 10px)', letterSpacing: '0.3em', padding: '8px 16px', cursor: 'pointer', textTransform: 'uppercase', minHeight: '44px', display: 'flex', alignItems: 'center' }} onMouseEnter={e => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.45)' }} onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.75)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)' }}>← Universe</motion.button>
       </div>
 
-      {/* ── Star type legend ── */}
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }} style={{ position: 'absolute', bottom: 'clamp(36px, 6vh, 52px)', left: 'clamp(14px, 3vw, 36px)', zIndex: 10, pointerEvents: 'none', display: 'flex', flexDirection: 'column', gap: '9px' }}>
-          {[
-          { dot: `radial-gradient(circle, rgba(255,255,255,1) 0%, rgba(${RECEIVED_GLOW_RGB},0.9) 45%, transparent 100%)`, shadow: `0 0 7px 2px rgba(${RECEIVED_GLOW_RGB},0.6)`, label: 'Received', sub: 'arrived & waiting' },
-          { dot: `radial-gradient(circle, rgba(100,170,255,1) 0%, rgba(60,110,240,0.7) 45%, transparent 100%)`, shadow: `0 0 7px 2px rgba(100,170,255,0.65)`, label: 'In Transit', sub: 'crossing the dark' },
-          { dot: 'radial-gradient(circle, rgba(255,180,40,1) 0%, rgba(200,120,10,0.8) 45%, transparent 100%)', shadow: `0 0 7px 2px rgba(${SENT_GLOW_RGB},0.75)`, label: 'Sent', sub: 'energy moving away' },
-          { dot: `radial-gradient(circle, rgba(230,200,255,1) 0%, rgba(180,140,240,0.9) 45%, transparent 100%)`, shadow: `0 0 8px 2px rgba(180,140,240,0.8)`, label: 'Pinned', sub: 'held close, always' },
-        ].map(item => (
-          <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ width: '16px', height: '16px', borderRadius: '50%', background: item.dot, flexShrink: 0, boxShadow: item.shadow }} />
-            <div>
-              <span style={{ fontFamily: "'Cinzel', serif", fontSize: 'clamp(8px, 1.1vw, 9px)', letterSpacing: '0.3em', color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase' }}>{item.label}</span>
-              <span style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: 'clamp(9px, 1.2vw, 11px)', color: 'rgba(255,255,255,0.22)', marginLeft: '7px' }}>{item.sub}</span>
+      {/* ── Latest Signal ── */}
+      {(() => {
+        const signals = [...arrived, ...pinned].sort((a, b) =>
+          new Date(b.arrivedAt || b.sentAt).getTime() - new Date(a.arrivedAt || a.sentAt).getTime()
+        )
+        const latest = signals[0]
+        if (!latest) return null
+        const glowRgb = PAPER_COLORS[latest.paperId]?.glow || '230,199,110'
+        return (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }} style={{ position: 'absolute', bottom: 'clamp(36px, 6vh, 52px)', left: 'clamp(14px, 3vw, 36px)', zIndex: 10, pointerEvents: 'none', maxWidth: '200px' }}>
+            <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.45em', color: 'rgba(255,255,255,0.22)', textTransform: 'uppercase', marginBottom: '10px' }}>Latest Signal</p>
+            <div style={{ borderLeft: `1px solid rgba(${glowRgb},0.28)`, paddingLeft: '12px' }}>
+              <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.28em', color: `rgba(${glowRgb},0.68)`, textTransform: 'uppercase', marginBottom: '5px' }}>
+                {latest.direction === 'received' ? `From · ${latest.from}` : `To · ${latest.to}`}
+              </p>
+              <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '12px', color: 'rgba(255,255,255,0.5)', lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', marginBottom: '6px' }}>
+                {latest.preview}
+              </p>
+              <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.2em', color: 'rgba(255,255,255,0.2)', textTransform: 'uppercase' }}>
+                {formatObservatoryDate(latest.arrivedAt || latest.sentAt)}
+              </p>
             </div>
-          </div>
-        ))}
-      </motion.div>
+          </motion.div>
+        )
+      })()}
 
       {/* ── Observatory title hint ── */}
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} style={{ position: 'absolute', left: '50%', bottom: 'clamp(12px, 3vh, 28px)', transform: 'translateX(-50%)', textAlign: 'center', pointerEvents: 'none', zIndex: 3 }}>
@@ -511,7 +519,7 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
               left: `${cx}%`, top: `${cy}%`,
               transform: `translate(-50%, -50%) translate(${p2x * (isArrived ? 0.5 : 0.3)}px, ${p2y * (isArrived ? 0.5 : 0.3)}px)`,
               transition: 'transform 0.45s ease-out',
-              cursor: 'pointer',
+              cursor: isTransit ? 'default' : 'pointer',
               zIndex: isHovered ? 20 : 5,
             }}
             onClick={() => handleLetterClick(letter)}
@@ -530,14 +538,14 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
             >
             {/* Glow aura */}
             <motion.div
-              animate={isSent ? { opacity: [0.2, 0.5, 0.2], scale: [1, 1.22, 1] } : isArrived && isNew ? { opacity: [0.3, 0.7, 0.3], scale: [1, 1.3, 1] } : isArrived ? { opacity: [0.2, 0.45, 0.2] } : isPinned ? { opacity: [0.25, 0.55, 0.25] } : { opacity: isHovered ? 0.45 : 0.12 }}
+              animate={isSent ? { opacity: [0.2, 0.5, 0.2], scale: [1, 1.22, 1] } : isArrived && isNew ? { opacity: [0.3, 0.7, 0.3], scale: [1, 1.3, 1] } : isArrived ? { opacity: [0.2, 0.45, 0.2] } : isPinned ? { opacity: [0.25, 0.55, 0.25] } : { opacity: 0.12 }}
               transition={{ duration: isSent ? 3.6 + sr(i * 7) * 1.5 : isNew ? 2.2 : 3.5, repeat: Infinity, ease: 'easeInOut', delay: sr(i * 7) * 2 }}
               style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', width: `${baseSize * 12}px`, height: `${baseSize * 12}px`, borderRadius: '50%', background: `radial-gradient(circle, rgba(${statusGlowRgb},0.5) 0%, rgba(${statusGlowRgb},0) 70%)`, pointerEvents: 'none' }}
             />
 
             {/* Hover ripple ring */}
             <AnimatePresence>
-              {isHovered && (
+              {isHovered && !isTransit && (
                 <motion.div
                   key="ripple"
                   initial={{ opacity: 0.75, scale: 0.5 }}
@@ -570,7 +578,7 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
               animate={isSent ? { scale: [1, 1.07, 1], opacity: [0.8, 0.97, 0.8] } : isPinned ? {} : isArrived ? { scale: [1, 1.15, 1], opacity: [0.9, 1, 0.9] } : isTransit ? { scale: [1, 1.06, 1] } : {}}
               transition={{ duration: isSent ? 3.2 + sr(i * 3) * 1.5 : isArrived ? 2.8 + sr(i * 3) * 1.5 : 1.4, repeat: Infinity, ease: 'easeInOut', delay: sr(i * 11) * 2 }}
               style={{
-                width: `${isHovered ? baseSize * 2.4 : baseSize * 2}px`, height: `${isHovered ? baseSize * 2.4 : baseSize * 2}px`,
+                width: `${isHovered && !isTransit ? baseSize * 2.4 : baseSize * 2}px`, height: `${isHovered && !isTransit ? baseSize * 2.4 : baseSize * 2}px`,
                 borderRadius: '50%',
                 background: isSent
                   ? `radial-gradient(circle, rgba(255,180,40,0.98) 0%, rgba(200,120,10,0.6) 45%, transparent 100%)`
@@ -579,7 +587,7 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
                     : isTransit
                       ? `radial-gradient(circle, rgba(100,170,255,0.98) 0%, rgba(60,110,240,0.6) 50%, transparent 100%)`
                       : `radial-gradient(circle, rgba(255,255,255,0.98) 0%, rgba(${RECEIVED_GLOW_RGB},0.75) 40%, transparent 100%)`,
-                boxShadow: isHovered
+                boxShadow: isHovered && !isTransit
                   ? `0 0 ${baseSize * 4}px rgba(${statusGlowRgb},0.95), 0 0 ${baseSize * 8}px rgba(${statusGlowRgb},0.4)`
                   : isSent
                     ? `0 0 ${baseSize * 2}px rgba(${SENT_GLOW_RGB},0.8), 0 0 ${baseSize * 5}px rgba(200,120,10,0.35)`
@@ -639,17 +647,21 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
             <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.3em', color: `rgba(${PAPER_COLORS[tooltip.letter.paperId]?.glow || '230,199,110'},0.9)`, textTransform: 'uppercase', marginBottom: '5px' }}>
               {tooltip.letter.direction === 'received' ? `From · ${tooltip.letter.from}` : `To · ${tooltip.letter.to}`}
             </p>
-            <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(255,255,255,0.9)', lineHeight: 1.45, marginBottom: '6px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-              {tooltip.letter.preview}
-            </p>
-            <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.18em', color: 'rgba(255,255,255,0.38)', textTransform: 'uppercase' }}>
-              {formatObservatoryDate(tooltip.letter.arrivedAt || tooltip.letter.sentAt)}
-            </p>
-            {tooltip.letter.status === 'transit' && (
-              <div style={{ marginTop: '5px' }}>
-                <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '11px', color: `rgba(${TRANSIT_GLOW_RGB},0.78)` }}>crossing the dark · {tooltip.letter.travelProgress ?? 0}%</p>
-                {tooltip.letter.arrivedAt && <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.2em', color: `rgba(${TRANSIT_GLOW_RGB},0.52)`, marginTop: '3px', textTransform: 'uppercase' }}>Arriving · {formatObservatoryDate(tooltip.letter.arrivedAt)}</p>}
-              </div>
+            {tooltip.letter.status === 'transit' ? (
+              <>
+                <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: `rgba(${TRANSIT_GLOW_RGB},0.6)`, lineHeight: 1.45, marginBottom: '6px' }}>still crossing the dark…</p>
+                <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.18em', color: `rgba(${TRANSIT_GLOW_RGB},0.45)`, textTransform: 'uppercase', marginBottom: '4px' }}>{tooltip.letter.travelProgress ?? 0}% of the way</p>
+                {tooltip.letter.arrivedAt && <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.2em', color: `rgba(${TRANSIT_GLOW_RGB},0.35)`, textTransform: 'uppercase' }}>Arriving · {formatObservatoryDate(tooltip.letter.arrivedAt)}</p>}
+              </>
+            ) : (
+              <>
+                <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(255,255,255,0.9)', lineHeight: 1.45, marginBottom: '6px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                  {tooltip.letter.preview}
+                </p>
+                <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.18em', color: 'rgba(255,255,255,0.38)', textTransform: 'uppercase' }}>
+                  {formatObservatoryDate(tooltip.letter.arrivedAt || tooltip.letter.sentAt)}
+                </p>
+              </>
             )}
           </motion.div>
         )}
