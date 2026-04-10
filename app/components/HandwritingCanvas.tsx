@@ -26,7 +26,9 @@ const HandwritingCanvas = forwardRef<HandwritingCanvasRef, Props>(function Handw
   const [isDrawing, setIsDrawing] = useState(false)
   const [hasContent, setHasContent] = useState(false)
   const [canvasSize, setCanvasSize] = useState({ w: width, h: height })
-  const lastPointRef = useRef<{ x: number; y: number } | null>(null)
+  const lastPointRef = useRef<{ x: number; y: number; pressure: number } | null>(null)
+  // For smoothing: keep a short history of points
+  const pointsRef = useRef<Array<{ x: number; y: number; pressure: number }>>([])
   const historyRef = useRef<ImageData[]>([])
   const [tool, setTool] = useState<'pen' | 'eraser'>('pen')
 
@@ -75,10 +77,15 @@ const HandwritingCanvas = forwardRef<HandwritingCanvasRef, Props>(function Handw
     const canvas = canvasRef.current
     if (!canvas) return { x: 0, y: 0, pressure: 0.5 }
     const rect = canvas.getBoundingClientRect()
+    // Clamp pressure for iPad/Apple Pencil quirks
+    let pressure = e.pressure
+    if (typeof pressure !== 'number' || isNaN(pressure) || pressure < 0.01) pressure = 0.5
+    // Increase pressure sensitivity for iPad
+    pressure = Math.max(0.2, Math.min(pressure, 1.0))
     return {
       x: e.clientX - rect.left,
       y: e.clientY - rect.top,
-      pressure: e.pressure || 0.5,
+      pressure,
     }
   }, [])
 
@@ -99,6 +106,7 @@ const HandwritingCanvas = forwardRef<HandwritingCanvasRef, Props>(function Handw
     saveToHistory()
     const pt = getPoint(e)
     lastPointRef.current = pt
+    pointsRef.current = [pt]
     setIsDrawing(true)
     setHasContent(true)
     const ctx = canvas.getContext('2d')
@@ -110,7 +118,7 @@ const HandwritingCanvas = forwardRef<HandwritingCanvasRef, Props>(function Handw
     } else {
       ctx.globalCompositeOperation = 'source-over'
       ctx.strokeStyle = inkColor
-      ctx.lineWidth = lineWidth * (0.5 + pt.pressure)
+      ctx.lineWidth = lineWidth * (1.0 + pt.pressure * 2.2) // More pressure effect
     }
     ctx.moveTo(pt.x, pt.y)
     ctx.lineTo(pt.x + 0.1, pt.y + 0.1)
@@ -126,7 +134,11 @@ const HandwritingCanvas = forwardRef<HandwritingCanvasRef, Props>(function Handw
     if (!ctx) return
     const pt = getPoint(e)
     const last = lastPointRef.current
-    if (!last) { lastPointRef.current = pt; return }
+    if (!last) { lastPointRef.current = pt; pointsRef.current = [pt]; return }
+    // Smoothing: keep last 3 points, draw quadratic curve through average
+    pointsRef.current.push(pt)
+    if (pointsRef.current.length > 3) pointsRef.current.shift()
+    const [p0, p1, p2] = pointsRef.current.length === 3 ? pointsRef.current : [last, pt, pt]
     ctx.beginPath()
     if (tool === 'eraser') {
       ctx.globalCompositeOperation = 'destination-out'
@@ -134,12 +146,12 @@ const HandwritingCanvas = forwardRef<HandwritingCanvasRef, Props>(function Handw
     } else {
       ctx.globalCompositeOperation = 'source-over'
       ctx.strokeStyle = inkColor
-      ctx.lineWidth = lineWidth * (0.5 + pt.pressure)
+      // Average pressure for smoothing
+      const avgPressure = (p0.pressure + p1.pressure + p2.pressure) / 3
+      ctx.lineWidth = lineWidth * (1.0 + avgPressure * 2.2)
     }
-    // Smooth with midpoint for natural curves
-    const mid = { x: (last.x + pt.x) / 2, y: (last.y + pt.y) / 2 }
-    ctx.moveTo(last.x, last.y)
-    ctx.quadraticCurveTo(last.x, last.y, mid.x, mid.y)
+    ctx.moveTo(p0.x, p0.y)
+    ctx.quadraticCurveTo(p1.x, p1.y, p2.x, p2.y)
     ctx.stroke()
     lastPointRef.current = pt
   }, [isDrawing, getPoint, inkColor, lineWidth, tool])
@@ -147,6 +159,7 @@ const HandwritingCanvas = forwardRef<HandwritingCanvasRef, Props>(function Handw
   const handlePointerUp = useCallback(() => {
     setIsDrawing(false)
     lastPointRef.current = null
+    pointsRef.current = []
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')
@@ -270,7 +283,8 @@ const HandwritingCanvas = forwardRef<HandwritingCanvasRef, Props>(function Handw
         color: 'rgba(255,255,255,0.35)', margin: '6px 0 0', textAlign: 'center',
         zIndex: 2, position: 'relative',
       }}>
-        Draw with your finger, stylus, or mouse
+        Draw with your finger, stylus, or Apple Pencil.<br />
+        <span style={{ color: '#e6c76e' }}>Tip: For best results, use Safari or Chrome on iPad.</span>
       </p>
     </div>
   )

@@ -325,6 +325,7 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
   const body = pages.join('\n\n— ✦ —\n\n')
   const [sent, setSent] = useState(false)
   const [releasing, setReleasing] = useState(false)
+  const [sendError, setSendError] = useState<string | null>(null)
   const [view, setView] = useState<'write'|'papers'|'fonts'|'stamps'|'colors'|'paper-color'|'envelopes'|'envelope'|'wax-seal'>('write')
   const [journalMode, setJournalMode] = useState(false)
   const [capsuleDays, setCapsuleDays] = useState<30|60|90>(30)
@@ -455,6 +456,7 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
   }
 
   async function handleRelease() {
+    setSendError(null)
     if (selectedHandwriting === 'typed' && !body.trim()) return
     if (selectedHandwriting === 'handwritten' && canvasRef.current?.isEmpty()) return
     if (!subject.trim()) {
@@ -470,12 +472,24 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
     setReleasing(true)
     playLetterSend()
     await new Promise(r => setTimeout(r, 2200))
-    setSent(true)
-    const handwrittenImageBlob = selectedHandwriting === 'handwritten' ? await canvasRef.current?.toBlob() : undefined
-    setTimeout(() => {
-      onSend?.({ to: journalMode ? undefined : recipientName, body, paperId: selectedPaper.id, subject, fontId: selectedFont.id, colorId: selectedColor ?? undefined, paperColorId: selectedPaperColor ?? undefined, stampId: selectedStamp, envelopeId: selectedEnvelope, capsuleDays: journalMode ? capsuleDays : undefined, burnAfterReading: burnAfterReading || undefined, voiceNoteBlob: voiceNoteBlob ?? undefined, voiceEffect: voiceNoteBlob ? voiceEffect : undefined, handwritingStyle: selectedHandwriting, embellishmentId: selectedEmbellishment, handwrittenImageBlob: handwrittenImageBlob ?? undefined, anonymous: (!recipientName && !journalMode) ? isAnonymous : undefined })
-      onClose?.()
-    }, 2400)
+    try {
+      const handwrittenImageBlob = selectedHandwriting === 'handwritten' ? await canvasRef.current?.toBlob() : undefined
+      setSent(true)
+      setTimeout(() => {
+        try {
+          onSend?.({ to: journalMode ? undefined : recipientName, body, paperId: selectedPaper.id, subject, fontId: selectedFont.id, colorId: selectedColor ?? undefined, paperColorId: selectedPaperColor ?? undefined, stampId: selectedStamp, envelopeId: selectedEnvelope, capsuleDays: journalMode ? capsuleDays : undefined, burnAfterReading: burnAfterReading || undefined, voiceNoteBlob: voiceNoteBlob ?? undefined, voiceEffect: voiceNoteBlob ? voiceEffect : undefined, handwritingStyle: selectedHandwriting, embellishmentId: selectedEmbellishment, handwrittenImageBlob: handwrittenImageBlob ?? undefined, anonymous: (!recipientName && !journalMode) ? isAnonymous : undefined })
+          onClose?.()
+        } catch (err) {
+          setSendError('Failed to send your letter. Please try again or check your connection.')
+          setReleasing(false)
+          setSent(false)
+        }
+      }, 2400)
+    } catch (err) {
+      setSendError('Failed to send your letter. Please try again or check your connection.')
+      setReleasing(false)
+      setSent(false)
+    }
   }
 
   const renderPaper = () => {
@@ -1099,6 +1113,13 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
           </motion.div>
         )}
 
+        {sendError && (
+          <div style={{ textAlign: 'center', margin: '18px 0 0', zIndex: 3 }}>
+            <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: '#e06c6c', background: 'rgba(255,0,0,0.07)', borderRadius: '4px', padding: '10px 18px', display: 'inline-block', maxWidth: 340, margin: '0 auto' }}>
+              {sendError}
+            </p>
+          </div>
+        )}
         {sent && (
           <motion.div key="sent" initial={{ opacity:0, scale:0.95 }} animate={{ opacity:1, scale:1 }} exit={{ opacity:0 }} transition={{ duration:0.6 }} style={{ textAlign:'center', zIndex:2 }}>
             <motion.div initial={{ scale:0, opacity:0.8 }} animate={{ scale:5, opacity:0 }} transition={{ duration:2.2, ease:'easeOut' }}
