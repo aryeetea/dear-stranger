@@ -1246,47 +1246,64 @@ export default function UniverseMap({
       resizeHandler()
       window.addEventListener('resize', resizeHandler)
 
-      const realHubs = await getAllHubs()
-      const myAvatarImg = hubAvatarUrl ? await loadImage(hubAvatarUrl) : undefined
-
-      const otherHubs = await Promise.all(realHubs.map(async (hub: UniverseHubRecord, i: number) => {
-        const angle = (i / Math.max(realHubs.length, 1)) * Math.PI * 2 + 0.3
-        const dist = 180 + (i * 73) % 320
-        const avatarImg = hub.avatar_url ? await loadImage(hub.avatar_url) : undefined
-        const styles: HubStyle[] = ['portal', 'lantern', 'ruin', 'hourglass', 'telescope', 'greenhouse', 'lotus', 'cottage', 'forge', 'tower', 'ship']
-        return {
-          id: hub.id,
-          x: Math.cos(angle) * dist, y: Math.sin(angle) * dist,
-          name: hub.hub_name, bio: hub.bio || '', askAbout: hub.ask_about || '',
-          avatarUrl: hub.avatar_url || '', avatarImage: avatarImg,
-          online: hub.online ?? true, pulse: 0,
-          size: 0.9 + (i * 17 % 10) / 30,
-          floatOffset: (i * 137) % (Math.PI * 2),
-          floatSpeed: 0.4 + (i * 23 % 10) / 30,
-          colorTheme: (HUB_COLOR_THEMES.find(theme => theme.id === hub.backdrop_id)?.id || HUB_COLOR_THEMES[i % HUB_COLOR_THEMES.length].id),
-          hubStyle: (hub.hub_style as HubStyle) || styles[i % styles.length],
-          decoration: (hub.decoration as HubDecoration) || 'none',
-          glowIntensity: (hub.glow_intensity as HubGlowIntensity) || 'normal',
-          visitorBookEnabled: Boolean(hub.visitor_book_enabled),
-        } as Hub
-      }))
-
-      // Spread hubs so they don't cluster or overlap — treat my hub at (0,0) as a fixed anchor
-      const allPositions = [{ x: 0, y: 0 }, ...otherHubs]
-      separateHubs(allPositions)
-      otherHubs.forEach((hub, i) => { hub.x = allPositions[i + 1].x; hub.y = allPositions[i + 1].y })
-
       hubsRef.current = [{
         id: 'me', x: 0, y: 0, name: hubName || 'Your Hub',
         bio: hubBio || 'This is your place in the universe.',
         askAbout: hubAskAbout || '',
-        avatarUrl: hubAvatarUrl || '', avatarImage: myAvatarImg,
+        avatarUrl: hubAvatarUrl || '', avatarImage: undefined,
         online: true, pulse: 0, size: 1.1, isMe: true,
         floatOffset: 0, floatSpeed: 0.5, colorTheme: hubColor, hubStyle,
         decoration: hubDecoration, glowIntensity: hubGlowIntensity, visitorBookEnabled: false,
-      }, ...otherHubs]
+      }]
 
-      returnPathsRef.current = await getReturnPaths()
+      if (hubAvatarUrl) {
+        void loadImage(hubAvatarUrl).then(img => {
+          if (hubsRef.current.length > 0 && hubsRef.current[0].isMe) {
+            hubsRef.current[0].avatarImage = img
+          }
+        })
+      }
+
+      try {
+        const realHubs = await getAllHubs()
+        const otherHubs = await Promise.all(realHubs.map(async (hub: UniverseHubRecord, i: number) => {
+          const angle = (i / Math.max(realHubs.length, 1)) * Math.PI * 2 + 0.3
+          const dist = 180 + (i * 73) % 320
+          const avatarImg = hub.avatar_url ? await loadImage(hub.avatar_url) : undefined
+          const styles: HubStyle[] = ['portal', 'lantern', 'ruin', 'hourglass', 'telescope', 'greenhouse', 'lotus', 'cottage', 'forge', 'tower', 'ship']
+          return {
+            id: hub.id,
+            x: Math.cos(angle) * dist, y: Math.sin(angle) * dist,
+            name: hub.hub_name, bio: hub.bio || '', askAbout: hub.ask_about || '',
+            avatarUrl: hub.avatar_url || '', avatarImage: avatarImg,
+            online: hub.online ?? true, pulse: 0,
+            size: 0.9 + (i * 17 % 10) / 30,
+            floatOffset: (i * 137) % (Math.PI * 2),
+            floatSpeed: 0.4 + (i * 23 % 10) / 30,
+            colorTheme: (HUB_COLOR_THEMES.find(theme => theme.id === hub.backdrop_id)?.id || HUB_COLOR_THEMES[i % HUB_COLOR_THEMES.length].id),
+            hubStyle: (hub.hub_style as HubStyle) || styles[i % styles.length],
+            decoration: (hub.decoration as HubDecoration) || 'none',
+            glowIntensity: (hub.glow_intensity as HubGlowIntensity) || 'normal',
+            visitorBookEnabled: Boolean(hub.visitor_book_enabled),
+          } as Hub
+        }))
+
+        // Spread hubs so they don't cluster or overlap — treat my hub at (0,0) as a fixed anchor
+        const allPositions = [{ x: 0, y: 0 }, ...otherHubs]
+        separateHubs(allPositions)
+        otherHubs.forEach((hub, i) => { hub.x = allPositions[i + 1].x; hub.y = allPositions[i + 1].y })
+
+        hubsRef.current = [hubsRef.current[0], ...otherHubs]
+      } catch (error) {
+        console.error('Failed to load universe hubs:', error)
+      }
+
+      try {
+        returnPathsRef.current = await getReturnPaths()
+      } catch (error) {
+        console.error('Failed to load return paths:', error)
+        returnPathsRef.current = []
+      }
 
       // Star field background
       const starCanvas = document.createElement('canvas')
