@@ -195,7 +195,6 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
   const [tooltip, setTooltip] = useState<{ letter: Letter; x: number; y: number } | null>(null)
   const [mousePos, setMousePos] = useState({ x: 0.5, y: 0.5 })
   const [portalPulse, setPortalPulse] = useState(false)
-  const [activeZone, setActiveZone] = useState<string | null>(null)
   const [zoomTarget, setZoomTarget] = useState<Letter | null>(null)
   const [countHovered, setCountHovered] = useState(false)
   const [pan, setPan] = useState({ x: 0, y: 0 })
@@ -618,11 +617,10 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
             onMouseEnter={() => {
               setHoveredId(letter.id)
               setTooltip({ letter, x: cx, y: cy })
-              setActiveZone(letter.status)
             }}
-            onMouseLeave={() => { setHoveredId(null); setTooltip(null); setActiveZone(null) }}
-            onTouchStart={() => { setHoveredId(letter.id); setTooltip({ letter, x: cx, y: cy }); setActiveZone(letter.status) }}
-            onTouchEnd={() => { setHoveredId(null); setTooltip(null); setActiveZone(null) }}
+            onMouseLeave={() => { setHoveredId(null); setTooltip(null) }}
+            onTouchStart={() => { setHoveredId(letter.id); setTooltip({ letter, x: cx, y: cy }) }}
+            onTouchEnd={() => { setHoveredId(null); setTooltip(null) }}
           >
             <motion.div
               animate={isTransit ? { x: [0, driftX, 0], y: [0, driftY, 0] } : {}}
