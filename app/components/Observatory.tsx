@@ -103,7 +103,7 @@ interface Letter {
   envelopeId?: string
   sentAt: string
   arrivedAt?: string
-  status: 'transit' | 'arrived' | 'archive'
+  status: 'transit' | 'arrived' | 'pinned'
   travelProgress?: number
   direction: 'sent' | 'received'
   isUniverseLetter?: boolean
@@ -162,7 +162,7 @@ function assignCelestialPositions(letters: Letter[]): Letter[] {
     } else if (l.status === 'transit') {
       // Incoming comets arc across the upper sky
       cx = 8 + sr(seed) * 84; cy = 10 + sr(seed + 1) * 32
-    } else if (l.status === 'archive') {
+    } else if (l.status === 'pinned') {
       // Pinned stars rest steady in the mid-upper field
       cx = 28 + sr(seed) * 44; cy = 16 + sr(seed + 1) * 34
     } else {
@@ -210,7 +210,7 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
           const totalMs = arrivesMs - createdMs
           const rawProgress = totalMs > 0 ? ((nowMs - createdMs) / totalMs) * 100 : 100
           const direction: 'sent' | 'received' = l.sender_id === userId ? 'sent' : 'received'
-          const baseStatus: Letter['status'] = l.status === 'transit' || l.status === 'archive' || l.status === 'arrived' ? l.status : 'arrived'
+          const baseStatus: Letter['status'] = l.status === 'transit' || l.status === 'arrived' ? l.status : 'arrived'
           const effectiveStatus = direction === 'received' && baseStatus === 'transit' && l.arrives_at && nowMs >= arrivesMs ? 'arrived' : baseStatus
           return {
             id: l.id,
@@ -239,7 +239,7 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
         }
         setCurrentUserId(userId)
         const pinnedIds = getPinnedLetterIds(userId)
-        const applyPin = (l: Letter): Letter => pinnedIds.has(l.id) ? { ...l, status: 'archive' as const } : l
+        const applyPin = (l: Letter): Letter => pinnedIds.has(l.id) ? { ...l, status: 'pinned' as const } : l
         const all: Letter[] = [
           ...(data.transit || []).map(mapLetter).map(applyPin),
           ...(data.arrived || []).map(mapLetter).map(applyPin),
@@ -262,7 +262,7 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
   }, [])
 
   function handlePin(letter: Letter) {
-    const isAlreadyPinned = letter.status === 'archive'
+    const isAlreadyPinned = letter.status === 'pinned'
     if (isAlreadyPinned) {
       unpinLetter(letter.id, currentUserId)
       setOpenLetter(null)
@@ -270,7 +270,7 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
     } else {
       pinLetter(letter.id, currentUserId)
       setOpenLetter(null)
-      setLetters(prev => assignCelestialPositions(prev.map(l => l.id === letter.id ? { ...l, status: 'archive' as const } : l)))
+      setLetters(prev => assignCelestialPositions(prev.map(l => l.id === letter.id ? { ...l, status: 'pinned' as const } : l)))
     }
   }
 
@@ -300,7 +300,7 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
 
   const transit = letters.filter(l => l.status === 'transit')
   const arrived = letters.filter(l => l.status === 'arrived')
-  const pinned = letters.filter(l => l.status === 'archive')
+  const pinned = letters.filter(l => l.status === 'pinned')
   const total = letters.length
   const sentCount = letters.filter(l => l.direction === 'sent').length
   const receivedCount = letters.filter(l => l.direction === 'received' && l.status !== 'transit').length
@@ -378,32 +378,32 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
       </motion.div>
 
       {/* ── Top bar ── */}
-      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 80, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 28px', pointerEvents: 'none' }}>
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} style={{ display: 'flex', gap: '8px', pointerEvents: 'all' }}>
+      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 80, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 'clamp(12px, 2.5vw, 18px) clamp(14px, 3vw, 28px)', pointerEvents: 'none' }}>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} style={{ display: 'flex', gap: '8px', pointerEvents: 'all', flexWrap: 'wrap' }}>
           <div
             onMouseEnter={() => setCountHovered(true)}
             onMouseLeave={() => setCountHovered(false)}
             style={{ padding: '7px 14px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '999px', backdropFilter: 'blur(10px)', cursor: 'default' }}
           >
             {countHovered && total > 0 ? (
-              <span style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.18em', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>
+              <span style={{ fontFamily: "'Cinzel', serif", fontSize: 'clamp(8px, 1.2vw, 10px)', letterSpacing: '0.18em', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>
                 {[receivedCount > 0 && `${receivedCount} received`, sentCount > 0 && `${sentCount} sent`, transit.length > 0 && `${transit.length} transit`].filter(Boolean).join(' · ')}
               </span>
             ) : (
-              <span style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.28em', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>{total} {total === 1 ? 'letter' : 'letters'}</span>
+              <span style={{ fontFamily: "'Cinzel', serif", fontSize: 'clamp(8px, 1.2vw, 10px)', letterSpacing: '0.28em', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>{total} {total === 1 ? 'letter' : 'letters'}</span>
             )}
           </div>
           {newlyArrived.length > 0 && (
             <motion.div animate={{ opacity: [0.75, 1, 0.75] }} transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }} style={{ padding: '7px 14px', background: 'rgba(230,199,110,0.1)', border: '1px solid rgba(230,199,110,0.4)', borderRadius: '999px', backdropFilter: 'blur(10px)' }}>
-              <span style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.28em', color: '#e6c76e', textTransform: 'uppercase' }}>{newlyArrived.length} new</span>
+              <span style={{ fontFamily: "'Cinzel', serif", fontSize: 'clamp(8px, 1.2vw, 10px)', letterSpacing: '0.28em', color: '#e6c76e', textTransform: 'uppercase' }}>{newlyArrived.length} new</span>
             </motion.div>
           )}
         </motion.div>
-        <motion.button initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} onClick={onClose} style={{ pointerEvents: 'all', background: 'none', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.75)', fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.3em', padding: '8px 16px', cursor: 'pointer', textTransform: 'uppercase' }} onMouseEnter={e => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.45)' }} onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.75)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)' }}>← Universe</motion.button>
+        <motion.button initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} onClick={onClose} style={{ pointerEvents: 'all', background: 'none', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.75)', fontFamily: "'Cinzel', serif", fontSize: 'clamp(8px, 1.2vw, 10px)', letterSpacing: '0.3em', padding: '8px 16px', cursor: 'pointer', textTransform: 'uppercase', minHeight: '44px', display: 'flex', alignItems: 'center' }} onMouseEnter={e => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.45)' }} onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.75)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)' }}>← Universe</motion.button>
       </div>
 
       {/* ── Star type legend ── */}
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }} style={{ position: 'absolute', bottom: '52px', left: '36px', zIndex: 10, pointerEvents: 'none', display: 'flex', flexDirection: 'column', gap: '9px' }}>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }} style={{ position: 'absolute', bottom: 'clamp(36px, 6vh, 52px)', left: 'clamp(14px, 3vw, 36px)', zIndex: 10, pointerEvents: 'none', display: 'flex', flexDirection: 'column', gap: '9px' }}>
           {[
           { dot: `radial-gradient(circle, rgba(255,255,255,1) 0%, rgba(${RECEIVED_GLOW_RGB},0.9) 45%, transparent 100%)`, shadow: `0 0 7px 2px rgba(${RECEIVED_GLOW_RGB},0.6)`, label: 'Received', sub: 'arrived & waiting' },
           { dot: `radial-gradient(circle, rgba(100,170,255,1) 0%, rgba(60,110,240,0.7) 45%, transparent 100%)`, shadow: `0 0 7px 2px rgba(100,170,255,0.65)`, label: 'In Transit', sub: 'crossing the dark' },
@@ -413,21 +413,21 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
           <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div style={{ width: '16px', height: '16px', borderRadius: '50%', background: item.dot, flexShrink: 0, boxShadow: item.shadow }} />
             <div>
-              <span style={{ fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.3em', color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase' }}>{item.label}</span>
-              <span style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '10px', color: 'rgba(255,255,255,0.22)', marginLeft: '7px' }}>{item.sub}</span>
+              <span style={{ fontFamily: "'Cinzel', serif", fontSize: 'clamp(8px, 1.1vw, 9px)', letterSpacing: '0.3em', color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase' }}>{item.label}</span>
+              <span style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: 'clamp(9px, 1.2vw, 11px)', color: 'rgba(255,255,255,0.22)', marginLeft: '7px' }}>{item.sub}</span>
             </div>
           </div>
         ))}
       </motion.div>
 
       {/* ── Observatory title hint ── */}
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} style={{ position: 'absolute', left: '50%', bottom: '28px', transform: 'translateX(-50%)', textAlign: 'center', pointerEvents: 'none', zIndex: 3 }}>
-        <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.6em', color: 'rgba(255,234,196,0.4)', textTransform: 'uppercase', marginBottom: '4px' }}>The Observatory</p>
-        <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '12px', color: 'rgba(255,255,255,0.18)' }}>touch a star to read its light</p>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} style={{ position: 'absolute', left: '50%', bottom: 'clamp(12px, 3vh, 28px)', transform: 'translateX(-50%)', textAlign: 'center', pointerEvents: 'none', zIndex: 3 }}>
+        <p style={{ fontFamily: "'Cinzel', serif", fontSize: 'clamp(8px, 1vw, 9px)', letterSpacing: '0.6em', color: 'rgba(255,234,196,0.4)', textTransform: 'uppercase', marginBottom: '4px' }}>The Observatory</p>
+        <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: 'clamp(10px, 1.4vw, 12px)', color: 'rgba(255,255,255,0.18)' }}>touch a star to read its light</p>
       </motion.div>
 
       {/* ── "To the Universe" portal ── */}
-      <motion.div initial={{ opacity: 0, scale: 0 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.8, type: 'spring', stiffness: 200 }} style={{ position: 'absolute', bottom: '52px', right: '36px', zIndex: 10, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center' }} onClick={() => { setPortalPulse(true); setTimeout(() => { setPortalPulse(false); onWriteLetter?.('') }, 600) }}>
+      <motion.div initial={{ opacity: 0, scale: 0 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.8, type: 'spring', stiffness: 200 }} style={{ position: 'absolute', bottom: 'clamp(36px, 6vh, 52px)', right: 'clamp(14px, 3vw, 36px)', zIndex: 10, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center' }} onClick={() => { setPortalPulse(true); setTimeout(() => { setPortalPulse(false); onWriteLetter?.('') }, 600) }}>
         <motion.div
           animate={portalPulse ? { scale: [1, 2.8, 0.1], opacity: [1, 0.8, 0] } : {}}
           transition={portalPulse ? { duration: 0.6, ease: 'easeOut' } : {}}
@@ -475,7 +475,7 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
       {/* ── Celestial letter objects ── */}
       {!loading && letters.map((letter, i) => {
         const pColor = PAPER_COLORS[letter.paperId] || PAPER_COLORS.ornate
-        const isPinned = letter.status === 'archive'
+        const isPinned = letter.status === 'pinned'
         const isSent = !isPinned && letter.direction === 'sent'
         const isTransit = !isPinned && letter.status === 'transit'
         const isArrived = !isPinned && letter.status === 'arrived'
@@ -633,19 +633,19 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
               backdropFilter: 'blur(16px)', boxShadow: '0 14px 40px rgba(0,0,0,0.65)',
             }}
           >
-            <p style={{ fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.3em', color: `rgba(${PAPER_COLORS[tooltip.letter.paperId]?.glow || '230,199,110'},0.9)`, textTransform: 'uppercase', marginBottom: '5px' }}>
+            <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.3em', color: `rgba(${PAPER_COLORS[tooltip.letter.paperId]?.glow || '230,199,110'},0.9)`, textTransform: 'uppercase', marginBottom: '5px' }}>
               {tooltip.letter.direction === 'received' ? `From · ${tooltip.letter.from}` : `To · ${tooltip.letter.to}`}
             </p>
             <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(255,255,255,0.9)', lineHeight: 1.45, marginBottom: '6px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
               {tooltip.letter.preview}
             </p>
-            <p style={{ fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.18em', color: 'rgba(255,255,255,0.38)', textTransform: 'uppercase' }}>
+            <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.18em', color: 'rgba(255,255,255,0.38)', textTransform: 'uppercase' }}>
               {formatObservatoryDate(tooltip.letter.arrivedAt || tooltip.letter.sentAt)}
             </p>
             {tooltip.letter.status === 'transit' && (
               <div style={{ marginTop: '5px' }}>
                 <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '11px', color: `rgba(${TRANSIT_GLOW_RGB},0.78)` }}>crossing the dark · {tooltip.letter.travelProgress ?? 0}%</p>
-                {tooltip.letter.arrivedAt && <p style={{ fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.2em', color: `rgba(${TRANSIT_GLOW_RGB},0.52)`, marginTop: '3px', textTransform: 'uppercase' }}>Arriving · {formatObservatoryDate(tooltip.letter.arrivedAt)}</p>}
+                {tooltip.letter.arrivedAt && <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.2em', color: `rgba(${TRANSIT_GLOW_RGB},0.52)`, marginTop: '3px', textTransform: 'uppercase' }}>Arriving · {formatObservatoryDate(tooltip.letter.arrivedAt)}</p>}
               </div>
             )}
           </motion.div>
@@ -658,7 +658,7 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
           <LetterModal
             letter={openLetter} onClose={() => setOpenLetter(null)}
             onReply={name => { setOpenLetter(null); onWriteLetter?.(name) }}
-            onArchive={() => handlePin(openLetter)}
+            onPin={() => handlePin(openLetter)}
             onBurn={openLetter.burnAfterReading && openLetter.direction === 'received' ? () => handleBurnAndClose(openLetter) : undefined}
             onDeleteForEveryone={() => handleDeleteForEveryone(openLetter)}
           />
@@ -709,9 +709,9 @@ function ModalEnvelope({ id }: { id: string }) {
   return <svg width={w} height={h} viewBox="0 0 120 80"><rect x="2" y="20" width="116" height="58" rx="3" fill="rgba(230,199,110,0.15)" stroke="rgba(230,199,110,0.45)" strokeWidth="1"/><path d="M2 20 L60 56 L118 20 Z" fill="rgba(230,199,110,0.12)" stroke="rgba(230,199,110,0.35)" strokeWidth="1"/></svg>
 }
 
-function LetterModal({ letter, onClose, onReply, onArchive, onBurn, onDeleteForEveryone }: {
-  letter: Letter; onClose: () => void; onReply?: (name: string) => void; onArchive?: () => void; onBurn?: () => void; onDeleteForEveryone?: () => void
-  // onArchive doubles as pin/unpin
+function LetterModal({ letter, onClose, onReply, onPin, onBurn, onDeleteForEveryone }: {
+  letter: Letter; onClose: () => void; onReply?: (name: string) => void; onPin?: () => void; onBurn?: () => void; onDeleteForEveryone?: () => void
+  // onPin toggles pin/unpin
 }) {
   const colors = PAPER_COLORS[letter.paperId] || PAPER_COLORS.ornate
   const bodyFont = (letter.fontId && FONT_FAMILIES[letter.fontId]) || "'Cormorant Garamond', serif"
@@ -719,7 +719,7 @@ function LetterModal({ letter, onClose, onReply, onArchive, onBurn, onDeleteForE
   const defaultInk = PAPER_INK[letter.paperId]?.main ?? '#180e04'
   const bodyColor = (letter.fontColor && FONT_COLOR_MAP[letter.fontColor]) ? FONT_COLOR_MAP[letter.fontColor] : defaultInk
   const writingStyle = getHandwritingStyleStyles(letter.handwritingStyle || 'typed')
-  const isReceivedLetter = letter.direction === 'received' && (letter.status === 'arrived' || letter.status === 'archive')
+  const isReceivedLetter = letter.direction === 'received' && (letter.status === 'arrived' || letter.status === 'pinned')
   const isBurnReceived = isReceivedLetter && !!letter.burnAfterReading
   const [burnConfirmed, setBurnConfirmed] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState(false)
@@ -745,7 +745,7 @@ function LetterModal({ letter, onClose, onReply, onArchive, onBurn, onDeleteForE
   }
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={handleClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,5,0.88)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 90, padding: '20px' }}>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={handleClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,5,0.88)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 90, padding: 'clamp(10px, 2vw, 20px)' }}>
       {openPhase === 'warning' && isBurnReceived && (
         <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} onClick={e => e.stopPropagation()} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '24px', textAlign: 'center', padding: '20px', maxWidth: '320px' }}>
           <motion.div animate={{ scale: [1, 1.08, 1] }} transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }} style={{ fontSize: '52px', filter: 'drop-shadow(0 0 20px rgba(255,80,40,0.7))' }}>🔥</motion.div>
@@ -780,7 +780,7 @@ function LetterModal({ letter, onClose, onReply, onArchive, onBurn, onDeleteForE
               <p style={{ fontFamily: bodyFont, fontSize: '17px', fontStyle: 'italic', color: bodyColor, opacity: 0.9, marginBottom: '16px', lineHeight: 1.8 }}>{letter.direction === 'received' ? (letter.isUniverseLetter ? 'Dear Stranger,' : `Dear ${letter.to},`) : `Dear ${letter.to},`}</p>
               {letter.body.split('\n\n— ✦ —\n\n').map((page, i, arr) => (
                 <div key={i} style={writingStyle}>
-                  <p style={{ fontFamily: bodyFont, fontSize: 'clamp(15px,2vw,18px)', lineHeight: 2, letterSpacing: '0.02em', color: bodyColor, opacity: 0.98, whiteSpace: 'pre-wrap' }}>{page}</p>
+                  <p style={{ fontFamily: bodyFont, fontSize: 'clamp(15px,2vw,18px)', lineHeight: 2, letterSpacing: '0.02em', color: bodyColor, opacity: 0.98, whiteSpace: 'pre-wrap', overflowWrap: 'break-word', wordBreak: 'break-word' }}>{page}</p>
                   {i < arr.length - 1 && <div style={{ textAlign: 'center', margin: '24px 0', opacity: 0.4 }}><span style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.4em', color: colors.accent }}>— ✦ —</span></div>}
                 </div>
               ))}
@@ -800,9 +800,9 @@ function LetterModal({ letter, onClose, onReply, onArchive, onBurn, onDeleteForE
             </div>
           ))}
           {letter.direction === 'received' && (
-            <div style={{ padding: '16px 28px 20px', background: 'rgba(0,0,8,0.97)', borderTop: `1px solid ${colors.accent}38`, display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+            <div style={{ padding: 'clamp(10px, 2vw, 16px) clamp(14px, 3vw, 28px) clamp(12px, 2.5vw, 20px)', background: 'rgba(0,0,8,0.97)', borderTop: `1px solid ${colors.accent}38`, display: 'flex', gap: 'clamp(8px, 1.5vw, 12px)', flexWrap: 'wrap', alignItems: 'center' }}>
               <button onClick={() => onReply?.(letter.from || '')} style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.3em', color: colors.accent, padding: '10px 24px', border: `1px solid ${colors.accent}70`, borderRadius: '2px', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase' }} onMouseEnter={e => { e.currentTarget.style.background = `${colors.accent}12`; e.currentTarget.style.boxShadow = `0 0 20px ${colors.accent}20` }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.boxShadow = 'none' }}>Reply ✦</button>
-              <button onClick={onArchive} style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.3em', color: 'rgba(255,255,255,0.45)', padding: '10px 24px', border: '1px solid rgba(255,255,255,0.18)', borderRadius: '2px', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase' }} onMouseEnter={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.72)' }} onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.45)' }}>{letter.status === 'archive' ? '★ Pinned' : '☆ Pin'}</button>
+              <button onClick={onPin} style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.3em', color: 'rgba(255,255,255,0.45)', padding: '10px 24px', border: '1px solid rgba(255,255,255,0.18)', borderRadius: '2px', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase' }} onMouseEnter={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.72)' }} onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.45)' }}>{letter.status === 'pinned' ? '★ Pinned' : '☆ Pin'}</button>
               <div style={{ marginLeft: 'auto' }}>
                 {deleteConfirm ? (
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -817,8 +817,8 @@ function LetterModal({ letter, onClose, onReply, onArchive, onBurn, onDeleteForE
             </div>
           )}
           {letter.direction === 'sent' && letter.status === 'arrived' && (
-            <div style={{ padding: '16px 28px 20px', background: 'rgba(0,0,8,0.97)', borderTop: `1px solid ${colors.accent}38`, display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-              <button onClick={onArchive} style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.3em', color: 'rgba(255,255,255,0.45)', padding: '10px 24px', border: '1px solid rgba(255,255,255,0.18)', borderRadius: '2px', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase' }} onMouseEnter={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.72)' }} onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.45)' }}>{'☆ Pin'}</button>
+            <div style={{ padding: 'clamp(10px, 2vw, 16px) clamp(14px, 3vw, 28px) clamp(12px, 2.5vw, 20px)', background: 'rgba(0,0,8,0.97)', borderTop: `1px solid ${colors.accent}38`, display: 'flex', gap: 'clamp(8px, 1.5vw, 12px)', alignItems: 'center', flexWrap: 'wrap' }}>
+              <button onClick={onPin} style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.3em', color: 'rgba(255,255,255,0.45)', padding: '10px 24px', border: '1px solid rgba(255,255,255,0.18)', borderRadius: '2px', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase' }} onMouseEnter={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.72)' }} onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.45)' }}>{'☆ Pin'}</button>
               <div style={{ marginLeft: 'auto' }}>
                 {deleteConfirm ? (
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>

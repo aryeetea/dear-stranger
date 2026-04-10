@@ -11,6 +11,8 @@ const MAX_REGEN_ATTEMPTS = 1
 
 type DeleteStep = 'idle' | 'exporting' | 'exported' | 'deleting' | 'deleted'
 
+// regen_count is encoded as: cycleNumber * 10 + localRegenCount
+// This lets us detect which cycle the regens belong to using a single DB integer.
 const CYCLE_DAYS = 90
 
 function getMirrorCycle(createdAt?: string) {
@@ -25,57 +27,6 @@ function getMirrorCycle(createdAt?: string) {
     daysLeft: Math.max(1, Math.ceil(CYCLE_DAYS - daysInCycle)),
     refreshProgress: Math.min(100, (daysInCycle / CYCLE_DAYS) * 100),
   }
-}
-
-// ── Inject holographic keyframes once ──
-const HOLO_STYLES = `
-@keyframes holo-flicker {
-  0%, 100%  { opacity: 1; filter: brightness(1.1) saturate(0.7); }
-  5%        { opacity: 0.6; filter: brightness(1.5) saturate(1.3) hue-rotate(8deg); }
-  5.5%      { opacity: 1; filter: brightness(1.1) saturate(0.7); }
-  30%       { opacity: 0.95; filter: brightness(1.0) saturate(0.65); }
-  31%       { opacity: 0.55; filter: brightness(1.6) saturate(1.4) hue-rotate(-6deg); }
-  31.3%     { opacity: 0.9; filter: brightness(1.1) saturate(0.75); }
-  60%       { opacity: 1; filter: brightness(1.08) saturate(0.7); }
-  85%       { opacity: 0.92; filter: brightness(1.05) saturate(0.65); }
-  85.4%     { opacity: 0.48; filter: brightness(1.7) saturate(1.5) hue-rotate(10deg); }
-  85.8%     { opacity: 0.7; filter: brightness(0.85) saturate(0.5); }
-  86.2%     { opacity: 1; filter: brightness(1.1) saturate(0.7); }
-}
-@keyframes holo-scan {
-  0%   { transform: translateY(-100%); }
-  100% { transform: translateY(100vh); }
-}
-@keyframes holo-rgb-shift {
-  0%, 100% { text-shadow: -1px 0 rgba(0,200,255,0.4), 1px 0 rgba(255,80,120,0.3); }
-  50%       { text-shadow:  1px 0 rgba(0,200,255,0.4), -1px 0 rgba(255,80,120,0.3); }
-}
-@keyframes ring-pulse {
-  0%, 100% { opacity: 0.72; filter: blur(0px); }
-  50%       { opacity: 1;    filter: blur(0.5px); }
-}
-@keyframes holo-shimmer {
-  0%   { background-position: -200% center; }
-  100% { background-position:  200% center; }
-}
-@keyframes holo-glitch {
-  0%, 100%  { clip-path: inset(0 0 0 0); transform: translateX(0); }
-  10%       { clip-path: inset(15% 0 75% 0); transform: translateX(-3px); }
-  10.5%     { clip-path: inset(0 0 0 0); transform: translateX(0); }
-  40%       { clip-path: inset(60% 0 5% 0); transform: translateX(4px); }
-  40.3%     { clip-path: inset(0 0 0 0); transform: translateX(0); }
-  72%       { clip-path: inset(30% 0 40% 0); transform: translateX(-2px); }
-  72.4%     { clip-path: inset(0 0 0 0); transform: translateX(0); }
-}
-`
-
-function injectHoloStyles() {
-  if (typeof document === 'undefined') return
-  if (document.getElementById('holo-keyframes')) return
-  const s = document.createElement('style')
-  s.id = 'holo-keyframes'
-  s.textContent = HOLO_STYLES
-  document.head.appendChild(s)
 }
 
 export default function Profile({
@@ -94,13 +45,13 @@ export default function Profile({
   onClose?: () => void
   onUpdateHub?: (updates: { hubName?: string; bio?: string; askAbout?: string; avatarUrl?: string; hubStyle?: HubStyle; hubColor?: HubColor; hubDecoration?: HubDecoration; hubGlowIntensity?: HubGlowIntensity; visitorBookEnabled?: boolean }) => void
 }) {
-  useEffect(() => { injectHoloStyles() }, [])
-
   const [hubNameState, setHubNameState] = useState(hubName || 'Your Hub')
   const [bioState, setBioState] = useState(bio || 'A wanderer who arrived here quietly, carrying something unspoken.')
   const [askState, setAskState] = useState(askAbout || 'Silence, slow mornings, and letters that take their time.')
   const [currentAvatarUrl, setCurrentAvatarUrl] = useState(initialAvatarUrl || '')
+  // Track last prop value to only update if it changes
   const [lastAvatarProp, setLastAvatarProp] = useState(initialAvatarUrl || '')
+  // regen_count is encoded: cycleNumber*10 + localRegenCount
   const [regenCount, setRegenCount] = useState(initialRegenCount ?? 0)
   const [regenLoading, setRegenLoading] = useState(false)
   const [regenFeedback, setRegenFeedback] = useState('')
@@ -157,10 +108,12 @@ export default function Profile({
   const [deleteError, setDeleteError] = useState('')
 
   useEffect(() => {
+    // Only update local state if the prop actually changed (not just on every mount)
     if (initialAvatarUrl && initialAvatarUrl !== lastAvatarProp) {
       setCurrentAvatarUrl(initialAvatarUrl)
       setLastAvatarProp(initialAvatarUrl)
     }
+    // If avatar is cleared (e.g. on onboarding), also clear local state
     if (!initialAvatarUrl && lastAvatarProp) {
       setCurrentAvatarUrl('')
       setLastAvatarProp('')
@@ -184,6 +137,7 @@ export default function Profile({
     void loadVisitorBook()
   }, [visitorBookEnabledState])
 
+  // ── load regen count from DB on mount ──
   useEffect(() => {
     async function loadRegenCount() {
       try {
@@ -196,10 +150,11 @@ export default function Profile({
     loadRegenCount()
   }, [])
 
+  // ── Auto-reset regen count when a new 90-day cycle begins ──
   useEffect(() => {
     if (!hubCreatedAt) return
     const local = regenCount % 10
-    if (local < MAX_REGEN_ATTEMPTS) return
+    if (local < MAX_REGEN_ATTEMPTS) return // still have attempts, nothing to reset
     const cycle = Math.floor(
       Math.max(0, Date.now() - new Date(hubCreatedAt).getTime()) / (1000 * 60 * 60 * 24 * CYCLE_DAYS)
     )
@@ -211,8 +166,11 @@ export default function Profile({
     }
   }, [hubCreatedAt, regenCount])
 
+  // Decode the encoded regen_count
   const localRegenCount = regenCount % 10
   const attemptsLeft = MAX_REGEN_ATTEMPTS - localRegenCount
+
+  // Compute real cycle info from hub creation date
   const { cycleNumber, daysLeft, refreshProgress } = getMirrorCycle(hubCreatedAt)
 
   async function handleLeave() {
@@ -255,6 +213,7 @@ export default function Profile({
     setRegenError('')
     try {
       setRegenLoading(true); setShowRegenInput(false)
+      // If there's no existing avatar but we have the original description, generate fresh
       const hasExistingAvatar = Boolean(currentAvatarUrl)
       const requestBody = !hasExistingAvatar && avatarPromptPending
         ? { answers: { 0: avatarPromptPending }, feedback: regenFeedback || undefined, mode: 'create' }
@@ -280,16 +239,22 @@ export default function Profile({
       if (!res.ok || data.error) throw new Error(data.error || 'Failed')
       if (!data.imageUrl) throw new Error('No avatar image came back from the mirror.')
 
+      // ── Show the new image immediately — don't wait for storage upload ──
+      // Encode: cycleNumber * 10 + (localRegenCount + 1)
       const newCount = cycleNumber * 10 + (localRegenCount + 1)
       setCurrentAvatarUrl(data.imageUrl)
       setRegenCount(newCount)
       setRegenFeedback('')
       setRegenLoading(false)
 
+      // ── Upload to Storage in the background ──
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
       const permanentUrl = await uploadAvatarToStorage(data.imageUrl, user.id)
+      // Append cache-buster so the browser fetches the new image on next load
       const freshUrl = `${permanentUrl}?t=${Date.now()}`
+      // Keep showing the fresh base64 locally — don't swap to the same-path URL
+      // (browser would serve cached old image). Update DB + parent with busted URL.
       await updateHub({ avatar_url: freshUrl, regen_count: newCount, avatar_prompt_pending: null })
       onUpdateHub?.({ avatarUrl: freshUrl })
     } catch (err) {
@@ -376,27 +341,26 @@ export default function Profile({
     return `${diffMonths}mo ago`
   }
 
+  // ── Hub style visual map ──
   const hubTheme = HUB_COLOR_THEMES.find(t => t.id === selectedHubColor)
   const hubGlowRgb = hubTheme?.glow || '201,168,76'
   const hubGlowIntensityValue =
-    selectedGlowIntensity === 'dim' ? 0.25
-      : selectedGlowIntensity === 'normal' ? 0.5
+    selectedGlowIntensity === 'dim'
+      ? 0.25
+      : selectedGlowIntensity === 'normal'
+        ? 0.5
         : 0.85
 
+  // Use the real icon + label from HUB_STYLES so every style gets its correct symbol
   const hubStyleDef = HUB_STYLES.find(s => s.id === selectedHubStyle) || HUB_STYLES[0]
   const centerpiece = { symbol: hubStyleDef.icon, label: hubStyleDef.label }
-
-  // ── Derived glow values ──
-  const glowStrong = `rgba(${hubGlowRgb},${hubGlowIntensityValue})`
-  const glowMid    = `rgba(${hubGlowRgb},${hubGlowIntensityValue * 0.55})`
-  const glowSoft   = `rgba(${hubGlowRgb},${hubGlowIntensityValue * 0.25})`
 
   return (
     <motion.div initial={{ opacity: 0, scale: 1.04 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
       style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,5,0.88)', backdropFilter: 'blur(20px)', zIndex: 70, overflowY: 'auto' }}>
       <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', background: `radial-gradient(ellipse 70% 55% at 20% 30%, rgba(${hubGlowRgb},${hubGlowIntensityValue * 0.7}) 0%, transparent 60%), radial-gradient(ellipse 50% 60% at 80% 70%, rgba(${hubGlowRgb},${hubGlowIntensityValue * 0.35}) 0%, transparent 55%)` }} />
 
-      {/* Ambient hub glow pulse */}
+      {/* ── Ambient hub glow pulse ── */}
       <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0 }}>
         <motion.div
           animate={{ opacity: [hubGlowIntensityValue * 0.3, hubGlowIntensityValue * 0.55, hubGlowIntensityValue * 0.3] }}
@@ -413,37 +377,15 @@ export default function Profile({
       </motion.button>
 
       <div className="profile-layout">
+        {/* LEFT — Avatar + Hub Centerpiece */}
+        <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6 }}
+          className="profile-avatar-col">
+          <div style={{ position: 'absolute', inset: 0, zIndex: 3, pointerEvents: 'none', background: 'linear-gradient(to right, transparent 65%, rgba(0,0,5,0.97) 100%), linear-gradient(to bottom, rgba(0,0,5,0.3) 0%, transparent 15%, transparent 85%, rgba(0,0,5,0.6) 100%)' }} />
 
-        {/* ══════════════════════════════════════════
-            LEFT — Holographic Avatar Column
-        ══════════════════════════════════════════ */}
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.6 }}
-          className="profile-avatar-col"
-          style={{ position: 'relative', overflow: 'hidden' }}
-        >
-          {/* ── Background atmosphere ── */}
-          <div style={{
-            position: 'absolute', inset: 0, zIndex: 0,
-            background: `
-              radial-gradient(ellipse 80% 60% at 50% 100%, rgba(${hubGlowRgb},0.18) 0%, transparent 65%),
-              radial-gradient(ellipse 60% 40% at 50% 85%, rgba(0,180,255,0.10) 0%, transparent 55%),
-              linear-gradient(to bottom, rgba(0,0,8,0.0) 0%, rgba(0,0,8,0.55) 100%)
-            `,
-            pointerEvents: 'none',
-          }} />
+          {/* Hub structure centerpiece ring — removed from avatar col, now in info col */}
 
-          {/* ── Edge fade to right panel ── */}
-          <div style={{
-            position: 'absolute', inset: 0, zIndex: 5, pointerEvents: 'none',
-            background: 'linear-gradient(to right, transparent 55%, rgba(0,0,5,0.97) 100%), linear-gradient(to bottom, rgba(0,0,5,0.3) 0%, transparent 12%, transparent 82%, rgba(0,0,5,0.7) 100%)',
-          }} />
-
-          {/* ── Loading spinner ── */}
           {regenLoading && (
-            <div style={{ position: 'absolute', inset: 0, zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,5,0.75)', backdropFilter: 'blur(8px)' }}>
+            <div style={{ position: 'absolute', inset: 0, zIndex: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,5,0.7)', backdropFilter: 'blur(8px)' }}>
               <div style={{ textAlign: 'center' }}>
                 <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
                   style={{ width: '40px', height: '40px', borderRadius: '50%', border: '2px solid rgba(201,168,76,0.3)', borderTopColor: '#c9a84c', margin: '0 auto 16px' }} />
@@ -451,233 +393,85 @@ export default function Profile({
               </div>
             </div>
           )}
-
           {currentAvatarUrl ? (
             <>
-              {/* ── Wide holographic projection cone — floor level up ── */}
+              {/* Holographic projection cone — light beams rising from portal ring */}
               <div style={{
-                position: 'absolute', bottom: 0, left: '50%',
+                position: 'absolute', bottom: '10%', left: '50%',
                 transform: 'translateX(-50%)',
-                width: '160%', height: '85%',
-                background: `
-                  radial-gradient(ellipse 70% 35% at 50% 100%, rgba(${hubGlowRgb},0.55) 0%, transparent 55%),
-                  radial-gradient(ellipse 50% 55% at 50% 100%, rgba(0,190,255,0.22) 0%, transparent 60%)
-                `,
+                width: '120%', height: '78%',
+                background: `radial-gradient(ellipse at 50% 100%, rgba(${hubGlowRgb},0.20) 0%, rgba(0,170,255,0.09) 20%, transparent 64%)`,
                 pointerEvents: 'none', zIndex: 2,
                 mixBlendMode: 'screen' as CSSProperties['mixBlendMode'],
               }} />
-
-              {/* ── Pulsing vertical beam ── */}
+              {/* Pulsing secondary beam for depth */}
               <motion.div
-                animate={{ opacity: [0.5, 0.85, 0.5], scaleX: [0.9, 1.05, 0.9] }}
-                transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
+                animate={{ opacity: [0.38, 0.72, 0.38] }}
+                transition={{ duration: 4.5, repeat: Infinity, ease: 'easeInOut' }}
                 style={{
-                  position: 'absolute', bottom: 0, left: '50%',
+                  position: 'absolute', bottom: '10%', left: '50%',
                   transform: 'translateX(-50%)',
-                  width: '55%', height: '90%',
-                  background: `linear-gradient(to top, rgba(${hubGlowRgb},0.28) 0%, rgba(0,200,255,0.12) 40%, transparent 100%)`,
+                  width: '80%', height: '60%',
+                  background: 'radial-gradient(ellipse at 50% 100%, rgba(0,160,255,0.16) 0%, transparent 70%)',
                   pointerEvents: 'none', zIndex: 2,
                   mixBlendMode: 'screen' as CSSProperties['mixBlendMode'],
-                  filter: 'blur(12px)',
+                  filter: 'blur(5px)',
                 }}
               />
-
-              {/* ── Teal secondary beam for depth ── */}
-              <motion.div
-                animate={{ opacity: [0.3, 0.6, 0.3] }}
-                transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut', delay: 1.2 }}
-                style={{
-                  position: 'absolute', bottom: 0, left: '50%',
-                  transform: 'translateX(-50%)',
-                  width: '30%', height: '70%',
-                  background: 'linear-gradient(to top, rgba(0,220,255,0.25) 0%, transparent 80%)',
-                  pointerEvents: 'none', zIndex: 2,
-                  mixBlendMode: 'screen' as CSSProperties['mixBlendMode'],
-                  filter: 'blur(6px)',
-                }}
-              />
-
-              {/* ── The avatar image ── */}
+              {/* Avatar — top 85% of container so feet clear the ring */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={currentAvatarUrl}
-                alt="Avatar"
+              <img src={currentAvatarUrl} alt="Avatar"
                 style={{
-                  position: 'absolute',
-                  bottom: '5%',
-                  left: '50%',
-                  transform: 'translateX(-50%)',
-                  height: '82%',
-                  width: 'auto',
-                  maxWidth: '100%',
-                  objectFit: 'contain',
-                  objectPosition: 'bottom center',
-                  zIndex: 3,
-                  filter: `
-                    brightness(1.1)
-                    saturate(0.78)
-                    drop-shadow(0 0 ${Math.round(hubGlowIntensityValue * 40)}px rgba(${hubGlowRgb},0.6))
-                    drop-shadow(0 0 18px rgba(0,200,255,0.45))
-                    drop-shadow(0 -4px 28px rgba(${hubGlowRgb},0.3))
-                  `,
-                  animation: 'holo-flicker 9s ease-in-out infinite',
+                  position: 'absolute', top: 0, left: 0, right: 0,
+                  height: '85%', width: '100%',
+                  objectFit: 'contain', objectPosition: 'top center',
+                  filter: `brightness(1.08) saturate(0.82) drop-shadow(0 0 ${Math.round(hubGlowIntensityValue * 28)}px rgba(${hubGlowRgb},0.45)) drop-shadow(0 0 10px rgba(0,190,255,0.28))`,
+                  animation: 'holo-flicker 7s ease-in-out infinite',
                 }}
               />
-
-              {/* ── RGB aberration edge overlay ── */}
+              {/* Scanlines */}
               <div style={{
-                position: 'absolute', bottom: '5%', left: '50%',
-                transform: 'translateX(-50%)',
-                height: '82%', width: '100%',
-                zIndex: 4, pointerEvents: 'none',
-                background: 'transparent',
-                mixBlendMode: 'screen' as CSSProperties['mixBlendMode'],
+                position: 'absolute', inset: 0, zIndex: 3, pointerEvents: 'none',
+                background: 'repeating-linear-gradient(to bottom, transparent 0px, transparent 3px, rgba(0,200,255,0.022) 3px, rgba(0,200,255,0.022) 4px)',
+                animation: 'holo-scan 10s linear infinite',
               }} />
-
-              {/* ── Moving scanline sweep ── */}
-              <div style={{
-                position: 'absolute', inset: 0, zIndex: 4, pointerEvents: 'none', overflow: 'hidden',
-              }}>
-                <motion.div
-                  animate={{ y: ['-100%', '120%'] }}
-                  transition={{ duration: 6, repeat: Infinity, ease: 'linear', repeatDelay: 2 }}
-                  style={{
-                    position: 'absolute', left: 0, right: 0,
-                    height: '18%',
-                    background: 'linear-gradient(to bottom, transparent 0%, rgba(0,210,255,0.06) 40%, rgba(0,210,255,0.10) 50%, rgba(0,210,255,0.06) 60%, transparent 100%)',
-                    pointerEvents: 'none',
-                  }}
-                />
-              </div>
-
-              {/* ── Fine horizontal scanlines (static) ── */}
-              <div style={{
-                position: 'absolute', inset: 0, zIndex: 4, pointerEvents: 'none',
-                backgroundImage: 'repeating-linear-gradient(to bottom, transparent 0px, transparent 2px, rgba(0,180,255,0.028) 2px, rgba(0,180,255,0.028) 3px)',
-              }} />
-
-              {/* ── Holographic noise shimmer at edges ── */}
+              {/* Portal ring — at ground level, clearly below the feet */}
               <motion.div
-                animate={{ opacity: [0, 0.12, 0, 0.08, 0] }}
-                transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut', times: [0, 0.1, 0.5, 0.9, 1] }}
-                style={{
-                  position: 'absolute', inset: 0, zIndex: 4, pointerEvents: 'none',
-                  background: `linear-gradient(105deg, transparent 30%, rgba(${hubGlowRgb},0.15) 50%, transparent 70%)`,
-                  backgroundSize: '200% 100%',
-                  mixBlendMode: 'screen' as CSSProperties['mixBlendMode'],
-                }}
-              />
-
-              {/* ══ Portal ring — ground level ══ */}
-              <motion.div
-                animate={{ opacity: [0.78, 1, 0.78], scale: [0.995, 1.005, 0.995] }}
+                animate={{ opacity: [0.72, 1, 0.72] }}
                 transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
-                style={{
-                  position: 'absolute', bottom: '1%', left: '50%',
-                  transform: 'translateX(-50%)',
-                  width: '80%', zIndex: 6, pointerEvents: 'none',
-                }}
+                style={{ position: 'absolute', bottom: '4%', left: '50%', transform: 'translateX(-50%)', width: '74%', zIndex: 5, pointerEvents: 'none' }}
               >
-                <svg width="100%" viewBox="0 0 220 68" overflow="visible" style={{ display: 'block' }}>
+                <svg width="100%" viewBox="0 0 200 58" overflow="visible" style={{ display: 'block' }}>
                   <defs>
-                    {/* Big bloom */}
-                    <filter id="ring-bloom" x="-80%" y="-80%" width="260%" height="260%">
-                      <feGaussianBlur in="SourceGraphic" stdDeviation="12" result="blur" />
+                    <filter id="php-glow-wide" x="-70%" y="-70%" width="240%" height="240%">
+                      <feGaussianBlur in="SourceGraphic" stdDeviation="7" />
                     </filter>
-                    {/* Medium glow */}
-                    <filter id="ring-glow-md" x="-50%" y="-50%" width="200%" height="200%">
-                      <feGaussianBlur in="SourceGraphic" stdDeviation="5" />
+                    <filter id="php-glow-soft" x="-40%" y="-40%" width="180%" height="180%">
+                      <feGaussianBlur in="SourceGraphic" stdDeviation="3" />
                     </filter>
-                    {/* Tight crisp glow */}
-                    <filter id="ring-glow-sm" x="-20%" y="-20%" width="140%" height="140%">
-                      <feGaussianBlur in="SourceGraphic" stdDeviation="2" />
-                    </filter>
-                    <radialGradient id="ring-fill-grad" cx="50%" cy="50%" r="50%">
-                      <stop offset="0%" stopColor={`rgba(${hubGlowRgb},0.12)`} />
-                      <stop offset="100%" stopColor="rgba(0,0,0,0)" />
-                    </radialGradient>
                   </defs>
-
-                  {/* Layer 1 — wide colour bloom */}
-                  <ellipse cx="110" cy="34" rx="105" ry="26" fill="none"
-                    stroke={`rgba(${hubGlowRgb},0.7)`} strokeWidth="14"
-                    filter="url(#ring-bloom)" />
-
-                  {/* Layer 2 — teal bloom */}
-                  <ellipse cx="110" cy="34" rx="105" ry="26" fill="none"
-                    stroke="rgba(0,220,255,0.5)" strokeWidth="8"
-                    filter="url(#ring-bloom)" />
-
-                  {/* Layer 3 — medium gold glow */}
-                  <ellipse cx="110" cy="34" rx="104" ry="25" fill="none"
-                    stroke={`rgba(${hubGlowRgb},0.85)`} strokeWidth="5"
-                    filter="url(#ring-glow-md)" />
-
-                  {/* Layer 4 — teal medium glow */}
-                  <ellipse cx="110" cy="34" rx="104" ry="25" fill="none"
-                    stroke="rgba(0,210,255,0.5)" strokeWidth="3"
-                    filter="url(#ring-glow-md)" />
-
-                  {/* Layer 5 — crisp outer ring */}
-                  <ellipse cx="110" cy="34" rx="104" ry="25" fill="none"
-                    stroke={`rgba(${hubGlowRgb},0.95)`} strokeWidth="1.5" />
-
-                  {/* Layer 6 — teal inner accent */}
-                  <ellipse cx="110" cy="34" rx="104" ry="25" fill="none"
-                    stroke="rgba(0,230,255,0.45)" strokeWidth="0.6" />
-
-                  {/* Layer 7 — rotating dashed mid ring */}
-                  <ellipse cx="110" cy="34" rx="88" ry="20" fill="none"
-                    stroke={`rgba(${hubGlowRgb},0.5)`} strokeWidth="1.1" strokeDasharray="6 4"
-                    filter="url(#ring-glow-sm)">
-                    <animateTransform attributeName="transform" type="rotate"
-                      from="0 110 34" to="360 110 34" dur="18s" repeatCount="indefinite" />
+                  {/* Broad colour halo matching hub theme */}
+                  <ellipse cx="100" cy="29" rx="95" ry="22" fill="none" stroke={`rgba(${hubGlowRgb},0.5)`} strokeWidth="10" filter="url(#php-glow-wide)" />
+                  {/* Teal accent halo */}
+                  <ellipse cx="100" cy="29" rx="95" ry="22" fill="none" stroke="rgba(0,210,255,0.35)" strokeWidth="5" filter="url(#php-glow-soft)" />
+                  {/* Main crisp ring */}
+                  <ellipse cx="100" cy="29" rx="94" ry="21" fill="none" stroke={`rgba(${hubGlowRgb},0.92)`} strokeWidth="1.3" />
+                  {/* Teal inner accent */}
+                  <ellipse cx="100" cy="29" rx="94" ry="21" fill="none" stroke="rgba(0,220,255,0.38)" strokeWidth="0.5" />
+                  {/* Auto-rotating dashed mid ring */}
+                  <ellipse cx="100" cy="29" rx="79" ry="17" fill="none" stroke={`rgba(${hubGlowRgb},0.38)`} strokeWidth="0.9" strokeDasharray="5 3.5">
+                    <animateTransform attributeName="transform" type="rotate" from="0 100 29" to="360 100 29" dur="20s" repeatCount="indefinite" />
                   </ellipse>
-
-                  {/* Layer 8 — counter-rotating dashes */}
-                  <ellipse cx="110" cy="34" rx="70" ry="16" fill="none"
-                    stroke="rgba(0,200,255,0.28)" strokeWidth="0.8" strokeDasharray="3 6">
-                    <animateTransform attributeName="transform" type="rotate"
-                      from="360 110 34" to="0 110 34" dur="26s" repeatCount="indefinite" />
-                  </ellipse>
-
-                  {/* Layer 9 — innermost fine ring */}
-                  <ellipse cx="110" cy="34" rx="55" ry="12" fill="none"
-                    stroke={`rgba(${hubGlowRgb},0.22)`} strokeWidth="0.7" />
-
-                  {/* Fill glow */}
-                  <ellipse cx="110" cy="34" rx="104" ry="25" fill="url(#ring-fill-grad)" />
-
-                  {/* Pulsing hot-spots on the ring */}
-                  {[0, 72, 144, 216, 288].map((deg, i) => {
-                    const rad = (deg * Math.PI) / 180
-                    const x = 110 + Math.cos(rad) * 104
-                    const y = 34 + Math.sin(rad) * 25
-                    return (
-                      <circle key={i} cx={x} cy={y} r="2.5"
-                        fill={`rgba(${hubGlowRgb},0.9)`}
-                        filter="url(#ring-glow-sm)">
-                        <animate attributeName="opacity" values="0.4;1;0.4" dur={`${2 + i * 0.4}s`} repeatCount="indefinite" />
-                      </circle>
-                    )
-                  })}
+                  {/* Innermost fine ring */}
+                  <ellipse cx="100" cy="29" rx="61" ry="13" fill="none" stroke="rgba(0,210,255,0.20)" strokeWidth="0.7" />
+                  {/* Translucent inner fill */}
+                  <ellipse cx="100" cy="29" rx="94" ry="21" fill={`rgba(${hubGlowRgb},0.055)`} />
                 </svg>
               </motion.div>
-
-              {/* ── Floor reflection glow beneath ring ── */}
-              <div style={{
-                position: 'absolute', bottom: 0, left: '50%',
-                transform: 'translateX(-50%)',
-                width: '90%', height: '8%',
-                background: `radial-gradient(ellipse 80% 100% at 50% 0%, rgba(${hubGlowRgb},0.35) 0%, rgba(0,200,255,0.15) 35%, transparent 75%)`,
-                filter: 'blur(8px)',
-                pointerEvents: 'none', zIndex: 5,
-                mixBlendMode: 'screen' as CSSProperties['mixBlendMode'],
-              }} />
             </>
           ) : (
-            /* ── No avatar: floating symbol ── */
             <>
+              {/* No-avatar: symbol floating above portal ring */}
               <motion.div
                 animate={{ opacity: [0.72, 1, 0.72] }}
                 transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
@@ -714,19 +508,19 @@ export default function Profile({
           )}
         </motion.div>
 
-        {/* ══════════════════════════════════════════
-            RIGHT — Info Column (unchanged)
-        ══════════════════════════════════════════ */}
+        {/* RIGHT — Info */}
         <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6, delay: 0.1 }}
           className="profile-info-col">
 
           <div style={{ marginBottom: '40px' }}>
+            {/* ── Centered hub style symbol ── */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '22px' }}>
               <motion.div
                 animate={{ scale: [1, 1.07, 1], boxShadow: [`0 0 18px rgba(${hubGlowRgb},${hubGlowIntensityValue * 0.4})`, `0 0 36px rgba(${hubGlowRgb},${hubGlowIntensityValue * 0.75})`, `0 0 18px rgba(${hubGlowRgb},${hubGlowIntensityValue * 0.4})`] }}
                 transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
                 style={{ position: 'relative', width: '64px', height: '64px', borderRadius: '50%', border: `1px solid rgba(${hubGlowRgb},0.55)`, background: `radial-gradient(circle, rgba(${hubGlowRgb},0.12) 0%, transparent 75%)`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
               >
+                {/* Orbiting dots */}
                 {[0, 120, 240].map((deg, i) => (
                   <motion.div key={i} animate={{ rotate: [deg, deg + 360] }} transition={{ duration: 14 + i * 3, repeat: Infinity, ease: 'linear' }}
                     style={{ position: 'absolute', width: '78px', height: '78px', top: '-7px', left: '-7px' }}>
@@ -854,18 +648,20 @@ export default function Profile({
 
           <div style={{ height: '1px', background: 'linear-gradient(90deg, rgba(255,255,255,0.08), transparent)', marginBottom: '28px' }} />
 
-          {/* Hub Appearance */}
+          {/* ── Hub Appearance ── */}
           <div style={{ marginBottom: '36px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '18px' }}>
               <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.4em', color: 'rgba(201,168,76,0.65)', textTransform: 'uppercase' }}>Hub Appearance</p>
             </div>
 
+            {/* Style grid */}
             <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.26em', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', marginBottom: '10px' }}>Structure</p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '8px', marginBottom: '20px' }}>
               {HUB_STYLES.map(style => {
                 const isSelected = selectedHubStyle === style.id
                 return (
-                  <button key={style.id} onClick={() => setSelectedHubStyle(style.id)}
+                  <button key={style.id}
+                    onClick={() => setSelectedHubStyle(style.id)}
                     style={{ textAlign: 'left', padding: '12px 12px', borderRadius: '10px', border: isSelected ? '1px solid rgba(201,168,76,0.65)' : '1px solid rgba(255,255,255,0.1)', background: isSelected ? 'rgba(201,168,76,0.1)' : 'rgba(255,255,255,0.03)', cursor: 'pointer', transition: 'all 0.18s', position: 'relative' }}
                     onMouseEnter={e => { if (!isSelected) { e.currentTarget.style.background = 'rgba(201,168,76,0.06)'; e.currentTarget.style.borderColor = 'rgba(201,168,76,0.3)' } }}
                     onMouseLeave={e => { if (!isSelected) { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)' } }}>
@@ -878,12 +674,14 @@ export default function Profile({
               })}
             </div>
 
+            {/* Color grid */}
             <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.26em', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', marginBottom: '10px' }}>Color</p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(70px, 1fr))', gap: '8px', marginBottom: '20px' }}>
               {HUB_COLOR_THEMES.map(theme => {
                 const isSelected = selectedHubColor === theme.id
                 return (
-                  <button key={theme.id} onClick={() => setSelectedHubColor(theme.id)}
+                  <button key={theme.id}
+                    onClick={() => setSelectedHubColor(theme.id)}
                     style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '7px', padding: '10px 6px', borderRadius: '10px', border: isSelected ? '1px solid rgba(201,168,76,0.65)' : '1px solid rgba(255,255,255,0.1)', background: isSelected ? 'rgba(201,168,76,0.1)' : 'rgba(255,255,255,0.03)', cursor: 'pointer', transition: 'all 0.18s' }}
                     onMouseEnter={e => { if (!isSelected) { e.currentTarget.style.background = 'rgba(201,168,76,0.06)'; e.currentTarget.style.borderColor = 'rgba(201,168,76,0.3)' } }}
                     onMouseLeave={e => { if (!isSelected) { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)' } }}>
@@ -894,12 +692,14 @@ export default function Profile({
               })}
             </div>
 
+            {/* Decoration picker */}
             <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.26em', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', marginBottom: '10px' }}>Decoration</p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(72px, 1fr))', gap: '8px', marginBottom: '20px' }}>
               {HUB_DECORATIONS.map(dec => {
                 const isSelected = selectedDecoration === dec.id
                 return (
-                  <button key={dec.id} onClick={() => setSelectedDecoration(dec.id)}
+                  <button key={dec.id}
+                    onClick={() => setSelectedDecoration(dec.id)}
                     style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', padding: '10px 6px', borderRadius: '10px', border: isSelected ? '1px solid rgba(201,168,76,0.65)' : '1px solid rgba(255,255,255,0.1)', background: isSelected ? 'rgba(201,168,76,0.1)' : 'rgba(255,255,255,0.03)', cursor: 'pointer', transition: 'all 0.18s' }}
                     onMouseEnter={e => { if (!isSelected) { e.currentTarget.style.background = 'rgba(201,168,76,0.06)'; e.currentTarget.style.borderColor = 'rgba(201,168,76,0.3)' } }}
                     onMouseLeave={e => { if (!isSelected) { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)' } }}>
@@ -910,12 +710,14 @@ export default function Profile({
               })}
             </div>
 
+            {/* Glow intensity picker */}
             <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.26em', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', marginBottom: '10px' }}>Glow</p>
             <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
               {HUB_GLOW_LEVELS.map(glow => {
                 const isSelected = selectedGlowIntensity === glow.id
                 return (
-                  <button key={glow.id} onClick={() => setSelectedGlowIntensity(glow.id)}
+                  <button key={glow.id}
+                    onClick={() => setSelectedGlowIntensity(glow.id)}
                     style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '10px 8px', borderRadius: '10px', border: isSelected ? '1px solid rgba(201,168,76,0.65)' : '1px solid rgba(255,255,255,0.1)', background: isSelected ? 'rgba(201,168,76,0.1)' : 'rgba(255,255,255,0.03)', cursor: 'pointer', transition: 'all 0.18s' }}
                     onMouseEnter={e => { if (!isSelected) { e.currentTarget.style.background = 'rgba(201,168,76,0.06)'; e.currentTarget.style.borderColor = 'rgba(201,168,76,0.3)' } }}
                     onMouseLeave={e => { if (!isSelected) { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)' } }}>
@@ -926,6 +728,7 @@ export default function Profile({
               })}
             </div>
 
+            {/* Save button */}
             <AnimatePresence>
               {(appearanceChanged || appearanceSaved) && (
                 <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>

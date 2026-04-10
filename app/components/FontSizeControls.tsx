@@ -87,8 +87,8 @@ export default function FontSizeControls() {
         title="Text size"
         aria-label="Adjust text size"
         style={{
-          width: '38px',
-          height: '38px',
+          width: '44px',
+          height: '44px',
           borderRadius: '50%',
           background: open ? 'rgba(230,199,110,0.15)' : 'rgba(4,5,15,0.88)',
           border: `1px solid ${open ? 'rgba(230,199,110,0.55)' : 'rgba(230,199,110,0.28)'}`,

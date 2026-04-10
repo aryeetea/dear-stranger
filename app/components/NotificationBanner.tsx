@@ -66,6 +66,8 @@ export default function NotificationBanner() {
             bottom: '100px',
             left: '50%',
             transform: 'translateX(-50%)',
+            width: 'max-content',
+            maxWidth: 'calc(100vw - 32px)',
             zIndex: 300,
             display: 'flex',
             alignItems: 'center',
@@ -76,7 +78,7 @@ export default function NotificationBanner() {
             padding: '10px 18px 10px 16px',
             backdropFilter: 'blur(16px)',
             boxShadow: '0 0 32px rgba(201,168,76,0.1)',
-            whiteSpace: 'nowrap',
+            whiteSpace: 'normal',
           }}
         >
           <span style={{ fontSize: '14px' }}>✦</span>

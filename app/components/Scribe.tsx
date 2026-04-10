@@ -248,7 +248,7 @@ function LetterContent({ fontFamily, ink, recipient, senderName, date, body, set
       </p>
       <textarea ref={textareaRef} value={body} onChange={e=>setBody(e.target.value)} onKeyDown={onKeyDown}
         placeholder="Begin your letter here..."
-        style={{ width:'100%', minHeight:'252px', height:'auto', background:'transparent', border:'none', outline:'none', color:ink.main, caretColor:ink.accent, fontFamily, fontSize:'16px', lineHeight:2, resize:'none', overflow:'hidden', letterSpacing:'0.01em', textShadow: '0 1px 6px #fff8, 0 0px 1px #fff4' }}/>
+        style={{ width:'100%', minHeight:'252px', height:'auto', background:'transparent', border:'none', outline:'none', color:ink.main, caretColor:ink.accent, fontFamily, fontSize:'16px', lineHeight:2, resize:'none', overflow:'hidden', letterSpacing:'0.01em', textShadow: '0 1px 6px #fff8, 0 0px 1px #fff4', overflowWrap:'break-word', wordBreak:'break-word' }}/>
       <p style={{ fontFamily, fontStyle:'italic', fontSize:'15px', color:ink.secondary, marginTop:'10px', lineHeight:1.9, textShadow: '0 1px 6px #fff8, 0 0px 1px #fff4' }}>
         Yours across the distance,<br/>
         <span style={{ color:ink.accent }}>{senderName || 'A Stranger'}</span>
@@ -525,7 +525,7 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
   return (
     <motion.div initial={{ opacity:0, scale:1.04 }} animate={{ opacity:1, scale:1 }} exit={{ opacity:0, scale:0.98 }} transition={{ duration:0.5, ease:[0.22, 1, 0.36, 1] }}
       className="fixed-scroll-panel"
-      style={{ position:'fixed', inset:0, background:'rgba(0,0,5,0.88)', backdropFilter:'blur(20px)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'flex-start', zIndex:70, padding:'72px 20px 40px', overflowY:'auto' }}>
+      style={{ position:'fixed', inset:0, background:'rgba(0,0,5,0.88)', backdropFilter:'blur(20px)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'flex-start', zIndex:70, padding:'clamp(48px, 8vw, 72px) clamp(12px, 3vw, 20px) 40px', overflowY:'auto' }}>
 
       {/* Sparkle particles */}
       {sparkles.map(s => (
@@ -561,7 +561,7 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
               <p style={{ fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.5em', color:'#e6c76e', textTransform:'uppercase', marginBottom:'5px' }}>Choose Your Paper</p>
               <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'13px', color:'rgba(255,255,255,0.8)' }}>Each carries its own history</p>
             </div>
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(150px, 1fr))', gap:'12px', marginBottom:'24px' }}>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(min(150px, 100%), 1fr))', gap:'12px', marginBottom:'24px' }}>
               {PAPERS.map(p => {
                 const unlocked = p.unlocksAt <= lettersSent
                 const isSelected = selectedPaper.id === p.id

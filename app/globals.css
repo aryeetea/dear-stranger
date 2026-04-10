@@ -143,7 +143,7 @@ input::placeholder {
 }
 @media (max-width: 767px) {
   .profile-layout { flex-direction: column; }
-  .profile-avatar-col { width: 100%; height: min(60vw, 320px); }
+  .profile-avatar-col { width: 100%; height: min(50vw, 260px); }
   .profile-avatar-fill { min-height: 0; height: 100%; }
   .profile-info-col { padding: 28px 20px 60px; overflow-y: visible; }
 }
@@ -189,7 +189,7 @@ input::placeholder {
     gap: 4px !important;
   }
   .universe-nav-label {
-    font-size: 7px !important;
+    font-size: 9px !important;
     letter-spacing: 0.1em !important;
   }
   .universe-hint {
@@ -263,9 +263,10 @@ button, a, [role="button"] {
   .universe-nav-btn {
     padding: 8px 8px !important;
     min-width: 44px !important;
+    min-height: 44px !important;
   }
   .universe-nav-label {
-    font-size: 6.5px !important;
+    font-size: 8px !important;
     letter-spacing: 0.06em !important;
   }
   .feedback-category-grid {
@@ -303,10 +304,11 @@ button, a, [role="button"] {
   }
   .universe-nav-btn {
     padding: 6px 12px !important;
+    min-height: 44px !important;
     gap: 3px !important;
   }
   .universe-nav-label {
-    font-size: 6px !important;
+    font-size: 8px !important;
   }
   body { overflow: auto; }
 }
@@ -319,11 +321,12 @@ button, a, [role="button"] {
   }
   .universe-nav-btn {
     padding: 6px 6px !important;
-    min-width: 38px !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
     gap: 3px !important;
   }
   .universe-nav-label {
-    font-size: 6px !important;
+    font-size: 7px !important;
     letter-spacing: 0.04em !important;
   }
 }

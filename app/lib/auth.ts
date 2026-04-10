@@ -891,7 +891,7 @@ export async function getMyLetters() {
       data: { user },
     } = await supabase.auth.getUser()
 
-    if (!user) return { userId: '', transit: [], arrived: [], archive: [] }
+    if (!user) return { userId: '', transit: [], arrived: [] }
 
     const now = new Date().toISOString()
 
@@ -917,7 +917,7 @@ export async function getMyLetters() {
       .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
       .order('created_at', { ascending: false })
 
-    if (error) return { userId: user.id, transit: [], arrived: [], archive: [] }
+    if (error) return { userId: user.id, transit: [], arrived: [] }
 
     const letters = ((data || [])
       .filter((l) => !(l.is_universe_letter && DRIFT_PAPER_IDS.includes((l as { paper_id?: string | null }).paper_id || '')))) as LetterRecord[]
@@ -925,11 +925,10 @@ export async function getMyLetters() {
     return {
       userId: user.id,
       transit: letters.filter((l) => l.status === 'transit'),
-      arrived: letters.filter((l) => l.status === 'arrived'),
-      archive: letters.filter((l) => l.status === 'archive'),
+      arrived: letters.filter((l) => l.status === 'arrived' || l.status === 'archive'),
     }
   } catch {
-    return { userId: '', transit: [], arrived: [], archive: [] }
+    return { userId: '', transit: [], arrived: [] }
   }
 }
 

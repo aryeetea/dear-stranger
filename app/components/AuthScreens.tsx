@@ -175,7 +175,7 @@ export function LoginScreen({
 
         {/* Magic link email */}
         <div style={{ marginBottom: '16px' }}>
-          <div style={{ display: 'flex', gap: '8px' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
             <input
               type="email"
               placeholder="your@email.com"
@@ -183,10 +183,10 @@ export function LoginScreen({
               onChange={e => setMagicEmail(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleMagicLink()}
               disabled={anyLoading}
-              style={{ flex: 1, padding: '12px 14px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.88)', fontFamily: "'IM Fell English', serif", fontSize: '14px', borderRadius: '4px', outline: 'none' }}
+              style={{ flex: '1 1 200px', minWidth: 0, padding: '12px 14px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.88)', fontFamily: "'IM Fell English', serif", fontSize: '14px', borderRadius: '4px', outline: 'none' }}
             />
             <button onClick={handleMagicLink} disabled={anyLoading}
-              style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 18px', background: 'rgba(201,168,76,0.12)', border: '1px solid rgba(201,168,76,0.35)', color: 'rgba(201,168,76,0.9)', fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.15em', textTransform: 'uppercase', cursor: 'pointer', borderRadius: '4px', whiteSpace: 'nowrap', transition: 'all 0.2s' }}
+              style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px 18px', background: 'rgba(201,168,76,0.12)', border: '1px solid rgba(201,168,76,0.35)', color: 'rgba(201,168,76,0.9)', fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.15em', textTransform: 'uppercase', cursor: 'pointer', borderRadius: '4px', whiteSpace: 'nowrap', transition: 'all 0.2s' }}
               onMouseEnter={e => { e.currentTarget.style.background = 'rgba(201,168,76,0.22)'; e.currentTarget.style.borderColor = 'rgba(201,168,76,0.6)' }}
               onMouseLeave={e => { e.currentTarget.style.background = 'rgba(201,168,76,0.12)'; e.currentTarget.style.borderColor = 'rgba(201,168,76,0.35)' }}>
               <MailIcon />
@@ -319,7 +319,7 @@ export function SignupScreen({
 
         {/* Magic link email */}
         <div style={{ marginBottom: '16px' }}>
-          <div style={{ display: 'flex', gap: '8px' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
             <input
               type="email"
               placeholder="your@email.com"
@@ -327,10 +327,10 @@ export function SignupScreen({
               onChange={e => setMagicEmail(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleMagicLink()}
               disabled={anyLoading}
-              style={{ flex: 1, padding: '12px 14px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.88)', fontFamily: "'IM Fell English', serif", fontSize: '14px', borderRadius: '4px', outline: 'none' }}
+              style={{ flex: '1 1 200px', minWidth: 0, padding: '12px 14px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.88)', fontFamily: "'IM Fell English', serif", fontSize: '14px', borderRadius: '4px', outline: 'none' }}
             />
             <button onClick={handleMagicLink} disabled={anyLoading}
-              style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 18px', background: 'rgba(201,168,76,0.12)', border: '1px solid rgba(201,168,76,0.35)', color: 'rgba(201,168,76,0.9)', fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.15em', textTransform: 'uppercase', cursor: 'pointer', borderRadius: '4px', whiteSpace: 'nowrap', transition: 'all 0.2s' }}
+              style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px 18px', background: 'rgba(201,168,76,0.12)', border: '1px solid rgba(201,168,76,0.35)', color: 'rgba(201,168,76,0.9)', fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.15em', textTransform: 'uppercase', cursor: 'pointer', borderRadius: '4px', whiteSpace: 'nowrap', transition: 'all 0.2s' }}
               onMouseEnter={e => { e.currentTarget.style.background = 'rgba(201,168,76,0.22)'; e.currentTarget.style.borderColor = 'rgba(201,168,76,0.6)' }}
               onMouseLeave={e => { e.currentTarget.style.background = 'rgba(201,168,76,0.12)'; e.currentTarget.style.borderColor = 'rgba(201,168,76,0.35)' }}>
               <MailIcon />

@@ -265,7 +265,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
         </div>
       )}
 
-      <div style={{ minHeight: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', boxSizing: 'border-box' }}>
+      <div style={{ minHeight: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'clamp(12px, 3vw, 20px)', boxSizing: 'border-box' }}>
       <AnimatePresence mode="wait">
         {phase === 'mode' && (
           <motion.div key="mode" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.4 }}
@@ -275,12 +275,12 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
               <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: 'clamp(22px,3.5vw,30px)', color: 'rgba(255,255,255,0.93)', lineHeight: 1.4, marginBottom: '12px' }}>Before we begin</p>
               <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '16px', color: 'rgba(255,255,255,0.5)', lineHeight: 1.7 }}>Your Soul Mirror shapes how you appear in this universe. Choose how you&apos;d like to describe yourself.</p>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: '16px' }}>
               <motion.button
                 whileHover={{ y: -4, boxShadow: '0 0 40px rgba(230,199,110,0.12)' }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => { setAvatarMode('guided'); setPhase('voice') }}
-                style={{ ...cardStyle, textAlign: 'left', padding: '32px 28px', borderRadius: '12px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '14px', border: '1px solid rgba(230,199,110,0.22)', background: 'rgba(10,12,30,0.9)' }}
+                style={{ ...cardStyle, textAlign: 'left', padding: 'clamp(20px, 4vw, 32px) clamp(16px, 3vw, 28px)', borderRadius: '12px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '14px', border: '1px solid rgba(230,199,110,0.22)', background: 'rgba(10,12,30,0.9)' }}
               >
                 <GoldLines />
                 <span style={{ fontSize: '28px' }}>✦</span>
@@ -293,7 +293,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
                 whileHover={{ y: -4, boxShadow: '0 0 40px rgba(230,199,110,0.12)' }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => { setAvatarMode('freeform'); setPhase('freeform') }}
-                style={{ ...cardStyle, textAlign: 'left', padding: '32px 28px', borderRadius: '12px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '14px', border: '1px solid rgba(230,199,110,0.22)', background: 'rgba(10,12,30,0.9)' }}
+                style={{ ...cardStyle, textAlign: 'left', padding: 'clamp(20px, 4vw, 32px) clamp(16px, 3vw, 28px)', borderRadius: '12px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '14px', border: '1px solid rgba(230,199,110,0.22)', background: 'rgba(10,12,30,0.9)' }}
               >
                 <GoldLines />
                 <span style={{ fontSize: '28px' }}>◎</span>
@@ -313,7 +313,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
             <SectionHeader step="Soul Mirror · Step 1 of 6"
               title={isReturning ? 'Hello, my old friend. How shall I speak to you this time?' : 'How would you like your mirror to speak?'}
               sub="Choose the voice the mirror uses during your conversation." />
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: '12px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(210px, 100%), 1fr))', gap: '12px' }}>
               {MIRROR_VOICES.map(voice => (
                 <motion.button key={voice.id} whileHover={{ y: -2 }} whileTap={{ scale: 0.97 }}
                   onClick={() => { setSelectedVoice(voice); setPhase('style') }}
@@ -334,7 +334,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
             style={{ ...cardStyle, width: 'min(680px, 95vw)', padding: 'clamp(28px,5vw,44px)' }}>
             <GoldLines />
             <SectionHeader step="Soul Mirror · Step 2 of 6" title="Choose your avatar style" sub="This shapes how your Soul Mirror portrait is designed." />
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: '12px', marginBottom: '16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(210px, 100%), 1fr))', gap: '12px', marginBottom: '16px' }}>
               {STYLE_OPTIONS.map(style => (
                 <motion.button key={style.id} whileHover={{ y: -2 }} whileTap={{ scale: 0.97 }}
                   onClick={() => { setSelectedStyle(style); setShowCustomStyle(false); setPhase('chat') }}
