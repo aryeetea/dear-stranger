@@ -3,7 +3,7 @@
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { LoginScreen } from '../components/AuthScreens'
-import { getSession, getMyHub } from '../lib/auth'
+import { getSession, getMyHub, createHubForCurrentUser } from '../lib/auth'
 import { supabase } from '../../lib/supabase'
 
 const STARS = Array.from({ length: 30 }, (_, i) => ({
