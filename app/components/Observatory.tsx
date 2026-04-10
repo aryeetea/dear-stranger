@@ -541,7 +541,7 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
                   transition={{ duration: 0.65, ease: 'easeOut' }}
                   style={{
                     position: 'absolute', left: '50%', top: '50%',
-                    width: `${baseSize * 3}px`, height: `${baseSize * 3}px`,
+                  width: `${baseSize * 6}px`, height: `${baseSize * 6}px`,
                     transform: 'translate(-50%, -50%)',
                     borderRadius: '50%',
                     border: `1px solid rgba(${statusGlowRgb},0.9)`,
