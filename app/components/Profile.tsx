@@ -570,17 +570,20 @@ export default function Profile({
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '14px', flexWrap: 'wrap' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{ position: 'relative', width: '36px', height: '36px' }}>
-                  <svg width="36" height="36" viewBox="0 0 36 36" style={{ transform: 'rotate(-90deg)' }}>
-                    <circle cx="18" cy="18" r="15" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="2" />
-                    <circle cx="18" cy="18" r="15" fill="none" stroke="#c9a84c" strokeWidth="2"
-                      strokeDasharray={`${2 * Math.PI * 15}`}
-                      strokeDashoffset={`${2 * Math.PI * 15 * (1 - refreshProgress / 100)}`}
-                      strokeLinecap="round" style={{ opacity: 0.6 }} />
+                <div style={{ position: 'relative', width: '40px', height: '40px', filter: 'drop-shadow(0 0 6px #c9a84c88)' }}>
+                  <svg width="40" height="40" viewBox="0 0 40 40" style={{ transform: 'rotate(-90deg)' }}>
+                    <circle cx="20" cy="20" r="16" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="3" />
+                    <circle cx="20" cy="20" r="16" fill="none" stroke="#ffe07a" strokeWidth="4"
+                      strokeDasharray={`${2 * Math.PI * 16}`}
+                      strokeDashoffset={`${2 * Math.PI * 16 * (1 - refreshProgress / 100)}`}
+                      strokeLinecap="round" style={{ filter: 'drop-shadow(0 0 4px #ffe07a)', opacity: 0.92 }} />
                   </svg>
-                  <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Cinzel', serif", fontSize: '7px', color: 'rgba(201,168,76,0.7)' }}>{daysLeft}d</div>
+                  <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+                    <span style={{ fontFamily: "'Cinzel', serif", fontSize: '13px', fontWeight: 700, color: '#ffe07a', textShadow: '0 0 6px #c9a84c, 0 1px 0 #fff8' }}>{daysLeft}</span>
+                    <span style={{ fontFamily: "'Cinzel', serif", fontSize: '7px', color: '#c9a84c', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: '-2px' }}>days</span>
+                  </div>
                 </div>
-                <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.2em', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase' }}>Soul Cycle</p>
+                <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.22em', color: '#ffe07a', textTransform: 'uppercase', textShadow: '0 0 6px #c9a84c, 0 1px 0 #fff8' }}>Soul Cycle</p>
               </div>
               {attemptsLeft > 0 ? (
                 <button onClick={() => setShowRegenInput(v => !v)} disabled={regenLoading}
