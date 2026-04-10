@@ -402,7 +402,7 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }} style={{ position: 'absolute', bottom: '52px', left: '36px', zIndex: 10, pointerEvents: 'none', display: 'flex', flexDirection: 'column', gap: '9px' }}>
         {[
           { dot: 'radial-gradient(circle, rgba(255,255,255,0.98) 0%, rgba(230,199,110,0.65) 50%, transparent 100%)', shadow: '0 0 5px rgba(230,199,110,0.45)', label: 'Received', sub: 'arrived & waiting' },
-          { dot: 'radial-gradient(circle, rgba(200,220,255,0.9) 0%, rgba(120,160,240,0.5) 50%, transparent 100%)', shadow: '0 0 4px rgba(160,200,255,0.5)', label: 'In Transit', sub: 'crossing the dark' },
+          { dot: 'radial-gradient(circle, rgba(200,220,255,0.92) 0%, rgba(200,220,255,0.25) 55%, transparent 100%)', shadow: '0 0 5px rgba(200,220,255,0.5)', label: 'In Transit', sub: 'crossing the dark' },
           { dot: 'radial-gradient(circle, rgba(255,200,70,0.95) 0%, rgba(201,155,40,0.6) 50%, transparent 100%)', shadow: '0 0 6px rgba(255,185,65,0.6)', label: 'Sent', sub: 'energy moving away' },
           { dot: 'radial-gradient(circle, rgba(255,248,220,0.98) 0%, rgba(230,199,110,0.82) 50%, transparent 100%)', shadow: '0 0 7px rgba(230,199,110,0.7)', label: 'Pinned', sub: 'held close, always' },
         ].map(item => (
