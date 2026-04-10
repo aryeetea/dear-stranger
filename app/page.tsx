@@ -469,7 +469,7 @@ export default function Home() {
   const [screen, setScreen] = useState<Screen>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem(LAST_SCREEN_KEY) as Screen | null
-      if (saved && ['universe', 'landing', 'entry', 'onboarding', 'confirm_email'].includes(saved)) return saved
+      if (saved && ['universe', 'landing', 'confirm_email'].includes(saved)) return saved
     }
     return 'loading'
   })
@@ -768,11 +768,11 @@ export default function Home() {
           await routeFromSession()
         } else {
           // If restoring a screen that requires session/hub, check session first
-          const protectedScreens = ['universe']
-          if (protectedScreens.includes(screen)) {
+          const authAwareScreens = ['universe', 'onboarding']
+          if (authAwareScreens.includes(screen)) {
             const session = await getSession()
             if (!session) {
-              setScreen('landing')
+              setScreen(screen === 'onboarding' ? 'onboarding' : 'landing')
               return
             }
             setCurrentUserId(session.user?.id || '')
@@ -785,6 +785,7 @@ export default function Home() {
               return
             }
             hydrateHubState(hub as HubWithMeta, session.user?.id)
+            setScreen('universe')
             restoreUniverseOverlay()
           }
         }
