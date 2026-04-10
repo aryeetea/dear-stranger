@@ -182,7 +182,7 @@ function assignCelestialPositions(letters: Letter[]): Letter[] {
   })
 }
 
-export default function Observatory({ onClose, onWriteLetter }: { onClose?: () => void; onWriteLetter?: (name: string) => void }) {
+export default function Observatory({ onClose, onWriteLetter, lettersRefreshSignal }: { onClose?: () => void; onWriteLetter?: (name: string) => void; lettersRefreshSignal?: number }) {
   const [openLetter, setOpenLetter] = useState<Letter | null>(null)
   const [letters, setLetters] = useState<Letter[]>([])
   const [loading, setLoading] = useState(true)
@@ -273,7 +273,7 @@ export default function Observatory({ onClose, onWriteLetter }: { onClose?: () =
       }
     }
     loadLetters()
-  }, [])
+  }, [lettersRefreshSignal])
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (!containerRef.current || isDraggingRef.current) return

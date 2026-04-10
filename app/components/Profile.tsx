@@ -309,9 +309,16 @@ export default function Profile({
       setVisitorBookEntries(entries)
     } catch (err) {
       console.error(err)
-      const message = err instanceof Error && err.message
-        ? err.message
-        : 'Could not load the visitor book right now.'
+      const message =
+        err instanceof Error && err.message
+          ? err.message
+          : typeof err === 'string'
+            ? err
+            : err && typeof err === 'object' && 'message' in err && typeof (err as { message?: unknown }).message === 'string'
+              ? (err as { message: string }).message
+              : err && typeof err === 'object'
+                ? JSON.stringify(err)
+                : 'Could not load the visitor book right now.'
       setVisitorBookError(message)
     } finally {
       setVisitorBookLoading(false)

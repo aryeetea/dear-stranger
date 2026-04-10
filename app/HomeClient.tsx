@@ -484,6 +484,8 @@ export default function Home() {
   const [avatarGenerating, setAvatarGenerating] = useState(false)
   const [scribeOpen, setScribeOpen] = useState(false)
   const [scribeRecipient, setScribeRecipient] = useState<string | undefined>()
+  // Signal to refresh Observatory letters
+  const [lettersRefreshSignal, setLettersRefreshSignal] = useState(0)
   const [observatoryOpen, setObservatoryOpen] = useState(false)
   const [pagesOpen, setPagesOpen] = useState(false)
   const [driftOpen, setDriftOpen] = useState(false)
@@ -1449,6 +1451,7 @@ export default function Home() {
 
                 setLettersSent((prev) => prev + 1);
                 setSendFlashing(true);
+                setLettersRefreshSignal((sig) => sig + 1);
               } catch (err) {
                 console.error('Failed to send letter:', err);
               }
@@ -1480,6 +1483,7 @@ export default function Home() {
         {observatoryOpen && (
           <Observatory
             key="observatory"
+            lettersRefreshSignal={lettersRefreshSignal}
             onClose={() => { setObservatoryOpen(false); setNavResetSignal(s => s + 1) }}
             onWriteLetter={(name) => {
               setObservatoryOpen(false)
