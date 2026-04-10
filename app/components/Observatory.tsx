@@ -232,6 +232,21 @@ export default function Observatory({ onClose, onWriteLetter, lettersRefreshSign
           const direction: 'sent' | 'received' = l.sender_id === userId ? 'sent' : 'received'
           const baseStatus: Letter['status'] = l.status === 'transit' || l.status === 'arrived' ? l.status : 'arrived'
           const effectiveStatus = direction === 'received' && baseStatus === 'transit' && l.arrives_at && nowMs >= arrivesMs ? 'arrived' : baseStatus
+          const debugObj = {
+            id: l.id,
+            l_status: l.status,
+            direction,
+            baseStatus,
+            effectiveStatus,
+            arrives_at: l.arrives_at,
+            created_at: l.created_at,
+            sender_id: l.sender_id,
+            userId,
+          }
+          if (l.status === 'transit' || effectiveStatus === 'transit') {
+            // eslint-disable-next-line no-console
+            console.log('[Observatory][mapLetter] Transit letter debug:', debugObj)
+          }
           return {
             id: l.id,
             from: direction === 'received' ? (l.sender?.hub_name || 'Unknown Sender') : (l.sender?.hub_name || 'You'),
@@ -672,23 +687,23 @@ export default function Observatory({ onClose, onWriteLetter, lettersRefreshSign
                 width: `${isHovered && !isTransit ? baseSize * 2.4 : baseSize * 2}px`,
                 height: `${isHovered && !isTransit ? baseSize * 2.4 : baseSize * 2}px`,
                 borderRadius: '50%',
-                background: isSent
-                  ? `radial-gradient(circle, rgba(255,180,40,0.98) 0%, rgba(200,120,10,0.6) 45%, transparent 100%)`
-                  : isPinned
-                    ? `radial-gradient(circle, rgba(230,200,255,0.98) 0%, rgba(180,140,240,0.7) 45%, transparent 100%)`
-                    : isTransit
-                      ? `radial-gradient(circle, rgba(100,170,255,0.98) 0%, rgba(60,110,240,0.6) 50%, transparent 100%)`
+                background: isTransit
+                  ? `radial-gradient(circle, rgba(100,170,255,0.98) 0%, rgba(60,110,240,0.6) 50%, transparent 100%)`
+                  : isSent
+                    ? `radial-gradient(circle, rgba(255,180,40,0.98) 0%, rgba(200,120,10,0.6) 45%, transparent 100%)`
+                    : isPinned
+                      ? `radial-gradient(circle, rgba(230,200,255,0.98) 0%, rgba(180,140,240,0.7) 45%, transparent 100%)`
                       : `radial-gradient(circle, rgba(255,255,255,0.98) 0%, rgba(${RECEIVED_GLOW_RGB},0.75) 40%, transparent 100%)`,
                 boxShadow: isHovered && !isTransit
                   ? `0 0 ${baseSize * 4}px rgba(${statusGlowRgb},0.95), 0 0 ${baseSize * 8}px rgba(${statusGlowRgb},0.4)`
-                  : isSent
-                    ? `0 0 ${baseSize * 2}px rgba(${SENT_GLOW_RGB},0.8), 0 0 ${baseSize * 5}px rgba(200,120,10,0.35)`
-                    : isPinned
-                      ? `0 0 ${baseSize * 2.5}px rgba(180,140,240,0.85), 0 0 ${baseSize * 5}px rgba(160,120,220,0.4)`
-                      : isArrived
-                        ? `0 0 ${baseSize * 2}px rgba(${RECEIVED_GLOW_RGB},0.6)`
-                        : isTransit
-                          ? `0 0 6px rgba(100,170,255,0.55)`
+                  : isTransit
+                    ? `0 0 6px rgba(100,170,255,0.55)`
+                    : isSent
+                      ? `0 0 ${baseSize * 2}px rgba(${SENT_GLOW_RGB},0.8), 0 0 ${baseSize * 5}px rgba(200,120,10,0.35)`
+                      : isPinned
+                        ? `0 0 ${baseSize * 2.5}px rgba(180,140,240,0.85), 0 0 ${baseSize * 5}px rgba(160,120,220,0.4)`
+                        : isArrived
+                          ? `0 0 ${baseSize * 2}px rgba(${RECEIVED_GLOW_RGB},0.6)`
                           : 'none',
                 transition: 'box-shadow 0.3s, width 0.2s, height 0.2s',
               }}
