@@ -888,6 +888,7 @@ export default function Home() {
     userAskAbout?: string,
     userHubName?: string,
     hubDecoration?: HubDecoration,
+    firstLetterBody?: string,
   ) {
     setOnboardingError('')
 
@@ -1031,6 +1032,11 @@ export default function Home() {
         setHubAvatarUrl('')
         setOnboardingResumeState(null)
         setScreen('universe')
+
+        if (firstLetterBody?.trim()) {
+          void sendLetter(null, firstLetterBody, 'parchment', true, 'A stranger has arrived')
+            .catch(err => console.error('Failed to release onboarding letter:', err))
+        }
 
         void (async () => {
           try {

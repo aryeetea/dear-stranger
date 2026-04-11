@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { HUB_COLOR_THEMES, HUB_STYLES, HUB_DECORATIONS, type HubColor, type HubStyle, type HubDecoration } from './UniverseMap'
 import { supabase } from '../../lib/supabase'
-import { sendLetter } from '../lib/auth'
 
 const MIN_EXCHANGES = 5
 const MAX_EXCHANGES = 20
@@ -117,6 +116,7 @@ interface SoulMirrorProps {
     askAbout?: string,
     hubNameFromOnboarding?: string,
     hubDecoration?: HubDecoration,
+    firstLetterBody?: string,
   ) => void
 }
 
@@ -237,6 +237,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
       askAbout.trim(),
       hubName.trim(),
       selectedDecoration,
+      letterReleased ? generatedLetter : undefined,
     )
   }
 
@@ -270,7 +271,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
     setLetterSending(true)
     setLetterError('')
     try {
-      await sendLetter(null, generatedLetter, 'parchment', true, 'A stranger has arrived')
+      if (!generatedLetter.trim()) throw new Error('Letter is empty')
       setLetterReleased(true)
     } catch (err) {
       const msg = err instanceof Error ? err.message : ''
