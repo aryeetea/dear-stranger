@@ -10,6 +10,7 @@ import { HUB_COLOR_THEMES, HUB_STYLES, HUB_DECORATIONS, HUB_GLOW_LEVELS, type Hu
 const MAX_REGEN_ATTEMPTS = 1
 
 type DeleteStep = 'idle' | 'exporting' | 'exported' | 'deleting' | 'deleted'
+type SanctumPanel = 'appearance' | 'visitors' | 'settings' | 'share'
 
 // regen_count is encoded as: cycleNumber * 10 + localRegenCount
 // This lets us detect which cycle the regens belong to using a single DB integer.
@@ -102,6 +103,7 @@ export default function Profile({
   const [visitorBookEntries, setVisitorBookEntries] = useState<VisitorBookEntry[]>([])
   const [visitorBookLoading, setVisitorBookLoading] = useState(false)
   const [visitorBookError, setVisitorBookError] = useState('')
+  const [activeSanctumPanel, setActiveSanctumPanel] = useState<SanctumPanel>('appearance')
 
   const appearanceChanged = selectedHubStyle !== initialHubStyle || selectedHubColor !== initialHubColor || selectedDecoration !== initialHubDecoration || selectedGlowIntensity !== initialHubGlowIntensity
 
@@ -391,18 +393,25 @@ export default function Profile({
   // Use the real icon + label from HUB_STYLES so every style gets its correct symbol
   const hubStyleDef = HUB_STYLES.find(s => s.id === selectedHubStyle) || HUB_STYLES[0]
   const centerpiece = { symbol: hubStyleDef.icon, label: hubStyleDef.label }
+  const sanctumPanels: { id: SanctumPanel; label: string; glyph: string; line: string }[] = [
+    { id: 'appearance', label: 'Appearance', glyph: '✦', line: 'Shape the light of your hub.' },
+    { id: 'visitors', label: 'Visitors', glyph: '◌', line: 'See who has passed through quietly.' },
+    { id: 'settings', label: 'Settings', glyph: '☽', line: 'Keep the rules of your space.' },
+    { id: 'share', label: 'Share', glyph: '⌁', line: 'Open a small door for someone else.' },
+  ]
+  const activePanel = sanctumPanels.find(panel => panel.id === activeSanctumPanel) || sanctumPanels[0]
 
   return (
     <motion.div initial={{ opacity: 0, scale: 1.04 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,5,0.88)', backdropFilter: 'blur(20px)', zIndex: 70, overflowY: 'auto' }}>
-      <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', background: `radial-gradient(ellipse 70% 55% at 20% 30%, rgba(${hubGlowRgb},${hubGlowIntensityValue * 0.7}) 0%, transparent 60%), radial-gradient(ellipse 50% 60% at 80% 70%, rgba(${hubGlowRgb},${hubGlowIntensityValue * 0.35}) 0%, transparent 55%)` }} />
+      style={{ position: 'fixed', inset: 0, background: 'linear-gradient(135deg, rgba(2,4,12,0.96), rgba(5,6,18,0.93) 48%, rgba(2,2,8,0.97))', backdropFilter: 'blur(20px)', zIndex: 70, overflowY: 'auto' }}>
+      <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', background: `radial-gradient(ellipse 70% 55% at 16% 24%, rgba(${hubGlowRgb},${hubGlowIntensityValue * 0.22}) 0%, transparent 64%), radial-gradient(ellipse 46% 54% at 84% 72%, rgba(${hubGlowRgb},${hubGlowIntensityValue * 0.11}) 0%, transparent 58%), linear-gradient(90deg, rgba(255,255,255,0.025), transparent 42%)` }} />
 
       {/* ── Ambient hub glow pulse ── */}
       <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0 }}>
         <motion.div
-          animate={{ opacity: [hubGlowIntensityValue * 0.3, hubGlowIntensityValue * 0.55, hubGlowIntensityValue * 0.3] }}
-          transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
-          style={{ position: 'absolute', top: '5%', left: '5%', width: '520px', height: '520px', borderRadius: '50%', background: `radial-gradient(circle, rgba(${hubGlowRgb},0.28) 0%, transparent 70%)`, filter: 'blur(60px)', pointerEvents: 'none' }}
+          animate={{ opacity: [hubGlowIntensityValue * 0.12, hubGlowIntensityValue * 0.22, hubGlowIntensityValue * 0.12] }}
+          transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
+          style={{ position: 'absolute', top: '8%', left: '8%', width: '440px', height: '440px', borderRadius: '50%', background: `radial-gradient(circle, rgba(${hubGlowRgb},0.22) 0%, transparent 70%)`, filter: 'blur(72px)', pointerEvents: 'none' }}
         />
       </div>
 
@@ -693,9 +702,51 @@ export default function Profile({
             )}
           </div>
 
-          <div style={{ height: '1px', background: 'linear-gradient(90deg, rgba(255,255,255,0.08), transparent)', marginBottom: '28px' }} />
+          <div style={{ height: '1px', background: 'linear-gradient(90deg, rgba(255,255,255,0.08), transparent)', marginBottom: '18px' }} />
+
+          <div style={{ marginBottom: '24px' }}>
+            <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.42em', color: `rgba(${hubGlowRgb},0.62)`, textTransform: 'uppercase', marginBottom: '8px' }}>Sanctum</p>
+            <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(255,255,255,0.46)', lineHeight: 1.6, marginBottom: '14px' }}>{activePanel.line}</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '8px' }}>
+            {sanctumPanels.map(tab => {
+              const isSelected = activeSanctumPanel === tab.id
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveSanctumPanel(tab.id)}
+                  style={{
+                    minWidth: 0,
+                    fontFamily: "'Cinzel', serif",
+                    fontSize: '8px',
+                    letterSpacing: '0.16em',
+                    color: isSelected ? '#c9a84c' : 'rgba(255,255,255,0.48)',
+                    padding: '10px 8px',
+                    border: `1px solid ${isSelected ? 'rgba(201,168,76,0.4)' : 'rgba(255,255,255,0.08)'}`,
+                    background: isSelected ? `linear-gradient(180deg, rgba(${hubGlowRgb},0.12), rgba(255,255,255,0.025))` : 'rgba(255,255,255,0.018)',
+                    cursor: 'pointer',
+                    textTransform: 'uppercase',
+                    borderRadius: '6px',
+                    boxShadow: isSelected ? `0 0 24px rgba(${hubGlowRgb},0.11)` : 'none',
+                  }}
+                >
+                  <span style={{ display: 'block', fontSize: '12px', marginBottom: '4px', opacity: isSelected ? 0.9 : 0.45 }}>{tab.glyph}</span>
+                  <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tab.label}</span>
+                </button>
+              )
+            })}
+            </div>
+          </div>
+
+          <motion.div
+            key={activeSanctumPanel}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.24, ease: 'easeOut' }}
+            style={{ marginBottom: '32px', padding: '20px', border: '1px solid rgba(255,255,255,0.085)', borderRadius: '8px', background: 'linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.018))', boxShadow: '0 22px 80px rgba(0,0,0,0.2)' }}
+          >
 
           {/* ── Hub Appearance ── */}
+          {activeSanctumPanel === 'appearance' && (
           <div style={{ marginBottom: '36px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '18px' }}>
               <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.4em', color: 'rgba(201,168,76,0.65)', textTransform: 'uppercase' }}>Hub Appearance</p>
@@ -787,9 +838,9 @@ export default function Profile({
               )}
             </AnimatePresence>
           </div>
+          )}
 
-          <div style={{ height: '1px', background: 'linear-gradient(90deg, rgba(255,255,255,0.08), transparent)', marginBottom: '28px' }} />
-
+          {activeSanctumPanel === 'visitors' && (
           <div style={{ marginBottom: '32px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '10px', flexWrap: 'wrap' }}>
               <div>
@@ -834,9 +885,9 @@ export default function Profile({
               <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(255,255,255,0.42)', lineHeight: 1.7 }}>When this is off, new visits are not recorded and the book stays private to you.</p>
             )}
           </div>
+          )}
 
-          <div style={{ height: '1px', background: 'linear-gradient(90deg, rgba(255,255,255,0.08), transparent)', marginBottom: '28px' }} />
-
+          {activeSanctumPanel === 'settings' && (
           <div style={{ marginBottom: '32px' }}>
             <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.4em', color: 'rgba(201,168,76,0.65)', textTransform: 'uppercase', marginBottom: '16px' }}>Settings</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -847,9 +898,9 @@ export default function Profile({
               ].map((s, i) => <SettingRow key={i} label={s.label} desc={s.desc} enabled={s.enabled} />)}
             </div>
           </div>
+          )}
 
-          <div style={{ height: '1px', background: 'linear-gradient(90deg, rgba(255,255,255,0.08), transparent)', marginBottom: '28px' }} />
-
+          {activeSanctumPanel === 'share' && (
           <div style={{ marginBottom: '32px' }}>
             <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.4em', color: 'rgba(201,168,76,0.65)', textTransform: 'uppercase', marginBottom: '6px' }}>Share This App</p>
             <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(255,255,255,0.45)', marginBottom: '20px' }}>Scan to open Dear Stranger on any device</p>
@@ -868,6 +919,9 @@ export default function Profile({
               </div>
             </div>
           </div>
+          )}
+
+          </motion.div>
 
           <div style={{ paddingTop: '20px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
             <AnimatePresence>
