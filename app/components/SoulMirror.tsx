@@ -801,7 +801,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
                 disabled={firstLetterAnswers.some(a => !a.trim()) || letterGenerating}
                 whileTap={{ scale: 0.97 }}
                 style={{ padding: '13px 28px', background: firstLetterAnswers.every(a => a.trim()) && !letterGenerating ? 'rgba(230,199,110,0.12)' : 'rgba(255,255,255,0.04)', border: `1px solid ${firstLetterAnswers.every(a => a.trim()) ? 'rgba(230,199,110,0.5)' : 'rgba(255,255,255,0.1)'}`, color: firstLetterAnswers.every(a => a.trim()) ? '#e6c76e' : 'rgba(255,255,255,0.3)', fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.25em', textTransform: 'uppercase', cursor: firstLetterAnswers.every(a => a.trim()) && !letterGenerating ? 'pointer' : 'default', borderRadius: '4px', transition: 'all 0.2s' }}>
-                {letterGenerating ? 'Writing...' : 'Generate my letter ✦'}
+                {letterGenerating ? 'Processing...' : 'Continue'}
               </motion.button>
             </div>
           </motion.div>
