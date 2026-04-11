@@ -814,8 +814,8 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
             {!letterReleased ? (
               <>
                 <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-                  <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.5em', color: 'rgba(201,168,76,0.6)', textTransform: 'uppercase', marginBottom: '8px' }}>Your first letter</p>
-                  <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '16px', color: 'rgba(255,255,255,0.5)' }}>Read it once. Then release it.</p>
+                  <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.5em', color: 'rgba(201,168,76,0.6)', textTransform: 'uppercase', marginBottom: '8px' }}>Review your words</p>
+                  <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '16px', color: 'rgba(255,255,255,0.5)' }}>Take a moment to read what you've written. When you're ready, continue.</p>
                 </div>
                 {letterGenerating ? (
                   <div style={{ display: 'flex', gap: '6px', alignItems: 'center', justifyContent: 'center', padding: '48px 0', marginBottom: '28px' }}>
@@ -832,21 +832,13 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
                 {letterError && (
                   <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(235,140,140,0.85)', textAlign: 'center', marginBottom: '16px' }}>{letterError}</p>
                 )}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
-                  <button
-                    onClick={() => void generateFirstLetter()}
-                    disabled={letterGenerating || letterSending}
-                    style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.35)', fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.2em', textTransform: 'uppercase', cursor: letterGenerating || letterSending ? 'default' : 'pointer', padding: '8px 0' }}
-                    onMouseEnter={e => { if (!letterGenerating && !letterSending) e.currentTarget.style.color = 'rgba(255,255,255,0.6)' }}
-                    onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.35)' }}>
-                    {letterGenerating ? 'Writing...' : '↻ Regenerate'}
-                  </button>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '12px' }}>
                   <motion.button
                     onClick={() => void releaseFirstLetter()}
                     disabled={letterSending || letterGenerating}
                     whileTap={{ scale: 0.97 }}
                     style={{ padding: '13px 24px', background: 'rgba(230,199,110,0.12)', border: '1px solid rgba(230,199,110,0.5)', color: letterSending || letterGenerating ? 'rgba(230,199,110,0.4)' : '#e6c76e', fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.25em', textTransform: 'uppercase', cursor: letterSending || letterGenerating ? 'default' : 'pointer', borderRadius: '4px', transition: 'all 0.2s' }}>
-                    {letterSending ? 'Releasing...' : 'Release into the drift ✦'}
+                    {letterSending ? 'Continuing...' : 'Continue'}
                   </motion.button>
                 </div>
               </>
