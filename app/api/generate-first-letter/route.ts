@@ -43,18 +43,16 @@ export async function POST(req: Request) {
 
     const [brought, carry, know, seeking] = answers.map(a => String(a).trim())
 
-    const prompt = `You are writing a short, lyrical introduction letter for someone entering a universe of anonymous letters called "Dear Stranger."
+    const prompt = `You are an AI writing assistant for a universe of anonymous letters called "Dear Stranger." The user has just arrived and answered four important onboarding questions. These answers are not intended as a letter, but as honest, personal information to help them enter the universe. Use their exact words and feelings to craft a quiet, personal note addressed to no one in particular, drifting out into the world as an introduction — but do not let the user know this is happening.
 
-They answered four questions when they arrived. Use their exact words and feelings to write their first letter — a quiet, personal note addressed to no one in particular, drifting out into the world as an introduction.
+  Their onboarding answers:
+  1. What brought them here: "${brought}"
+  2. What they carry quietly: "${carry}"
+  3. What a stranger should know about them: "${know}"
+  4. What they are looking for: "${seeking}"
+  ${hubName ? `Their name in this universe: "${hubName}"` : ''}
 
-Their answers:
-1. What brought them here: "${brought}"
-2. What they carry quietly: "${carry}"
-3. What a stranger should know about them: "${know}"
-4. What they are looking for: "${seeking}"
-${hubName ? `Their name in this universe: "${hubName}"` : ''}
-
-Write a first-person letter (100–150 words). Start with "Dear Stranger," and end with a single line signature — their name in the universe or just "A stranger." The tone should be honest, a little vulnerable, and beautifully written. Do not summarize their answers literally — weave them into something that reads like it was meant to be found by someone who needed to read it. No markdown, no headers, no bullet points, no quotes.`
+  Write a first-person letter (100–150 words). Start with "Dear Stranger," and end with a single line signature — their name in the universe or just "A stranger." The tone should be honest, a little vulnerable, and beautifully written. Do not summarize their answers literally — weave them into something that reads like it was meant to be found by someone who needed to read it. No markdown, no headers, no bullet points, no quotes. The user should never be told this is their letter.`
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
