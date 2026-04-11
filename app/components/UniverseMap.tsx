@@ -1217,7 +1217,7 @@ export default function UniverseMap({
     const targetX = canvas.width * 0.2 + Math.random() * canvas.width * 0.6
     const targetY = canvas.height * 0.2 + Math.random() * canvas.height * 0.6
     const dist = Math.sqrt((targetX - x) ** 2 + (targetY - y) ** 2)
-    const speed = 0.0048 + Math.random() * 0.0018
+    const speed = 0.0024 + Math.random() * 0.0009
     const midX = (x + targetX) / 2
     const midY = (y + targetY) / 2
     const dx = targetX - x
@@ -1237,7 +1237,7 @@ export default function UniverseMap({
       letterId: letter?.id || '', senderId: letter?.senderId || '', senderName: letter?.senderName || 'A Stranger',
       preview: letter?.preview || 'A letter drifts through the universe...',
       body: letter?.body || 'A letter drifts through the universe...',
-      age: 0, maxAge: Math.max(180, Math.round(1 / speed) + Math.round(dist * 0.12)), clicked: false,
+      age: 0, maxAge: Math.max(320, Math.round(1 / speed) + Math.round(dist * 0.16)), clicked: false,
     }
     shootingStarsRef.current.push(star)
   }
@@ -1557,7 +1557,7 @@ export default function UniverseMap({
           star.tail.push({ x: star.x, y: star.y })
           if (star.tail.length > 30) star.tail.shift()
           if (star.age <= star.maxAge) {
-            const speedScale = hoveredHubRef.current ? 0.58 : 1
+            const speedScale = hoveredHubRef.current ? 0.48 : 1
             star.progress = Math.min(1, star.progress + star.speed * speedScale)
             star.x = quadraticPoint(star.startX, star.controlX, star.targetX, star.progress)
             star.y = quadraticPoint(star.startY, star.controlY, star.targetY, star.progress)
@@ -1616,7 +1616,7 @@ export default function UniverseMap({
 
   const getStarAt = useCallback((mx: number, my: number): ShootingStar | null => {
     return shootingStarsRef.current.find(star => {
-      return Math.sqrt((mx - star.x) ** 2 + (my - star.y) ** 2) < 20
+      return Math.sqrt((mx - star.x) ** 2 + (my - star.y) ** 2) < 34
     }) || null
   }, [])
 

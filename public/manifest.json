@@ -1,0 +1,16 @@
+{
+  "name": "Dear Stranger",
+  "short_name": "DearStranger",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#060a18",
+  "theme_color": "#060a18",
+  "description": "A universe for anonymous letters and soulful connections.",
+  "icons": [
+    {
+      "src": "/apple-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}

@@ -898,12 +898,12 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
                 <div>
                   <button
                     onClick={() => setShowCustomize(v => !v)}
-                    style={{ background:'transparent', border:'none', color:'rgba(230,199,110,0.78)', fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.28em', textTransform:'uppercase', margin:'0 0 4px', padding:0, cursor:'pointer' }}
+                    style={{ background:'rgba(230,199,110,0.1)', border:'1px solid rgba(230,199,110,0.36)', color:'#f1d77a', fontFamily:"'Cinzel', serif", fontSize:'10px', letterSpacing:'0.2em', textTransform:'uppercase', margin:'0 0 6px', padding:'7px 12px', cursor:'pointer', borderRadius:'6px' }}
                     onMouseEnter={e=>{e.currentTarget.style.color='#e6c76e'}}
-                    onMouseLeave={e=>{e.currentTarget.style.color='rgba(230,199,110,0.78)'}}>
+                    onMouseLeave={e=>{e.currentTarget.style.color='#f1d77a'}}>
                     {showCustomize ? 'Hide Customize' : 'Customize'}
                   </button>
-                  <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'12px', color:'rgba(255,255,255,0.45)', margin:0 }}>
+                  <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'13px', color:'rgba(255,255,255,0.72)', margin:0, lineHeight:1.4 }}>
                     {recipientName ? `Traveling to ${recipientName}` : journalMode ? `Opening for you on ${formatCapsuleOpenDate(capsuleDays)}` : 'Released instantly into the universe'}
                   </p>
                 </div>
@@ -923,9 +923,9 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
                     animate={{ opacity:1, height:'auto', y:0 }}
                     exit={{ opacity:0, height:0, y:-8 }}
                     transition={{ duration:0.24, ease:'easeOut' }}
-                    style={{ overflow:'hidden', padding:'14px', border:'1px solid rgba(230,199,110,0.14)', borderRadius:'8px', background:'linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.018))', boxShadow:'0 16px 48px rgba(0,0,0,0.24)' }}
+                    style={{ overflow:'hidden', padding:'16px', border:'1px solid rgba(230,199,110,0.3)', borderRadius:'8px', background:'linear-gradient(180deg, rgba(14,16,38,0.96), rgba(8,10,24,0.94))', boxShadow:'0 18px 54px rgba(0,0,0,0.46)' }}
                   >
-              <div style={{ display:'flex', alignItems:'center', gap:'6px', flexWrap:'wrap', marginBottom:'12px' }}>
+              <div style={{ display:'flex', alignItems:'center', gap:'8px', flexWrap:'wrap', marginBottom:'14px' }}>
                 {[
                   { label:selectedPaper.label, action:()=>setView('papers'), icon:'Paper' },
                   { label:selectedFont.label, action:()=>setView('fonts'), icon:'Script' },
@@ -935,9 +935,9 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
                   { label:ENVELOPES.find(e=>e.id===selectedEnvelope)?.label||'Envelope', action:()=>setView('envelopes'), icon:'Envelope' },
                 ].map((btn,i)=>(
                   <button key={i} onClick={btn.action}
-                    style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.13)', color:'rgba(255,255,255,0.78)', fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.13em', textTransform:'uppercase', padding:'6px 9px', cursor:'pointer', borderRadius:'999px', whiteSpace:'nowrap' }}
+                    style={{ background:'rgba(255,255,255,0.07)', border:'1px solid rgba(230,199,110,0.22)', color:'rgba(255,255,255,0.9)', fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.1em', textTransform:'uppercase', padding:'8px 11px', cursor:'pointer', borderRadius:'8px', whiteSpace:'nowrap' }}
                     onMouseEnter={e=>{e.currentTarget.style.color='rgba(255,255,255,0.98)';e.currentTarget.style.borderColor='rgba(230,199,110,0.32)';e.currentTarget.style.background='rgba(230,199,110,0.06)'}}
-                    onMouseLeave={e=>{e.currentTarget.style.color='rgba(255,255,255,0.78)';e.currentTarget.style.borderColor='rgba(255,255,255,0.13)';e.currentTarget.style.background='rgba(255,255,255,0.03)'}}>
+                    onMouseLeave={e=>{e.currentTarget.style.color='rgba(255,255,255,0.9)';e.currentTarget.style.borderColor='rgba(230,199,110,0.22)';e.currentTarget.style.background='rgba(255,255,255,0.07)'}}>
                     {btn.icon}: {btn.label}
                   </button>
                 ))}
@@ -946,19 +946,19 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
               <div style={{ display:'flex', gap:'8px', flexWrap:'wrap', marginBottom:'12px' }}>
                 {!recipientName && (
                   <button onClick={() => setJournalMode(j => !j)}
-                    style={{ background:journalMode?'rgba(230,199,110,0.1)':'none', border:`1px solid ${journalMode?'rgba(230,199,110,0.45)':'rgba(255,255,255,0.14)'}`, color:journalMode?'#e6c76e':'rgba(255,255,255,0.62)', fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.18em', textTransform:'uppercase', padding:'6px 10px', cursor:'pointer', borderRadius:'999px', transition:'all 0.2s' }}>
+                    style={{ background:journalMode?'rgba(230,199,110,0.14)':'rgba(255,255,255,0.05)', border:`1px solid ${journalMode?'rgba(230,199,110,0.55)':'rgba(255,255,255,0.2)'}`, color:journalMode?'#e6c76e':'rgba(255,255,255,0.82)', fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.12em', textTransform:'uppercase', padding:'8px 12px', cursor:'pointer', borderRadius:'8px', transition:'all 0.2s' }}>
                     {journalMode ? 'Writing to Myself' : 'Write to Myself'}
                   </button>
                 )}
                 <button
                   onClick={() => setBurnAfterReading(b => !b)}
-                  style={{ background: burnAfterReading ? 'rgba(220,60,40,0.1)' : 'none', border: `1px solid ${burnAfterReading ? 'rgba(220,60,40,0.5)' : 'rgba(255,255,255,0.14)'}`, color: burnAfterReading ? '#e87060' : 'rgba(255,255,255,0.62)', fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.18em', textTransform: 'uppercase', padding: '6px 10px', cursor: 'pointer', borderRadius: '999px', transition: 'all 0.2s' }}>
+                  style={{ background: burnAfterReading ? 'rgba(220,60,40,0.14)' : 'rgba(255,255,255,0.05)', border: `1px solid ${burnAfterReading ? 'rgba(220,60,40,0.55)' : 'rgba(255,255,255,0.2)'}`, color: burnAfterReading ? '#ff9a84' : 'rgba(255,255,255,0.82)', fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.12em', textTransform: 'uppercase', padding: '8px 12px', cursor: 'pointer', borderRadius: '8px', transition: 'all 0.2s' }}>
                   {burnAfterReading ? 'Burn After Reading On' : 'Burn After Reading'}
                 </button>
                 {!recipientName && !journalMode && (
                   <button
                     onClick={() => setIsAnonymous(a => !a)}
-                    style={{ background: isAnonymous ? 'rgba(160,130,220,0.12)' : 'none', border: `1px solid ${isAnonymous ? 'rgba(160,130,220,0.5)' : 'rgba(255,255,255,0.14)'}`, color: isAnonymous ? 'rgba(200,180,255,0.9)' : 'rgba(255,255,255,0.62)', fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.18em', textTransform: 'uppercase', padding: '6px 10px', cursor: 'pointer', borderRadius: '999px', transition: 'all 0.2s' }}>
+                    style={{ background: isAnonymous ? 'rgba(160,130,220,0.16)' : 'rgba(255,255,255,0.05)', border: `1px solid ${isAnonymous ? 'rgba(160,130,220,0.58)' : 'rgba(255,255,255,0.2)'}`, color: isAnonymous ? 'rgba(220,205,255,0.95)' : 'rgba(255,255,255,0.82)', fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.12em', textTransform: 'uppercase', padding: '8px 12px', cursor: 'pointer', borderRadius: '8px', transition: 'all 0.2s' }}>
                     {isAnonymous ? 'Anonymous On' : 'Send Anonymously'}
                   </button>
                 )}
@@ -966,10 +966,10 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
 
               {journalMode && !recipientName && (
                 <div style={{ display:'flex', alignItems:'center', gap:'8px', flexWrap:'wrap', margin:'-2px 0 12px' }}>
-                  <span style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'11px', color:'rgba(255,255,255,0.5)' }}>Open in:</span>
+                  <span style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'13px', color:'rgba(255,255,255,0.78)' }}>Open in:</span>
                   {([30, 60, 90] as const).map(d => (
                     <button key={d} onClick={() => setCapsuleDays(d)}
-                      style={{ background:capsuleDays===d?'rgba(230,199,110,0.15)':'none', border:`1px solid ${capsuleDays===d?'rgba(230,199,110,0.55)':'rgba(255,255,255,0.16)'}`, color:capsuleDays===d?'#e6c76e':'rgba(255,255,255,0.65)', fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.18em', padding:'5px 10px', cursor:'pointer', borderRadius:'999px' }}>
+                      style={{ background:capsuleDays===d?'rgba(230,199,110,0.16)':'rgba(255,255,255,0.05)', border:`1px solid ${capsuleDays===d?'rgba(230,199,110,0.58)':'rgba(255,255,255,0.2)'}`, color:capsuleDays===d?'#e6c76e':'rgba(255,255,255,0.82)', fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.12em', padding:'7px 12px', cursor:'pointer', borderRadius:'8px' }}>
                       {d}d
                     </button>
                   ))}
@@ -978,17 +978,17 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
 
               <div>
                 <div>
-                  <p style={{ fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.24em', color:'#e6c76e', textTransform:'uppercase', margin:'0 0 8px' }}>Embellishment</p>
-                  <div style={{ display:'flex', flexDirection:'column', gap:'6px' }}>
+                  <p style={{ fontFamily:"'Cinzel', serif", fontSize:'10px', letterSpacing:'0.18em', color:'#f1d77a', textTransform:'uppercase', margin:'0 0 10px' }}>Embellishment</p>
+                  <div style={{ display:'flex', flexDirection:'column', gap:'8px' }}>
                     {LETTER_EMBELLISHMENTS.map(embellishment => {
                       const isSelected = selectedEmbellishment === embellishment.id
                       return (
                         <button
                           key={embellishment.id}
                           onClick={() => setSelectedEmbellishment(embellishment.id)}
-                          style={{ textAlign:'left', padding:'8px 10px', background:isSelected ? 'rgba(230,199,110,0.12)' : 'rgba(255,255,255,0.02)', border:`1px solid ${isSelected ? 'rgba(230,199,110,0.35)' : 'rgba(255,255,255,0.08)'}`, borderRadius:'4px', cursor:'pointer' }}>
-                          <p style={{ fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.16em', color:isSelected ? '#e6c76e' : 'rgba(255,255,255,0.78)', textTransform:'uppercase', margin:'0 0 3px' }}>{embellishment.label}</p>
-                          <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'10px', color:'rgba(255,255,255,0.46)', margin:0 }}>{embellishment.desc}</p>
+                          style={{ textAlign:'left', padding:'10px 12px', background:isSelected ? 'rgba(230,199,110,0.14)' : 'rgba(255,255,255,0.055)', border:`1px solid ${isSelected ? 'rgba(230,199,110,0.5)' : 'rgba(255,255,255,0.16)'}`, borderRadius:'6px', cursor:'pointer' }}>
+                          <p style={{ fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.12em', color:isSelected ? '#e6c76e' : 'rgba(255,255,255,0.9)', textTransform:'uppercase', margin:'0 0 4px' }}>{embellishment.label}</p>
+                          <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'12px', color:'rgba(255,255,255,0.68)', margin:0, lineHeight:1.35 }}>{embellishment.desc}</p>
                         </button>
                       )
                     })}
@@ -996,30 +996,30 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
                 </div>
               </div>
 
-              <div style={{ marginTop:'10px', padding:'11px 12px', border:'1px solid rgba(140,160,255,0.14)', borderRadius:'6px', background:'rgba(30,34,70,0.1)' }}>
+              <div style={{ marginTop:'12px', padding:'13px 14px', border:'1px solid rgba(140,160,255,0.24)', borderRadius:'8px', background:'rgba(34,40,82,0.24)' }}>
                 <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:'12px', flexWrap:'wrap' }}>
                 <div>
-                  <p style={{ fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.24em', color:'rgba(180,195,255,0.88)', textTransform:'uppercase', margin:'0 0 4px' }}>Voice Note From The Void</p>
-                  <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'11px', color:'rgba(255,255,255,0.55)', margin:0 }}>Optional, up to 30 seconds</p>
+                  <p style={{ fontFamily:"'Cinzel', serif", fontSize:'10px', letterSpacing:'0.16em', color:'rgba(210,220,255,0.95)', textTransform:'uppercase', margin:'0 0 5px' }}>Voice Note From The Void</p>
+                  <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'12px', color:'rgba(255,255,255,0.72)', margin:0 }}>Optional, up to 30 seconds</p>
                 </div>
                 <div style={{ display:'flex', gap:'8px', flexWrap:'wrap' }}>
                   {!isRecordingVoice ? (
                     <button
                       onClick={startVoiceRecording}
-                      style={{ background:'none', border:'1px solid rgba(180,195,255,0.3)', color:'rgba(210,220,255,0.9)', fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.18em', textTransform:'uppercase', padding:'6px 12px', cursor:'pointer', borderRadius:'2px' }}>
+                      style={{ background:'rgba(255,255,255,0.05)', border:'1px solid rgba(180,195,255,0.36)', color:'rgba(225,232,255,0.95)', fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.12em', textTransform:'uppercase', padding:'8px 12px', cursor:'pointer', borderRadius:'6px' }}>
                       {voiceNoteBlob ? 'Record Again' : 'Record'}
                     </button>
                   ) : (
                     <button
                       onClick={stopVoiceRecording}
-                      style={{ background:'rgba(180,60,60,0.12)', border:'1px solid rgba(220,80,80,0.4)', color:'rgba(255,170,170,0.92)', fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.18em', textTransform:'uppercase', padding:'6px 12px', cursor:'pointer', borderRadius:'2px' }}>
+                      style={{ background:'rgba(180,60,60,0.16)', border:'1px solid rgba(220,80,80,0.5)', color:'rgba(255,190,180,0.96)', fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.12em', textTransform:'uppercase', padding:'8px 12px', cursor:'pointer', borderRadius:'6px' }}>
                       Stop Recording
                     </button>
                   )}
                   {voiceNoteBlob && (
                     <button
                       onClick={clearVoiceNote}
-                      style={{ background:'none', border:'1px solid rgba(255,255,255,0.14)', color:'rgba(255,255,255,0.62)', fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.18em', textTransform:'uppercase', padding:'6px 12px', cursor:'pointer', borderRadius:'2px' }}>
+                      style={{ background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.2)', color:'rgba(255,255,255,0.82)', fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.12em', textTransform:'uppercase', padding:'8px 12px', cursor:'pointer', borderRadius:'6px' }}>
                       Remove
                     </button>
                   )}
@@ -1034,9 +1034,9 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
                         <button
                           key={option.id}
                           onClick={() => setVoiceEffect(option.id)}
-                          style={{ textAlign:'left', padding:'8px 10px', background:isSelected ? 'rgba(180,195,255,0.12)' : 'rgba(255,255,255,0.02)', border:`1px solid ${isSelected ? 'rgba(180,195,255,0.45)' : 'rgba(255,255,255,0.08)'}`, borderRadius:'4px', cursor:'pointer' }}>
-                          <p style={{ fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.18em', color:isSelected ? 'rgba(210,220,255,0.95)' : 'rgba(255,255,255,0.78)', textTransform:'uppercase', margin:'0 0 4px' }}>{option.label}</p>
-                          <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'10px', color:'rgba(255,255,255,0.48)', margin:0 }}>{option.desc}</p>
+                          style={{ textAlign:'left', padding:'10px 12px', background:isSelected ? 'rgba(180,195,255,0.16)' : 'rgba(255,255,255,0.055)', border:`1px solid ${isSelected ? 'rgba(180,195,255,0.5)' : 'rgba(255,255,255,0.16)'}`, borderRadius:'6px', cursor:'pointer' }}>
+                          <p style={{ fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.12em', color:isSelected ? 'rgba(225,232,255,0.98)' : 'rgba(255,255,255,0.9)', textTransform:'uppercase', margin:'0 0 4px' }}>{option.label}</p>
+                          <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'12px', color:'rgba(255,255,255,0.68)', margin:0, lineHeight:1.35 }}>{option.desc}</p>
                         </button>
                       )
                     })}

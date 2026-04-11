@@ -231,13 +231,40 @@ export function LoginScreen({
           {googleLoading ? 'Connecting...' : 'Continue with Google'}
         </button>
 
+
         {/* Discord */}
         <button onClick={handleDiscord} disabled={anyLoading}
-          style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '13px', background: 'rgba(88,101,242,0.1)', border: '1px solid rgba(88,101,242,0.35)', color: 'rgba(255,255,255,0.82)', fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase', cursor: 'pointer', borderRadius: '4px', marginBottom: '16px', transition: 'all 0.2s' }}
+          style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '13px', background: 'rgba(88,101,242,0.1)', border: '1px solid rgba(88,101,242,0.35)', color: 'rgba(255,255,255,0.82)', fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase', cursor: 'pointer', borderRadius: '4px', marginBottom: '10px', transition: 'all 0.2s' }}
           onMouseEnter={e => { e.currentTarget.style.background = 'rgba(88,101,242,0.2)'; e.currentTarget.style.borderColor = 'rgba(88,101,242,0.6)' }}
           onMouseLeave={e => { e.currentTarget.style.background = 'rgba(88,101,242,0.1)'; e.currentTarget.style.borderColor = 'rgba(88,101,242,0.35)' }}>
           <DiscordIcon />
           {discordLoading ? 'Connecting...' : 'Continue with Discord'}
+        </button>
+
+        {/* Back to Main Screen */}
+        <button
+          onClick={() => window.location.replace('/')}
+          style={{
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '10px',
+            padding: '13px',
+            background: 'rgba(255,255,255,0.03)',
+            border: '1px solid rgba(255,255,255,0.10)',
+            color: 'rgba(255,255,255,0.7)',
+            fontFamily: "'Cinzel', serif",
+            fontSize: '10px',
+            letterSpacing: '0.2em',
+            textTransform: 'uppercase',
+            cursor: 'pointer',
+            borderRadius: '4px',
+            marginBottom: '16px',
+            transition: 'all 0.2s',
+          }}
+        >
+          ← Back to Main
         </button>
 
         {error && (
@@ -375,13 +402,40 @@ export function SignupScreen({
           {googleLoading ? 'Connecting...' : 'Continue with Google'}
         </button>
 
+
         {/* Discord */}
         <button onClick={handleDiscord} disabled={anyLoading}
-          style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '13px', background: 'rgba(88,101,242,0.1)', border: '1px solid rgba(88,101,242,0.35)', color: 'rgba(255,255,255,0.82)', fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase', cursor: 'pointer', borderRadius: '4px', marginBottom: '16px', transition: 'all 0.2s' }}
+          style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '13px', background: 'rgba(88,101,242,0.1)', border: '1px solid rgba(88,101,242,0.35)', color: 'rgba(255,255,255,0.82)', fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase', cursor: 'pointer', borderRadius: '4px', marginBottom: '10px', transition: 'all 0.2s' }}
           onMouseEnter={e => { e.currentTarget.style.background = 'rgba(88,101,242,0.2)'; e.currentTarget.style.borderColor = 'rgba(88,101,242,0.6)' }}
           onMouseLeave={e => { e.currentTarget.style.background = 'rgba(88,101,242,0.1)'; e.currentTarget.style.borderColor = 'rgba(88,101,242,0.35)' }}>
           <DiscordIcon />
           {discordLoading ? 'Connecting...' : 'Continue with Discord'}
+        </button>
+
+        {/* Back to Main Screen */}
+        <button
+          onClick={() => window.location.replace('/')}
+          style={{
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '10px',
+            padding: '13px',
+            background: 'rgba(255,255,255,0.03)',
+            border: '1px solid rgba(255,255,255,0.10)',
+            color: 'rgba(255,255,255,0.7)',
+            fontFamily: "'Cinzel', serif",
+            fontSize: '10px',
+            letterSpacing: '0.2em',
+            textTransform: 'uppercase',
+            cursor: 'pointer',
+            borderRadius: '4px',
+            marginBottom: '16px',
+            transition: 'all 0.2s',
+          }}
+        >
+          ← Back to Main
         </button>
 
         {error && (

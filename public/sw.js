@@ -1,5 +1,5 @@
-const CACHE_NAME = 'dear-stranger-v1'
-const STATIC_ASSETS = ['/', '/manifest.json']
+const CACHE_NAME = 'dear-stranger-v2'
+const STATIC_ASSETS = ['/', '/manifest.webmanifest']
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
