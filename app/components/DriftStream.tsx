@@ -413,6 +413,7 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
   const [tab, setTab] = useState<DriftView>('read')
   const [letters, setLetters] = useState<DriftLetter[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
   const [open, setOpen] = useState<DriftLetter | null>(null)
 
   // write state
@@ -436,10 +437,24 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
   const driftCanvasRef = useRef<HandwritingCanvasRef>(null)
 
   useEffect(() => {
-    getDriftLetters().then((data) => {
-      setLetters(data as DriftLetter[])
-      setLoading(false)
+    let cancelled = false
+    const timeout = new Promise<never>((_, reject) => {
+      window.setTimeout(() => reject(new Error('DriftStream took too long to answer.')), 10000)
     })
+    Promise.race([getDriftLetters(), timeout])
+      .then((data) => {
+        if (cancelled) return
+        setLetters(data as DriftLetter[])
+        setLoadError('')
+      })
+      .catch(() => {
+        if (cancelled) return
+        setLoadError('The DriftStream is taking too long to answer. Please try again in a moment.')
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => { cancelled = true }
   }, [])
 
   const paper = selectedPaper
@@ -587,7 +602,13 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
               </div>
             )}
 
-            {!loading && letters.length === 0 && (
+            {!loading && loadError && (
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', textAlign: 'center' }}>
+                <p style={{ maxWidth: '420px', fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '17px', lineHeight: 1.6, color: 'rgba(255,255,255,0.5)' }}>{loadError}</p>
+              </div>
+            )}
+
+            {!loading && !loadError && letters.length === 0 && (
               <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
                 <div style={{ width: 'min(460px, calc(100vw - 48px))', padding: '28px 24px', borderRadius: '24px', background: 'linear-gradient(180deg, rgba(18,12,34,0.76), rgba(10,8,20,0.64))', border: '1px solid rgba(255,255,255,0.07)', boxShadow: '0 20px 60px rgba(0,0,0,0.28)', textAlign: 'center' }}>
                 <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '18px', color: 'rgba(255,255,255,0.35)' }}>The universe is quiet right now.</p>

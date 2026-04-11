@@ -55,6 +55,10 @@ const STARS = Array.from({ length: 30 }, (_, i) => ({
 
 const HUB_COLOR_IDS: HubColor[] = ['gold', 'sage', 'rose', 'azure', 'amber', 'violet', 'teal', 'sand']
 const LAST_OVERLAY_KEY = 'ds_last_overlay'
+const SESSION_TIMEOUT_MS = 8000
+const HUB_FETCH_TIMEOUT_MS = 7000
+const APP_LOADING_SLOW_MS = 3500
+const APP_LOADING_FALLBACK_MS = 12000
 
 function coerceHubColor(value?: string | null): HubColor {
   return HUB_COLOR_IDS.includes(value as HubColor) ? (value as HubColor) : 'gold'
@@ -495,6 +499,7 @@ export default function Home() {
   const [ambientMuted, setAmbientMutedState] = useState(false)
   const [isGuest, setIsGuest] = useState(false)
   const [currentUserId, setCurrentUserId] = useState('')
+  const [loadingTookLong, setLoadingTookLong] = useState(false)
   const [guestBannerDismissed, setGuestBannerDismissed] = useState(false)
   const [guestNudgeOpen, setGuestNudgeOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
@@ -707,15 +712,9 @@ export default function Home() {
   }, [screen])
 
   const routeFromSession = useCallback(async () => {
-    function timeoutPromise<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
-      return Promise.race([
-        promise,
-        new Promise<T>((_, reject) => setTimeout(() => reject(new Error(`Timeout in ${label}`)), ms)),
-      ])
-    }
     try {
       console.log('[routeFromSession] begin')
-      const session = await getSession()
+      const session = await withTimeout(getSession(), SESSION_TIMEOUT_MS, 'Session check timed out.')
       console.log('[routeFromSession] getSession result:', session)
 
       if (!session) {
@@ -742,7 +741,7 @@ export default function Home() {
       setCurrentUserId(userId || '')
       let hub = null
       try {
-        hub = await timeoutPromise(getMyHub(userId), 3000, 'getMyHub')
+        hub = await withTimeout(getMyHub(userId), HUB_FETCH_TIMEOUT_MS, 'Hub lookup timed out.')
         console.log('[routeFromSession] getMyHub result:', hub)
       } catch (err) {
         console.error('[routeFromSession] getMyHub error:', err)
@@ -751,7 +750,7 @@ export default function Home() {
       // Retry once if hub fetch failed — could be a transient network issue
       if (!hub) {
         try {
-          hub = await timeoutPromise(getMyHub(userId), 3000, 'getMyHub retry')
+          hub = await withTimeout(getMyHub(userId), HUB_FETCH_TIMEOUT_MS, 'Hub lookup retry timed out.')
           console.log('[routeFromSession] getMyHub retry result:', hub)
         } catch (err) {
           console.error('[routeFromSession] getMyHub retry error:', err)
@@ -782,6 +781,15 @@ export default function Home() {
     }
   }, [applyHubState, clearHubState, restoreUniverseOverlay, setSavedOverlay])
 
+  useEffect(() => {
+    if (screen !== 'loading') {
+      setLoadingTookLong(false)
+      return
+    }
+    const timer = window.setTimeout(() => setLoadingTookLong(true), APP_LOADING_SLOW_MS)
+    return () => window.clearTimeout(timer)
+  }, [screen])
+
   // Initialize route state from the live auth/session state.
   useEffect(() => {
     let ignore = false;
@@ -795,7 +803,7 @@ export default function Home() {
           // If restoring a screen that requires session/hub, check session first
           const authAwareScreens = ['universe', 'onboarding']
           if (authAwareScreens.includes(screen)) {
-            const session = await getSession()
+            const session = await withTimeout(getSession(), SESSION_TIMEOUT_MS, 'Session check timed out.')
             if (!session) {
               setScreen(screen === 'onboarding' ? 'onboarding' : 'landing')
               return
@@ -803,7 +811,7 @@ export default function Home() {
             setCurrentUserId(session.user?.id || '')
             let hub = null
             try {
-              hub = await getMyHub(session.user?.id)
+              hub = await withTimeout(getMyHub(session.user?.id), HUB_FETCH_TIMEOUT_MS, 'Hub check timed out.')
             } catch {}
             if (!hub) {
               setScreen('onboarding')
@@ -835,7 +843,7 @@ export default function Home() {
         setScreen('landing')
         console.log('[fallbackTimer] loading >18s, go to landing')
       }
-    }, 18000)
+    }, APP_LOADING_FALLBACK_MS)
 
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event) => {
       if (ignore) return;
@@ -1091,31 +1099,46 @@ export default function Home() {
           inset: 0,
           background: '#060a18',
           display: 'flex',
+          flexDirection: 'column',
+          gap: '18px',
           alignItems: 'center',
           justifyContent: 'center',
+          textAlign: 'center',
+          padding: '24px',
         }}
       >
         {/* Orbit ring */}
-        <div style={{
-          position: 'absolute',
-          width: '48px',
-          height: '48px',
-          borderRadius: '50%',
-          border: '1px solid rgba(201,168,76,0.15)',
-          borderTopColor: 'rgba(201,168,76,0.55)',
-          animation: 'ds-loading-orbit 1.6s linear infinite',
-        }} />
-        {/* Central star */}
-        <div
-          style={{
-            fontFamily: "'Cinzel', serif",
-            fontSize: '13px',
-            letterSpacing: '0.4em',
-            color: 'rgba(201,168,76,0.75)',
-            animation: 'ds-loading-pulse 2.2s ease-in-out infinite',
-          }}
-        >
-          ✦
+        <div style={{ position: 'relative', width: '48px', height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            borderRadius: '50%',
+            border: '1px solid rgba(201,168,76,0.15)',
+            borderTopColor: 'rgba(201,168,76,0.55)',
+            animation: 'ds-loading-orbit 1.6s linear infinite',
+          }} />
+          {/* Central star */}
+          <div
+            style={{
+              fontFamily: "'Cinzel', serif",
+              fontSize: '13px',
+              letterSpacing: '0.4em',
+              color: 'rgba(201,168,76,0.75)',
+              animation: 'ds-loading-pulse 2.2s ease-in-out infinite',
+            }}
+          >
+            ✦
+          </div>
+        </div>
+        <div>
+          <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.28em', color: 'rgba(201,168,76,0.62)', textTransform: 'uppercase', margin: '0 0 8px' }}>
+            {loadingTookLong ? 'Still finding your hub...' : 'Finding your place in the universe...'}
+          </p>
+          {loadingTookLong && (
+            <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(255,255,255,0.46)', margin: 0, lineHeight: 1.5 }}>
+              If the connection stays quiet, we will return you to the door shortly.
+            </p>
+          )}
         </div>
       </div>
     )

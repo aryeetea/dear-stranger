@@ -613,11 +613,11 @@ export default function Scribe({ recipientName, senderName, draftOwnerId, letter
     setSubjectError(false)
     setView('wax-seal')
     playWaxSeal()
-    await new Promise(r => setTimeout(r, 1400))
+    await new Promise(r => setTimeout(r, 900))
     setView('envelope')
     setReleasing(true)
     playLetterSend()
-    await new Promise(r => setTimeout(r, 4200))
+    await new Promise(r => setTimeout(r, 1800))
     try {
       const handwrittenImageBlob = selectedHandwriting === 'handwritten' ? await canvasRef.current?.toBlob() : undefined
       setSent(true)
@@ -633,7 +633,7 @@ export default function Scribe({ recipientName, senderName, draftOwnerId, letter
             setSent(false)
           }
         })()
-      }, 2400)
+      }, 900)
     } catch (err) {
       setSendError('Failed to send your letter. Please try again or check your connection.')
       setReleasing(false)
@@ -731,28 +731,29 @@ export default function Scribe({ recipientName, senderName, draftOwnerId, letter
         color: originalInk.main,
         position: 'relative',
         isolation: 'isolate',
+        contain: 'paint',
       }}>
         <div style={{ position:'absolute', inset:'14px', border:`1px solid ${originalInk.accent}22`, pointerEvents:'none' }} />
         <p style={{ fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.36em', color:originalInk.accent, textTransform:'uppercase', margin:'0 0 18px', opacity:0.86 }}>
           Original Letter
         </p>
         {originalDate && (
-          <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'12px', color:originalInk.secondary, marginBottom:'16px', textShadow:'0 1px 6px #fff8, 0 0px 1px #fff4' }}>
+          <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'12px', color:originalInk.secondary, marginBottom:'16px' }}>
             {originalDate}
           </p>
         )}
-        <p style={{ fontFamily:originalFontFamily, fontSize:'18px', fontStyle:'italic', color:originalInk.secondary, marginBottom:'18px', lineHeight:1.8, textShadow:'0 1px 6px #fff8, 0 0px 1px #fff4' }}>
+        <p style={{ fontFamily:originalFontFamily, fontSize:'18px', fontStyle:'italic', color:originalInk.secondary, marginBottom:'18px', lineHeight:1.8 }}>
           Dear {senderName || 'Stranger'},
         </p>
         {replyContext.body.split(PAGE_SEPARATOR).map((page, i, arr) => (
           <div key={i} style={originalStyle}>
-            <p style={{ fontFamily:originalFontFamily, fontSize:'16px', lineHeight:2, color:originalInk.main, whiteSpace:'pre-wrap', overflowWrap:'break-word', wordBreak:'break-word', textShadow:'0 1px 6px #fff8, 0 0px 1px #fff4', margin:0 }}>
+            <p style={{ fontFamily:originalFontFamily, fontSize:'16px', lineHeight:2, color:originalInk.main, whiteSpace:'pre-wrap', overflowWrap:'break-word', wordBreak:'break-word', margin:0 }}>
               {page}
             </p>
             {i < arr.length - 1 && <div style={{ textAlign:'center', margin:'20px 0', opacity:0.45 }}><span style={{ fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.35em', color:originalInk.accent }}>— ✦ —</span></div>}
           </div>
         ))}
-        <p style={{ fontFamily:originalFontFamily, fontStyle:'italic', fontSize:'15px', color:originalInk.secondary, marginTop:'22px', lineHeight:1.9, textShadow:'0 1px 6px #fff8, 0 0px 1px #fff4' }}>
+        <p style={{ fontFamily:originalFontFamily, fontStyle:'italic', fontSize:'15px', color:originalInk.secondary, marginTop:'22px', lineHeight:1.9 }}>
           With presence,<br/>
           <span style={{ color:originalInk.accent }}>{replyContext.from || 'A Stranger'}</span>
         </p>
@@ -763,12 +764,16 @@ export default function Scribe({ recipientName, senderName, draftOwnerId, letter
   const stampCategories = [...new Set(STAMPS.map(s => s.category))]
 
   return (
-    <motion.div initial={{ opacity:0, scale:1.04 }} animate={{ opacity:1, scale:1 }} exit={{ opacity:0, scale:0.98 }} transition={{ duration:0.5, ease:[0.22, 1, 0.36, 1] }}
+    <motion.div
+      initial={replyContext ? { opacity:0 } : { opacity:0, scale:1.04 }}
+      animate={replyContext ? { opacity:1 } : { opacity:1, scale:1 }}
+      exit={replyContext ? { opacity:0 } : { opacity:0, scale:0.98 }}
+      transition={{ duration:0.5, ease:[0.22, 1, 0.36, 1] }}
       className="fixed-scroll-panel"
-      style={{ position:'fixed', inset:0, background:'rgba(0,0,5,0.88)', backdropFilter:'blur(20px)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'flex-start', zIndex:70, padding:'clamp(48px, 8vw, 72px) clamp(12px, 3vw, 20px) 40px', overflowY:'auto' }}>
+      style={{ position:'fixed', inset:0, background:'rgba(0,0,5,0.94)', backdropFilter:'none', WebkitBackdropFilter:'none', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'flex-start', zIndex:70, padding:'clamp(48px, 8vw, 72px) clamp(12px, 3vw, 20px) 40px', overflowY:'auto', isolation:'isolate', contain:'paint' }}>
 
       {/* Sparkle particles */}
-      {sparkles.map(s => (
+      {!replyContext && sparkles.map(s => (
         <motion.span
           key={s.id}
           initial={{ opacity: 0.9, scale: 0.5, x: s.x, y: s.y }}
@@ -778,12 +783,12 @@ export default function Scribe({ recipientName, senderName, draftOwnerId, letter
         >{s.char}</motion.span>
       ))}
 
-      <div style={{ position:'fixed', inset:0, pointerEvents:'none', background:'radial-gradient(ellipse 50% 40% at 20% 30%, rgba(30,15,70,0.2) 0%, transparent 65%)' }}/>
-      <div style={{ position:'fixed', inset:0, pointerEvents:'none' }}>
+      {!replyContext && <div style={{ position:'fixed', inset:0, pointerEvents:'none', background:'radial-gradient(ellipse 50% 40% at 20% 30%, rgba(30,15,70,0.2) 0%, transparent 65%)' }}/>}
+      {!replyContext && <div style={{ position:'fixed', inset:0, pointerEvents:'none' }}>
         {SCRIBE_STARS.map((star, i) => (
           <div key={i} style={{ position:'absolute', width:star.width, height:star.width, borderRadius:'50%', background:`rgba(255,255,255,${star.opacity})`, left:star.left, top:star.top }}/>
         ))}
-      </div>
+      </div>}
 
       <motion.button initial={{ opacity:0 }} animate={{ opacity:1 }} transition={{ delay:0.3 }}
         onClick={view==='write'?onClose:()=>setView('write')}
@@ -1327,7 +1332,7 @@ export default function Scribe({ recipientName, senderName, draftOwnerId, letter
             <motion.div
               initial={{ y:0, rotate:0, scale:1 }}
               animate={{ y:[0,-30,-280], x:[0,30,160], rotate:[0,-6,-22], scale:[1,0.9,0.18], opacity:[1,1,0] }}
-              transition={{ duration:5.2, ease:'easeInOut' }}
+              transition={{ duration:2.4, ease:'easeInOut' }}
               style={{ display:'inline-block', marginBottom:'24px', position:'relative' }}>
               <EnvelopeSVG id={selectedEnvelope} color={envelopeColor}/>
               {selectedStamp&&<div style={{ position:'absolute', top:'8px', right:'8px', transform:'rotate(3deg)' }}><StampSVG id={selectedStamp} size={32}/></div>}

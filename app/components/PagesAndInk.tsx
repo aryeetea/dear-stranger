@@ -29,6 +29,7 @@ export default function PagesAndInk({ onClose }: { onClose?: () => void }) {
   const [tab, setTab] = useState<Tab>('read')
   const [pages, setPages] = useState<PageEntry[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
   const [filter, setFilter] = useState<'all' | 'entry' | 'poem'>('all')
   const [open, setOpen] = useState<PageEntry | null>(null)
   const [resonated, setResonated] = useState<Set<string>>(new Set())
@@ -41,10 +42,24 @@ export default function PagesAndInk({ onClose }: { onClose?: () => void }) {
   const [writeError, setWriteError] = useState('')
 
   useEffect(() => {
-    getPages().then((data) => {
-      setPages(data as PageEntry[])
-      setLoading(false)
+    let cancelled = false
+    const timeout = new Promise<never>((_, reject) => {
+      window.setTimeout(() => reject(new Error('Pages took too long to unfold.')), 10000)
     })
+    Promise.race([getPages(), timeout])
+      .then((data) => {
+        if (cancelled) return
+        setPages(data as PageEntry[])
+        setLoadError('')
+      })
+      .catch(() => {
+        if (cancelled) return
+        setLoadError('Pages are taking too long to unfold. Please try again in a moment.')
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => { cancelled = true }
   }, [])
 
   const filtered = filter === 'all' ? pages : pages.filter(p => p.type === filter)
@@ -166,7 +181,12 @@ export default function PagesAndInk({ onClose }: { onClose?: () => void }) {
                 Unfolding pages…
               </p>
             )}
-            {!loading && filtered.length === 0 && (
+            {!loading && loadError && (
+              <p style={{ textAlign: 'center', fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '17px', lineHeight: 1.6, color: 'rgba(255,255,255,0.38)', paddingTop: '60px' }}>
+                {loadError}
+              </p>
+            )}
+            {!loading && !loadError && filtered.length === 0 && (
               <p style={{ textAlign: 'center', fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '17px', color: 'rgba(255,255,255,0.3)', paddingTop: '60px' }}>
                 Nothing here yet. Be the first to leave a page.
               </p>
