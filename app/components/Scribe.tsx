@@ -1,48 +1,28 @@
 'use client'
-  return (
-    const [showDropdown, setShowDropdown] = React.useState(false);
 
-import React from 'react';
+import { useState, useRef, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { playLetterSend, playTypingSound, playWaxSeal } from '../../lib/sounds'
+import type { VoiceEffect } from '../../lib/audioEffects'
+import { PAPER_TONES, PAPER_INK, renderLetterPaper } from '../lib/letterPapers'
+import {
+  HANDWRITING_STYLES,
+  LETTER_EMBELLISHMENTS,
+  getHandwritingStyleStyles,
+  renderLetterEmbellishment,
+  type HandwritingStyle,
+  type EmbellishmentId,
+} from '../lib/letterEnrichments'
+import HandwritingCanvas, { type HandwritingCanvasRef } from './HandwritingCanvas'
 
-export default function Scribe(props: ScribeProps) {
-  const [showDropdown, setShowDropdown] = React.useState(false);
+const SCRIBE_STARS = Array.from({ length: 20 }, (_, i) => ({
+  width: `${(i % 3) * 0.45 + 0.3}px`,
+  left: `${((i * 47 + 13) % 100)}%`,
+  top: `${((i * 61 + 7) % 100)}%`,
+  opacity: (i % 5) * 0.04 + 0.04,
+}))
 
-  // ...existing code...
-
-    return (
-      <div
-          isMobile ? 'pt-2 pb-2' : 'pt-8 pb-8',
-          'overflow-x-hidden overflow-y-auto',
-          'bg-linear-to-b from-[#f8f6f1] to-[#e9e6df] dark:from-[#23211e] dark:to-[#181715]'
-        )}
-        style={{ minHeight: '100vh' }}
-      >
-        {/* Floating Toolbar */}
-        <div
-          className="fixed top-4 right-4 z-50 flex flex-col items-end"
-          style={{ pointerEvents: 'auto' }}
-        >
-          <button
-            className="bg-white dark:bg-[#23211e] border border-gray-300 dark:border-gray-700 rounded-full shadow-md px-4 py-2 mb-2 hover:bg-gray-100 dark:hover:bg-[#2c2a27] transition"
-            onClick={() => setShowDropdown((v) => !v)}
-          >
-            {showDropdown ? 'Hide Controls' : 'Show Controls'}
-          </button>
-          {showDropdown && (
-            <div className="w-72 max-w-full bg-white dark:bg-[#23211e] border border-gray-300 dark:border-gray-700 rounded-lg shadow-lg p-4 mt-2 animate-fade-in">
-              {renderControls()}
-            </div>
-          )}
-        </div>
-
-        {/* Letter-writing area (paper, canvas, etc.) */}
-        <div className="w-full flex flex-col items-center">
-          {renderPaper()}
-        </div>
-
-        {/* ...existing code... */}
-      </div>
-    );
+const PAPERS = [
   { id: 'ornate', label: 'Ornate Stationery', sublabel: 'Gold border, cream paper', unlocksAt: 0, swatch: 'linear-gradient(135deg, #f4ead0, #e8d090)' },
   { id: 'floral', label: 'Floral Letter', sublabel: 'Soft pink flower outlines', unlocksAt: 0, swatch: 'linear-gradient(135deg, #f8f0f4, #f0e0ea)' },
   { id: 'plain', label: 'Plain White', sublabel: 'Minimal, clean, classic', unlocksAt: 0, swatch: 'linear-gradient(135deg, #fff, #f7f7f7)' },
