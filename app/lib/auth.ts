@@ -424,6 +424,9 @@ export async function resonatePage(id: string) {
   if (error) throw new Error(error.message)
 }
 
+const DRIFT_PAPER_IDS = ['void-parchment','nebula-leaf','starworn','moondust','ember-glow','tide-glass','rose-ash','gilded-dark']
+const DRIFT_PAPER_FILTER = `("${DRIFT_PAPER_IDS.join('","')}")`
+
 export async function getUniverseLetters() {
   try {
     const { data, error } = await supabase
@@ -431,6 +434,7 @@ export async function getUniverseLetters() {
       .select('id, sender_id, body, subject, paper_id, font_id, font_color, handwriting_style, handwritten_image_url, embellishment_id, is_anonymous, sender:sender_id(hub_name)')
       .eq('is_universe_letter', true)
       .eq('status', 'arrived')
+      .not('paper_id', 'in', DRIFT_PAPER_FILTER)
       .order('created_at', { ascending: false })
       .limit(50)
 
@@ -454,8 +458,6 @@ export async function getUniverseLetters() {
     return []
   }
 }
-
-const DRIFT_PAPER_IDS = ['void-parchment','nebula-leaf','starworn','moondust','ember-glow','tide-glass','rose-ash','gilded-dark']
 
 export async function getDriftLetters() {
   try {
