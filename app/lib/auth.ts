@@ -282,12 +282,17 @@ export async function signOut() {
     } = await supabase.auth.getUser()
 
     if (user) {
-      await supabase.from('hubs').update({ online: false }).eq('id', user.id)
+      const { error } = await supabase.from('hubs').update({ online: false }).eq('id', user.id)
+      if (error) console.warn('Failed to mark hub offline before sign out:', error)
     }
-
-    await supabase.auth.signOut()
   } catch (err) {
-    console.error('signOut failed:', err)
+    console.warn('Unable to update hub before sign out:', err)
+  }
+
+  const { error } = await supabase.auth.signOut()
+  if (error) {
+    console.error('signOut failed:', error)
+    throw error
   }
 }
 

@@ -129,6 +129,8 @@ export default function Profile({
   const [copied, setCopied] = useState(false)
 
   const [leavingConfirm, setLeavingConfirm] = useState(false)
+  const [leaving, setLeaving] = useState(false)
+  const [leaveError, setLeaveError] = useState('')
   const [deleteStep, setDeleteStep] = useState<DeleteStep>('idle')
   const [exportedText, setExportedText] = useState('')
   const [deleteError, setDeleteError] = useState('')
@@ -202,9 +204,29 @@ export default function Profile({
   // Compute real cycle info from hub creation date
   const { cycleNumber, daysLeft, hoursLeft, refreshProgress } = getMirrorCycle(hubCreatedAt, cycleNow)
 
-  async function handleLeave() {
-    if (!leavingConfirm) { setLeavingConfirm(true); setTimeout(() => setLeavingConfirm(false), 4000); return }
-    await signOut(); window.location.reload()
+  function handleLeavePrompt() {
+    setLeaveError('')
+    setLeavingConfirm(true)
+  }
+
+  function handleCancelLeave() {
+    if (leaving) return
+    setLeaveError('')
+    setLeavingConfirm(false)
+  }
+
+  async function handleConfirmLeave() {
+    if (leaving) return
+    setLeaveError('')
+    setLeaving(true)
+    try {
+      await signOut()
+      window.location.reload()
+    } catch (err) {
+      console.error('leave failed:', err)
+      setLeaveError('Sign out failed. Please try again.')
+      setLeaving(false)
+    }
   }
 
   async function handleStartDelete() {
@@ -985,17 +1007,20 @@ export default function Profile({
               {leavingConfirm ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                   <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(255,255,255,0.55)' }}>Sign out and come back later?</p>
-                  <button onClick={() => void handleLeave()}
-                    style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.2em', color: 'rgba(201,168,76,0.9)', padding: '7px 14px', border: '1px solid rgba(201,168,76,0.4)', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase', borderRadius: '2px' }}>
-                    Yes, sign out
+                  <button onClick={() => void handleConfirmLeave()} disabled={leaving}
+                    style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.2em', color: 'rgba(201,168,76,0.9)', padding: '7px 14px', border: '1px solid rgba(201,168,76,0.4)', background: 'transparent', cursor: leaving ? 'default' : 'pointer', textTransform: 'uppercase', borderRadius: '2px', opacity: leaving ? 0.6 : 1 }}>
+                    {leaving ? 'Signing out...' : 'Yes, sign out'}
                   </button>
-                  <button onClick={() => setLeavingConfirm(false)}
-                    style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.2em', color: 'rgba(255,255,255,0.35)', padding: '7px 14px', border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase', borderRadius: '2px' }}>
+                  <button onClick={handleCancelLeave} disabled={leaving}
+                    style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.2em', color: 'rgba(255,255,255,0.35)', padding: '7px 14px', border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', cursor: leaving ? 'default' : 'pointer', textTransform: 'uppercase', borderRadius: '2px', opacity: leaving ? 0.45 : 1 }}>
                     Stay
                   </button>
+                  {leaveError && (
+                    <p style={{ width: '100%', fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '12px', color: 'rgba(220,100,100,0.85)', margin: '0' }}>{leaveError}</p>
+                  )}
                 </div>
               ) : (
-                <button onClick={() => void handleLeave()}
+                <button onClick={handleLeavePrompt}
                   style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.25em', color: 'rgba(255,255,255,0.4)', padding: '8px 16px', border: '1px solid rgba(255,255,255,0.12)', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase' }}
                   onMouseEnter={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.7)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)' }}
                   onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.4)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)' }}>
