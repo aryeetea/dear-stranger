@@ -328,6 +328,7 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
   const [sendError, setSendError] = useState<string | null>(null)
   const [view, setView] = useState<'write'|'papers'|'fonts'|'stamps'|'colors'|'paper-color'|'envelopes'|'envelope'|'wax-seal'>('write')
   const [journalMode, setJournalMode] = useState(false)
+  const [showCustomize, setShowCustomize] = useState(false)
   const [capsuleDays, setCapsuleDays] = useState<30|60|90>(30)
   const [burnAfterReading, setBurnAfterReading] = useState(false)
   const [isAnonymous, setIsAnonymous] = useState(false)
@@ -847,11 +848,45 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
               </div>
             )}
 
-            <div style={{ marginBottom:'16px', padding:'14px', border:'1px solid rgba(230,199,110,0.14)', borderRadius:'8px', background:'linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.018))', boxShadow:'0 16px 48px rgba(0,0,0,0.24)' }}>
+            {renderPaper()}
+
+            {pages.length > 1 && (
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginTop:'12px', marginBottom:'10px', padding:'8px 4px', borderTop:'1px solid rgba(255,255,255,0.08)' }}>
+                <div style={{ display:'flex', alignItems:'center', gap:'6px' }}>
+                  <button onClick={()=>{ setCurrentPage(p=>Math.max(0,p-1)); setTimeout(()=>textareaRef.current?.focus(),100) }}
+                    disabled={currentPage===0}
+                    style={{ background:'none', border:'1px solid rgba(255,255,255,0.14)', color:currentPage===0?'rgba(255,255,255,0.22)':'rgba(255,255,255,0.7)', fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.15em', padding:'4px 9px', cursor:currentPage===0?'default':'pointer', borderRadius:'2px' }}>
+                    Prev
+                  </button>
+                  <span style={{ fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.2em', color:'rgba(255,255,255,0.55)', whiteSpace:'nowrap' }}>
+                    Page {currentPage+1} / {pages.length}
+                  </span>
+                  <button onClick={()=>{ setCurrentPage(p=>Math.min(pages.length-1,p+1)); setTimeout(()=>textareaRef.current?.focus(),100) }}
+                    disabled={currentPage===pages.length-1}
+                    style={{ background:'none', border:'1px solid rgba(255,255,255,0.14)', color:currentPage===pages.length-1?'rgba(255,255,255,0.22)':'rgba(255,255,255,0.7)', fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.15em', padding:'4px 9px', cursor:currentPage===pages.length-1?'default':'pointer', borderRadius:'2px' }}>
+                    Next
+                  </button>
+                </div>
+                {pages.length > 1 && pages[currentPage].trim() === '' && (
+                  <button onClick={()=>{ setPages(prev=>prev.filter((_,i)=>i!==currentPage)); setCurrentPage(p=>Math.max(0,p-1)) }}
+                    style={{ background:'none', border:'1px solid rgba(220,80,80,0.35)', color:'rgba(220,80,80,0.65)', fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.15em', padding:'4px 9px', cursor:'pointer', borderRadius:'2px' }}>
+                    Remove Page
+                  </button>
+                )}
+              </div>
+            )}
+
+            <div style={{ marginTop:'16px', padding:'10px 0 0', borderTop:'1px solid rgba(255,255,255,0.08)' }}>
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:'12px', flexWrap:'wrap', marginBottom:'12px' }}>
                 <div>
-                  <p style={{ fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.28em', color:'#e6c76e', textTransform:'uppercase', margin:'0 0 4px' }}>Letter Setup</p>
-                  <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'12px', color:'rgba(255,255,255,0.56)', margin:0 }}>
+                  <button
+                    onClick={() => setShowCustomize(v => !v)}
+                    style={{ background:'transparent', border:'none', color:'rgba(230,199,110,0.78)', fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.28em', textTransform:'uppercase', margin:'0 0 4px', padding:0, cursor:'pointer' }}
+                    onMouseEnter={e=>{e.currentTarget.style.color='#e6c76e'}}
+                    onMouseLeave={e=>{e.currentTarget.style.color='rgba(230,199,110,0.78)'}}>
+                    {showCustomize ? 'Hide Customize' : 'Customize'}
+                  </button>
+                  <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'12px', color:'rgba(255,255,255,0.45)', margin:0 }}>
                     {recipientName ? `Traveling to ${recipientName}` : journalMode ? `Opening for you on ${formatCapsuleOpenDate(capsuleDays)}` : 'Released instantly into the universe'}
                   </p>
                 </div>
@@ -863,6 +898,16 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
                 </motion.button>
               </div>
 
+              <AnimatePresence initial={false}>
+                {showCustomize && (
+                  <motion.div
+                    key="customize-panel"
+                    initial={{ opacity:0, height:0, y:-8 }}
+                    animate={{ opacity:1, height:'auto', y:0 }}
+                    exit={{ opacity:0, height:0, y:-8 }}
+                    transition={{ duration:0.24, ease:'easeOut' }}
+                    style={{ overflow:'hidden', padding:'14px', border:'1px solid rgba(230,199,110,0.14)', borderRadius:'8px', background:'linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.018))', boxShadow:'0 16px 48px rgba(0,0,0,0.24)' }}
+                  >
               <div style={{ display:'flex', alignItems:'center', gap:'6px', flexWrap:'wrap', marginBottom:'12px' }}>
                 {[
                   { label:selectedPaper.label, action:()=>setView('papers'), icon:'Paper' },
@@ -1015,35 +1060,10 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
                 <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'11px', color:'rgba(255,150,150,0.82)', margin:'10px 0 0' }}>{voiceError}</p>
               )}
               </div>
-            </div>
-
-            {pages.length > 1 && (
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'12px', padding:'8px 4px', borderBottom:'1px solid rgba(255,255,255,0.08)' }}>
-                <div style={{ display:'flex', alignItems:'center', gap:'6px' }}>
-                  <button onClick={()=>{ setCurrentPage(p=>Math.max(0,p-1)); setTimeout(()=>textareaRef.current?.focus(),100) }}
-                    disabled={currentPage===0}
-                    style={{ background:'none', border:'1px solid rgba(255,255,255,0.14)', color:currentPage===0?'rgba(255,255,255,0.22)':'rgba(255,255,255,0.7)', fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.15em', padding:'4px 9px', cursor:currentPage===0?'default':'pointer', borderRadius:'2px' }}>
-                    Prev
-                  </button>
-                  <span style={{ fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.2em', color:'rgba(255,255,255,0.55)', whiteSpace:'nowrap' }}>
-                    Page {currentPage+1} / {pages.length}
-                  </span>
-                  <button onClick={()=>{ setCurrentPage(p=>Math.min(pages.length-1,p+1)); setTimeout(()=>textareaRef.current?.focus(),100) }}
-                    disabled={currentPage===pages.length-1}
-                    style={{ background:'none', border:'1px solid rgba(255,255,255,0.14)', color:currentPage===pages.length-1?'rgba(255,255,255,0.22)':'rgba(255,255,255,0.7)', fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.15em', padding:'4px 9px', cursor:currentPage===pages.length-1?'default':'pointer', borderRadius:'2px' }}>
-                    Next
-                  </button>
-                </div>
-                {pages.length > 1 && pages[currentPage].trim() === '' && (
-                  <button onClick={()=>{ setPages(prev=>prev.filter((_,i)=>i!==currentPage)); setCurrentPage(p=>Math.max(0,p-1)) }}
-                    style={{ background:'none', border:'1px solid rgba(220,80,80,0.35)', color:'rgba(220,80,80,0.65)', fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.15em', padding:'4px 9px', cursor:'pointer', borderRadius:'2px' }}>
-                    Remove Page
-                  </button>
+                  </motion.div>
                 )}
-              </div>
-            )}
-
-            {renderPaper()}
+              </AnimatePresence>
+            </div>
           </motion.div>
         )}
 
