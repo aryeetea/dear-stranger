@@ -471,7 +471,7 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
     setView('envelope')
     setReleasing(true)
     playLetterSend()
-    await new Promise(r => setTimeout(r, 2200))
+    await new Promise(r => setTimeout(r, 4200))
     try {
       const handwrittenImageBlob = selectedHandwriting === 'handwritten' ? await canvasRef.current?.toBlob() : undefined
       setSent(true)
@@ -1079,14 +1079,14 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
               <motion.div key={i}
                 initial={{ opacity: 0, scaleX: 0, x: '-60%', y: '-50%' }}
                 animate={{ opacity: [0, 0.6, 0], scaleX: [0, 1, 0.2], x: ['-60%', `${-80 - i*20}%`] }}
-                transition={{ duration: 1.8, delay: 0.15 + i * 0.06, ease: 'easeIn' }}
+                transition={{ duration: 3, delay: 0.18 + i * 0.09, ease: 'easeInOut' }}
                 style={{ position: 'absolute', left: '50%', top: '50%', width: `${40 + i * 18}px`, height: '1.5px', background: `rgba(230,199,110,${0.45 - i*0.06})`, borderRadius: '1px', transformOrigin: 'right center', pointerEvents: 'none' }}
               />
             ))}
             <motion.div
               initial={{ y:0, rotate:0, scale:1 }}
               animate={{ y:[0,-30,-280], x:[0,30,160], rotate:[0,-6,-22], scale:[1,0.9,0.18], opacity:[1,1,0] }}
-              transition={{ duration:3.5, ease:'easeIn' }}
+              transition={{ duration:5.2, ease:'easeInOut' }}
               style={{ display:'inline-block', marginBottom:'24px', position:'relative' }}>
               <EnvelopeSVG id={selectedEnvelope} color={envelopeColor}/>
               {selectedStamp&&<div style={{ position:'absolute', top:'8px', right:'8px', transform:'rotate(3deg)' }}><StampSVG id={selectedStamp} size={32}/></div>}
