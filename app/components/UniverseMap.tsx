@@ -513,7 +513,7 @@ function drawLotus(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: num
   ctx.fill()
 
   for (let i = 0; i < 8; i++) {
-    const angle = -Math.PI / 2 + (i - 3.5) * 0.38 + Math.sin(t * 0.4 + i) * 0.02
+    const angle = (i - 3.5) * 0.38 + Math.sin(t * 0.4 + i) * 0.02
     ctx.save()
     ctx.translate(cx, cy + r * 0.16)
     ctx.rotate(angle)
@@ -535,7 +535,7 @@ function drawLotus(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: num
   }
 
   for (let i = 0; i < 6; i++) {
-    const angle = -Math.PI / 2 + (i - 2.5) * 0.5
+    const angle = (i - 2.5) * 0.5
     ctx.save()
     ctx.translate(cx, cy + r * 0.35)
     ctx.rotate(angle)
@@ -1156,6 +1156,53 @@ export default function UniverseMap({
     const timer = window.setTimeout(() => setActiveNav(0), 0)
     return () => window.clearTimeout(timer)
   }, [navResetSignal])
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function refreshHubPresence() {
+      try {
+        const realHubs = await getAllHubs()
+        if (cancelled || realHubs.length === 0) return
+
+        const hubsById = new Map(realHubs.map((hub) => [hub.id, hub]))
+        hubsRef.current = hubsRef.current.map((hub) => {
+          if (hub.isMe) return { ...hub, online: true }
+          const latest = hubsById.get(hub.id)
+          if (!latest) return hub
+          return {
+            ...hub,
+            online: latest.online ?? false,
+            visitorBookEnabled: Boolean(latest.visitor_book_enabled),
+          }
+        })
+
+        setProfile((current) => {
+          if (!current || current.hub.isMe) return current
+          const latest = hubsById.get(current.hub.id)
+          if (!latest) return current
+          return {
+            ...current,
+            hub: {
+              ...current.hub,
+              online: latest.online ?? false,
+              visitorBookEnabled: Boolean(latest.visitor_book_enabled),
+            },
+          }
+        })
+      } catch (error) {
+        console.error('Failed to refresh hub presence:', error)
+      }
+    }
+
+    const interval = window.setInterval(refreshHubPresence, 20000)
+    void refreshHubPresence()
+
+    return () => {
+      cancelled = true
+      window.clearInterval(interval)
+    }
+  }, [])
 
   // Spawn a shooting star carrying a letter
   function spawnShootingStar(letter?: { id: string; senderId: string; senderName: string; preview: string; body: string }) {
