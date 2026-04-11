@@ -383,6 +383,8 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
     : ink
   const fontFamily = selectedFont.family
   const envelopeColor = PAPER_ENVELOPE_COLOR[selectedPaper.id]
+  const hasTypedBody = body.trim().length > 0
+  const canRelease = selectedHandwriting === 'handwritten' || hasTypedBody
 
   useEffect(() => {
     if (view === 'write') setTimeout(() => textareaRef.current?.focus(), 300)
@@ -813,6 +815,21 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
               )}
             </div>
 
+            <div style={{ display:'flex', gap:'6px', marginBottom:'12px' }}>
+              {HANDWRITING_STYLES.map(style => {
+                const isSelected = selectedHandwriting === style.id
+                return (
+                  <button
+                    key={style.id}
+                    onClick={() => setSelectedHandwriting(style.id)}
+                    style={{ flex:1, minWidth:'110px', textAlign:'center', padding:'10px 10px', background:isSelected ? 'rgba(230,199,110,0.12)' : 'rgba(255,255,255,0.02)', border:`1px solid ${isSelected ? 'rgba(230,199,110,0.42)' : 'rgba(255,255,255,0.1)'}`, borderRadius:'4px', cursor:'pointer' }}>
+                    <p style={{ fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.16em', color:isSelected ? '#e6c76e' : 'rgba(255,255,255,0.78)', textTransform:'uppercase', margin:'0 0 3px' }}>{style.id === 'typed' ? '⌨ ' : '✎ '}{style.label}</p>
+                    <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'10px', color:'rgba(255,255,255,0.46)', margin:0 }}>{style.desc}</p>
+                  </button>
+                )
+              })}
+            </div>
+
             {showPrompt && (
               <div style={{ marginBottom: '14px', textAlign: 'center' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
@@ -890,10 +907,10 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
                     {recipientName ? `Traveling to ${recipientName}` : journalMode ? `Opening for you on ${formatCapsuleOpenDate(capsuleDays)}` : 'Released instantly into the universe'}
                   </p>
                 </div>
-                <motion.button onClick={handleRelease} disabled={!body.trim()||releasing} whileTap={body.trim()?{scale:0.97}:{}}
-                  style={{ padding:'10px 18px', background:body.trim()?'rgba(230,199,110,0.08)':'transparent', border:`1px solid ${body.trim()?'rgba(230,199,110,0.55)':'rgba(255,255,255,0.12)'}`, color:body.trim()?'#e6c76e':'rgba(255,255,255,0.42)', fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.2em', textTransform:'uppercase', cursor:body.trim()?'pointer':'default', borderRadius:'999px', opacity:releasing?0.6:1 }}
-                  onMouseEnter={e=>{if(!body.trim())return;e.currentTarget.style.background='rgba(230,199,110,0.13)';e.currentTarget.style.borderColor='#e6c76e'}}
-                  onMouseLeave={e=>{e.currentTarget.style.background=body.trim()?'rgba(230,199,110,0.08)':'transparent';e.currentTarget.style.borderColor=body.trim()?'rgba(230,199,110,0.55)':'rgba(255,255,255,0.12)'}}>
+                <motion.button onClick={handleRelease} disabled={!canRelease||releasing} whileTap={canRelease?{scale:0.97}:{}}
+                  style={{ padding:'10px 18px', background:canRelease?'rgba(230,199,110,0.08)':'transparent', border:`1px solid ${canRelease?'rgba(230,199,110,0.55)':'rgba(255,255,255,0.12)'}`, color:canRelease?'#e6c76e':'rgba(255,255,255,0.42)', fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.2em', textTransform:'uppercase', cursor:canRelease?'pointer':'default', borderRadius:'999px', opacity:releasing?0.6:1 }}
+                  onMouseEnter={e=>{if(!canRelease)return;e.currentTarget.style.background='rgba(230,199,110,0.13)';e.currentTarget.style.borderColor='#e6c76e'}}
+                  onMouseLeave={e=>{e.currentTarget.style.background=canRelease?'rgba(230,199,110,0.08)':'transparent';e.currentTarget.style.borderColor=canRelease?'rgba(230,199,110,0.55)':'rgba(255,255,255,0.12)'}}>
                   {releasing ? 'Sealing' : recipientName ? `Send to ${recipientName}` : journalMode ? 'Seal for Myself' : 'Release'}
                 </motion.button>
               </div>
@@ -959,25 +976,7 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
                 </div>
               )}
 
-              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(150px, 1fr))', gap:'10px' }}>
-                <div>
-                  <p style={{ fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.24em', color:'#e6c76e', textTransform:'uppercase', margin:'0 0 8px' }}>Letter Form</p>
-                  <div style={{ display:'flex', gap:'6px' }}>
-                    {HANDWRITING_STYLES.map(style => {
-                      const isSelected = selectedHandwriting === style.id
-                      return (
-                        <button
-                          key={style.id}
-                          onClick={() => setSelectedHandwriting(style.id)}
-                          style={{ flex:1, textAlign:'center', padding:'10px 10px', background:isSelected ? 'rgba(230,199,110,0.12)' : 'rgba(255,255,255,0.02)', border:`1px solid ${isSelected ? 'rgba(230,199,110,0.35)' : 'rgba(255,255,255,0.08)'}`, borderRadius:'4px', cursor:'pointer' }}>
-                          <p style={{ fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.16em', color:isSelected ? '#e6c76e' : 'rgba(255,255,255,0.78)', textTransform:'uppercase', margin:'0 0 3px' }}>{style.id === 'typed' ? '⌨ ' : '✎ '}{style.label}</p>
-                          <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'10px', color:'rgba(255,255,255,0.46)', margin:0 }}>{style.desc}</p>
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-
+              <div>
                 <div>
                   <p style={{ fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.24em', color:'#e6c76e', textTransform:'uppercase', margin:'0 0 8px' }}>Embellishment</p>
                   <div style={{ display:'flex', flexDirection:'column', gap:'6px' }}>
