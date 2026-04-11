@@ -41,7 +41,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Four answers required' }, { status: 400 })
     }
 
-    const [brought, carry, know, seeking] = answers.map(a => String(a).trim().slice(0, 50))
+    const [brought, carry, know, seeking] = answers.map(a => String(a).trim())
 
     const prompt = `You are writing a short, lyrical introduction letter for someone entering a universe of anonymous letters called "Dear Stranger."
 
