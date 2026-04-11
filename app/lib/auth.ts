@@ -276,10 +276,14 @@ export async function signInAndCreateHub(hubName: string, bio: string, askAbout:
 }
 
 export async function signOut() {
+  let hasSession = false
+
   try {
     const {
-      data: { user },
-    } = await supabase.auth.getUser()
+      data: { session },
+    } = await supabase.auth.getSession()
+    const user = session?.user
+    hasSession = Boolean(session)
 
     if (user) {
       const { error } = await supabase.from('hubs').update({ online: false }).eq('id', user.id)
@@ -289,8 +293,12 @@ export async function signOut() {
     console.warn('Unable to update hub before sign out:', err)
   }
 
+  if (!hasSession) return
+
   const { error } = await supabase.auth.signOut()
   if (error) {
+    const message = error.message.toLowerCase()
+    if (message.includes('session') && message.includes('missing')) return
     console.error('signOut failed:', error)
     throw error
   }
