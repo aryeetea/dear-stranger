@@ -747,80 +747,74 @@ export default function Profile({
 
           {/* ── Hub Appearance ── */}
           {activeSanctumPanel === 'appearance' && (
-          <div style={{ marginBottom: '36px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '18px' }}>
-              <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.4em', color: 'rgba(201,168,76,0.65)', textTransform: 'uppercase' }}>Hub Appearance</p>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', marginBottom: '20px', flexWrap: 'wrap' }}>
+              <div>
+                <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.34em', color: 'rgba(201,168,76,0.72)', textTransform: 'uppercase', marginBottom: '5px' }}>Hub Appearance</p>
+                <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(255,255,255,0.46)', margin: 0 }}>{hubStyleDef.label} · {hubTheme?.label || 'Gold'} · {HUB_DECORATIONS.find(d => d.id === selectedDecoration)?.label || 'None'} · {HUB_GLOW_LEVELS.find(g => g.id === selectedGlowIntensity)?.label || 'Normal'}</p>
+              </div>
+              <div style={{ width: '44px', height: '44px', borderRadius: '50%', border: `1px solid rgba(${hubGlowRgb},0.42)`, background: `radial-gradient(circle, rgba(${hubGlowRgb},0.18), rgba(255,255,255,0.02) 68%)`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 0 28px rgba(${hubGlowRgb},0.16)`, flexShrink: 0 }}>
+                <span style={{ fontSize: '22px', filter: `drop-shadow(0 0 8px rgba(${hubGlowRgb},0.55))` }}>{centerpiece.symbol}</span>
+              </div>
             </div>
 
-            {/* Style grid */}
-            <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.26em', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', marginBottom: '10px' }}>Structure</p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '8px', marginBottom: '20px' }}>
+            <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.24em', color: 'rgba(255,255,255,0.36)', textTransform: 'uppercase', marginBottom: '10px' }}>Structure</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(82px, 1fr))', gap: '7px', marginBottom: '22px' }}>
               {HUB_STYLES.map(style => {
                 const isSelected = selectedHubStyle === style.id
                 return (
                   <button key={style.id}
+                    title={style.desc}
                     onClick={() => setSelectedHubStyle(style.id)}
-                    style={{ textAlign: 'left', padding: '12px 12px', borderRadius: '10px', border: isSelected ? '1px solid rgba(201,168,76,0.65)' : '1px solid rgba(255,255,255,0.1)', background: isSelected ? 'rgba(201,168,76,0.1)' : 'rgba(255,255,255,0.03)', cursor: 'pointer', transition: 'all 0.18s', position: 'relative' }}
-                    onMouseEnter={e => { if (!isSelected) { e.currentTarget.style.background = 'rgba(201,168,76,0.06)'; e.currentTarget.style.borderColor = 'rgba(201,168,76,0.3)' } }}
-                    onMouseLeave={e => { if (!isSelected) { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)' } }}>
-                    {isSelected && <div style={{ position: 'absolute', top: '8px', right: '10px', width: '14px', height: '14px', borderRadius: '50%', background: '#c9a84c', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '8px', color: '#000', fontWeight: 'bold' }}>✓</div>}
-                    <p style={{ fontSize: '16px', marginBottom: '5px' }}>{style.icon}</p>
-                    <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.15em', color: isSelected ? '#c9a84c' : 'rgba(255,255,255,0.65)', textTransform: 'uppercase', marginBottom: '3px' }}>{style.label}</p>
-                    <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '11px', color: 'rgba(255,255,255,0.4)', lineHeight: 1.4 }}>{style.desc}</p>
+                    style={{ minHeight: '74px', textAlign: 'center', padding: '10px 6px', borderRadius: '6px', border: isSelected ? '1px solid rgba(201,168,76,0.58)' : '1px solid rgba(255,255,255,0.085)', background: isSelected ? `linear-gradient(180deg, rgba(${hubGlowRgb},0.12), rgba(201,168,76,0.045))` : 'rgba(255,255,255,0.018)', cursor: 'pointer', transition: 'all 0.18s', boxShadow: isSelected ? `inset 0 0 0 1px rgba(255,255,255,0.035), 0 0 18px rgba(${hubGlowRgb},0.12)` : 'none' }}>
+                    <span style={{ display: 'block', fontSize: '18px', marginBottom: '7px', opacity: isSelected ? 1 : 0.56 }}>{style.icon}</span>
+                    <span style={{ display: 'block', fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.11em', color: isSelected ? '#c9a84c' : 'rgba(255,255,255,0.54)', textTransform: 'uppercase', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{style.label}</span>
                   </button>
                 )
               })}
             </div>
 
-            {/* Color grid */}
-            <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.26em', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', marginBottom: '10px' }}>Color</p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(70px, 1fr))', gap: '8px', marginBottom: '20px' }}>
+            <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.24em', color: 'rgba(255,255,255,0.36)', textTransform: 'uppercase', marginBottom: '10px' }}>Color</p>
+            <div style={{ display: 'flex', gap: '9px', flexWrap: 'wrap', marginBottom: '22px' }}>
               {HUB_COLOR_THEMES.map(theme => {
                 const isSelected = selectedHubColor === theme.id
                 return (
                   <button key={theme.id}
+                    title={theme.label}
                     onClick={() => setSelectedHubColor(theme.id)}
-                    style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '7px', padding: '10px 6px', borderRadius: '10px', border: isSelected ? '1px solid rgba(201,168,76,0.65)' : '1px solid rgba(255,255,255,0.1)', background: isSelected ? 'rgba(201,168,76,0.1)' : 'rgba(255,255,255,0.03)', cursor: 'pointer', transition: 'all 0.18s' }}
-                    onMouseEnter={e => { if (!isSelected) { e.currentTarget.style.background = 'rgba(201,168,76,0.06)'; e.currentTarget.style.borderColor = 'rgba(201,168,76,0.3)' } }}
-                    onMouseLeave={e => { if (!isSelected) { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)' } }}>
-                    <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: `radial-gradient(circle at 35% 35%, rgba(255,255,255,0.85), ${theme.ring})`, boxShadow: `0 0 14px rgba(${theme.glow},0.3)`, border: '1px solid rgba(255,255,255,0.15)' }} />
-                    <span style={{ fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.14em', textTransform: 'uppercase', color: isSelected ? '#c9a84c' : 'rgba(255,255,255,0.55)' }}>{theme.label}</span>
+                    style={{ width: '34px', height: '34px', borderRadius: '50%', padding: '4px', border: isSelected ? '1px solid rgba(201,168,76,0.78)' : '1px solid rgba(255,255,255,0.12)', background: isSelected ? 'rgba(201,168,76,0.12)' : 'rgba(255,255,255,0.025)', cursor: 'pointer', boxShadow: isSelected ? `0 0 18px rgba(${theme.glow},0.24)` : 'none' }}>
+                    <span style={{ display: 'block', width: '100%', height: '100%', borderRadius: '50%', background: `radial-gradient(circle at 35% 35%, rgba(255,255,255,0.88), ${theme.ring})`, boxShadow: `0 0 10px rgba(${theme.glow},0.22)` }} />
                   </button>
                 )
               })}
             </div>
 
-            {/* Decoration picker */}
-            <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.26em', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', marginBottom: '10px' }}>Decoration</p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(72px, 1fr))', gap: '8px', marginBottom: '20px' }}>
+            <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.24em', color: 'rgba(255,255,255,0.36)', textTransform: 'uppercase', marginBottom: '10px' }}>Decoration</p>
+            <div style={{ display: 'flex', gap: '7px', flexWrap: 'wrap', marginBottom: '22px' }}>
               {HUB_DECORATIONS.map(dec => {
                 const isSelected = selectedDecoration === dec.id
                 return (
                   <button key={dec.id}
                     onClick={() => setSelectedDecoration(dec.id)}
-                    style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', padding: '10px 6px', borderRadius: '10px', border: isSelected ? '1px solid rgba(201,168,76,0.65)' : '1px solid rgba(255,255,255,0.1)', background: isSelected ? 'rgba(201,168,76,0.1)' : 'rgba(255,255,255,0.03)', cursor: 'pointer', transition: 'all 0.18s' }}
-                    onMouseEnter={e => { if (!isSelected) { e.currentTarget.style.background = 'rgba(201,168,76,0.06)'; e.currentTarget.style.borderColor = 'rgba(201,168,76,0.3)' } }}
-                    onMouseLeave={e => { if (!isSelected) { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)' } }}>
-                    <span style={{ fontSize: '16px' }}>{dec.icon}</span>
-                    <span style={{ fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.14em', textTransform: 'uppercase', color: isSelected ? '#c9a84c' : 'rgba(255,255,255,0.55)' }}>{dec.label}</span>
+                    style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '8px 10px', borderRadius: '999px', border: isSelected ? '1px solid rgba(201,168,76,0.52)' : '1px solid rgba(255,255,255,0.09)', background: isSelected ? 'rgba(201,168,76,0.09)' : 'rgba(255,255,255,0.018)', cursor: 'pointer', transition: 'all 0.18s' }}>
+                    <span style={{ fontSize: '13px', opacity: isSelected ? 1 : 0.55 }}>{dec.icon}</span>
+                    <span style={{ fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.12em', textTransform: 'uppercase', color: isSelected ? '#c9a84c' : 'rgba(255,255,255,0.54)', whiteSpace: 'nowrap' }}>{dec.label}</span>
                   </button>
                 )
               })}
             </div>
 
-            {/* Glow intensity picker */}
-            <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.26em', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', marginBottom: '10px' }}>Glow</p>
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
+            <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.24em', color: 'rgba(255,255,255,0.36)', textTransform: 'uppercase', marginBottom: '10px' }}>Glow</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '7px', marginBottom: '20px' }}>
               {HUB_GLOW_LEVELS.map(glow => {
                 const isSelected = selectedGlowIntensity === glow.id
                 return (
                   <button key={glow.id}
+                    title={glow.desc}
                     onClick={() => setSelectedGlowIntensity(glow.id)}
-                    style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '10px 8px', borderRadius: '10px', border: isSelected ? '1px solid rgba(201,168,76,0.65)' : '1px solid rgba(255,255,255,0.1)', background: isSelected ? 'rgba(201,168,76,0.1)' : 'rgba(255,255,255,0.03)', cursor: 'pointer', transition: 'all 0.18s' }}
-                    onMouseEnter={e => { if (!isSelected) { e.currentTarget.style.background = 'rgba(201,168,76,0.06)'; e.currentTarget.style.borderColor = 'rgba(201,168,76,0.3)' } }}
-                    onMouseLeave={e => { if (!isSelected) { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)' } }}>
-                    <span style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.15em', textTransform: 'uppercase', color: isSelected ? '#c9a84c' : 'rgba(255,255,255,0.65)' }}>{glow.label}</span>
-                    <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '11px', color: 'rgba(255,255,255,0.38)', lineHeight: 1.3, textAlign: 'center' }}>{glow.desc}</span>
+                    style={{ minWidth: 0, padding: '10px 8px', borderRadius: '6px', border: isSelected ? '1px solid rgba(201,168,76,0.52)' : '1px solid rgba(255,255,255,0.09)', background: isSelected ? 'rgba(201,168,76,0.09)' : 'rgba(255,255,255,0.018)', cursor: 'pointer', transition: 'all 0.18s', textAlign: 'center' }}>
+                    <span style={{ display: 'block', fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.14em', textTransform: 'uppercase', color: isSelected ? '#c9a84c' : 'rgba(255,255,255,0.58)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{glow.label}</span>
+                    <span style={{ display: 'block', width: '46px', maxWidth: '80%', height: '2px', margin: '8px auto 0', borderRadius: '999px', background: `rgba(${hubGlowRgb},${glow.id === 'dim' ? 0.22 : glow.id === 'normal' ? 0.42 : 0.72})`, boxShadow: `0 0 ${glow.id === 'dim' ? 6 : glow.id === 'normal' ? 10 : 16}px rgba(${hubGlowRgb},0.45)` }} />
                   </button>
                 )
               })}
