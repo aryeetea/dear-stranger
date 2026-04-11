@@ -205,6 +205,7 @@ export default function Observatory({ onClose, onWriteLetter, lettersRefreshSign
   const bgSvgRef = useRef<SVGSVGElement>(null)
   const twinkleRef = useRef<HTMLDivElement>(null)
   const isDraggingRef = useRef(false)
+  const loadRequestRef = useRef(0)
 
   useEffect(() => {
     const timer = window.setInterval(() => setCurrentTime(Date.now()), 60000)
@@ -212,16 +213,19 @@ export default function Observatory({ onClose, onWriteLetter, lettersRefreshSign
   }, [])
 
   useEffect(() => {
-    console.log('[Observatory] useEffect triggered, lettersRefreshSignal:', lettersRefreshSignal);
+    let cancelled = false
+    const requestId = loadRequestRef.current + 1
+    loadRequestRef.current = requestId
     async function loadLetters() {
       try {
         setLoading(true)
         const data = await Promise.race([
           getMyLetters(),
-          new Promise<{ userId: string; transit: never[]; arrived: never[] }>((resolve) =>
-            setTimeout(() => resolve({ userId: '', transit: [], arrived: [] }), 10000)
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('Letter loading timed out.')), 10000)
           ),
         ])
+        if (cancelled || requestId !== loadRequestRef.current) return
         const userId = data.userId
         const mapLetter = (l: LetterRow): Letter => {
           const createdAt = l.created_at || new Date().toISOString()
@@ -275,12 +279,12 @@ export default function Observatory({ onClose, onWriteLetter, lettersRefreshSign
         setLetters(assignCelestialPositions(all))
       } catch (err) {
         console.error('Failed to load letters:', err)
-        setLetters([])
       } finally {
-        setLoading(false)
+        if (!cancelled && requestId === loadRequestRef.current) setLoading(false)
       }
     }
     loadLetters()
+    return () => { cancelled = true }
   }, [lettersRefreshSignal])
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {

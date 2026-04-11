@@ -273,6 +273,14 @@ export async function signInAndCreateHub(hubName: string, bio: string, askAbout:
 
 export async function signOut() {
   try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (user) {
+      await supabase.from('hubs').update({ online: false }).eq('id', user.id)
+    }
+
     await supabase.auth.signOut()
   } catch (err) {
     console.error('signOut failed:', err)
@@ -511,11 +519,20 @@ export async function recordHubVisit(hubId: string) {
   if (recentError) throw recentError
   if (recentVisit) return false
 
+  const now = new Date().toISOString()
   const { error } = await supabase
     .from('hub_visits')
-    .insert({ hub_id: hubId, visitor_id: user.id })
+    .upsert(
+      { hub_id: hubId, visitor_id: user.id, visited_at: now },
+      { onConflict: 'hub_id,visitor_id' },
+    )
 
-  if (error) throw error
+  if (error) {
+    const { error: insertError } = await supabase
+      .from('hub_visits')
+      .insert({ hub_id: hubId, visitor_id: user.id, visited_at: now })
+    if (insertError) throw insertError
+  }
   return true
 }
 
@@ -530,20 +547,58 @@ export async function getVisitorBook(limit = 18): Promise<VisitorBookEntry[]> {
 
   const { data, error } = await supabase
     .from('hub_visits')
-    .select('id, visitor_id, visited_at, visitor:visitor_id(hub_name, avatar_url)')
+    .select('id, visitor_id, visited_at')
     .eq('hub_id', user.id)
     .order('visited_at', { ascending: false })
     .limit(limit)
 
   if (error) throw error
 
-  return ((data || []) as VisitorBookRow[]).map((row) => ({
-    id: row.id as string,
-    visitorId: (row.visitor_id as string) || '',
-    visitorName: row.visitor?.hub_name || 'A Stranger',
-    avatarUrl: row.visitor?.avatar_url || undefined,
-    visitedAt: row.visited_at as string,
-  }))
+  const rows = (data || []) as VisitorBookRow[]
+  const visitorIds = Array.from(new Set(rows.map((row) => row.visitor_id).filter(Boolean))) as string[]
+  const visitorsById = new Map<string, { hub_name?: string | null; avatar_url?: string | null }>()
+
+  if (visitorIds.length > 0) {
+    const { data: visitors, error: visitorsError } = await supabase
+      .from('hubs')
+      .select('id, hub_name, avatar_url')
+      .in('id', visitorIds)
+
+    if (visitorsError) throw visitorsError
+
+    const visitorRows = (visitors || []) as Array<{ id: string; hub_name?: string | null; avatar_url?: string | null }>
+    visitorRows.forEach((visitor) => {
+      visitorsById.set(visitor.id, visitor)
+    })
+  }
+
+  return rows.map((row) => {
+    const visitor = row.visitor_id ? visitorsById.get(row.visitor_id) : undefined
+    return {
+      id: row.id as string,
+      visitorId: (row.visitor_id as string) || '',
+      visitorName: visitor?.hub_name || 'A Stranger',
+      avatarUrl: visitor?.avatar_url || undefined,
+      visitedAt: row.visited_at as string,
+    }
+  })
+}
+
+export async function setHubOnlineStatus(online: boolean) {
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser()
+
+  if (userError) throw userError
+  if (!user) return
+
+  const { error } = await supabase
+    .from('hubs')
+    .update({ online })
+    .eq('id', user.id)
+
+  if (error) throw error
 }
 
 export async function blockUser(blockedId: string) {
@@ -868,39 +923,37 @@ export async function getReturnPaths(): Promise<{ hubA: string; hubB: string }[]
 }
 
 export async function getMyLetters() {
-  try {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser()
 
-    if (!user) return { userId: '', transit: [], arrived: [] }
+  if (userError) throw userError
+  if (!user) return { userId: '', transit: [], arrived: [] }
 
-    const now = new Date().toISOString()
+  const now = new Date().toISOString()
 
-    await Promise.allSettled([
-      supabase.from('letters').update({ status: 'arrived' }).eq('recipient_id', user.id).eq('status', 'transit').lt('arrives_at', now),
-      supabase.from('letters').update({ status: 'arrived' }).eq('sender_id', user.id).eq('status', 'transit').lt('arrives_at', now),
-      supabase.from('letters').update({ status: 'arrived' }).eq('is_universe_letter', true).eq('status', 'transit'),
-    ])
+  await Promise.allSettled([
+    supabase.from('letters').update({ status: 'arrived' }).eq('recipient_id', user.id).eq('status', 'transit').lt('arrives_at', now),
+    supabase.from('letters').update({ status: 'arrived' }).eq('sender_id', user.id).eq('status', 'transit').lt('arrives_at', now),
+    supabase.from('letters').update({ status: 'arrived' }).eq('is_universe_letter', true).eq('status', 'transit'),
+  ])
 
-    const { data, error } = await supabase
-      .from('letters')
-      .select('*, is_universe_letter, sender:sender_id(hub_name), recipient:recipient_id(hub_name)')
-      .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
-      .order('created_at', { ascending: false })
+  const { data, error } = await supabase
+    .from('letters')
+    .select('*, is_universe_letter, sender:sender_id(hub_name), recipient:recipient_id(hub_name)')
+    .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
+    .order('created_at', { ascending: false })
 
-    if (error) return { userId: user.id, transit: [], arrived: [] }
+  if (error) throw error
 
-    const letters = ((data || [])
-      .filter((l) => !(l.is_universe_letter && DRIFT_PAPER_IDS.includes((l as { paper_id?: string | null }).paper_id || '')))) as LetterRecord[]
+  const letters = ((data || [])
+    .filter((l) => !(l.is_universe_letter && DRIFT_PAPER_IDS.includes((l as { paper_id?: string | null }).paper_id || '')))) as LetterRecord[]
 
-    return {
-      userId: user.id,
-      transit: letters.filter((l) => l.status === 'transit'),
-      arrived: letters.filter((l) => l.status === 'arrived' || l.status === 'archive'),
-    }
-  } catch {
-    return { userId: '', transit: [], arrived: [] }
+  return {
+    userId: user.id,
+    transit: letters.filter((l) => l.status === 'transit'),
+    arrived: letters.filter((l) => l.status === 'arrived' || l.status === 'archive'),
   }
 }
 

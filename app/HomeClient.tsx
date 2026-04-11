@@ -30,6 +30,7 @@ import {
   signIn,
   uploadAvatarToStorage,
   getMyLetters,
+  setHubOnlineStatus,
 } from './lib/auth'
 import { playChime, startAmbient, stopAmbient, setAmbientMuted } from '../lib/sounds'
 import { AnimatePresence } from 'framer-motion'
@@ -579,6 +580,35 @@ export default function Home() {
   useEffect(() => {
     screenRef.current = screen
   }, [screen])
+
+  useEffect(() => {
+    const shouldPublishPresence = Boolean(currentUserId && !isGuest && screen === 'universe')
+    if (!shouldPublishPresence) {
+      if (currentUserId && !isGuest) void setHubOnlineStatus(false).catch(() => {})
+      return
+    }
+
+    const markOnline = () => void setHubOnlineStatus(true).catch(() => {})
+    const markAway = () => void setHubOnlineStatus(false).catch(() => {})
+    const syncVisibility = () => {
+      if (document.visibilityState === 'visible') markOnline()
+      else markAway()
+    }
+
+    markOnline()
+    const heartbeat = window.setInterval(markOnline, 25000)
+    document.addEventListener('visibilitychange', syncVisibility)
+    window.addEventListener('pagehide', markAway)
+    window.addEventListener('beforeunload', markAway)
+
+    return () => {
+      window.clearInterval(heartbeat)
+      document.removeEventListener('visibilitychange', syncVisibility)
+      window.removeEventListener('pagehide', markAway)
+      window.removeEventListener('beforeunload', markAway)
+      markAway()
+    }
+  }, [currentUserId, isGuest, screen])
 
   useEffect(() => {
     if (screen !== 'universe') {
