@@ -868,6 +868,43 @@ function LetterModal({ letter, onClose, onReply, onPin, onBurn, onDeleteForEvery
     catch { setIsPlayingVoice(false) }
   }
 
+  const footerStyle: React.CSSProperties = {
+    padding: 'clamp(12px, 2vw, 18px) clamp(14px, 3vw, 28px) clamp(14px, 2.5vw, 22px)',
+    background: 'rgba(4,5,14,0.98)',
+    borderTop: `1px solid ${colors.accent}45`,
+    display: 'flex',
+    gap: '10px',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+  }
+  const baseActionStyle: React.CSSProperties = {
+    fontFamily: "'Cinzel', serif",
+    fontSize: '10px',
+    letterSpacing: '0.22em',
+    padding: '11px 18px',
+    borderRadius: '6px',
+    background: 'rgba(255,255,255,0.035)',
+    cursor: 'pointer',
+    textTransform: 'uppercase',
+    minHeight: '42px',
+  }
+  const mutedActionStyle: React.CSSProperties = {
+    ...baseActionStyle,
+    color: 'rgba(255,255,255,0.78)',
+    border: '1px solid rgba(255,255,255,0.24)',
+  }
+  const dangerActionStyle: React.CSSProperties = {
+    ...baseActionStyle,
+    color: 'rgba(255,155,145,0.9)',
+    border: '1px solid rgba(220,80,80,0.38)',
+  }
+  const confirmTextStyle: React.CSSProperties = {
+    fontFamily: "'IM Fell English', serif",
+    fontStyle: 'italic',
+    fontSize: '13px',
+    color: 'rgba(255,255,255,0.72)',
+  }
+
   return (
     <motion.div data-no-pan="true" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={handleClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,5,0.88)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 90, padding: 'clamp(10px, 2vw, 20px)' }}>
       {openPhase === 'warning' && isBurnReceived && (
@@ -930,34 +967,34 @@ function LetterModal({ letter, onClose, onReply, onPin, onBurn, onDeleteForEvery
             </div>
           ))}
           {letter.direction === 'received' && (
-            <div style={{ padding: 'clamp(10px, 2vw, 16px) clamp(14px, 3vw, 28px) clamp(12px, 2.5vw, 20px)', background: 'rgba(0,0,8,0.97)', borderTop: `1px solid ${colors.accent}38`, display: 'flex', gap: 'clamp(8px, 1.5vw, 12px)', flexWrap: 'wrap', alignItems: 'center' }}>
-              <button onClick={() => onReply?.(letter.from || '', { letterId: letter.id, from: letter.from || 'A Stranger', subject: letter.subject || letter.preview, body: letter.body, sentAt: letter.arrivedAt || letter.sentAt, isUniverseLetter: letter.isUniverseLetter, paperId: letter.paperId, fontId: letter.fontId, fontColor: letter.fontColor, paperColor: letter.paperColor, handwritingStyle: letter.handwritingStyle, embellishmentId: letter.embellishmentId })} style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.3em', color: colors.accent, padding: '10px 24px', border: `1px solid ${colors.accent}70`, borderRadius: '2px', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase' }} onMouseEnter={e => { e.currentTarget.style.background = `${colors.accent}12`; e.currentTarget.style.boxShadow = `0 0 20px ${colors.accent}20` }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.boxShadow = 'none' }}>Reply ✦</button>
-              <button onClick={onPin} style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.3em', color: 'rgba(255,255,255,0.45)', padding: '10px 24px', border: '1px solid rgba(255,255,255,0.18)', borderRadius: '2px', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase' }} onMouseEnter={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.72)' }} onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.45)' }}>{letter.status === 'pinned' ? '★ Pinned' : '☆ Pin'}</button>
-              <div style={{ marginLeft: 'auto' }}>
+            <div style={footerStyle}>
+              <button onClick={() => onReply?.(letter.from || '', { letterId: letter.id, from: letter.from || 'A Stranger', subject: letter.subject || letter.preview, body: letter.body, sentAt: letter.arrivedAt || letter.sentAt, isUniverseLetter: letter.isUniverseLetter, paperId: letter.paperId, fontId: letter.fontId, fontColor: letter.fontColor, paperColor: letter.paperColor, handwritingStyle: letter.handwritingStyle, embellishmentId: letter.embellishmentId })} style={{ ...baseActionStyle, color: colors.accent, border: `1px solid ${colors.accent}75`, background: `${colors.accent}10` }}>Reply ✦</button>
+              <button onClick={onPin} style={mutedActionStyle}>{letter.status === 'pinned' ? '★ Pinned' : '☆ Pin'}</button>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', marginLeft: 'auto' }}>
                 {deleteConfirm ? (
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    <span style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>Delete for everyone?</span>
-                    <button onClick={() => { setDeleteConfirm(false); onDeleteForEveryone?.() }} style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.22em', color: 'rgba(220,80,80,0.9)', padding: '7px 14px', border: '1px solid rgba(220,80,80,0.45)', borderRadius: '2px', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase' }}>Confirm</button>
-                    <button onClick={() => setDeleteConfirm(false)} style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.22em', color: 'rgba(255,255,255,0.35)', padding: '7px 14px', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '2px', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase' }}>Cancel</button>
-                  </div>
+                  <>
+                    <span style={confirmTextStyle}>Delete for everyone?</span>
+                    <button onClick={() => { setDeleteConfirm(false); onDeleteForEveryone?.() }} style={dangerActionStyle}>Confirm</button>
+                    <button onClick={() => setDeleteConfirm(false)} style={mutedActionStyle}>Cancel</button>
+                  </>
                 ) : (
-                  <button onClick={() => setDeleteConfirm(true)} style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.22em', color: 'rgba(200,60,60,0.45)', padding: '7px 14px', border: '1px solid rgba(200,60,60,0.15)', borderRadius: '2px', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase', transition: 'all 0.15s' }} onMouseEnter={e => { e.currentTarget.style.color = 'rgba(220,80,80,0.85)'; e.currentTarget.style.borderColor = 'rgba(220,80,80,0.4)' }} onMouseLeave={e => { e.currentTarget.style.color = 'rgba(200,60,60,0.45)'; e.currentTarget.style.borderColor = 'rgba(200,60,60,0.15)' }}>Delete for Everyone</button>
+                  <button onClick={() => setDeleteConfirm(true)} style={dangerActionStyle}>Delete for Everyone</button>
                 )}
               </div>
             </div>
           )}
           {letter.direction === 'sent' && letter.status === 'arrived' && (
-            <div style={{ padding: 'clamp(10px, 2vw, 16px) clamp(14px, 3vw, 28px) clamp(12px, 2.5vw, 20px)', background: 'rgba(0,0,8,0.97)', borderTop: `1px solid ${colors.accent}38`, display: 'flex', gap: 'clamp(8px, 1.5vw, 12px)', alignItems: 'center', flexWrap: 'wrap' }}>
-              <button onClick={onPin} style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.3em', color: 'rgba(255,255,255,0.45)', padding: '10px 24px', border: '1px solid rgba(255,255,255,0.18)', borderRadius: '2px', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase' }} onMouseEnter={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.72)' }} onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.45)' }}>{'☆ Pin'}</button>
-              <div style={{ marginLeft: 'auto' }}>
+            <div style={footerStyle}>
+              <button onClick={onPin} style={mutedActionStyle}>{'☆ Pin'}</button>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', marginLeft: 'auto' }}>
                 {deleteConfirm ? (
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    <span style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>Delete for everyone?</span>
-                    <button onClick={() => { setDeleteConfirm(false); onDeleteForEveryone?.() }} style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.22em', color: 'rgba(220,80,80,0.9)', padding: '7px 14px', border: '1px solid rgba(220,80,80,0.45)', borderRadius: '2px', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase' }}>Confirm</button>
-                    <button onClick={() => setDeleteConfirm(false)} style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.22em', color: 'rgba(255,255,255,0.35)', padding: '7px 14px', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '2px', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase' }}>Cancel</button>
-                  </div>
+                  <>
+                    <span style={confirmTextStyle}>Delete for everyone?</span>
+                    <button onClick={() => { setDeleteConfirm(false); onDeleteForEveryone?.() }} style={dangerActionStyle}>Confirm</button>
+                    <button onClick={() => setDeleteConfirm(false)} style={mutedActionStyle}>Cancel</button>
+                  </>
                 ) : (
-                  <button onClick={() => setDeleteConfirm(true)} style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.22em', color: 'rgba(200,60,60,0.45)', padding: '7px 14px', border: '1px solid rgba(200,60,60,0.15)', borderRadius: '2px', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase', transition: 'all 0.15s' }} onMouseEnter={e => { e.currentTarget.style.color = 'rgba(220,80,80,0.85)'; e.currentTarget.style.borderColor = 'rgba(220,80,80,0.4)' }} onMouseLeave={e => { e.currentTarget.style.color = 'rgba(200,60,60,0.45)'; e.currentTarget.style.borderColor = 'rgba(200,60,60,0.15)' }}>Delete for Everyone</button>
+                  <button onClick={() => setDeleteConfirm(true)} style={dangerActionStyle}>Delete for Everyone</button>
                 )}
               </div>
             </div>
