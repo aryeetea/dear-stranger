@@ -20,6 +20,19 @@ export default function AuthCallbackPage() {
       window.location.replace('/')
     }
 
+    const finishIfSessionExists = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session) {
+          finish()
+          return true
+        }
+      } catch {
+        return false
+      }
+      return false
+    }
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session) finish()
     })
@@ -36,28 +49,33 @@ export default function AuthCallbackPage() {
         if (code) {
           const { error } = await supabase.auth.exchangeCodeForSession(code)
           if (error) throw error
+        } else if (url.hash) {
+          const hashParams = new URLSearchParams(url.hash.slice(1))
+          const accessToken = hashParams.get('access_token')
+          const refreshToken = hashParams.get('refresh_token')
+
+          if (accessToken && refreshToken) {
+            const { error } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken,
+            })
+            if (error) throw error
+          }
         }
 
-        const { data: { session }, error } = await supabase.auth.getSession()
-        if (error) throw error
-
-        if (session) {
-          finish()
-          return
-        }
+        if (await finishIfSessionExists()) return
 
         setMessage('Still connecting...')
         window.setTimeout(async () => {
           if (cancelled) return
-          const { data: { session: delayedSession } } = await supabase.auth.getSession()
-          if (delayedSession) finish()
-          else {
-            setMessage('Connection took too long. Sending you back...')
-            router.replace('/')
-          }
+          if (await finishIfSessionExists()) return
+
+          setMessage('Connection took too long. Sending you back...')
+          router.replace('/')
         }, 1200)
       } catch (error) {
         console.error('OAuth callback failed:', error)
+        if (await finishIfSessionExists()) return
         setMessage('Could not finish sign-in. Sending you back...')
         window.setTimeout(() => {
           if (!cancelled) router.replace('/login')

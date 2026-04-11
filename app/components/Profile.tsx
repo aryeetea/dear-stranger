@@ -14,18 +14,34 @@ type DeleteStep = 'idle' | 'exporting' | 'exported' | 'deleting' | 'deleted'
 // regen_count is encoded as: cycleNumber * 10 + localRegenCount
 // This lets us detect which cycle the regens belong to using a single DB integer.
 const CYCLE_DAYS = 90
+const DAY_MS = 1000 * 60 * 60 * 24
 
-function getMirrorCycle(createdAt?: string) {
+function getLocalDayIndex(date: Date) {
+  return Math.floor(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / DAY_MS)
+}
+
+function getLocalDayProgress(nowMs: number) {
+  const now = new Date(nowMs)
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+  const startOfTomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getTime()
+  return (nowMs - startOfToday) / (startOfTomorrow - startOfToday)
+}
+
+function getMirrorCycle(createdAt?: string, nowMs = Date.now()) {
   if (!createdAt) return { cycleNumber: 0, daysLeft: CYCLE_DAYS, refreshProgress: 0 }
-  const createdMs = new Date(createdAt).getTime()
-  const nowMs = Date.now()
-  const daysSinceCreation = Math.max(0, (nowMs - createdMs) / (1000 * 60 * 60 * 24))
-  const cycleNumber = Math.floor(daysSinceCreation / CYCLE_DAYS)
-  const daysInCycle = daysSinceCreation % CYCLE_DAYS
+  const createdDate = new Date(createdAt)
+  if (!Number.isFinite(createdDate.getTime())) return { cycleNumber: 0, daysLeft: CYCLE_DAYS, refreshProgress: 0 }
+
+  const nowDate = new Date(nowMs)
+  const localDaysSinceCreation = Math.max(0, getLocalDayIndex(nowDate) - getLocalDayIndex(createdDate))
+  const cycleNumber = Math.floor(localDaysSinceCreation / CYCLE_DAYS)
+  const daysInCycle = localDaysSinceCreation % CYCLE_DAYS
+  const dayProgress = getLocalDayProgress(nowMs)
+
   return {
     cycleNumber,
-    daysLeft: Math.max(1, Math.ceil(CYCLE_DAYS - daysInCycle)),
-    refreshProgress: Math.min(100, (daysInCycle / CYCLE_DAYS) * 100),
+    daysLeft: CYCLE_DAYS - daysInCycle,
+    refreshProgress: Math.min(100, ((daysInCycle + dayProgress) / CYCLE_DAYS) * 100),
   }
 }
 
@@ -53,6 +69,7 @@ export default function Profile({
   const [lastAvatarProp, setLastAvatarProp] = useState(initialAvatarUrl || '')
   // regen_count is encoded: cycleNumber*10 + localRegenCount
   const [regenCount, setRegenCount] = useState(initialRegenCount ?? 0)
+  const [cycleNow, setCycleNow] = useState(() => Date.now())
   const [regenLoading, setRegenLoading] = useState(false)
   const [regenFeedback, setRegenFeedback] = useState('')
   const [showRegenInput, setShowRegenInput] = useState(false)
@@ -125,6 +142,11 @@ export default function Profile({
   }, [])
 
   useEffect(() => {
+    const timer = window.setInterval(() => setCycleNow(Date.now()), 60_000)
+    return () => window.clearInterval(timer)
+  }, [])
+
+  useEffect(() => {
     setVisitorBookEnabledState(initialVisitorBookEnabled)
   }, [initialVisitorBookEnabled])
 
@@ -155,23 +177,21 @@ export default function Profile({
     if (!hubCreatedAt) return
     const local = regenCount % 10
     if (local < MAX_REGEN_ATTEMPTS) return // still have attempts, nothing to reset
-    const cycle = Math.floor(
-      Math.max(0, Date.now() - new Date(hubCreatedAt).getTime()) / (1000 * 60 * 60 * 24 * CYCLE_DAYS)
-    )
+    const cycle = getMirrorCycle(hubCreatedAt, cycleNow).cycleNumber
     const storedCycle = Math.floor(regenCount / 10)
     if (cycle > storedCycle) {
       const newCount = cycle * 10
       setRegenCount(newCount)
       void updateHub({ regen_count: newCount }).catch(() => {})
     }
-  }, [hubCreatedAt, regenCount])
+  }, [cycleNow, hubCreatedAt, regenCount])
 
   // Decode the encoded regen_count
   const localRegenCount = regenCount % 10
   const attemptsLeft = MAX_REGEN_ATTEMPTS - localRegenCount
 
   // Compute real cycle info from hub creation date
-  const { cycleNumber, daysLeft, refreshProgress } = getMirrorCycle(hubCreatedAt)
+  const { cycleNumber, daysLeft, refreshProgress } = getMirrorCycle(hubCreatedAt, cycleNow)
 
   async function handleLeave() {
     if (!leavingConfirm) { setLeavingConfirm(true); setTimeout(() => setLeavingConfirm(false), 4000); return }

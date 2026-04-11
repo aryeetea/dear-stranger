@@ -167,33 +167,37 @@ export async function signIn(email: string, password: string) {
 }
 
 export async function signInWithGoogle() {
-  const { error } = await supabase.auth.signInWithOAuth({
+  const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
       redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined,
+      skipBrowserRedirect: true,
       queryParams: {
         prompt: 'select_account',
       },
     },
   })
   if (error) throw error
+  if (typeof window !== 'undefined' && data.url) window.location.assign(data.url)
 }
 
 export async function signInWithDiscord() {
-  const { error } = await supabase.auth.signInWithOAuth({
+  const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'discord',
     options: {
       redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined,
+      skipBrowserRedirect: true,
     },
   })
   if (error) throw error
+  if (typeof window !== 'undefined' && data.url) window.location.assign(data.url)
 }
 
 export async function signInWithMagicLink(email: string) {
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: {
-      emailRedirectTo: typeof window !== 'undefined' ? window.location.origin : undefined,
+      emailRedirectTo: typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined,
     },
   })
   if (error) throw error
