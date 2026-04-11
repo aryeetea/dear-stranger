@@ -1,29 +1,76 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../../lib/supabase'
 
 export default function AuthCallbackPage() {
   const router = useRouter()
+  const [message, setMessage] = useState('Connecting...')
 
   useEffect(() => {
-    // With PKCE (Supabase JS v2 default), the client auto-exchanges the ?code=
-    // in the URL when detectSessionInUrl is true. We listen for SIGNED_IN and
-    // also check the session immediately in case the exchange already completed.
+    let cancelled = false
+    let redirected = false
+
+    const finish = () => {
+      if (cancelled || redirected) return
+      redirected = true
+      // A full navigation makes the root client pick up the freshly persisted
+      // OAuth session immediately, avoiding the "manual refresh" limbo.
+      window.location.replace('/')
+    }
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session) {
-        router.replace('/')
+      if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session) finish()
+    })
+
+    async function handleCallback() {
+      try {
+        setMessage('Opening the gate...')
+        const url = new URL(window.location.href)
+        const code = url.searchParams.get('code')
+        const errorDescription = url.searchParams.get('error_description') || url.searchParams.get('error')
+
+        if (errorDescription) throw new Error(errorDescription)
+
+        if (code) {
+          const { error } = await supabase.auth.exchangeCodeForSession(code)
+          if (error) throw error
+        }
+
+        const { data: { session }, error } = await supabase.auth.getSession()
+        if (error) throw error
+
+        if (session) {
+          finish()
+          return
+        }
+
+        setMessage('Still connecting...')
+        window.setTimeout(async () => {
+          if (cancelled) return
+          const { data: { session: delayedSession } } = await supabase.auth.getSession()
+          if (delayedSession) finish()
+          else {
+            setMessage('Connection took too long. Sending you back...')
+            router.replace('/')
+          }
+        }, 1200)
+      } catch (error) {
+        console.error('OAuth callback failed:', error)
+        setMessage('Could not finish sign-in. Sending you back...')
+        window.setTimeout(() => {
+          if (!cancelled) router.replace('/login')
+        }, 1400)
       }
-    })
+    }
 
-    // Race-guard: if the exchange finished before the listener registered, session
-    // will already be present.
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) router.replace('/')
-    })
+    void handleCallback()
 
-    return () => subscription.unsubscribe()
+    return () => {
+      cancelled = true
+      subscription.unsubscribe()
+    }
   }, [router])
 
   return (
@@ -41,7 +88,7 @@ export default function AuthCallbackPage() {
         letterSpacing: '0.25em',
       }}
     >
-      Connecting…
+      {message}
     </div>
   )
 }
