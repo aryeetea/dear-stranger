@@ -2,13 +2,18 @@
   return (
     const [showDropdown, setShowDropdown] = React.useState(false);
 
+import React from 'react';
+
+export default function Scribe(props: ScribeProps) {
+  const [showDropdown, setShowDropdown] = React.useState(false);
+
+  // ...existing code...
+
     return (
       <div
-        className={clsx(
-          'relative flex flex-col items-center w-full h-full',
           isMobile ? 'pt-2 pb-2' : 'pt-8 pb-8',
           'overflow-x-hidden overflow-y-auto',
-          'bg-gradient-to-b from-[#f8f6f1] to-[#e9e6df] dark:from-[#23211e] dark:to-[#181715]'
+          'bg-linear-to-b from-[#f8f6f1] to-[#e9e6df] dark:from-[#23211e] dark:to-[#181715]'
         )}
         style={{ minHeight: '100vh' }}
       >
