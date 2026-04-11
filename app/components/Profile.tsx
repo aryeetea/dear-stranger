@@ -28,19 +28,26 @@ function getLocalDayProgress(nowMs: number) {
 }
 
 function getMirrorCycle(createdAt?: string, nowMs = Date.now()) {
-  if (!createdAt) return { cycleNumber: 0, daysLeft: CYCLE_DAYS, refreshProgress: 0 }
+  if (!createdAt) return { cycleNumber: 0, daysLeft: CYCLE_DAYS, hoursLeft: 0, refreshProgress: 0 }
   const createdDate = new Date(createdAt)
-  if (!Number.isFinite(createdDate.getTime())) return { cycleNumber: 0, daysLeft: CYCLE_DAYS, refreshProgress: 0 }
+  if (!Number.isFinite(createdDate.getTime())) return { cycleNumber: 0, daysLeft: CYCLE_DAYS, hoursLeft: 0, refreshProgress: 0 }
 
   const nowDate = new Date(nowMs)
   const localDaysSinceCreation = Math.max(0, getLocalDayIndex(nowDate) - getLocalDayIndex(createdDate))
   const cycleNumber = Math.floor(localDaysSinceCreation / CYCLE_DAYS)
   const daysInCycle = localDaysSinceCreation % CYCLE_DAYS
   const dayProgress = getLocalDayProgress(nowMs)
+  const nextCycleStart = new Date(
+    createdDate.getFullYear(),
+    createdDate.getMonth(),
+    createdDate.getDate() + (cycleNumber + 1) * CYCLE_DAYS,
+  ).getTime()
+  const totalHoursLeft = Math.max(1, Math.ceil((nextCycleStart - nowMs) / (1000 * 60 * 60)))
 
   return {
     cycleNumber,
-    daysLeft: CYCLE_DAYS - daysInCycle,
+    daysLeft: Math.floor(totalHoursLeft / 24),
+    hoursLeft: totalHoursLeft % 24,
     refreshProgress: Math.min(100, ((daysInCycle + dayProgress) / CYCLE_DAYS) * 100),
   }
 }
@@ -191,7 +198,7 @@ export default function Profile({
   const attemptsLeft = MAX_REGEN_ATTEMPTS - localRegenCount
 
   // Compute real cycle info from hub creation date
-  const { cycleNumber, daysLeft, refreshProgress } = getMirrorCycle(hubCreatedAt, cycleNow)
+  const { cycleNumber, daysLeft, hoursLeft, refreshProgress } = getMirrorCycle(hubCreatedAt, cycleNow)
 
   async function handleLeave() {
     if (!leavingConfirm) { setLeavingConfirm(true); setTimeout(() => setLeavingConfirm(false), 4000); return }
@@ -606,8 +613,8 @@ export default function Profile({
                       strokeLinecap="round" style={{ filter: 'drop-shadow(0 0 10px #ffe07a), drop-shadow(0 0 18px #00ffe7)', opacity: 1 }} />
                   </svg>
                   <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-                    <span style={{ fontFamily: "'Cinzel', serif", fontSize: '15px', fontWeight: 800, color: '#fffbe6', textShadow: '0 0 10px #ffe07a, 0 0 18px #00ffe7, 0 1px 0 #fff8' }}>{daysLeft}</span>
-                    <span style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', color: '#00ffe7', letterSpacing: '0.12em', textTransform: 'uppercase', marginTop: '-2px', textShadow: '0 0 8px #00ffe7' }}>days</span>
+                    <span style={{ fontFamily: "'Cinzel', serif", fontSize: '12px', fontWeight: 800, color: '#fffbe6', lineHeight: 1, textShadow: '0 0 10px #ffe07a, 0 0 18px #00ffe7, 0 1px 0 #fff8' }}>{daysLeft}d</span>
+                    <span style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', fontWeight: 800, color: '#00ffe7', letterSpacing: '0.04em', textTransform: 'uppercase', marginTop: '1px', lineHeight: 1, textShadow: '0 0 8px #00ffe7' }}>{hoursLeft}h</span>
                   </div>
                 </div>
                 <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.25em', color: '#00ffe7', textTransform: 'uppercase', textShadow: '0 0 10px #ffe07a, 0 0 18px #00ffe7, 0 1px 0 #fff8' }}>Soul Cycle</p>
@@ -620,7 +627,7 @@ export default function Profile({
                   ✦ Reimagine · {attemptsLeft} left
                 </button>
               ) : (
-                <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.15em', color: 'rgba(255,255,255,0.25)', textTransform: 'uppercase' }}>Your form is sealed · {daysLeft} {daysLeft === 1 ? 'day' : 'days'} until the mirror opens</p>
+                <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.15em', color: 'rgba(255,255,255,0.25)', textTransform: 'uppercase' }}>Your form is sealed · {daysLeft}d {hoursLeft}h until the mirror opens</p>
               )}
             </div>
 
