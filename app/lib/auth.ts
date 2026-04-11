@@ -316,25 +316,35 @@ export async function deleteAccount(): Promise<{ success: boolean; error?: strin
 
     const userId = user.id
 
-    await Promise.race([
-      supabase
-        .from('letters')
-        .delete()
-        .or(`sender_id.eq.${userId},recipient_id.eq.${userId}`),
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Letter deletion timeout')), 8000),
+    const withDeleteTimeout = async (label: string, task: PromiseLike<unknown>) => {
+      await Promise.race([
+        task,
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error(`${label} timeout`)), 8000),
+        ),
+      ]).catch((err: unknown) => {
+        console.warn(
+          `${label} skipped:`,
+          err instanceof Error ? err.message : String(err),
+        )
+      })
+    }
+
+    await Promise.allSettled([
+      withDeleteTimeout(
+        'Letters deletion',
+        supabase.from('letters').delete().or(`sender_id.eq.${userId},recipient_id.eq.${userId}`),
       ),
-    ]).catch((err: unknown) => {
-      console.warn(
-        'Letters deletion skipped:',
-        err instanceof Error ? err.message : String(err),
-      )
-    })
+      withDeleteTimeout(
+        'Hub visits deletion',
+        supabase.from('hub_visits').delete().or(`hub_id.eq.${userId},visitor_id.eq.${userId}`),
+      ),
+    ])
 
     const { error: hubError } = await supabase.from('hubs').delete().eq('id', userId)
     if (hubError) throw new Error(`Hub delete failed: ${hubError.message}`)
 
-    await supabase.auth.signOut()
+    await signOut()
 
     return { success: true }
   } catch (err: unknown) {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { QRCodeSVG } from 'qrcode.react'
 import { updateHub, signOut, deleteAccount, exportMyLetters, uploadAvatarToStorage, getVisitorBook, type VisitorBookEntry } from '../lib/auth'
@@ -104,6 +104,7 @@ export default function Profile({
   const [visitorBookLoading, setVisitorBookLoading] = useState(false)
   const [visitorBookError, setVisitorBookError] = useState('')
   const [activeSanctumPanel, setActiveSanctumPanel] = useState<SanctumPanel>('appearance')
+  const profileScrollRef = useRef<HTMLDivElement | null>(null)
 
   const appearanceChanged = selectedHubStyle !== initialHubStyle || selectedHubColor !== initialHubColor || selectedDecoration !== initialHubDecoration || selectedGlowIntensity !== initialHubGlowIntensity
 
@@ -230,6 +231,8 @@ export default function Profile({
   }
 
   async function handleStartDelete() {
+    profileScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+    window.scrollTo({ top: 0, behavior: 'smooth' })
     setDeleteStep('exporting'); setDeleteError('')
     try {
       const text = await exportMyLetters()
@@ -249,11 +252,15 @@ export default function Profile({
   }
 
   async function handleConfirmDelete() {
+    if (deleteStep === 'deleting' || deleteStep === 'deleted') return
     setDeleteStep('deleting')
     const result = await deleteAccount()
     if (result.success) {
       setDeleteStep('deleted')
-      setTimeout(() => window.location.reload(), 2500)
+      try {
+        localStorage.removeItem('ds_last_overlay')
+      } catch {}
+      setTimeout(() => window.location.replace('/'), 1800)
     } else {
       setDeleteError(result.error || 'Something went wrong.'); setDeleteStep('exported')
     }
@@ -424,7 +431,7 @@ export default function Profile({
   const activePanel = sanctumPanels.find(panel => panel.id === activeSanctumPanel) || sanctumPanels[0]
 
   return (
-    <motion.div initial={{ opacity: 0, scale: 1.04 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+    <motion.div ref={profileScrollRef} initial={{ opacity: 0, scale: 1.04 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
       style={{ position: 'fixed', inset: 0, background: 'linear-gradient(135deg, rgba(2,4,12,0.96), rgba(5,6,18,0.93) 48%, rgba(2,2,8,0.97))', backdropFilter: 'blur(20px)', zIndex: 70, overflowY: 'auto' }}>
       <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', background: `radial-gradient(ellipse 70% 55% at 16% 24%, rgba(${hubGlowRgb},${hubGlowIntensityValue * 0.22}) 0%, transparent 64%), radial-gradient(ellipse 46% 54% at 84% 72%, rgba(${hubGlowRgb},${hubGlowIntensityValue * 0.11}) 0%, transparent 58%), linear-gradient(90deg, rgba(255,255,255,0.025), transparent 42%)` }} />
 
