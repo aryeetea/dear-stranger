@@ -7,6 +7,7 @@ import { playAudioWithEffect, type VoiceEffect } from '../../lib/audioEffects'
 import { playWaxSeal } from '../../lib/sounds'
 import { PAPER_TONES, PAPER_INK, renderLetterPaper } from '../lib/letterPapers'
 import { getHandwritingStyleStyles, renderLetterEmbellishment, type HandwritingStyle, type EmbellishmentId } from '../lib/letterEnrichments'
+import type { ScribeReplyContext } from './Scribe'
 
 // ── Deterministic seeded random (no Math.random in render) ──
 function sr(seed: number) {
@@ -95,6 +96,7 @@ interface Letter {
   from?: string
   to?: string
   preview: string
+  subject?: string | null
   body: string
   paperId: string
   fontId?: string
@@ -183,7 +185,7 @@ function assignCelestialPositions(letters: Letter[]): Letter[] {
   })
 }
 
-export default function Observatory({ onClose, onWriteLetter, lettersRefreshSignal }: { onClose?: () => void; onWriteLetter?: (name: string) => void; lettersRefreshSignal?: number }) {
+export default function Observatory({ onClose, onWriteLetter, lettersRefreshSignal }: { onClose?: () => void; onWriteLetter?: (name: string, replyContext?: ScribeReplyContext) => void; lettersRefreshSignal?: number }) {
   const [openLetter, setOpenLetter] = useState<Letter | null>(null)
   const [letters, setLetters] = useState<Letter[]>([])
   const [loading, setLoading] = useState(true)
@@ -248,6 +250,7 @@ export default function Observatory({ onClose, onWriteLetter, lettersRefreshSign
             from: direction === 'received' ? (l.sender?.hub_name || 'Unknown Sender') : (l.sender?.hub_name || 'You'),
             to: direction === 'sent' ? (l.recipient?.hub_name || (l.is_universe_letter ? 'The Universe' : 'Unknown')) : (l.recipient?.hub_name || 'You'),
             preview: l.subject || 'A letter for you',
+            subject: l.subject || 'A letter for you',
             body: l.body || '',
             paperId: l.paper_id || 'ornate',
             fontId: l.font_id || undefined,
@@ -778,7 +781,7 @@ export default function Observatory({ onClose, onWriteLetter, lettersRefreshSign
         {openLetter && (
           <LetterModal
             letter={openLetter} onClose={() => setOpenLetter(null)}
-            onReply={name => { setOpenLetter(null); onWriteLetter?.(name) }}
+            onReply={(name, replyContext) => { setOpenLetter(null); onWriteLetter?.(name, replyContext) }}
             onPin={() => handlePin(openLetter)}
             onBurn={openLetter.burnAfterReading && openLetter.direction === 'received' ? () => handleBurnAndClose(openLetter) : undefined}
             onDeleteForEveryone={() => handleDeleteForEveryone(openLetter)}
@@ -831,7 +834,7 @@ function ModalEnvelope({ id }: { id: string }) {
 }
 
 function LetterModal({ letter, onClose, onReply, onPin, onBurn, onDeleteForEveryone }: {
-  letter: Letter; onClose: () => void; onReply?: (name: string) => void; onPin?: () => void; onBurn?: () => void; onDeleteForEveryone?: () => void
+  letter: Letter; onClose: () => void; onReply?: (name: string, replyContext: ScribeReplyContext) => void; onPin?: () => void; onBurn?: () => void; onDeleteForEveryone?: () => void
   // onPin toggles pin/unpin
 }) {
   const colors = PAPER_COLORS[letter.paperId] || PAPER_COLORS.ornate
@@ -928,7 +931,7 @@ function LetterModal({ letter, onClose, onReply, onPin, onBurn, onDeleteForEvery
           ))}
           {letter.direction === 'received' && (
             <div style={{ padding: 'clamp(10px, 2vw, 16px) clamp(14px, 3vw, 28px) clamp(12px, 2.5vw, 20px)', background: 'rgba(0,0,8,0.97)', borderTop: `1px solid ${colors.accent}38`, display: 'flex', gap: 'clamp(8px, 1.5vw, 12px)', flexWrap: 'wrap', alignItems: 'center' }}>
-              <button onClick={() => onReply?.(letter.from || '')} style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.3em', color: colors.accent, padding: '10px 24px', border: `1px solid ${colors.accent}70`, borderRadius: '2px', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase' }} onMouseEnter={e => { e.currentTarget.style.background = `${colors.accent}12`; e.currentTarget.style.boxShadow = `0 0 20px ${colors.accent}20` }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.boxShadow = 'none' }}>Reply ✦</button>
+              <button onClick={() => onReply?.(letter.from || '', { letterId: letter.id, from: letter.from || 'A Stranger', subject: letter.subject || letter.preview, body: letter.body, sentAt: letter.arrivedAt || letter.sentAt, isUniverseLetter: letter.isUniverseLetter, paperId: letter.paperId, fontId: letter.fontId, fontColor: letter.fontColor, paperColor: letter.paperColor, handwritingStyle: letter.handwritingStyle, embellishmentId: letter.embellishmentId })} style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.3em', color: colors.accent, padding: '10px 24px', border: `1px solid ${colors.accent}70`, borderRadius: '2px', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase' }} onMouseEnter={e => { e.currentTarget.style.background = `${colors.accent}12`; e.currentTarget.style.boxShadow = `0 0 20px ${colors.accent}20` }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.boxShadow = 'none' }}>Reply ✦</button>
               <button onClick={onPin} style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.3em', color: 'rgba(255,255,255,0.45)', padding: '10px 24px', border: '1px solid rgba(255,255,255,0.18)', borderRadius: '2px', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase' }} onMouseEnter={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.72)' }} onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.45)' }}>{letter.status === 'pinned' ? '★ Pinned' : '☆ Pin'}</button>
               <div style={{ marginLeft: 'auto' }}>
                 {deleteConfirm ? (

@@ -8,7 +8,7 @@ import SoulMirror from './components/SoulMirror'
 import type { MirrorVoice, SoulMirrorResumeState, StyleOption } from './components/SoulMirror'
 import UniverseMap from './components/UniverseMap'
 import type { HubColor, HubStyle, HubDecoration, HubGlowIntensity } from './components/UniverseMap'
-import Scribe from './components/Scribe'
+import Scribe, { type ScribeReplyContext } from './components/Scribe'
 import Observatory from './components/Observatory'
 import Profile from './components/Profile'
 import PagesAndInk from './components/PagesAndInk'
@@ -485,6 +485,7 @@ export default function Home() {
   const [avatarGenerating, setAvatarGenerating] = useState(false)
   const [scribeOpen, setScribeOpen] = useState(false)
   const [scribeRecipient, setScribeRecipient] = useState<string | undefined>()
+  const [scribeReplyContext, setScribeReplyContext] = useState<ScribeReplyContext | undefined>()
   // Signal to refresh Observatory letters
   const [lettersRefreshSignal, setLettersRefreshSignal] = useState(0)
   const [observatoryOpen, setObservatoryOpen] = useState(false)
@@ -1350,6 +1351,7 @@ export default function Home() {
           onWriteLetter={(name) => {
             if (isGuest) { setGuestNudgeOpen(true); return }
             setScribeRecipient(name)
+            setScribeReplyContext(undefined)
             setScribeOpen(true)
           }}
           onObservatory={() => setObservatoryOpen(true)}
@@ -1425,8 +1427,10 @@ export default function Home() {
             key="scribe"
             recipientName={scribeRecipient}
             senderName={hubName}
+            draftOwnerId={currentUserId || hubName}
             lettersSent={lettersSent}
-            onClose={() => { setScribeOpen(false); setNavResetSignal(s => s + 1) }}
+            replyContext={scribeReplyContext}
+            onClose={() => { setScribeOpen(false); setScribeReplyContext(undefined); setNavResetSignal(s => s + 1) }}
             onSend={async (letter) => {
               try {
                 const voiceNoteUrl = letter.voiceNoteBlob ? await uploadVoiceNote(letter.voiceNoteBlob) : undefined
@@ -1494,6 +1498,7 @@ export default function Home() {
                 });
               } catch (err) {
                 console.error('Failed to send letter:', err);
+                throw err;
               }
             }}
           />
@@ -1525,9 +1530,10 @@ export default function Home() {
             key="observatory"
             lettersRefreshSignal={lettersRefreshSignal}
             onClose={() => { setObservatoryOpen(false); setNavResetSignal(s => s + 1) }}
-            onWriteLetter={(name) => {
+            onWriteLetter={(name, replyContext) => {
               setObservatoryOpen(false)
               setScribeRecipient(name)
+              setScribeReplyContext(replyContext)
               setScribeOpen(true)
             }}
           />

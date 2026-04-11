@@ -306,10 +306,65 @@ function formatCapsuleOpenDate(capsuleDays: number) {
   })
 }
 
-export default function Scribe({ recipientName, senderName, lettersSent = 0, onClose, onSend }: {
+const PAGE_SEPARATOR = '\n\n— ✦ —\n\n'
+const DRAFT_PREFIX = 'ds_scribe_draft_v1'
+
+export type ScribeReplyContext = {
+  letterId: string
+  from?: string
+  subject?: string
+  body: string
+  sentAt?: string
+  isUniverseLetter?: boolean
+  paperId?: string
+  fontId?: string
+  fontColor?: string
+  paperColor?: string
+  handwritingStyle?: HandwritingStyle
+  embellishmentId?: EmbellishmentId
+}
+
+type ScribeDraft = {
+  subject?: string
+  pages?: string[]
+  paperId?: string
+  fontId?: string
+  envelopeId?: string
+  stampId?: string
+  colorId?: string | null
+  paperColorId?: string | null
+  journalMode?: boolean
+  capsuleDays?: 30 | 60 | 90
+  burnAfterReading?: boolean
+  isAnonymous?: boolean
+  handwritingStyle?: HandwritingStyle
+  embellishmentId?: EmbellishmentId
+}
+
+function makeDraftKey(owner: string | undefined, recipientName: string | undefined, replyContext: ScribeReplyContext | undefined) {
+  const ownerPart = encodeURIComponent(owner || 'guest')
+  const target = replyContext?.letterId ? `reply:${replyContext.letterId}` : recipientName ? `to:${recipientName}` : 'universe'
+  return `${DRAFT_PREFIX}:${ownerPart}:${encodeURIComponent(target)}`
+}
+
+function normalizeDraftPages(value: unknown): string[] {
+  if (!Array.isArray(value)) return ['']
+  const pages = value.filter((page): page is string => typeof page === 'string')
+  return pages.length ? pages : ['']
+}
+
+function makeReplySubject(replyContext?: ScribeReplyContext) {
+  const base = replyContext?.subject?.trim()
+  if (!base || base.toLowerCase().startsWith('re:')) return base || ''
+  return `Re: ${base}`
+}
+
+export default function Scribe({ recipientName, senderName, draftOwnerId, lettersSent = 0, replyContext, onClose, onSend }: {
   recipientName?: string; senderName?: string; lettersSent?: number
+  draftOwnerId?: string
+  replyContext?: ScribeReplyContext
   onClose?: () => void
-  onSend?: (letter: { to?: string; body: string; paperId: string; subject: string; fontId: string; colorId?: string; paperColorId?: string; stampId?: string; envelopeId?: string; capsuleDays?: number; burnAfterReading?: boolean; voiceNoteBlob?: Blob; voiceEffect?: VoiceEffect; handwritingStyle?: HandwritingStyle; embellishmentId?: EmbellishmentId; handwrittenImageBlob?: Blob; anonymous?: boolean }) => void
+  onSend?: (letter: { to?: string; body: string; paperId: string; subject: string; fontId: string; colorId?: string; paperColorId?: string; stampId?: string; envelopeId?: string; capsuleDays?: number; burnAfterReading?: boolean; voiceNoteBlob?: Blob; voiceEffect?: VoiceEffect; handwritingStyle?: HandwritingStyle; embellishmentId?: EmbellishmentId; handwrittenImageBlob?: Blob; anonymous?: boolean }) => void | Promise<void>
 }) {
   const unlockedPapers = PAPERS.filter(p => p.unlocksAt <= lettersSent)
   const [selectedPaper, setSelectedPaper] = useState(unlockedPapers[0])
@@ -322,7 +377,7 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
   const [subjectError, setSubjectError] = useState(false)
   const [pages, setPages] = useState<string[]>([''])
   const [currentPage, setCurrentPage] = useState(0)
-  const body = pages.join('\n\n— ✦ —\n\n')
+  const body = pages.join(PAGE_SEPARATOR)
   const [sent, setSent] = useState(false)
   const [releasing, setReleasing] = useState(false)
   const [sendError, setSendError] = useState<string | null>(null)
@@ -353,6 +408,9 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
   const [promptIdx, setPromptIdx] = useState(0)
   const [promptVisible, setPromptVisible] = useState(true)
   const todayPrompt = promptPool[promptIdx]
+  const draftKey = makeDraftKey(draftOwnerId || senderName, recipientName, replyContext)
+  const [draftLoaded, setDraftLoaded] = useState(false)
+  const [draftStatus, setDraftStatus] = useState('')
 
   // Auto-advance prompt every 5s
   useEffect(() => {
@@ -385,6 +443,91 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
   const envelopeColor = PAPER_ENVELOPE_COLOR[selectedPaper.id]
   const hasTypedBody = body.trim().length > 0
   const canRelease = selectedHandwriting === 'handwritten' || hasTypedBody
+
+  useEffect(() => {
+    setDraftLoaded(false)
+    try {
+      const raw = localStorage.getItem(draftKey)
+      if (raw) {
+        const draft = JSON.parse(raw) as ScribeDraft
+        setSubject(draft.subject || '')
+        setPages(normalizeDraftPages(draft.pages))
+        setCurrentPage(0)
+        const paper = PAPERS.find(p => p.id === draft.paperId && p.unlocksAt <= lettersSent)
+        if (paper) setSelectedPaper(paper)
+        const font = FONTS.find(f => f.id === draft.fontId)
+        if (font) setSelectedFont(font)
+        if (draft.envelopeId) setSelectedEnvelope(draft.envelopeId)
+        setSelectedStamp(draft.stampId)
+        setSelectedColor(draft.colorId ?? null)
+        setSelectedPaperColor(draft.paperColorId ?? null)
+        setJournalMode(!!draft.journalMode)
+        if (draft.capsuleDays === 30 || draft.capsuleDays === 60 || draft.capsuleDays === 90) setCapsuleDays(draft.capsuleDays)
+        setBurnAfterReading(!!draft.burnAfterReading)
+        setIsAnonymous(!!draft.isAnonymous)
+        if (draft.handwritingStyle) setSelectedHandwriting(draft.handwritingStyle)
+        if (draft.embellishmentId) setSelectedEmbellishment(draft.embellishmentId)
+        setDraftStatus('Draft restored')
+      } else {
+        setSubject(makeReplySubject(replyContext))
+        setPages([''])
+        setCurrentPage(0)
+        setDraftStatus('')
+      }
+    } catch {
+      setDraftStatus('')
+    } finally {
+      setDraftLoaded(true)
+    }
+  }, [draftKey, lettersSent, replyContext])
+
+  useEffect(() => {
+    if (!draftLoaded || sent) return
+    const hasDraftContent = subject.trim().length > 0 || body.trim().length > 0
+    const timer = window.setTimeout(() => {
+      try {
+        if (!hasDraftContent) {
+          localStorage.removeItem(draftKey)
+          setDraftStatus('')
+          return
+        }
+        const draft: ScribeDraft = {
+          subject,
+          pages,
+          paperId: selectedPaper.id,
+          fontId: selectedFont.id,
+          envelopeId: selectedEnvelope,
+          stampId: selectedStamp,
+          colorId: selectedColor,
+          paperColorId: selectedPaperColor,
+          journalMode,
+          capsuleDays,
+          burnAfterReading,
+          isAnonymous,
+          handwritingStyle: selectedHandwriting,
+          embellishmentId: selectedEmbellishment,
+        }
+        localStorage.setItem(draftKey, JSON.stringify(draft))
+        setDraftStatus('Draft saved')
+      } catch {
+        setDraftStatus('Draft could not be saved')
+      }
+    }, 450)
+    return () => window.clearTimeout(timer)
+  }, [body, burnAfterReading, capsuleDays, draftKey, draftLoaded, isAnonymous, journalMode, pages, selectedColor, selectedEmbellishment, selectedEnvelope, selectedFont.id, selectedHandwriting, selectedPaper.id, selectedPaperColor, selectedStamp, sent, subject])
+
+  function clearDraft() {
+    try { localStorage.removeItem(draftKey) } catch {}
+    setDraftStatus('')
+  }
+
+  function discardDraft() {
+    clearDraft()
+    setSubject(makeReplySubject(replyContext))
+    setPages([''])
+    setCurrentPage(0)
+    setDraftStatus('Draft discarded')
+  }
 
   useEffect(() => {
     if (view === 'write') setTimeout(() => textareaRef.current?.focus(), 300)
@@ -479,14 +622,17 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
       const handwrittenImageBlob = selectedHandwriting === 'handwritten' ? await canvasRef.current?.toBlob() : undefined
       setSent(true)
       setTimeout(() => {
-        try {
-          onSend?.({ to: journalMode ? undefined : recipientName, body, paperId: selectedPaper.id, subject, fontId: selectedFont.id, colorId: selectedColor ?? undefined, paperColorId: selectedPaperColor ?? undefined, stampId: selectedStamp, envelopeId: selectedEnvelope, capsuleDays: journalMode ? capsuleDays : undefined, burnAfterReading: burnAfterReading || undefined, voiceNoteBlob: voiceNoteBlob ?? undefined, voiceEffect: voiceNoteBlob ? voiceEffect : undefined, handwritingStyle: selectedHandwriting, embellishmentId: selectedEmbellishment, handwrittenImageBlob: handwrittenImageBlob ?? undefined, anonymous: (!recipientName && !journalMode) ? isAnonymous : undefined })
-          onClose?.()
-        } catch (err) {
-          setSendError('Failed to send your letter. Please try again or check your connection.')
-          setReleasing(false)
-          setSent(false)
-        }
+        void (async () => {
+          try {
+            await onSend?.({ to: journalMode ? undefined : recipientName, body, paperId: selectedPaper.id, subject, fontId: selectedFont.id, colorId: selectedColor ?? undefined, paperColorId: selectedPaperColor ?? undefined, stampId: selectedStamp, envelopeId: selectedEnvelope, capsuleDays: journalMode ? capsuleDays : undefined, burnAfterReading: burnAfterReading || undefined, voiceNoteBlob: voiceNoteBlob ?? undefined, voiceEffect: voiceNoteBlob ? voiceEffect : undefined, handwritingStyle: selectedHandwriting, embellishmentId: selectedEmbellishment, handwrittenImageBlob: handwrittenImageBlob ?? undefined, anonymous: (!recipientName && !journalMode) ? isAnonymous : undefined })
+            clearDraft()
+            onClose?.()
+          } catch (err) {
+            setSendError('Failed to send your letter. Please try again or check your connection.')
+            setReleasing(false)
+            setSent(false)
+          }
+        })()
       }, 2400)
     } catch (err) {
       setSendError('Failed to send your letter. Please try again or check your connection.')
@@ -547,12 +693,70 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
     return (
       <motion.div
         ref={paperRef}
-        animate={{ y: [0, -5, 0], boxShadow: ['0 24px 80px rgba(0,0,0,0.55)', '0 32px 100px rgba(0,0,0,0.45)', '0 24px 80px rgba(0,0,0,0.55)'] }}
-        transition={{ duration: 4.5, repeat: Infinity, ease: 'easeInOut', delay: 0.3 }}
-        style={{ borderRadius: '3px', position: 'relative' }}
+        animate={replyContext ? undefined : { y: [0, -5, 0], boxShadow: ['0 24px 80px rgba(0,0,0,0.55)', '0 32px 100px rgba(0,0,0,0.45)', '0 24px 80px rgba(0,0,0,0.55)'] }}
+        transition={replyContext ? undefined : { duration: 4.5, repeat: Infinity, ease: 'easeInOut', delay: 0.3 }}
+        style={{ borderRadius: '3px', position: 'relative', boxShadow: replyContext ? '0 24px 70px rgba(0,0,0,0.42)' : undefined }}
       >
         {renderLetterPaper(selectedPaper.id, pbg, content)}
       </motion.div>
+    )
+  }
+
+  const renderReplyContext = () => {
+    if (!replyContext) return null
+    const originalPaperId = replyContext.paperId || 'ornate'
+    const originalPaperBg = replyContext.paperColor ? (PAPER_TONES.find(t => t.id === replyContext.paperColor)?.bg ?? undefined) : undefined
+    const originalInkBase = PAPER_INK[originalPaperId] || PAPER_INK.ornate
+    const originalFontColor = replyContext.fontColor ? (FONT_COLORS.find(c => c.id === replyContext.fontColor)?.color ?? originalInkBase.main) : originalInkBase.main
+    const originalInk = { ...originalInkBase, main: originalFontColor, secondary: hexToRgba(originalFontColor, 0.72) }
+    const originalFontFamily = FONTS.find(f => f.id === replyContext.fontId)?.family || "'Cormorant Garamond', serif"
+    const originalDate = replyContext.sentAt
+      ? new Date(replyContext.sentAt).toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' })
+      : ''
+    const originalStyle = getHandwritingStyleStyles(replyContext.handwritingStyle || 'typed')
+    const originalTone = originalPaperBg || 'linear-gradient(160deg, #fdf6e0 0%, #f8efcc 100%)'
+    return (
+      <aside aria-label="Original letter" style={{
+        alignSelf: 'start',
+        width: '100%',
+        minWidth: 0,
+        maxHeight: 'min(62vh, 620px)',
+        overflowY: 'auto',
+        overflowX: 'hidden',
+        borderRadius: '4px',
+        background: originalTone,
+        border: `1px solid ${originalInk.accent}42`,
+        boxShadow: '0 24px 70px rgba(0,0,0,0.42)',
+        padding: 'clamp(28px, 4vw, 44px)',
+        color: originalInk.main,
+        position: 'relative',
+        isolation: 'isolate',
+      }}>
+        <div style={{ position:'absolute', inset:'14px', border:`1px solid ${originalInk.accent}22`, pointerEvents:'none' }} />
+        <p style={{ fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.36em', color:originalInk.accent, textTransform:'uppercase', margin:'0 0 18px', opacity:0.86 }}>
+          Original Letter
+        </p>
+        {originalDate && (
+          <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'12px', color:originalInk.secondary, marginBottom:'16px', textShadow:'0 1px 6px #fff8, 0 0px 1px #fff4' }}>
+            {originalDate}
+          </p>
+        )}
+        <p style={{ fontFamily:originalFontFamily, fontSize:'18px', fontStyle:'italic', color:originalInk.secondary, marginBottom:'18px', lineHeight:1.8, textShadow:'0 1px 6px #fff8, 0 0px 1px #fff4' }}>
+          Dear {senderName || 'Stranger'},
+        </p>
+        {replyContext.body.split(PAGE_SEPARATOR).map((page, i, arr) => (
+          <div key={i} style={originalStyle}>
+            <p style={{ fontFamily:originalFontFamily, fontSize:'16px', lineHeight:2, color:originalInk.main, whiteSpace:'pre-wrap', overflowWrap:'break-word', wordBreak:'break-word', textShadow:'0 1px 6px #fff8, 0 0px 1px #fff4', margin:0 }}>
+              {page}
+            </p>
+            {i < arr.length - 1 && <div style={{ textAlign:'center', margin:'20px 0', opacity:0.45 }}><span style={{ fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.35em', color:originalInk.accent }}>— ✦ —</span></div>}
+          </div>
+        ))}
+        <p style={{ fontFamily:originalFontFamily, fontStyle:'italic', fontSize:'15px', color:originalInk.secondary, marginTop:'22px', lineHeight:1.9, textShadow:'0 1px 6px #fff8, 0 0px 1px #fff4' }}>
+          With presence,<br/>
+          <span style={{ color:originalInk.accent }}>{replyContext.from || 'A Stranger'}</span>
+        </p>
+      </aside>
     )
   }
 
@@ -792,11 +996,11 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
         )}
 
         {view==='write' && !sent && (
-          <motion.div key="write" initial={{ opacity:0, y:16 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0 }} style={{ width:'min(580px, 95vw)', zIndex:2 }}>
+          <motion.div key="write" initial={{ opacity:0, y:16 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0 }} style={{ width:replyContext ? 'min(1120px, 96vw)' : 'min(580px, 95vw)', zIndex:2 }}>
             <div style={{ textAlign:'center', marginBottom:'14px' }}>
               <p style={{ fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.5em', color:'#e6c76e', textTransform:'uppercase', marginBottom:'4px' }}>The Scribe</p>
               <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'14px', color:'rgba(255,255,255,0.84)' }}>
-                {recipientName ? `a letter to · ${recipientName}` : 'a letter into the universe'}
+                {replyContext ? `replying to · ${replyContext.from || recipientName || 'A Stranger'}` : recipientName ? `a letter to · ${recipientName}` : 'a letter into the universe'}
               </p>
             </div>
 
@@ -865,7 +1069,12 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
               </div>
             )}
 
-            {renderPaper()}
+            <div style={{ display:'grid', gridTemplateColumns:replyContext ? 'repeat(auto-fit, minmax(min(430px, 100%), 520px))' : 'minmax(0, 580px)', gap:'22px', alignItems:'start', justifyContent:'center' }}>
+              {renderReplyContext()}
+              <div style={{ minWidth:0, width:'100%' }}>
+                {renderPaper()}
+              </div>
+            </div>
 
             {pages.length > 1 && (
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginTop:'12px', marginBottom:'10px', padding:'8px 4px', borderTop:'1px solid rgba(255,255,255,0.08)' }}>
@@ -906,13 +1115,26 @@ export default function Scribe({ recipientName, senderName, lettersSent = 0, onC
                   <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'13px', color:'rgba(255,255,255,0.72)', margin:0, lineHeight:1.4 }}>
                     {recipientName ? `Traveling to ${recipientName}` : journalMode ? `Opening for you on ${formatCapsuleOpenDate(capsuleDays)}` : 'Released instantly into the universe'}
                   </p>
+                  {draftStatus && (
+                    <p style={{ fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.18em', color:draftStatus.includes('could not') ? 'rgba(240,120,120,0.9)' : 'rgba(230,199,110,0.7)', textTransform:'uppercase', margin:'5px 0 0' }}>
+                      {draftStatus}
+                    </p>
+                  )}
                 </div>
-                <motion.button onClick={handleRelease} disabled={!canRelease||releasing} whileTap={canRelease?{scale:0.97}:{}}
-                  style={{ padding:'10px 18px', background:canRelease?'rgba(230,199,110,0.08)':'transparent', border:`1px solid ${canRelease?'rgba(230,199,110,0.55)':'rgba(255,255,255,0.12)'}`, color:canRelease?'#e6c76e':'rgba(255,255,255,0.42)', fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.2em', textTransform:'uppercase', cursor:canRelease?'pointer':'default', borderRadius:'999px', opacity:releasing?0.6:1 }}
-                  onMouseEnter={e=>{if(!canRelease)return;e.currentTarget.style.background='rgba(230,199,110,0.13)';e.currentTarget.style.borderColor='#e6c76e'}}
-                  onMouseLeave={e=>{e.currentTarget.style.background=canRelease?'rgba(230,199,110,0.08)':'transparent';e.currentTarget.style.borderColor=canRelease?'rgba(230,199,110,0.55)':'rgba(255,255,255,0.12)'}}>
-                  {releasing ? 'Sealing' : recipientName ? `Send to ${recipientName}` : journalMode ? 'Seal for Myself' : 'Release'}
-                </motion.button>
+                <div style={{ display:'flex', gap:'8px', alignItems:'center', flexWrap:'wrap', justifyContent:'flex-end' }}>
+                  {(subject.trim() || body.trim()) && (
+                    <button onClick={discardDraft}
+                      style={{ padding:'10px 12px', background:'transparent', border:'1px solid rgba(255,255,255,0.16)', color:'rgba(255,255,255,0.56)', fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.16em', textTransform:'uppercase', cursor:'pointer', borderRadius:'8px' }}>
+                      Discard Draft
+                    </button>
+                  )}
+                  <motion.button onClick={handleRelease} disabled={!canRelease||releasing} whileTap={canRelease?{scale:0.97}:{}}
+                    style={{ padding:'10px 18px', background:canRelease?'rgba(230,199,110,0.08)':'transparent', border:`1px solid ${canRelease?'rgba(230,199,110,0.55)':'rgba(255,255,255,0.12)'}`, color:canRelease?'#e6c76e':'rgba(255,255,255,0.42)', fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.2em', textTransform:'uppercase', cursor:canRelease?'pointer':'default', borderRadius:'999px', opacity:releasing?0.6:1 }}
+                    onMouseEnter={e=>{if(!canRelease)return;e.currentTarget.style.background='rgba(230,199,110,0.13)';e.currentTarget.style.borderColor='#e6c76e'}}
+                    onMouseLeave={e=>{e.currentTarget.style.background=canRelease?'rgba(230,199,110,0.08)':'transparent';e.currentTarget.style.borderColor=canRelease?'rgba(230,199,110,0.55)':'rgba(255,255,255,0.12)'}}>
+                    {releasing ? 'Sealing' : recipientName ? `Send to ${recipientName}` : journalMode ? 'Seal for Myself' : 'Release'}
+                  </motion.button>
+                </div>
               </div>
 
               <AnimatePresence initial={false}>
