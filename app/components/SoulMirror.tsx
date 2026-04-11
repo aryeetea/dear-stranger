@@ -767,8 +767,8 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
             <GoldLines />
             <div style={{ textAlign: 'center', marginBottom: '28px' }}>
               <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.5em', color: 'rgba(201,168,76,0.6)', textTransform: 'uppercase', marginBottom: '8px' }}>Before you enter</p>
-              <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: 'clamp(18px,2.8vw,24px)', color: 'rgba(255,255,255,0.92)', lineHeight: 1.5, marginBottom: '8px' }}>Write your first letter</p>
-              <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '15px', color: 'rgba(255,255,255,0.45)', lineHeight: 1.65 }}>Four questions. Brief answers. The universe crafts the rest — then releases it anonymously into the drift as your introduction.</p>
+              <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: 'clamp(18px,2.8vw,24px)', color: 'rgba(255,255,255,0.92)', lineHeight: 1.5, marginBottom: '8px' }}>Answer these questions honestly</p>
+              <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '15px', color: 'rgba(255,255,255,0.45)', lineHeight: 1.65 }}>Four questions. Your answers help shape your experience in the universe. Take your time and answer with honesty—this is how you begin.</p>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '28px' }}>
               {FIRST_LETTER_PROMPTS.map((prompt, i) => (
@@ -779,18 +779,14 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
                       type="text"
                       value={firstLetterAnswers[i]}
                       onChange={e => {
-                        const val = e.target.value.slice(0, 50)
+                        const val = e.target.value
                         setFirstLetterAnswers(prev => prev.map((a, idx) => idx === i ? val : a))
                       }}
                       placeholder={prompt.placeholder}
-                      maxLength={50}
-                      style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '8px', color: 'rgba(255,255,255,0.9)', fontFamily: "'Cormorant Garamond', serif", fontSize: '16px', padding: '10px 52px 10px 14px', outline: 'none', caretColor: '#e6c76e', boxSizing: 'border-box' }}
+                      style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '8px', color: 'rgba(255,255,255,0.9)', fontFamily: "'Cormorant Garamond', serif", fontSize: '16px', padding: '10px 14px', outline: 'none', caretColor: '#e6c76e', boxSizing: 'border-box' }}
                       onFocus={e => { e.target.style.borderColor = 'rgba(230,199,110,0.4)' }}
                       onBlur={e => { e.target.style.borderColor = 'rgba(255,255,255,0.12)' }}
                     />
-                    <span style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', fontFamily: "'Cinzel', serif", fontSize: '9px', color: firstLetterAnswers[i].length >= 45 ? 'rgba(230,140,80,0.8)' : 'rgba(255,255,255,0.2)', pointerEvents: 'none' }}>
-                      {firstLetterAnswers[i].length}/50
-                    </span>
                   </div>
                 </div>
               ))}
