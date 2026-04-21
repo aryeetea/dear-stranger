@@ -1,6 +1,8 @@
 'use client'
 import dynamic from 'next/dynamic'
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { supabase } from '../lib/supabase'
 
 function LoadingFallback() {
   const [slow, setSlow] = useState(false)
@@ -29,5 +31,27 @@ const HomeClient = dynamic(() => import('./HomeClient'), {
 })
 
 export default function ClientPage() {
-  return <HomeClient />
+  const router = useRouter();
+  const [checked, setChecked] = useState(false);
+
+  useEffect(() => {
+    let ignore = false;
+    async function checkSession() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session && session.user && !ignore) {
+        // User is authenticated, go to main app ("/")
+        router.replace('/');
+      } else {
+        setChecked(true);
+      }
+    }
+    checkSession();
+    return () => { ignore = true; };
+  }, [router]);
+
+  // Only render HomeClient if not authenticated or after check
+  if (!checked) {
+    return <LoadingFallback />;
+  }
+  return <HomeClient />;
 }
