@@ -37,11 +37,22 @@ export default function ClientPage() {
   useEffect(() => {
     let ignore = false;
     async function checkSession() {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session && session.user && !ignore) {
-        // User is authenticated, go to main app ("/")
-        router.replace('/');
-      } else {
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        console.log('Supabase session check:', { data, error });
+        if (error) {
+          console.error('Supabase session error:', error);
+        }
+        const session = data?.session;
+        if (session && session.user && !ignore) {
+          console.log('User authenticated, redirecting to /');
+          router.replace('/');
+        } else {
+          console.log('No session found, setting checked to true');
+          setChecked(true);
+        }
+      } catch (err) {
+        console.error('Exception during session check:', err);
         setChecked(true);
       }
     }
