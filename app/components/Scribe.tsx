@@ -761,6 +761,156 @@ export default function Scribe({ recipientName, senderName, draftOwnerId, letter
     )
   }
 
+  const renderCustomizePanel = () => (
+    <AnimatePresence initial={false}>
+      {showCustomize && (
+        <motion.div
+          key="customize-panel"
+          initial={{ opacity:0, height:0, y:-8 }}
+          animate={{ opacity:1, height:'auto', y:0 }}
+          exit={{ opacity:0, height:0, y:-8 }}
+          transition={{ duration:0.24, ease:'easeOut' }}
+          style={{ overflow:'hidden', padding:'16px', border:'1px solid rgba(230,199,110,0.3)', borderRadius:'8px', background:'linear-gradient(180deg, rgba(14,16,38,0.96), rgba(8,10,24,0.94))', boxShadow:'0 18px 54px rgba(0,0,0,0.46)', margin:'0 0 16px' }}
+        >
+          <div style={{ display:'flex', alignItems:'center', gap:'8px', flexWrap:'wrap', marginBottom:'14px' }}>
+            {[
+              { label:selectedPaper.label, action:()=>setView('papers'), icon:'Paper' },
+              { label:selectedFont.label, action:()=>setView('fonts'), icon:'Script' },
+              { label:selectedStamp ? STAMPS.find(s=>s.id===selectedStamp)?.label || 'Stamp' : 'Stamp', action:()=>setView('stamps'), icon:'Stamp' },
+              { label:selectedColor ? FONT_COLORS.find(c=>c.id===selectedColor)?.label || 'Ink' : 'Ink', action:()=>setView('colors'), icon:'Ink' },
+              { label:selectedPaperColor ? PAPER_TONES.find(t=>t.id===selectedPaperColor)?.label || 'Tone' : 'Tone', action:()=>setView('paper-color'), icon:'Tone' },
+              { label:ENVELOPES.find(e=>e.id===selectedEnvelope)?.label||'Envelope', action:()=>setView('envelopes'), icon:'Envelope' },
+            ].map((btn,i)=>(
+              <button key={i} onClick={btn.action}
+                style={{ background:'rgba(255,255,255,0.07)', border:'1px solid rgba(230,199,110,0.22)', color:'rgba(255,255,255,0.9)', fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.1em', textTransform:'uppercase', padding:'8px 11px', cursor:'pointer', borderRadius:'8px', whiteSpace:'nowrap' }}
+                onMouseEnter={e=>{e.currentTarget.style.color='rgba(255,255,255,0.98)';e.currentTarget.style.borderColor='rgba(230,199,110,0.32)';e.currentTarget.style.background='rgba(230,199,110,0.06)'}}
+                onMouseLeave={e=>{e.currentTarget.style.color='rgba(255,255,255,0.9)';e.currentTarget.style.borderColor='rgba(230,199,110,0.22)';e.currentTarget.style.background='rgba(255,255,255,0.07)'}}>
+                {btn.icon}: {btn.label}
+              </button>
+            ))}
+          </div>
+
+          <div style={{ display:'flex', gap:'8px', flexWrap:'wrap', marginBottom:'12px' }}>
+            {!recipientName && (
+              <button onClick={() => setJournalMode(j => !j)}
+                style={{ background:journalMode?'rgba(230,199,110,0.14)':'rgba(255,255,255,0.05)', border:`1px solid ${journalMode?'rgba(230,199,110,0.55)':'rgba(255,255,255,0.2)'}`, color:journalMode?'#e6c76e':'rgba(255,255,255,0.82)', fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.12em', textTransform:'uppercase', padding:'8px 12px', cursor:'pointer', borderRadius:'8px', transition:'all 0.2s' }}>
+                {journalMode ? 'Writing to Myself' : 'Write to Myself'}
+              </button>
+            )}
+            <button
+              onClick={() => setBurnAfterReading(b => !b)}
+              style={{ background: burnAfterReading ? 'rgba(220,60,40,0.14)' : 'rgba(255,255,255,0.05)', border: `1px solid ${burnAfterReading ? 'rgba(220,60,40,0.55)' : 'rgba(255,255,255,0.2)'}`, color: burnAfterReading ? '#ff9a84' : 'rgba(255,255,255,0.82)', fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.12em', textTransform: 'uppercase', padding: '8px 12px', cursor: 'pointer', borderRadius: '8px', transition: 'all 0.2s' }}>
+              {burnAfterReading ? 'Burn After Reading On' : 'Burn After Reading'}
+            </button>
+            {!recipientName && !journalMode && (
+              <button
+                onClick={() => setIsAnonymous(a => !a)}
+                style={{ background: isAnonymous ? 'rgba(160,130,220,0.16)' : 'rgba(255,255,255,0.05)', border: `1px solid ${isAnonymous ? 'rgba(160,130,220,0.58)' : 'rgba(255,255,255,0.2)'}`, color: isAnonymous ? 'rgba(220,205,255,0.95)' : 'rgba(255,255,255,0.82)', fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.12em', textTransform: 'uppercase', padding: '8px 12px', cursor: 'pointer', borderRadius: '8px', transition: 'all 0.2s' }}>
+                {isAnonymous ? 'Anonymous On' : 'Send Anonymously'}
+              </button>
+            )}
+          </div>
+
+          {journalMode && !recipientName && (
+            <div style={{ display:'flex', alignItems:'center', gap:'8px', flexWrap:'wrap', margin:'-2px 0 12px' }}>
+              <span style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'13px', color:'rgba(255,255,255,0.78)' }}>Open in:</span>
+              {([30, 60, 90] as const).map(d => (
+                <button key={d} onClick={() => setCapsuleDays(d)}
+                  style={{ background:capsuleDays===d?'rgba(230,199,110,0.16)':'rgba(255,255,255,0.05)', border:`1px solid ${capsuleDays===d?'rgba(230,199,110,0.58)':'rgba(255,255,255,0.2)'}`, color:capsuleDays===d?'#e6c76e':'rgba(255,255,255,0.82)', fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.12em', padding:'7px 12px', cursor:'pointer', borderRadius:'8px' }}>
+                  {d}d
+                </button>
+              ))}
+            </div>
+          )}
+
+          <div>
+            <div>
+              <p style={{ fontFamily:"'Cinzel', serif", fontSize:'10px', letterSpacing:'0.18em', color:'#f1d77a', textTransform:'uppercase', margin:'0 0 10px' }}>Embellishment</p>
+              <div style={{ display:'flex', flexDirection:'column', gap:'8px' }}>
+                {LETTER_EMBELLISHMENTS.map(embellishment => {
+                  const isSelected = selectedEmbellishment === embellishment.id
+                  return (
+                    <button
+                      key={embellishment.id}
+                      onClick={() => setSelectedEmbellishment(embellishment.id)}
+                      style={{ textAlign:'left', padding:'10px 12px', background:isSelected ? 'rgba(230,199,110,0.14)' : 'rgba(255,255,255,0.055)', border:`1px solid ${isSelected ? 'rgba(230,199,110,0.5)' : 'rgba(255,255,255,0.16)'}`, borderRadius:'6px', cursor:'pointer' }}>
+                      <p style={{ fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.12em', color:isSelected ? '#e6c76e' : 'rgba(255,255,255,0.9)', textTransform:'uppercase', margin:'0 0 4px' }}>{embellishment.label}</p>
+                      <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'12px', color:'rgba(255,255,255,0.68)', margin:0, lineHeight:1.35 }}>{embellishment.desc}</p>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+
+          <div style={{ marginTop:'12px', padding:'13px 14px', border:'1px solid rgba(140,160,255,0.24)', borderRadius:'8px', background:'rgba(34,40,82,0.24)' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:'12px', flexWrap:'wrap' }}>
+              <div>
+                <p style={{ fontFamily:"'Cinzel', serif", fontSize:'10px', letterSpacing:'0.16em', color:'rgba(210,220,255,0.95)', textTransform:'uppercase', margin:'0 0 5px' }}>Voice Note From The Void</p>
+                <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'12px', color:'rgba(255,255,255,0.72)', margin:0 }}>Optional, up to 30 seconds</p>
+              </div>
+              <div style={{ display:'flex', gap:'8px', flexWrap:'wrap' }}>
+                {!isRecordingVoice ? (
+                  <button
+                    onClick={startVoiceRecording}
+                    style={{ background:'rgba(255,255,255,0.05)', border:'1px solid rgba(180,195,255,0.36)', color:'rgba(225,232,255,0.95)', fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.12em', textTransform:'uppercase', padding:'8px 12px', cursor:'pointer', borderRadius:'6px' }}>
+                    {voiceNoteBlob ? 'Record Again' : 'Record'}
+                  </button>
+                ) : (
+                  <button
+                    onClick={stopVoiceRecording}
+                    style={{ background:'rgba(180,60,60,0.16)', border:'1px solid rgba(220,80,80,0.5)', color:'rgba(255,190,180,0.96)', fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.12em', textTransform:'uppercase', padding:'8px 12px', cursor:'pointer', borderRadius:'6px' }}>
+                    Stop Recording
+                  </button>
+                )}
+                {voiceNoteBlob && (
+                  <button
+                    onClick={clearVoiceNote}
+                    style={{ background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.2)', color:'rgba(255,255,255,0.82)', fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.12em', textTransform:'uppercase', padding:'8px 12px', cursor:'pointer', borderRadius:'6px' }}>
+                    Remove
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {(voiceNoteBlob || isRecordingVoice) && (
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(120px, 1fr))', gap:'8px', marginTop:'12px' }}>
+                {VOICE_EFFECT_OPTIONS.map(option => {
+                  const isSelected = voiceEffect === option.id
+                  return (
+                    <button
+                      key={option.id}
+                      onClick={() => setVoiceEffect(option.id)}
+                      style={{ textAlign:'left', padding:'10px 12px', background:isSelected ? 'rgba(180,195,255,0.16)' : 'rgba(255,255,255,0.055)', border:`1px solid ${isSelected ? 'rgba(180,195,255,0.5)' : 'rgba(255,255,255,0.16)'}`, borderRadius:'6px', cursor:'pointer' }}>
+                      <p style={{ fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.12em', color:isSelected ? 'rgba(225,232,255,0.98)' : 'rgba(255,255,255,0.9)', textTransform:'uppercase', margin:'0 0 4px' }}>{option.label}</p>
+                      <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'12px', color:'rgba(255,255,255,0.68)', margin:0, lineHeight:1.35 }}>{option.desc}</p>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+
+            {isRecordingVoice && (
+              <p style={{ fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.2em', color:'rgba(255,140,140,0.88)', textTransform:'uppercase', margin:'12px 0 0' }}>
+                Recording now...
+              </p>
+            )}
+
+            {voiceNoteUrl && (
+              <div style={{ marginTop:'12px' }}>
+                <audio controls src={voiceNoteUrl} style={{ width:'100%', opacity:0.82 }} />
+              </div>
+            )}
+
+            {voiceError && (
+              <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'11px', color:'rgba(255,150,150,0.82)', margin:'10px 0 0' }}>{voiceError}</p>
+            )}
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  )
+
   const stampCategories = [...new Set(STAMPS.map(s => s.category))]
 
   return (
@@ -1039,6 +1189,18 @@ export default function Scribe({ recipientName, senderName, draftOwnerId, letter
               })}
             </div>
 
+            <div style={{ display:'flex', justifyContent:'center', margin:'-2px 0 14px' }}>
+              <button
+                onClick={() => setShowCustomize(v => !v)}
+                style={{ background:'rgba(230,199,110,0.1)', border:'1px solid rgba(230,199,110,0.36)', color:'#f1d77a', fontFamily:"'Cinzel', serif", fontSize:'10px', letterSpacing:'0.2em', textTransform:'uppercase', padding:'7px 12px', cursor:'pointer', borderRadius:'6px' }}
+                onMouseEnter={e=>{e.currentTarget.style.color='#e6c76e'}}
+                onMouseLeave={e=>{e.currentTarget.style.color='#f1d77a'}}>
+                {showCustomize ? 'Hide Customize' : 'Customize'}
+              </button>
+            </div>
+
+            {renderCustomizePanel()}
+
             {showPrompt && (
               <div style={{ marginBottom: '14px', textAlign: 'center' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
@@ -1110,13 +1272,6 @@ export default function Scribe({ recipientName, senderName, draftOwnerId, letter
             <div style={{ marginTop:'16px', padding:'10px 0 0', borderTop:'1px solid rgba(255,255,255,0.08)' }}>
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:'12px', flexWrap:'wrap', marginBottom:'12px' }}>
                 <div>
-                  <button
-                    onClick={() => setShowCustomize(v => !v)}
-                    style={{ background:'rgba(230,199,110,0.1)', border:'1px solid rgba(230,199,110,0.36)', color:'#f1d77a', fontFamily:"'Cinzel', serif", fontSize:'10px', letterSpacing:'0.2em', textTransform:'uppercase', margin:'0 0 6px', padding:'7px 12px', cursor:'pointer', borderRadius:'6px' }}
-                    onMouseEnter={e=>{e.currentTarget.style.color='#e6c76e'}}
-                    onMouseLeave={e=>{e.currentTarget.style.color='#f1d77a'}}>
-                    {showCustomize ? 'Hide Customize' : 'Customize'}
-                  </button>
                   <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'13px', color:'rgba(255,255,255,0.72)', margin:0, lineHeight:1.4 }}>
                     {recipientName ? `Traveling to ${recipientName}` : journalMode ? `Opening for you on ${formatCapsuleOpenDate(capsuleDays)}` : 'Released instantly into the universe'}
                   </p>
@@ -1142,153 +1297,6 @@ export default function Scribe({ recipientName, senderName, draftOwnerId, letter
                 </div>
               </div>
 
-              <AnimatePresence initial={false}>
-                {showCustomize && (
-                  <motion.div
-                    key="customize-panel"
-                    initial={{ opacity:0, height:0, y:-8 }}
-                    animate={{ opacity:1, height:'auto', y:0 }}
-                    exit={{ opacity:0, height:0, y:-8 }}
-                    transition={{ duration:0.24, ease:'easeOut' }}
-                    style={{ overflow:'hidden', padding:'16px', border:'1px solid rgba(230,199,110,0.3)', borderRadius:'8px', background:'linear-gradient(180deg, rgba(14,16,38,0.96), rgba(8,10,24,0.94))', boxShadow:'0 18px 54px rgba(0,0,0,0.46)' }}
-                  >
-              <div style={{ display:'flex', alignItems:'center', gap:'8px', flexWrap:'wrap', marginBottom:'14px' }}>
-                {[
-                  { label:selectedPaper.label, action:()=>setView('papers'), icon:'Paper' },
-                  { label:selectedFont.label, action:()=>setView('fonts'), icon:'Script' },
-                  { label:selectedStamp ? STAMPS.find(s=>s.id===selectedStamp)?.label || 'Stamp' : 'Stamp', action:()=>setView('stamps'), icon:'Stamp' },
-                  { label:selectedColor ? FONT_COLORS.find(c=>c.id===selectedColor)?.label || 'Ink' : 'Ink', action:()=>setView('colors'), icon:'Ink' },
-                  { label:selectedPaperColor ? PAPER_TONES.find(t=>t.id===selectedPaperColor)?.label || 'Tone' : 'Tone', action:()=>setView('paper-color'), icon:'Tone' },
-                  { label:ENVELOPES.find(e=>e.id===selectedEnvelope)?.label||'Envelope', action:()=>setView('envelopes'), icon:'Envelope' },
-                ].map((btn,i)=>(
-                  <button key={i} onClick={btn.action}
-                    style={{ background:'rgba(255,255,255,0.07)', border:'1px solid rgba(230,199,110,0.22)', color:'rgba(255,255,255,0.9)', fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.1em', textTransform:'uppercase', padding:'8px 11px', cursor:'pointer', borderRadius:'8px', whiteSpace:'nowrap' }}
-                    onMouseEnter={e=>{e.currentTarget.style.color='rgba(255,255,255,0.98)';e.currentTarget.style.borderColor='rgba(230,199,110,0.32)';e.currentTarget.style.background='rgba(230,199,110,0.06)'}}
-                    onMouseLeave={e=>{e.currentTarget.style.color='rgba(255,255,255,0.9)';e.currentTarget.style.borderColor='rgba(230,199,110,0.22)';e.currentTarget.style.background='rgba(255,255,255,0.07)'}}>
-                    {btn.icon}: {btn.label}
-                  </button>
-                ))}
-              </div>
-
-              <div style={{ display:'flex', gap:'8px', flexWrap:'wrap', marginBottom:'12px' }}>
-                {!recipientName && (
-                  <button onClick={() => setJournalMode(j => !j)}
-                    style={{ background:journalMode?'rgba(230,199,110,0.14)':'rgba(255,255,255,0.05)', border:`1px solid ${journalMode?'rgba(230,199,110,0.55)':'rgba(255,255,255,0.2)'}`, color:journalMode?'#e6c76e':'rgba(255,255,255,0.82)', fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.12em', textTransform:'uppercase', padding:'8px 12px', cursor:'pointer', borderRadius:'8px', transition:'all 0.2s' }}>
-                    {journalMode ? 'Writing to Myself' : 'Write to Myself'}
-                  </button>
-                )}
-                <button
-                  onClick={() => setBurnAfterReading(b => !b)}
-                  style={{ background: burnAfterReading ? 'rgba(220,60,40,0.14)' : 'rgba(255,255,255,0.05)', border: `1px solid ${burnAfterReading ? 'rgba(220,60,40,0.55)' : 'rgba(255,255,255,0.2)'}`, color: burnAfterReading ? '#ff9a84' : 'rgba(255,255,255,0.82)', fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.12em', textTransform: 'uppercase', padding: '8px 12px', cursor: 'pointer', borderRadius: '8px', transition: 'all 0.2s' }}>
-                  {burnAfterReading ? 'Burn After Reading On' : 'Burn After Reading'}
-                </button>
-                {!recipientName && !journalMode && (
-                  <button
-                    onClick={() => setIsAnonymous(a => !a)}
-                    style={{ background: isAnonymous ? 'rgba(160,130,220,0.16)' : 'rgba(255,255,255,0.05)', border: `1px solid ${isAnonymous ? 'rgba(160,130,220,0.58)' : 'rgba(255,255,255,0.2)'}`, color: isAnonymous ? 'rgba(220,205,255,0.95)' : 'rgba(255,255,255,0.82)', fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.12em', textTransform: 'uppercase', padding: '8px 12px', cursor: 'pointer', borderRadius: '8px', transition: 'all 0.2s' }}>
-                    {isAnonymous ? 'Anonymous On' : 'Send Anonymously'}
-                  </button>
-                )}
-              </div>
-
-              {journalMode && !recipientName && (
-                <div style={{ display:'flex', alignItems:'center', gap:'8px', flexWrap:'wrap', margin:'-2px 0 12px' }}>
-                  <span style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'13px', color:'rgba(255,255,255,0.78)' }}>Open in:</span>
-                  {([30, 60, 90] as const).map(d => (
-                    <button key={d} onClick={() => setCapsuleDays(d)}
-                      style={{ background:capsuleDays===d?'rgba(230,199,110,0.16)':'rgba(255,255,255,0.05)', border:`1px solid ${capsuleDays===d?'rgba(230,199,110,0.58)':'rgba(255,255,255,0.2)'}`, color:capsuleDays===d?'#e6c76e':'rgba(255,255,255,0.82)', fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.12em', padding:'7px 12px', cursor:'pointer', borderRadius:'8px' }}>
-                      {d}d
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              <div>
-                <div>
-                  <p style={{ fontFamily:"'Cinzel', serif", fontSize:'10px', letterSpacing:'0.18em', color:'#f1d77a', textTransform:'uppercase', margin:'0 0 10px' }}>Embellishment</p>
-                  <div style={{ display:'flex', flexDirection:'column', gap:'8px' }}>
-                    {LETTER_EMBELLISHMENTS.map(embellishment => {
-                      const isSelected = selectedEmbellishment === embellishment.id
-                      return (
-                        <button
-                          key={embellishment.id}
-                          onClick={() => setSelectedEmbellishment(embellishment.id)}
-                          style={{ textAlign:'left', padding:'10px 12px', background:isSelected ? 'rgba(230,199,110,0.14)' : 'rgba(255,255,255,0.055)', border:`1px solid ${isSelected ? 'rgba(230,199,110,0.5)' : 'rgba(255,255,255,0.16)'}`, borderRadius:'6px', cursor:'pointer' }}>
-                          <p style={{ fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.12em', color:isSelected ? '#e6c76e' : 'rgba(255,255,255,0.9)', textTransform:'uppercase', margin:'0 0 4px' }}>{embellishment.label}</p>
-                          <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'12px', color:'rgba(255,255,255,0.68)', margin:0, lineHeight:1.35 }}>{embellishment.desc}</p>
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-              </div>
-
-              <div style={{ marginTop:'12px', padding:'13px 14px', border:'1px solid rgba(140,160,255,0.24)', borderRadius:'8px', background:'rgba(34,40,82,0.24)' }}>
-                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:'12px', flexWrap:'wrap' }}>
-                <div>
-                  <p style={{ fontFamily:"'Cinzel', serif", fontSize:'10px', letterSpacing:'0.16em', color:'rgba(210,220,255,0.95)', textTransform:'uppercase', margin:'0 0 5px' }}>Voice Note From The Void</p>
-                  <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'12px', color:'rgba(255,255,255,0.72)', margin:0 }}>Optional, up to 30 seconds</p>
-                </div>
-                <div style={{ display:'flex', gap:'8px', flexWrap:'wrap' }}>
-                  {!isRecordingVoice ? (
-                    <button
-                      onClick={startVoiceRecording}
-                      style={{ background:'rgba(255,255,255,0.05)', border:'1px solid rgba(180,195,255,0.36)', color:'rgba(225,232,255,0.95)', fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.12em', textTransform:'uppercase', padding:'8px 12px', cursor:'pointer', borderRadius:'6px' }}>
-                      {voiceNoteBlob ? 'Record Again' : 'Record'}
-                    </button>
-                  ) : (
-                    <button
-                      onClick={stopVoiceRecording}
-                      style={{ background:'rgba(180,60,60,0.16)', border:'1px solid rgba(220,80,80,0.5)', color:'rgba(255,190,180,0.96)', fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.12em', textTransform:'uppercase', padding:'8px 12px', cursor:'pointer', borderRadius:'6px' }}>
-                      Stop Recording
-                    </button>
-                  )}
-                  {voiceNoteBlob && (
-                    <button
-                      onClick={clearVoiceNote}
-                      style={{ background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.2)', color:'rgba(255,255,255,0.82)', fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.12em', textTransform:'uppercase', padding:'8px 12px', cursor:'pointer', borderRadius:'6px' }}>
-                      Remove
-                    </button>
-                  )}
-                </div>
-              </div>
-
-                {(voiceNoteBlob || isRecordingVoice) && (
-                  <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(120px, 1fr))', gap:'8px', marginTop:'12px' }}>
-                    {VOICE_EFFECT_OPTIONS.map(option => {
-                      const isSelected = voiceEffect === option.id
-                      return (
-                        <button
-                          key={option.id}
-                          onClick={() => setVoiceEffect(option.id)}
-                          style={{ textAlign:'left', padding:'10px 12px', background:isSelected ? 'rgba(180,195,255,0.16)' : 'rgba(255,255,255,0.055)', border:`1px solid ${isSelected ? 'rgba(180,195,255,0.5)' : 'rgba(255,255,255,0.16)'}`, borderRadius:'6px', cursor:'pointer' }}>
-                          <p style={{ fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.12em', color:isSelected ? 'rgba(225,232,255,0.98)' : 'rgba(255,255,255,0.9)', textTransform:'uppercase', margin:'0 0 4px' }}>{option.label}</p>
-                          <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'12px', color:'rgba(255,255,255,0.68)', margin:0, lineHeight:1.35 }}>{option.desc}</p>
-                        </button>
-                      )
-                    })}
-                  </div>
-                )}
-
-              {isRecordingVoice && (
-                <p style={{ fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.2em', color:'rgba(255,140,140,0.88)', textTransform:'uppercase', margin:'12px 0 0' }}>
-                  Recording now...
-                </p>
-              )}
-
-              {voiceNoteUrl && (
-                <div style={{ marginTop:'12px' }}>
-                  <audio controls src={voiceNoteUrl} style={{ width:'100%', opacity:0.82 }} />
-                </div>
-              )}
-
-              {voiceError && (
-                <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'11px', color:'rgba(255,150,150,0.82)', margin:'10px 0 0' }}>{voiceError}</p>
-              )}
-              </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
             </div>
           </motion.div>
         )}
