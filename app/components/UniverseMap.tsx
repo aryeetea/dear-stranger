@@ -92,6 +92,16 @@ function loadImage(url: string): Promise<HTMLImageElement> {
   })
 }
 
+function loadImageWithTimeout(url: string, timeoutMs = 1800): Promise<HTMLImageElement | undefined> {
+  return new Promise(resolve => {
+    const timeout = window.setTimeout(() => resolve(undefined), timeoutMs)
+    loadImage(url).then((img) => {
+      window.clearTimeout(timeout)
+      resolve(img)
+    })
+  })
+}
+
 function getColor(colorTheme?: string | null) {
   return HUB_COLOR_THEMES.find(theme => theme.id === colorTheme) || HUB_COLOR_THEMES[0]
 }
@@ -1316,7 +1326,7 @@ export default function UniverseMap({
         const otherHubs = await Promise.all(realHubs.map(async (hub: UniverseHubRecord, i: number) => {
           const angle = (i / Math.max(realHubs.length, 1)) * Math.PI * 2 + 0.3
           const dist = 180 + (i * 73) % 320
-          const avatarImg = hub.avatar_url ? await loadImage(hub.avatar_url) : undefined
+          const avatarImg = hub.avatar_url ? await loadImageWithTimeout(hub.avatar_url) : undefined
           const styles: HubStyle[] = ['portal', 'lantern', 'ruin', 'hourglass', 'telescope', 'greenhouse', 'lotus', 'cottage', 'forge', 'tower', 'ship']
           return {
             id: hub.id,

@@ -57,7 +57,6 @@ const LAST_OVERLAY_KEY = 'ds_last_overlay'
 const SESSION_TIMEOUT_MS = 8000
 const HUB_FETCH_TIMEOUT_MS = 7000
 const APP_LOADING_SLOW_MS = 3500
-const APP_LOADING_FALLBACK_MS = 12000
 
 function coerceHubColor(value?: string | null): HubColor {
   return HUB_COLOR_IDS.includes(value as HubColor) ? (value as HubColor) : 'gold'
@@ -499,6 +498,7 @@ export default function Home() {
   const [isGuest, setIsGuest] = useState(false)
   const [currentUserId, setCurrentUserId] = useState('')
   const [loadingTookLong, setLoadingTookLong] = useState(false)
+  const [authRouteRetryKey, setAuthRouteRetryKey] = useState(0)
   const [guestBannerDismissed, setGuestBannerDismissed] = useState(false)
   const [guestNudgeOpen, setGuestNudgeOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
@@ -739,10 +739,12 @@ export default function Home() {
       const userId = session.user?.id
       setCurrentUserId(userId || '')
       let hub = null
+      let hubLookupFailed = false
       try {
         hub = await withTimeout(getMyHub(userId), HUB_FETCH_TIMEOUT_MS, 'Hub lookup timed out.')
         console.log('[routeFromSession] getMyHub result:', hub)
       } catch (err) {
+        hubLookupFailed = true
         console.error('[routeFromSession] getMyHub error:', err)
       }
 
@@ -752,6 +754,7 @@ export default function Home() {
           hub = await withTimeout(getMyHub(userId), HUB_FETCH_TIMEOUT_MS, 'Hub lookup retry timed out.')
           console.log('[routeFromSession] getMyHub retry result:', hub)
         } catch (err) {
+          hubLookupFailed = true
           console.error('[routeFromSession] getMyHub retry error:', err)
         }
       }
@@ -764,6 +767,14 @@ export default function Home() {
         setScreen('universe')
         restoreUniverseOverlay()
         console.log('[routeFromSession] session+hub, go to universe')
+        return
+      }
+
+      if (hubLookupFailed) {
+        setScreen('loading')
+        setLoadingTookLong(true)
+        window.setTimeout(() => setAuthRouteRetryKey((key) => key + 1), 1500)
+        console.log('[routeFromSession] hub lookup failed, retrying before routing away')
         return
       }
 
@@ -792,7 +803,6 @@ export default function Home() {
   // Initialize route state from the live auth/session state.
   useEffect(() => {
     let ignore = false;
-    let fallbackTimer: NodeJS.Timeout | null = null;
     async function checkSession() {
       try {
         // Only auto-route if not restoring from localStorage
@@ -809,10 +819,18 @@ export default function Home() {
             }
             setCurrentUserId(session.user?.id || '')
             let hub = null
+            let hubCheckFailed = false
             try {
               hub = await withTimeout(getMyHub(session.user?.id), HUB_FETCH_TIMEOUT_MS, 'Hub check timed out.')
-            } catch {}
+            } catch {
+              hubCheckFailed = true
+            }
             if (!hub) {
+              if (hubCheckFailed) {
+                setLoadingTookLong(true)
+                window.setTimeout(() => setAuthRouteRetryKey((key) => key + 1), 1500)
+                return
+              }
               setScreen('onboarding')
               return
             }
@@ -826,20 +844,10 @@ export default function Home() {
         clearHubState()
         setScreen('landing')
         console.log('[checkSession] fallback to landing')
-      } finally {
-        if (fallbackTimer) clearTimeout(fallbackTimer)
       }
     }
 
     checkSession()
-
-    fallbackTimer = setTimeout(() => {
-      if (screenRef.current === 'loading') {
-        clearHubState()
-        setScreen('landing')
-        console.log('[fallbackTimer] loading >18s, go to landing')
-      }
-    }, APP_LOADING_FALLBACK_MS)
 
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event) => {
       if (ignore) return;
@@ -861,10 +869,9 @@ export default function Home() {
 
     return () => {
       ignore = true
-      if (fallbackTimer) clearTimeout(fallbackTimer)
       authListener.subscription.unsubscribe()
     }
-  }, [applyHubState, clearHubState, restoreUniverseOverlay, routeFromSession, screen, setSavedOverlay])
+  }, [applyHubState, authRouteRetryKey, clearHubState, restoreUniverseOverlay, routeFromSession, screen, setSavedOverlay])
 
   // Prevent browser back button from escaping the SPA when user is authenticated
   useEffect(() => {
@@ -1132,7 +1139,7 @@ export default function Home() {
           </p>
           {loadingTookLong && (
             <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(255,255,255,0.46)', margin: 0, lineHeight: 1.5 }}>
-              If the connection stays quiet, we will return you to the door shortly.
+              The connection is quiet. We are still listening for it.
             </p>
           )}
         </div>
