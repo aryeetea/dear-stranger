@@ -153,6 +153,7 @@ export async function signUpAndCreateHub(
       hub_style: hubStyle || 'portal',
       backdrop_id: backdropId || 'gold',
       decoration: decoration || 'none',
+      visitor_book_enabled: true,
     },
   ])
 
@@ -244,6 +245,7 @@ export async function createHubForCurrentUser(
         hub_style: hubStyle || 'portal',
         backdrop_id: backdropId || 'gold',
         decoration: decoration || 'none',
+        visitor_book_enabled: true,
       },
     ])
     .select()
@@ -268,6 +270,7 @@ export async function signInAndCreateHub(hubName: string, bio: string, askAbout:
       hub_name: hubName,
       bio,
       ask_about: askAbout,
+      visitor_book_enabled: true,
     },
   ])
 
@@ -532,7 +535,7 @@ export async function recordHubVisit(hubId: string) {
     .maybeSingle()
 
   if (hubError) throw hubError
-  if (!hub?.visitor_book_enabled) return false
+  if (!hub || hub.visitor_book_enabled === false) return false
 
   const since = new Date(Date.now() - 45 * 60 * 1000).toISOString()
   const { data: recentVisit, error: recentError } = await supabase

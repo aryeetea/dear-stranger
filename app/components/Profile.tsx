@@ -56,7 +56,7 @@ function getMirrorCycle(createdAt?: string, nowMs = Date.now()) {
 export default function Profile({
   hubName, bio, askAbout, avatarUrl: initialAvatarUrl, avatarPromptPending, regenCount: initialRegenCount,
   hubCreatedAt,
-  visitorBookEnabled: initialVisitorBookEnabled = false,
+  visitorBookEnabled: initialVisitorBookEnabled = true,
   hubStyle: initialHubStyle = 'portal', hubColor: initialHubColor = 'gold',
   hubDecoration: initialHubDecoration = 'none', hubGlowIntensity: initialHubGlowIntensity = 'normal',
   onClose, onUpdateHub,

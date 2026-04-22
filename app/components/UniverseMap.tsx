@@ -1236,7 +1236,7 @@ export default function UniverseMap({
           if (!latest) return hub
           return {
             ...hub,
-            visitorBookEnabled: Boolean(latest.visitor_book_enabled),
+            visitorBookEnabled: latest.visitor_book_enabled !== false,
           }
         })
 
@@ -1248,7 +1248,7 @@ export default function UniverseMap({
             ...current,
             hub: {
               ...current.hub,
-              visitorBookEnabled: Boolean(latest.visitor_book_enabled),
+              visitorBookEnabled: latest.visitor_book_enabled !== false,
             },
           }
         })
@@ -1362,7 +1362,7 @@ export default function UniverseMap({
         avatarUrl: hubAvatarUrl || '', avatarImage: undefined,
         online: true, pulse: 0, size: 1.1, isMe: true,
         floatOffset: 0, floatSpeed: 0.5, colorTheme: hubColor, hubStyle,
-        decoration: hubDecoration, glowIntensity: hubGlowIntensity, visitorBookEnabled: false,
+        decoration: hubDecoration, glowIntensity: hubGlowIntensity, visitorBookEnabled: true,
       }]
 
       if (hubAvatarUrl) {
@@ -1393,7 +1393,7 @@ export default function UniverseMap({
             hubStyle: (hub.hub_style as HubStyle) || styles[i % styles.length],
             decoration: (hub.decoration as HubDecoration) || 'none',
             glowIntensity: (hub.glow_intensity as HubGlowIntensity) || 'normal',
-            visitorBookEnabled: Boolean(hub.visitor_book_enabled),
+            visitorBookEnabled: hub.visitor_book_enabled !== false,
           } as Hub
         }))
 
