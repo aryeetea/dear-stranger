@@ -65,9 +65,10 @@ function GoldRule({ opacity = 0.28 }: { opacity?: number }) {
 }
 
 export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: () => void; onLogin?: () => void; onGuest?: () => void }) {
-  // phase 0 = title splash, 1 = title fades + letter arrives, 2 = salutation, 3 = body, 4 = buttons
+  // phase 0 = title splash, 1 = intro arrives, 2 = greeting, 3 = story, 4 = buttons
   const [phase, setPhase] = useState(0)
   const [titleOut, setTitleOut] = useState(false)
+  const [guideTopic, setGuideTopic] = useState('map')
   useEffect(() => {
     const timers = [
       setTimeout(() => setTitleOut(true), 1400),
@@ -102,13 +103,58 @@ export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: (
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const paragraphs: { text: string; italic?: boolean }[] = [
-    { text: 'Dear Stranger is a place for slow letters — the kind you actually meant to write. No feed, no follower counts, no algorithms. Just words, and the space between sending and receiving.' },
-    { text: 'When you arrive, the Soul Mirror will build your avatar from your own description. No real name. No photo. Just your words, and what the mirror makes of them. Take your time — your avatar is sealed for ninety days after it is set.' },
-    { text: 'Once your hub exists, you can write to the open universe and let your letter drift until a stranger finds it, or address one directly to someone whose light speaks to you. There are no likes here, no read receipts. If a letter moves you, you write one back.', italic: true },
-    { text: 'Be honest. Be kind. Anonymity is a gift — use it well.' },
-    { text: 'We cannot promise every letter will be answered. We can only promise this is a real place, built for real words, between real people.', italic: true },
+  const letterExtras = [
+    'papers',
+    'fonts',
+    'ink',
+    'stamps',
+    'envelopes',
+    'wax seals',
+    'voice notes',
+    'handwriting',
+    'time capsules',
+    'burn after reading',
   ]
+
+  const observatoryBeats = [
+    { label: 'In Transit', text: 'letters still traveling show their progress and arrival date', glow: 'rgba(120,190,255,0.82)' },
+    { label: 'Arrived', text: 'new letters brighten until you open and read them', glow: 'rgba(230,199,110,0.9)' },
+    { label: 'Pinned', text: 'save the letters you want to keep close in your sky', glow: 'rgba(200,160,255,0.9)' },
+    { label: 'Reply', text: 'open a letter, answer it, play voice notes, or honor burn-after-reading', glow: 'rgba(255,140,120,0.86)' },
+  ]
+
+  const journeyChapters = [
+    { label: 'Mirror', text: 'your words become an anonymous hub' },
+    { label: 'Map', text: 'click hubs to meet real people' },
+    { label: 'Scribe', text: 'write to the universe or the selected hub' },
+    { label: 'Observe', text: 'letters become stars you can follow' },
+    { label: 'Reply', text: 'answer from an opened letter' },
+  ]
+
+  const sendingPaths = [
+    { label: 'Open Universe', text: 'open Scribe from the nav and release without a recipient; the letter becomes a universe letter.' },
+    { label: 'Direct Hub', text: 'click a hub on the Starmap, then press Send a Letter; Scribe opens already addressed to them.' },
+  ]
+
+  const guideTopics = [
+    { id: 'mirror', icon: '◌', label: 'Soul Mirror', title: 'Make your hub', text: 'Answer the mirror, choose your avatar style, write a bio and ask-about, pick your hub form, then name your place in the universe.', accent: 'rgba(201,168,76,0.84)' },
+    { id: 'map', icon: '✦', label: 'Starmap', title: 'Explore real hubs', text: 'The universe is a draggable map of hubs. Click one to read their bio, see what they are open to, and start a direct letter from that hub card.', accent: 'rgba(90,145,210,0.78)' },
+    { id: 'scribe', icon: '✒', label: 'Scribe', title: 'Write and style', text: 'Scribe is the composer. It handles subject, paper, fonts, ink, stamps, envelopes, handwriting, voice notes, anonymity, and burn-after-reading.', accent: 'rgba(112,76,20,0.78)' },
+    { id: 'direct', icon: '⇢', label: 'Direct Hub', title: 'Direct starts on the map', text: 'To send directly, click a hub on the Starmap and choose Send a Letter. Scribe opens addressed to that person; direct letters travel before arriving.', accent: 'rgba(90,145,210,0.78)' },
+    { id: 'observatory', icon: '⟡', label: 'Observatory', title: 'Read your sky', text: 'The Observatory shows sent, received, in-transit, arrived, and pinned letters. Tap an arrived star to break the seal and read it.', accent: 'rgba(200,160,255,0.84)' },
+    { id: 'reply', icon: '↩', label: 'Replies', title: 'Reply from a letter', text: 'Replies begin inside the Observatory. Open a received letter, press Reply, and Scribe appears with the original letter beside your answer.', accent: 'rgba(255,140,120,0.82)' },
+    { id: 'drift', icon: '☄', label: 'DriftStream', title: 'Open currents', text: 'DriftStream is separate from Scribe. Read circling open letters, or write a drift letter, poem, or journal entry for a stranger to find.', accent: 'rgba(201,168,76,0.84)' },
+    { id: 'sanctum', icon: '◎', label: 'Sanctum', title: 'Shape your place', text: 'The Sanctum is your profile area: appearance, avatar refreshes, bio, ask-about, visitor book, sharing, sign out, export, and account settings.', accent: 'rgba(80,150,120,0.82)' },
+  ]
+  const activeGuide = guideTopics.find(topic => topic.id === guideTopic) || guideTopics[1]
+  const showMirror = guideTopic === 'mirror'
+  const showMap = guideTopic === 'map'
+  const showScribe = guideTopic === 'scribe'
+  const showDirect = guideTopic === 'direct'
+  const showObservatory = guideTopic === 'observatory'
+  const showReply = guideTopic === 'reply'
+  const showDrift = guideTopic === 'drift'
+  const showSanctum = guideTopic === 'sanctum'
 
   return (
     <div
@@ -128,6 +174,119 @@ export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: (
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: rgba(140,100,30,0.2); border-radius: 4px; }
+        @keyframes ds-letter-drift {
+          0% { transform: translate3d(-15%, 12px, 0) rotate(-10deg) scale(0.9); opacity: 0; }
+          12% { opacity: 1; }
+          48% { transform: translate3d(180%, -14px, 0) rotate(4deg) scale(1); opacity: 1; }
+          82% { transform: translate3d(365%, 8px, 0) rotate(13deg) scale(0.94); opacity: 1; }
+          100% { transform: translate3d(430%, -4px, 0) rotate(18deg) scale(0.88); opacity: 0; }
+        }
+        @keyframes ds-ink-line {
+          0%, 12% { transform: scaleX(0); opacity: 0; }
+          30%, 70% { transform: scaleX(1); opacity: 1; }
+          100% { transform: scaleX(1); opacity: 0.24; }
+        }
+        @keyframes ds-orbit-pulse {
+          0%, 100% { opacity: 0.26; transform: translate(-50%, -50%) scale(0.95); }
+          50% { opacity: 0.7; transform: translate(-50%, -50%) scale(1.04); }
+        }
+        @keyframes ds-chip-float {
+          0%, 100% { transform: translateY(0); opacity: 0.64; }
+          50% { transform: translateY(-8px); opacity: 0.96; }
+        }
+        @keyframes ds-comet-sweep {
+          0% { transform: translate3d(-20%, 36px, 0) rotate(-14deg); opacity: 0; }
+          18% { opacity: 0.78; }
+          70% { opacity: 0.78; }
+          100% { transform: translate3d(116%, -34px, 0) rotate(-14deg); opacity: 0; }
+        }
+        @keyframes ds-route-draw {
+          0% { stroke-dashoffset: 520; opacity: 0.1; }
+          16%, 78% { stroke-dashoffset: 0; opacity: 0.62; }
+          100% { stroke-dashoffset: 0; opacity: 0.12; }
+        }
+        @keyframes ds-arrival-kindled {
+          0%, 48% { transform: scale(0.7); opacity: 0; }
+          58% { transform: scale(1.2); opacity: 1; }
+          72%, 100% { transform: scale(1); opacity: 0.82; }
+        }
+        @keyframes ds-reply-return {
+          0%, 64% { transform: translate3d(0, 0, 0) rotate(14deg) scale(0.76); opacity: 0; }
+          72% { opacity: 0.9; }
+          100% { transform: translate3d(-260%, -90px, 0) rotate(-12deg) scale(0.9); opacity: 0; }
+        }
+        @keyframes ds-timeline-glow {
+          0%, 100% { opacity: 0.32; }
+          50% { opacity: 0.86; }
+        }
+        @keyframes ds-direct-pulse {
+          0%, 100% { opacity: 0.45; transform: scale(0.92); }
+          50% { opacity: 1; transform: scale(1.06); }
+        }
+        @keyframes ds-spotlight-in {
+          from { opacity: 0; transform: translateY(10px) scale(0.97); filter: blur(5px); }
+          to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+        }
+        @keyframes ds-tab-orbit {
+          0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0.68; }
+          50% { transform: translateY(-2px) rotate(8deg); opacity: 1; }
+        }
+        .ds-tour-tabs {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(138px, 1fr));
+          gap: 8px;
+          margin-bottom: 16px;
+        }
+        .ds-tour-stage {
+          position: relative;
+          min-height: clamp(320px, 50vw, 410px);
+          border: 1px solid rgba(120,88,24,0.18);
+          background: radial-gradient(circle at 18% 24%, rgba(255,248,220,0.68), transparent 25%), radial-gradient(circle at 75% 62%, rgba(24,18,42,0.24), transparent 34%), linear-gradient(145deg, rgba(54,35,8,0.06), rgba(255,255,255,0.16));
+          overflow: hidden;
+          margin-bottom: 22px;
+        }
+        .ds-tour-spotlight {
+          position: absolute;
+          right: clamp(16px, 4vw, 34px);
+          top: clamp(74px, 14vw, 110px);
+          z-index: 8;
+          width: min(300px, 46%);
+          min-height: 132px;
+          padding: 14px;
+          animation: ds-spotlight-in 0.35s ease-out both;
+        }
+        .ds-tour-spotlight-observatory {
+          left: clamp(16px, 4vw, 34px);
+          width: auto;
+          min-height: 168px;
+        }
+        @media (max-width: 640px) {
+          .ds-tour-tabs {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+          .ds-tour-tab {
+            min-height: 52px !important;
+            padding: 9px 10px !important;
+          }
+          .ds-tour-stage {
+            min-height: 520px;
+          }
+          .ds-tour-spotlight,
+          .ds-tour-spotlight-observatory {
+            left: 14px !important;
+            right: 14px !important;
+            top: 88px !important;
+            width: auto !important;
+            min-height: 0 !important;
+            padding: 12px !important;
+          }
+          .ds-tour-observatory-grid {
+            grid-template-columns: 1fr !important;
+          }
+          .ds-tour-stage-label {
+            max-width: calc(100% - 28px);
+          }
+        }
       `}</style>
 
       <StarField count={220} maxR={1.0} maxAlpha={0.38} parallaxFactor={0.006} />
@@ -239,18 +398,18 @@ export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: (
         style={{
           position: 'relative',
           zIndex: 2,
-          maxWidth: '640px',
+          maxWidth: '720px',
           width: '100%',
           background: 'linear-gradient(168deg, #f6edd8 0%, #efe0c2 55%, #e8d5ac 100%)',
           borderRadius: '1px',
-          padding: 'clamp(36px, 6vw, 68px) clamp(28px, 5.5vw, 64px) clamp(36px, 5.5vw, 56px)',
+          padding: 'clamp(30px, 5vw, 56px) clamp(22px, 4.8vw, 58px) clamp(32px, 5vw, 52px)',
           boxShadow: '0 60px 150px rgba(0,0,0,0.92), 0 20px 60px rgba(0,0,0,0.72), 0 4px 16px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,248,220,0.55)',
         }}
       >
-        <div style={{ marginBottom: '32px' }}>
+        <div style={{ marginBottom: '24px' }}>
           <GoldRule opacity={0.26} />
           <p style={{ fontFamily: "'Dancing Script', cursive", fontSize: '13px', color: 'rgba(100,72,22,0.55)', letterSpacing: '0.1em', textAlign: 'center', marginTop: '18px', marginBottom: 0 }}>
-            Somewhere in the universe &nbsp;&middot;&nbsp; March 2026
+            Somewhere in the universe
           </p>
         </div>
 
@@ -258,45 +417,613 @@ export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: (
           initial={{ opacity: 0, x: -12 }}
           animate={phase >= 2 ? { opacity: 1, x: 0 } : {}}
           transition={{ duration: 1.2, ease: 'easeOut' }}
-          style={{ fontFamily: "'Dancing Script', cursive", fontSize: 'clamp(32px, 5.5vw, 48px)', color: '#1a1208', marginBottom: '28px', lineHeight: 1.2 }}
+          style={{ fontFamily: "'Dancing Script', cursive", fontSize: 'clamp(30px, 5.2vw, 46px)', color: '#1a1208', marginBottom: '8px', lineHeight: 1.2 }}
         >
           Dear Stranger,
         </motion.p>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '18px', marginBottom: '32px' }}>
-          {paragraphs.map(({ text, italic }, i) => (
-            <motion.p
-              key={i}
-              initial={{ opacity: 0, y: 10 }}
-              animate={phase >= 3 ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 1.1, delay: i * 0.1, ease: 'easeOut' }}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={phase >= 3 ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 1.1, ease: 'easeOut' }}
+          style={{ marginBottom: '28px' }}
+        >
+          <p style={{
+            fontFamily: "'IM Fell English', serif",
+            fontSize: 'clamp(15px, 1.8vw, 18px)',
+            color: 'rgba(38,24,6,0.82)',
+            lineHeight: 1.75,
+            margin: '0 0 22px',
+          }}>
+            This is a quiet place for anonymous words to travel slowly, find the right sky, and sometimes return with an answer.
+          </p>
+
+          <div
+            role="tablist"
+            aria-label="Dear Stranger tour"
+            className="ds-tour-tabs"
+          >
+            {guideTopics.map((topic) => {
+              const selected = topic.id === guideTopic
+              return (
+                <motion.button
+                  key={topic.id}
+                  className="ds-tour-tab"
+                  type="button"
+                  role="tab"
+                  aria-selected={selected}
+                  aria-label={`${topic.label}: ${topic.title}`}
+                  onClick={() => setGuideTopic(topic.id)}
+                  whileHover={{ y: -2 }}
+                  whileTap={{ scale: 0.98 }}
+                  animate={{
+                    opacity: selected ? 1 : 0.74,
+                    scale: selected ? 1.015 : 1,
+                  }}
+                  transition={{ duration: 0.22, ease: 'easeOut' }}
+                  style={{
+                    position: 'relative',
+                    minHeight: '58px',
+                    border: selected ? `1px solid ${topic.accent}` : '1px solid rgba(120,88,24,0.16)',
+                    borderRadius: '6px',
+                    background: selected ? 'linear-gradient(145deg, rgba(255,252,238,0.86), rgba(239,220,180,0.52))' : 'rgba(255,249,231,0.28)',
+                    color: selected ? 'rgba(38,24,6,0.86)' : 'rgba(62,39,8,0.58)',
+                    fontFamily: "'Cinzel', serif",
+                    fontSize: '8px',
+                    letterSpacing: '0.14em',
+                    textTransform: 'uppercase',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'flex-start',
+                    gap: '9px',
+                    padding: '11px 12px',
+                    overflow: 'hidden',
+                    boxShadow: selected ? `0 8px 22px rgba(80,48,8,0.08), 0 0 18px ${topic.accent.replace('0.84', '0.16').replace('0.78', '0.14').replace('0.82', '0.14')}` : 'none',
+                    outlineOffset: '2px',
+                  }}
+                >
+                  <span style={{
+                    width: '25px',
+                    height: '25px',
+                    flex: '0 0 25px',
+                    borderRadius: '50%',
+                    border: `1px solid ${selected ? topic.accent : 'rgba(120,88,24,0.16)'}`,
+                    background: selected ? 'rgba(255,252,238,0.74)' : 'rgba(255,252,238,0.34)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '13px',
+                    lineHeight: 1,
+                    color: selected ? topic.accent : 'rgba(82,56,12,0.58)',
+                    animation: selected ? 'ds-tab-orbit 2.8s ease-in-out infinite' : 'none',
+                  }}>{topic.icon}</span>
+                  <span style={{ display: 'grid', gap: '3px', minWidth: 0, textAlign: 'left' }}>
+                    <span style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{topic.label}</span>
+                    <span style={{
+                      display: 'block',
+                      fontFamily: "'IM Fell English', serif",
+                      fontSize: '11px',
+                      lineHeight: 1.15,
+                      letterSpacing: 0,
+                      textTransform: 'none',
+                      color: selected ? 'rgba(55,34,8,0.62)' : 'rgba(62,39,8,0.38)',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}>{topic.title}</span>
+                  </span>
+                  {selected && (
+                    <span style={{
+                      position: 'absolute',
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      height: '2px',
+                      background: topic.accent,
+                      transformOrigin: 'left center',
+                      transform: 'scaleX(1)',
+                    }} />
+                  )}
+                </motion.button>
+              )
+            })}
+          </div>
+
+          <div
+            aria-label="A letter is written, drifts through space, arrives, and becomes a reply."
+            className="ds-tour-stage"
+          >
+            <div style={{
+              position: 'absolute',
+              inset: 0,
+              backgroundImage: 'linear-gradient(rgba(120,88,24,0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(120,88,24,0.05) 1px, transparent 1px)',
+              backgroundSize: '42px 42px',
+              opacity: 0.42,
+            }} />
+
+            <div style={{
+              position: 'absolute',
+              left: 'clamp(14px, 4vw, 30px)',
+              top: 'clamp(14px, 3vw, 24px)',
+              zIndex: 7,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '8px 10px',
+              border: `1px solid ${activeGuide.accent}`,
+              borderRadius: '999px',
+              background: 'rgba(255,249,231,0.74)',
+              boxShadow: `0 0 20px ${activeGuide.accent.replace('0.84', '0.16').replace('0.78', '0.14').replace('0.82', '0.14')}`,
+            }} className="ds-tour-stage-label">
+              <span style={{ fontSize: '15px', color: activeGuide.accent, lineHeight: 1 }}>{activeGuide.icon}</span>
+              <span style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(62,39,8,0.7)' }}>
+                {activeGuide.label}
+              </span>
+            </div>
+
+            <svg
+              viewBox="0 0 100 100"
+              preserveAspectRatio="none"
+              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', zIndex: 1, pointerEvents: 'none' }}
+            >
+              <path
+                d="M 18 57 C 31 25, 48 72, 62 44 S 82 36, 88 66"
+                fill="none"
+                stroke={showMap || showScribe || showDrift || showObservatory ? 'rgba(92,61,10,0.22)' : 'rgba(92,61,10,0.08)'}
+                strokeWidth="0.28"
+                strokeDasharray="4 5"
+              />
+              <path
+                d="M 28 55 C 42 42, 55 35, 72 30"
+                fill="none"
+                stroke={showMap || showDirect || showReply || showSanctum ? 'rgba(70,112,160,0.3)' : 'rgba(70,112,160,0.08)'}
+                strokeWidth="0.32"
+                strokeDasharray="2 3"
+              />
+              <path
+                d="M 18 57 C 31 25, 48 72, 62 44 S 82 36, 88 66"
+                fill="none"
+                stroke={showMap || showScribe || showDrift || showObservatory ? 'rgba(201,168,76,0.78)' : 'rgba(201,168,76,0.18)'}
+                strokeWidth={showMap || showScribe || showDrift || showObservatory ? '0.58' : '0.36'}
+                strokeLinecap="round"
+                strokeDasharray="520"
+                strokeDashoffset="520"
+                style={{ animation: 'ds-route-draw 9s ease-in-out infinite', filter: showMap || showScribe || showDrift || showObservatory ? 'drop-shadow(0 0 6px rgba(201,168,76,0.42))' : 'none' }}
+              />
+              <path
+                d="M 28 55 C 42 42, 55 35, 72 30"
+                fill="none"
+                stroke={showMap || showDirect || showReply || showSanctum ? 'rgba(90,145,210,0.78)' : 'rgba(90,145,210,0.16)'}
+                strokeWidth={showMap || showDirect || showReply || showSanctum ? '0.5' : '0.3'}
+                strokeLinecap="round"
+                strokeDasharray="520"
+                strokeDashoffset="520"
+                style={{ animation: 'ds-route-draw 9s ease-in-out 1.15s infinite', filter: showMap || showDirect || showReply || showSanctum ? 'drop-shadow(0 0 6px rgba(90,145,210,0.38))' : 'none' }}
+              />
+            </svg>
+
+            <div style={{
+              position: 'absolute',
+              left: '5%',
+              right: '5%',
+              top: '56%',
+              height: '1px',
+              background: 'linear-gradient(90deg, transparent, rgba(92,61,10,0.18), transparent)',
+              transform: 'rotate(-9deg)',
+            }} />
+
+            <div
+              key={activeGuide.id}
+              className={`ds-tour-spotlight ${showObservatory ? 'ds-tour-spotlight-observatory' : ''}`}
               style={{
-                fontFamily: "'IM Fell English', serif",
-                fontStyle: italic ? 'italic' : 'normal',
-                fontSize: 'clamp(15px, 1.8vw, 18px)',
-                color: italic ? '#1a1208' : 'rgba(38,24,6,0.82)',
-                lineHeight: 1.9,
-                margin: 0,
+                border: `1px solid ${activeGuide.accent}`,
+                borderRadius: '6px',
+                background: 'rgba(255,249,231,0.8)',
+                boxShadow: `0 16px 42px rgba(60,38,8,0.13), 0 0 28px ${activeGuide.accent.replace('0.84', '0.16').replace('0.78', '0.14').replace('0.82', '0.14')}`,
               }}
             >
-              {text}
-            </motion.p>
-          ))}
-        </div>
+              <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.24em', textTransform: 'uppercase', color: 'rgba(62,39,8,0.58)', margin: '0 0 10px' }}>
+                {activeGuide.label}
+              </p>
 
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={phase >= 3 ? { opacity: 1 } : {}}
-          transition={{ duration: 1.2, delay: paragraphs.length * 0.1 + 0.2, ease: 'easeOut' }}
-          style={{ marginBottom: '40px' }}
-        >
-          <p style={{ fontFamily: "'Dancing Script', cursive", fontSize: 'clamp(18px, 2.2vw, 22px)', color: '#1a1208', marginBottom: '24px' }}>
-            If you are still here, you belong here. Come in.
-          </p>
+              {showMirror && (
+                <div style={{ display: 'grid', gridTemplateColumns: '52px 1fr', gap: '12px', alignItems: 'center' }}>
+                  <div style={{ width: '52px', height: '52px', borderRadius: '50%', border: '1px solid rgba(201,168,76,0.42)', background: 'radial-gradient(circle, rgba(255,252,238,0.96), rgba(201,168,76,0.22) 60%, transparent 72%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Cinzel', serif", color: 'rgba(92,61,10,0.78)', fontSize: '20px', boxShadow: '0 0 28px rgba(201,168,76,0.28)' }}>◌</div>
+                  <div>
+                    <p style={{ fontFamily: "'IM Fell English', serif", fontSize: '15px', lineHeight: 1.45, color: 'rgba(38,24,6,0.78)', margin: 0 }}>Your description becomes an anonymous avatar and a hub others can find.</p>
+                  </div>
+                </div>
+              )}
+
+              {showScribe && (
+                <div>
+                  <div style={{ display: 'flex', gap: '7px', flexWrap: 'wrap', marginBottom: '10px' }}>
+                    {['subject', 'paper', 'voice', 'seal'].map((tool) => (
+                      <span key={tool} style={{ border: '1px solid rgba(120,88,24,0.18)', background: 'rgba(255,252,238,0.5)', padding: '5px 7px', fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.16em', textTransform: 'uppercase', color: 'rgba(62,39,8,0.68)' }}>{tool}</span>
+                    ))}
+                  </div>
+                  <p style={{ fontFamily: "'IM Fell English', serif", fontSize: '15px', lineHeight: 1.45, color: 'rgba(38,24,6,0.78)', margin: 0 }}>Write and customize here. If a hub was chosen first, Scribe opens addressed to them.</p>
+                </div>
+              )}
+
+              {showMap && (
+                <div style={{ display: 'grid', gap: '10px' }}>
+                  {sendingPaths.map((path, i) => (
+                    <div key={path.label} style={{ display: 'grid', gridTemplateColumns: '10px 1fr', gap: '8px', alignItems: 'start' }}>
+                      <span style={{ width: '9px', height: '9px', borderRadius: '50%', marginTop: '4px', background: i === 0 ? 'rgba(201,168,76,0.9)' : 'rgba(90,145,210,0.9)', boxShadow: i === 0 ? '0 0 14px rgba(201,168,76,0.5)' : '0 0 14px rgba(90,145,210,0.48)' }} />
+                      <span>
+                        <span style={{ display: 'block', fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.16em', textTransform: 'uppercase', color: i === 0 ? 'rgba(82,56,12,0.74)' : 'rgba(42,70,110,0.8)', marginBottom: '3px' }}>{path.label}</span>
+                        <span style={{ display: 'block', fontFamily: "'IM Fell English', serif", fontSize: '13px', lineHeight: 1.35, color: 'rgba(38,24,6,0.7)' }}>{path.text}</span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {showDirect && (
+                <div style={{ display: 'grid', gridTemplateColumns: '54px 1fr', gap: '12px', alignItems: 'center' }}>
+                  <div style={{ width: '54px', height: '54px', borderRadius: '50%', border: '1px solid rgba(90,145,210,0.42)', background: 'radial-gradient(circle, rgba(180,215,255,0.86), rgba(38,52,74,0.36) 58%, transparent 72%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(42,70,110,0.86)', fontFamily: "'Cinzel', serif", fontSize: '18px', boxShadow: '0 0 26px rgba(90,145,210,0.28)' }}>⇢</div>
+                  <p style={{ fontFamily: "'IM Fell English', serif", fontSize: '15px', lineHeight: 1.45, color: 'rgba(38,24,6,0.78)', margin: 0 }}>Map first, Scribe second: choose a hub card, then send a letter directly to that hub.</p>
+                </div>
+              )}
+
+              {showObservatory && (
+                <div className="ds-tour-observatory-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(132px, 1fr))', gap: '9px' }}>
+                  {observatoryBeats.map((beat) => (
+                    <div key={beat.label} style={{ display: 'grid', gridTemplateColumns: '16px 1fr', gap: '8px', alignItems: 'start', minHeight: '78px', padding: '9px', border: '1px solid rgba(120,88,24,0.12)', borderRadius: '5px', background: 'rgba(255,252,238,0.42)' }}>
+                      <span style={{ width: '11px', height: '11px', borderRadius: '50%', marginTop: '3px', background: beat.glow, boxShadow: `0 0 16px ${beat.glow}`, flexShrink: 0 }} />
+                      <span>
+                        <span style={{ display: 'block', fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(62,39,8,0.72)', marginBottom: '4px' }}>{beat.label}</span>
+                        <span style={{ display: 'block', fontFamily: "'IM Fell English', serif", fontSize: '13px', lineHeight: 1.3, color: 'rgba(38,24,6,0.72)' }}>{beat.text}</span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {showReply && (
+                <div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 28px 1fr', gap: '8px', alignItems: 'center', marginBottom: '10px' }}>
+                    <span style={{ border: '1px solid rgba(120,88,24,0.18)', background: 'rgba(255,252,238,0.48)', padding: '7px 8px', fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.13em', color: 'rgba(62,39,8,0.68)', textTransform: 'uppercase', textAlign: 'center' }}>original</span>
+                    <span style={{ textAlign: 'center', color: 'rgba(255,140,120,0.86)', fontFamily: "'Cinzel', serif" }}>↩</span>
+                    <span style={{ border: '1px solid rgba(255,140,120,0.32)', background: 'rgba(255,235,228,0.52)', padding: '7px 8px', fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.13em', color: 'rgba(120,52,40,0.74)', textTransform: 'uppercase', textAlign: 'center' }}>reply</span>
+                  </div>
+                  <p style={{ fontFamily: "'IM Fell English', serif", fontSize: '15px', lineHeight: 1.45, color: 'rgba(38,24,6,0.78)', margin: 0 }}>Open a received letter in the Observatory, then Reply opens Scribe with that letter beside your draft.</p>
+                </div>
+              )}
+
+              {showDrift && (
+                <div style={{ display: 'grid', gridTemplateColumns: '42px 1fr', gap: '12px', alignItems: 'center' }}>
+                  <div style={{ width: '42px', height: '16px', background: 'linear-gradient(90deg, transparent, rgba(201,168,76,0.88))', position: 'relative' }}>
+                    <span style={{ position: 'absolute', right: '-2px', top: '3px', width: '10px', height: '10px', borderRadius: '50%', background: 'rgba(243,216,137,0.95)', boxShadow: '0 0 16px rgba(243,216,137,0.62)' }} />
+                  </div>
+                  <p style={{ fontFamily: "'IM Fell English', serif", fontSize: '15px', lineHeight: 1.45, color: 'rgba(38,24,6,0.78)', margin: 0 }}>DriftStream has its own read/write room for open-current letters, poems, and journal entries.</p>
+                </div>
+              )}
+
+              {showSanctum && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '8px' }}>
+                  {['appearance', 'visitors', 'share', 'settings'].map((item) => (
+                    <span key={item} style={{ border: '1px solid rgba(80,150,120,0.22)', background: 'rgba(238,252,244,0.45)', padding: '7px 8px', fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.13em', color: 'rgba(35,78,56,0.74)', textTransform: 'uppercase' }}>{item}</span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div style={{
+              position: 'absolute',
+              left: '0',
+              top: '39%',
+              width: '100%',
+              height: '18px',
+              animation: 'ds-comet-sweep 7s ease-in-out 1.2s infinite',
+              pointerEvents: 'none',
+              opacity: showDrift || showScribe || showMap ? 1 : 0.22,
+              transition: 'opacity 0.35s ease',
+            }}>
+              <span style={{
+                position: 'absolute',
+                left: 0,
+                top: '8px',
+                width: '34%',
+                height: '1px',
+                background: 'linear-gradient(90deg, transparent, rgba(141,31,36,0.36), rgba(243,216,137,0.82))',
+              }} />
+              <span style={{ position: 'absolute', left: '33%', top: '4px', width: '9px', height: '9px', borderRadius: '50%', background: '#f3d889', boxShadow: '0 0 18px rgba(243,216,137,0.62)' }} />
+            </div>
+
+            <div style={{
+              position: 'absolute',
+              right: 'clamp(14px, 4vw, 28px)',
+              top: 'clamp(58px, 13vw, 92px)',
+              zIndex: 3,
+              display: 'grid',
+              gap: '7px',
+              maxWidth: '42%',
+              opacity: showObservatory ? 1 : 0.2,
+              transition: 'opacity 0.35s ease',
+            }}>
+              {observatoryBeats.slice(0, 3).map((beat, i) => (
+                <span
+                  key={beat.label}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    fontFamily: "'Cinzel', serif",
+                    fontSize: 'clamp(7px, 1vw, 8px)',
+                    letterSpacing: '0.14em',
+                    color: 'rgba(62,39,8,0.66)',
+                    textTransform: 'uppercase',
+                    animation: `ds-chip-float 5.2s ease-in-out ${i * 0.5}s infinite`,
+                  }}
+                >
+                  <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: beat.glow, boxShadow: `0 0 14px ${beat.glow}` }} />
+                  {beat.label}
+                </span>
+              ))}
+            </div>
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={phase >= 3 ? { opacity: showScribe || showMap || showDirect || showReply ? 1 : 0.42, scale: showScribe ? 1.04 : 1 } : {}}
+              transition={{ duration: 1.2, delay: 0.25, ease: 'easeOut' }}
+              style={{
+                position: 'absolute',
+                left: 'clamp(18px, 5vw, 48px)',
+                top: 'clamp(24px, 5vw, 42px)',
+                width: 'clamp(104px, 24vw, 156px)',
+                height: 'clamp(128px, 28vw, 184px)',
+                background: 'linear-gradient(160deg, rgba(255,252,238,0.98), rgba(232,211,166,0.94))',
+                border: '1px solid rgba(120,88,24,0.22)',
+                boxShadow: showScribe ? '0 20px 44px rgba(112,76,20,0.28), 0 0 32px rgba(201,168,76,0.22)' : '0 18px 35px rgba(70,44,8,0.16)',
+                padding: 'clamp(16px, 3vw, 24px)',
+              }}
+            >
+              {[0, 1, 2, 3].map((line) => (
+                <span
+                  key={line}
+                  style={{
+                    display: 'block',
+                    height: line === 0 ? '2px' : '1px',
+                    width: line === 3 ? '54%' : line === 2 ? '76%' : '88%',
+                    marginTop: line === 0 ? 0 : '17px',
+                    background: 'rgba(55,34,8,0.5)',
+                    transformOrigin: 'left center',
+                    animation: `ds-ink-line 5.4s ease-in-out ${0.25 + line * 0.22}s infinite`,
+                  }}
+                />
+              ))}
+              <span style={{ position: 'absolute', right: '18px', bottom: '18px', fontFamily: "'Dancing Script', cursive", fontSize: '22px', color: 'rgba(112,76,20,0.58)' }}>you</span>
+            </motion.div>
+
+            <div style={{
+              position: 'absolute',
+              left: 'clamp(34px, 8vw, 70px)',
+              top: 'clamp(178px, 30vw, 228px)',
+              zIndex: 3,
+              width: '42px',
+              height: '42px',
+              borderRadius: '50%',
+              border: '1px solid rgba(120,88,24,0.26)',
+              background: 'radial-gradient(circle, rgba(255,252,238,0.9), rgba(201,168,76,0.18) 58%, transparent 70%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontFamily: "'Cinzel', serif",
+              fontSize: '15px',
+              color: 'rgba(92,61,10,0.68)',
+              opacity: showMirror ? 1 : 0.34,
+              transform: showMirror ? 'scale(1.12)' : 'scale(1)',
+              transition: 'opacity 0.35s ease, transform 0.35s ease, box-shadow 0.35s ease',
+              boxShadow: showMirror ? '0 0 38px rgba(201,168,76,0.42)' : '0 0 28px rgba(201,168,76,0.22)',
+            }}>
+              ◌
+            </div>
+
+            <div style={{
+              position: 'absolute',
+              left: '68%',
+              top: '27%',
+              zIndex: 4,
+              width: 'clamp(42px, 9vw, 58px)',
+              height: 'clamp(42px, 9vw, 58px)',
+              borderRadius: '50%',
+              background: 'radial-gradient(circle, rgba(38,52,74,0.76), rgba(38,52,74,0.42) 58%, transparent 72%)',
+              border: '1px solid rgba(90,145,210,0.38)',
+              boxShadow: '0 0 24px rgba(90,145,210,0.28)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              animation: 'ds-direct-pulse 4.8s ease-in-out infinite',
+              opacity: showMap || showDirect || showReply || showSanctum ? 1 : 0.26,
+              transition: 'opacity 0.35s ease, box-shadow 0.35s ease',
+            }}>
+              <span style={{ width: '9px', height: '9px', borderRadius: '50%', background: 'rgba(180,215,255,0.9)', boxShadow: '0 0 18px rgba(120,180,255,0.62)' }} />
+            </div>
+
+            <div style={{
+              position: 'absolute',
+              left: '50%',
+              top: '50%',
+              width: 'clamp(118px, 25vw, 176px)',
+              height: 'clamp(118px, 25vw, 176px)',
+              borderRadius: '50%',
+              border: '1px solid rgba(120,88,24,0.22)',
+              animation: 'ds-orbit-pulse 4.8s ease-in-out infinite',
+            }} />
+
+            <div style={{
+              position: 'absolute',
+              left: '22%',
+              top: '48%',
+              width: 'clamp(70px, 16vw, 110px)',
+              height: 'clamp(46px, 10vw, 70px)',
+              transformOrigin: 'center',
+              animation: 'ds-letter-drift 5.4s ease-in-out infinite',
+              filter: 'drop-shadow(0 12px 16px rgba(64,39,7,0.22))',
+            }}>
+              <div style={{ width: '100%', height: '100%', background: '#f7edd1', border: '1px solid rgba(92,61,10,0.28)', position: 'relative' }}>
+                <div style={{ position: 'absolute', inset: 0, clipPath: 'polygon(0 0, 50% 55%, 100% 0, 100% 100%, 0 100%)', background: 'rgba(224,196,137,0.5)' }} />
+                <div style={{ position: 'absolute', left: '50%', top: '52%', width: '14px', height: '14px', borderRadius: '50%', background: '#8d1f24', transform: 'translate(-50%, -50%)', boxShadow: '0 0 0 3px rgba(141,31,36,0.12)' }} />
+              </div>
+            </div>
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={phase >= 3 ? { opacity: showObservatory || showMap || showDirect || showReply || showDrift ? 1 : 0.34, scale: showObservatory ? 1.06 : 1 } : {}}
+              transition={{ duration: 1.2, delay: 0.65, ease: 'easeOut' }}
+              style={{
+                position: 'absolute',
+                right: 'clamp(18px, 5vw, 46px)',
+                bottom: 'clamp(22px, 5vw, 44px)',
+                width: 'clamp(104px, 24vw, 156px)',
+                height: 'clamp(104px, 24vw, 156px)',
+                borderRadius: '50%',
+                background: 'radial-gradient(circle, rgba(28,19,8,0.88), rgba(28,19,8,0.52) 54%, transparent 70%)',
+                boxShadow: showObservatory ? '0 0 52px rgba(200,160,255,0.38), 0 0 38px rgba(201,168,76,0.42)' : '0 0 38px rgba(201,168,76,0.4)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#f3d889', boxShadow: '0 0 24px 10px rgba(243,216,137,0.54)' }} />
+              <span style={{
+                position: 'absolute',
+                width: '30px',
+                height: '30px',
+                borderRadius: '50%',
+                border: '1px solid rgba(243,216,137,0.36)',
+                animation: 'ds-arrival-kindled 5.4s ease-in-out infinite',
+              }} />
+              <span style={{ position: 'absolute', top: '20%', right: '24%', width: '4px', height: '4px', borderRadius: '50%', background: 'rgba(255,255,255,0.7)' }} />
+              <span style={{ position: 'absolute', bottom: '25%', left: '28%', width: '3px', height: '3px', borderRadius: '50%', background: 'rgba(255,255,255,0.62)' }} />
+            </motion.div>
+
+            <div style={{
+              position: 'absolute',
+              right: 'clamp(42px, 9vw, 78px)',
+              bottom: 'clamp(92px, 17vw, 132px)',
+              zIndex: 4,
+              width: 'clamp(42px, 9vw, 62px)',
+              height: 'clamp(28px, 6vw, 40px)',
+              transformOrigin: 'center',
+              animation: 'ds-reply-return 8s ease-in-out infinite',
+              filter: 'drop-shadow(0 8px 12px rgba(64,39,7,0.18))',
+              pointerEvents: 'none',
+              opacity: showObservatory || showDrift ? 1 : 0.2,
+              transition: 'opacity 0.35s ease',
+            }}>
+              <div style={{ width: '100%', height: '100%', background: '#f8efd8', border: '1px solid rgba(92,61,10,0.24)', position: 'relative' }}>
+                <div style={{ position: 'absolute', inset: 0, clipPath: 'polygon(0 0, 50% 58%, 100% 0, 100% 100%, 0 100%)', background: 'rgba(231,202,146,0.48)' }} />
+              </div>
+            </div>
+
+            <div style={{
+              position: 'absolute',
+              left: 'clamp(14px, 4vw, 32px)',
+              right: 'clamp(14px, 4vw, 32px)',
+              bottom: 'clamp(12px, 3vw, 22px)',
+              zIndex: 3,
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '6px',
+              justifyContent: 'center',
+              opacity: showScribe ? 1 : 0.28,
+              transition: 'opacity 0.35s ease',
+            }}>
+              {letterExtras.slice(0, 6).map((extra, i) => (
+                <span
+                  key={extra}
+                  style={{
+                    border: '1px solid rgba(92,61,10,0.16)',
+                    background: i % 2 === 0 ? 'rgba(255,252,238,0.68)' : 'rgba(226,199,139,0.34)',
+                    color: 'rgba(62,39,8,0.68)',
+                    fontFamily: "'Cinzel', serif",
+                    fontSize: 'clamp(7px, 1vw, 8px)',
+                    letterSpacing: '0.12em',
+                    textTransform: 'uppercase',
+                    padding: '5px 7px',
+                  }}
+                >
+                  {extra}
+                </span>
+              ))}
+            </div>
+
+            <div style={{
+              position: 'absolute',
+              left: 'clamp(16px, 4vw, 34px)',
+              right: 'clamp(16px, 4vw, 34px)',
+              bottom: 'clamp(50px, 9vw, 76px)',
+              zIndex: 5,
+              display: 'grid',
+              gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
+              gap: '6px',
+              pointerEvents: 'none',
+            }}>
+              {journeyChapters.map((chapter, i) => (
+                <span
+                  key={chapter.label}
+                  style={{
+                    height: '3px',
+                    borderRadius: '999px',
+                    background: i === 0 && showMirror
+                      ? 'linear-gradient(90deg, rgba(120,88,24,0.28), rgba(201,168,76,0.95))'
+                      : i === 1 && showMap
+                        ? 'linear-gradient(90deg, rgba(120,88,24,0.28), rgba(90,145,210,0.9))'
+                      : i === 2 && (showScribe || showDirect)
+                          ? 'linear-gradient(90deg, rgba(120,88,24,0.28), rgba(112,76,20,0.85))'
+                          : i === 3 && showObservatory
+                            ? 'linear-gradient(90deg, rgba(120,88,24,0.28), rgba(200,160,255,0.9))'
+                            : i === 4 && showReply
+                              ? 'linear-gradient(90deg, rgba(120,88,24,0.28), rgba(255,140,120,0.9))'
+                              : 'linear-gradient(90deg, rgba(120,88,24,0.16), rgba(201,168,76,0.34))',
+                    animation: `ds-timeline-glow 3s ease-in-out ${i * 0.45}s infinite`,
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={phase >= 3 ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.9, delay: 1.1, ease: 'easeOut' }}
+            style={{
+              borderTop: '1px solid rgba(120,88,24,0.2)',
+              borderBottom: '1px solid rgba(120,88,24,0.16)',
+              padding: '14px 0',
+              marginBottom: '20px',
+            }}
+          >
+            <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.28em', color: 'rgba(82,56,12,0.56)', textTransform: 'uppercase', margin: '0 0 10px' }}>
+              The little extras
+            </p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '7px' }}>
+              {letterExtras.map((extra) => (
+                <span
+                  key={extra}
+                  style={{
+                    border: '1px solid rgba(120,88,24,0.16)',
+                    color: 'rgba(55,34,8,0.68)',
+                    background: 'rgba(255,252,238,0.32)',
+                    fontFamily: "'IM Fell English', serif",
+                    fontSize: 'clamp(12px, 1.4vw, 14px)',
+                    padding: '5px 8px',
+                  }}
+                >
+                  {extra}
+                </span>
+              ))}
+            </div>
+          </motion.div>
+
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div style={{ width: '28px', height: '1px', background: 'rgba(120,88,24,0.28)' }} />
-            <span style={{ fontFamily: "'Dancing Script', cursive", fontSize: '16px', color: 'rgba(100,70,18,0.62)' }}>
-              The Dear Stranger Team ✦
+            <span style={{ fontFamily: "'Dancing Script', cursive", fontSize: 'clamp(17px, 2vw, 21px)', color: 'rgba(55,34,8,0.78)' }}>
+              No likes. No follower counts. No read receipts. Just letters, handled kindly.
             </span>
           </div>
         </motion.div>
@@ -304,7 +1031,7 @@ export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: (
         <motion.div
           initial={{ opacity: 0 }}
           animate={phase >= 3 ? { opacity: 1 } : {}}
-          transition={{ duration: 1.2, delay: paragraphs.length * 0.1 + 0.5, ease: 'easeOut' }}
+          transition={{ duration: 1.2, delay: 0.7, ease: 'easeOut' }}
           style={{ margin: '28px 0 24px', textAlign: 'center' }}
         >
           <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.4em', color: 'rgba(100,72,22,0.42)', textTransform: 'uppercase', marginBottom: '12px' }}>
