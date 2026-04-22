@@ -68,7 +68,7 @@ export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: (
   // phase 0 = title splash, 1 = intro arrives, 2 = greeting, 3 = story, 4 = buttons
   const [phase, setPhase] = useState(0)
   const [titleOut, setTitleOut] = useState(false)
-  const [guideTopic, setGuideTopic] = useState('map')
+  const [guideTopic, setGuideTopic] = useState('mirror')
   useEffect(() => {
     const timers = [
       setTimeout(() => setTitleOut(true), 1400),
@@ -146,7 +146,7 @@ export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: (
     { id: 'drift', icon: '☄', label: 'DriftStream', title: 'Open currents', text: 'DriftStream is separate from Scribe. Read circling open letters, or write a drift letter, poem, or journal entry for a stranger to find.', accent: 'rgba(201,168,76,0.84)' },
     { id: 'sanctum', icon: '◎', label: 'Sanctum', title: 'Shape your place', text: 'The Sanctum is your profile area: appearance, avatar refreshes, bio, ask-about, visitor book, sharing, sign out, export, and account settings.', accent: 'rgba(80,150,120,0.82)' },
   ]
-  const activeGuide = guideTopics.find(topic => topic.id === guideTopic) || guideTopics[1]
+  const activeGuide = guideTopics.find(topic => topic.id === guideTopic) || guideTopics[0]
   const showMirror = guideTopic === 'mirror'
   const showMap = guideTopic === 'map'
   const showScribe = guideTopic === 'scribe'
@@ -435,7 +435,7 @@ export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: (
             lineHeight: 1.75,
             margin: '0 0 22px',
           }}>
-            This is a quiet place for anonymous words to travel slowly, find the right sky, and sometimes return with an answer.
+            This is a guided tour of Dear Stranger. Click the buttons below to learn how each part of the world works before you step inside.
           </p>
 
           <div
