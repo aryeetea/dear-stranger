@@ -18,7 +18,6 @@ import NotificationBanner, { sendLocalNotification } from './components/Notifica
 import { supabase } from '../lib/supabase'
 import {
   signUpAndCreateHub,
-  signOut,
   createHubForCurrentUser,
   getSession,
   getMyHub,
@@ -824,9 +823,6 @@ export default function Home() {
         }
       } catch (err) {
         console.error('checkSession failed:', err)
-        try {
-          await signOut()
-        } catch {}
         clearHubState()
         setScreen('landing')
         console.log('[checkSession] fallback to landing')
