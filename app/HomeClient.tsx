@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import type { Session } from '@supabase/supabase-js'
 import EntryScreen from './components/EntryScreen'
 import LandingPage from './components/LandingPage'
 import SoulMirror from './components/SoulMirror'
@@ -142,6 +143,10 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: s
   } finally {
     if (timeoutId) clearTimeout(timeoutId)
   }
+}
+
+function isTimeoutError(error: unknown, message: string) {
+  return error instanceof Error && error.message === message
 }
 
 // ── Nebula drifting blobs (global background layer) ──────────
@@ -710,10 +715,10 @@ export default function Home() {
     }
   }, [screen])
 
-  const routeFromSession = useCallback(async () => {
+  const routeFromSession = useCallback(async (knownSession?: Session | null) => {
     try {
       console.log('[routeFromSession] begin')
-      const session = await withTimeout(getSession(), SESSION_TIMEOUT_MS, 'Session check timed out.')
+      const session = knownSession ?? await withTimeout(getSession(), SESSION_TIMEOUT_MS, 'Session check timed out.')
       console.log('[routeFromSession] getSession result:', session)
 
       if (!session) {
@@ -784,6 +789,13 @@ export default function Home() {
       console.log('[routeFromSession] session+no hub, go to onboarding')
     } catch (err) {
       console.error('[routeFromSession] error:', err)
+      if (isTimeoutError(err, 'Session check timed out.')) {
+        setScreen('loading')
+        setLoadingTookLong(true)
+        window.setTimeout(() => setAuthRouteRetryKey((key) => key + 1), 1500)
+        console.log('[routeFromSession] session check timed out, retrying')
+        return
+      }
       clearHubState()
       setSavedOverlay(null)
       setScreen('landing')
@@ -841,6 +853,13 @@ export default function Home() {
         }
       } catch (err) {
         console.error('checkSession failed:', err)
+        if (isTimeoutError(err, 'Session check timed out.')) {
+          setScreen('loading')
+          setLoadingTookLong(true)
+          window.setTimeout(() => setAuthRouteRetryKey((key) => key + 1), 1500)
+          console.log('[checkSession] session check timed out, retrying')
+          return
+        }
         clearHubState()
         setScreen('landing')
         console.log('[checkSession] fallback to landing')
@@ -849,7 +868,7 @@ export default function Home() {
 
     checkSession()
 
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       if (ignore) return;
       console.log('[authStateChange]', event)
       if (event === 'SIGNED_OUT') {
@@ -863,7 +882,9 @@ export default function Home() {
         return
       }
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        await routeFromSession()
+        window.setTimeout(() => {
+          if (!ignore) void routeFromSession(session)
+        }, 0)
       }
     })
 
