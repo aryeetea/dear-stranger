@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { getAllHubs, getUniverseLetters, getReturnPaths, recordHubVisit } from '../lib/auth'
 import { playShootingStarCatch, playClick } from '../../lib/sounds'
+import { supabase } from '../../lib/supabase'
 // ── HUB STYLE TYPES ──
 export type HubStyle = 'portal' | 'lantern' | 'ruin' | 'hourglass' | 'telescope' | 'greenhouse' | 'lotus' | 'cottage' | 'forge' | 'tower' | 'ship'
 export type HubColor = 'gold' | 'sage' | 'rose' | 'azure' | 'amber' | 'violet' | 'teal' | 'sand' | 'steel' | 'crimson' | 'forest'
@@ -79,6 +80,7 @@ type UniverseHubRecord = Awaited<ReturnType<typeof getAllHubs>>[number]
 
 interface TooltipState { hub: Hub; sx: number; sy: number; scale: number }
 interface ProfileState { hub: Hub; screenX: number; screenY: number; telescopeMode: boolean }
+type PresenceMeta = { user_id?: string }
 
 const imageCache = new Map<string, HTMLImageElement>()
 function loadImage(url: string): Promise<HTMLImageElement> {
@@ -1147,6 +1149,7 @@ export default function UniverseMap({
   const animFrameRef = useRef<number>(0)
   const shootingStarsRef = useRef<ShootingStar[]>([])
   const returnPathsRef = useRef<{ hubA: string; hubB: string }[]>([])
+  const onlineUserIdsRef = useRef<Set<string>>(new Set())
   const starIdRef = useRef(0)
   const lastPinchDistRef = useRef<number | null>(null)
   const hoveredHubRef = useRef<Hub | null>(null)
@@ -1160,6 +1163,57 @@ export default function UniverseMap({
   const dismissedLetterIdsRef = useRef<Set<string>>(new Set())
   const [activeNav, setActiveNav] = useState(0)
   const [hoveredNav, setHoveredNav] = useState<number | null>(null)
+
+  const applyPresenceState = useCallback((onlineIds: Set<string>) => {
+    onlineUserIdsRef.current = onlineIds
+    hubsRef.current = hubsRef.current.map((hub) => (
+      hub.isMe ? { ...hub, online: true } : { ...hub, online: onlineIds.has(hub.id) }
+    ))
+
+    setProfile((current) => {
+      if (!current || current.hub.isMe) return current
+      return {
+        ...current,
+        hub: {
+          ...current.hub,
+          online: onlineIds.has(current.hub.id),
+        },
+      }
+    })
+  }, [])
+
+  const syncPresenceState = useCallback((state: Record<string, PresenceMeta[]>) => {
+    const onlineIds = new Set<string>()
+    Object.values(state).forEach((metas) => {
+      metas.forEach((meta) => {
+        if (meta.user_id) onlineIds.add(meta.user_id)
+      })
+    })
+    applyPresenceState(onlineIds)
+  }, [applyPresenceState])
+
+  useEffect(() => {
+    let cancelled = false
+    const channel = supabase.channel('dear-stranger-universe-presence', {
+      config: { presence: { key: currentUserId || crypto.randomUUID() } },
+    })
+
+    channel.on('presence', { event: 'sync' }, () => {
+      if (cancelled) return
+      syncPresenceState(channel.presenceState() as Record<string, PresenceMeta[]>)
+    })
+
+    channel.subscribe((status) => {
+      if (cancelled || status !== 'SUBSCRIBED' || !currentUserId) return
+      void channel.track({ user_id: currentUserId, online_at: new Date().toISOString() })
+    })
+
+    return () => {
+      cancelled = true
+      void channel.untrack()
+      void supabase.removeChannel(channel)
+    }
+  }, [currentUserId, syncPresenceState])
 
   useEffect(() => {
     if (navResetSignal <= 0) return
@@ -1182,7 +1236,6 @@ export default function UniverseMap({
           if (!latest) return hub
           return {
             ...hub,
-            online: latest.online ?? false,
             visitorBookEnabled: Boolean(latest.visitor_book_enabled),
           }
         })
@@ -1195,7 +1248,6 @@ export default function UniverseMap({
             ...current,
             hub: {
               ...current.hub,
-              online: latest.online ?? false,
               visitorBookEnabled: Boolean(latest.visitor_book_enabled),
             },
           }
@@ -1333,7 +1385,7 @@ export default function UniverseMap({
             x: Math.cos(angle) * dist, y: Math.sin(angle) * dist,
             name: hub.hub_name, bio: hub.bio || '', askAbout: hub.ask_about || '',
             avatarUrl: hub.avatar_url || '', avatarImage: avatarImg,
-            online: hub.online ?? true, pulse: 0,
+            online: onlineUserIdsRef.current.has(hub.id), pulse: 0,
             size: 0.9 + (i * 17 % 10) / 30,
             floatOffset: (i * 137) % (Math.PI * 2),
             floatSpeed: 0.4 + (i * 23 % 10) / 30,

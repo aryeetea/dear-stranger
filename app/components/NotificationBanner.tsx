@@ -11,13 +11,29 @@ export async function sendLocalNotification(title: string, body: string): Promis
   if (typeof window === 'undefined') return
   if (!('Notification' in window) || Notification.permission !== 'granted') return
   try {
-    const reg = await navigator.serviceWorker.ready
-    await reg.showNotification(title, {
+    const options = {
       body,
       icon: '/icon?size=192',
       badge: '/icon?size=192',
       data: { url: '/' },
-    } as NotificationOptions)
+    } as NotificationOptions
+
+    if ('serviceWorker' in navigator) {
+      const reg = await Promise.race([
+        navigator.serviceWorker.ready,
+        new Promise<ServiceWorkerRegistration | null>((resolve) => {
+          window.setTimeout(() => resolve(null), 1500)
+        }),
+      ])
+
+      if (reg) {
+        await reg.showNotification(title, options)
+        playChime()
+        return
+      }
+    }
+
+    new Notification(title, options)
     playChime()
   } catch {
     // Silently ignore if notifications are unavailable
