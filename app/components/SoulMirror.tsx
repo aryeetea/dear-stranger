@@ -18,8 +18,10 @@ const MIRROR_VOICES = [
 ]
 
 const STYLE_OPTIONS = [
+  { id: 'realistic', label: 'Realistic', desc: 'natural, lifelike, human, grounded' },
+  { id: '3d-digital', label: '3D Digital', desc: 'stylized, cinematic, sculpted, game-art inspired' },
   { id: 'fantasy', label: 'Fantasy', desc: 'magical, ethereal, mythical, otherworldly' },
-  { id: 'modern', label: 'Modern', desc: 'clean, stylish, current, realistic' },
+  { id: 'modern', label: 'Modern', desc: 'clean, stylish, current, contemporary' },
   { id: 'fantasy-modern', label: 'Fantasy Modern', desc: 'a mix of magical and modern style' },
   { id: 'celestial', label: 'Celestial', desc: 'stars, moonlight, cosmic beauty, divine energy' },
   { id: 'royal', label: 'Royal', desc: 'elegant, luxurious, noble, powerful' },
@@ -39,6 +41,14 @@ const RULES = [
 ]
 
 const STYLE_BACKGROUNDS: Record<string, { base: string; gradient: string }> = {
+  realistic: {
+    base: '#050914',
+    gradient: 'radial-gradient(ellipse 65% 45% at 22% 24%, rgba(40,70,120,0.34) 0%, transparent 65%), radial-gradient(ellipse 55% 55% at 78% 75%, rgba(90,70,40,0.22) 0%, transparent 65%)',
+  },
+  '3d-digital': {
+    base: '#03050f',
+    gradient: 'radial-gradient(ellipse 72% 52% at 22% 24%, rgba(100,20,200,0.5) 0%, transparent 68%), radial-gradient(ellipse 58% 62% at 82% 75%, rgba(15,50,185,0.42) 0%, transparent 68%)',
+  },
   fantasy: {
     base: '#030008',
     gradient: 'radial-gradient(ellipse 70% 50% at 30% 20%, rgba(90,20,150,0.45) 0%, transparent 65%), radial-gradient(ellipse 55% 65% at 75% 80%, rgba(50,10,100,0.4) 0%, transparent 65%)',
@@ -372,8 +382,8 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
               step={avatarMode === 'guided' ? 'Soul Mirror · Step 2 of 6' : 'Soul Mirror'}
               title="Choose your avatar style"
               sub={avatarMode === 'guided'
-                ? 'This shapes how your Soul Mirror portrait is designed.'
-                : 'This helps the mirror create a character and background that match your description.'}
+                ? 'Pick the kind of portrait you want, then describe yourself in your own words.'
+                : 'Choose the portrait look you want, then let your description do the rest.'}
             />
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(210px, 100%), 1fr))', gap: '12px', marginBottom: '16px' }}>
               {STYLE_OPTIONS.map(style => (
@@ -394,7 +404,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
                 onMouseEnter={e => { e.currentTarget.style.background = 'rgba(230,199,110,0.1)'; e.currentTarget.style.borderColor = 'rgba(230,199,110,0.45)' }}
                 onMouseLeave={e => { e.currentTarget.style.background = showCustomStyle ? 'rgba(230,199,110,0.07)' : 'rgba(255,255,255,0.02)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.22)' }}>
                 <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.18em', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', marginBottom: '4px' }}>Other / Describe your own</p>
-                <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '14px', color: 'rgba(255,255,255,0.35)', lineHeight: 1.5, margin: 0 }}>None of these fit? Write your own style.</p>
+                <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '14px', color: 'rgba(255,255,255,0.35)', lineHeight: 1.5, margin: 0 }}>Want something else? Describe the visual style yourself.</p>
               </motion.button>
             </div>
             {showCustomStyle && (
@@ -402,7 +412,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
                 <textarea
                   value={customStyle}
                   onChange={e => setCustomStyle(e.target.value)}
-                  placeholder="e.g. dark academia, soft grunge, cottagecore royalty..."
+                  placeholder="e.g. photoreal portrait, painterly fantasy, soft cinematic realism..."
                   rows={3}
                   style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(230,199,110,0.3)', borderRadius: '10px', color: 'rgba(255,255,255,0.9)', fontFamily: "'Cormorant Garamond', serif", fontSize: '15px', lineHeight: 1.6, padding: '12px 14px', resize: 'none', outline: 'none', caretColor: '#e6c76e', boxSizing: 'border-box' }}
                 />
@@ -530,12 +540,12 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
             <SectionHeader
               step="Soul Mirror"
               title="Describe your avatar in your own words"
-              sub={`Write as much or as little as you like. Style: ${selectedStyle?.label || customStyle.trim() || 'your own'}.`}
+              sub={`Write as much or as little as you like. Portrait style: ${selectedStyle?.label || customStyle.trim() || 'your own'}.`}
             />
             <textarea
               value={freeformText}
               onChange={e => setFreeformText(e.target.value)}
-              placeholder="In another world, how do you look? (Tip: Mention your gender if you want the mirror to see you as you wish.) Include features, skin tone, hair, clothing, build, and anything that makes you distinctly you."
+              placeholder="Describe how you want to appear. Include features, skin tone, hair, clothing, build, expression, and any details that matter to you."
               rows={8}
               style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '8px', color: 'rgba(255,255,255,0.9)', fontFamily: "'Cormorant Garamond', serif", fontSize: '16px', lineHeight: 1.8, padding: '14px 16px', outline: 'none', resize: 'none', caretColor: '#e6c76e', marginBottom: '8px' }}
               onFocus={e => { e.target.style.borderColor = 'rgba(230,199,110,0.4)' }}
