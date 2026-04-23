@@ -816,7 +816,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
               <>
                 <div style={{ textAlign: 'center', marginBottom: '24px' }}>
                   <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.5em', color: 'rgba(201,168,76,0.6)', textTransform: 'uppercase', marginBottom: '8px' }}>Review your words</p>
-                  <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '16px', color: 'rgba(255,255,255,0.5)' }}>Take a moment to read what you've written. When you're ready, continue.</p>
+                  <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '16px', color: 'rgba(255,255,255,0.5)' }}>Take a moment to read what you&apos;ve written. When you&apos;re ready, continue.</p>
                 </div>
                 {letterGenerating ? (
                   <div style={{ display: 'flex', gap: '6px', alignItems: 'center', justifyContent: 'center', padding: '48px 0', marginBottom: '28px' }}>

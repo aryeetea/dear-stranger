@@ -18,7 +18,8 @@ function InAppBrowserBanner() {
   const [visible, setVisible] = useState(false)
 
   useEffect(() => {
-    setVisible(isInAppBrowser())
+    const timeout = window.setTimeout(() => setVisible(isInAppBrowser()), 0)
+    return () => window.clearTimeout(timeout)
   }, [])
 
   return (
