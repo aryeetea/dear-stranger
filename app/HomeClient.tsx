@@ -59,7 +59,6 @@ const LAST_OVERLAY_KEY = 'ds_last_overlay'
 const SESSION_TIMEOUT_MS = 8000
 const HUB_FETCH_TIMEOUT_MS = 7000
 const APP_LOADING_SLOW_MS = 3500
-const MAX_AUTH_ROUTE_RETRIES = 3
 
 function shouldShowWelcomePage() {
   if (typeof window === 'undefined') return false
@@ -527,7 +526,6 @@ export default function Home() {
 
   const screenRef = useRef<Screen>('loading')
   const onboardingInFlightRef = useRef(false)
-  const authRouteRetryCountRef = useRef(0)
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -597,20 +595,13 @@ export default function Home() {
   }, [])
 
   const finishAuthRoute = useCallback(() => {
-    authRouteRetryCountRef.current = 0
     setLoadingBlocked(false)
     setLoadingTookLong(false)
   }, [])
 
   const requestAuthRouteRetry = useCallback(() => {
     setLoadingTookLong(true)
-    if (authRouteRetryCountRef.current >= MAX_AUTH_ROUTE_RETRIES) {
-      setLoadingBlocked(true)
-      return
-    }
-    authRouteRetryCountRef.current += 1
-    setLoadingBlocked(false)
-    window.setTimeout(() => setAuthRouteRetryKey((key) => key + 1), 1500)
+    setLoadingBlocked(true)
   }, [])
 
   useEffect(() => {
@@ -1259,7 +1250,6 @@ export default function Home() {
               <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '10px', marginTop: '20px' }}>
                 <button
                   onClick={() => {
-                    authRouteRetryCountRef.current = 0
                     setLoadingBlocked(false)
                     setLoadingTookLong(false)
                     setAuthRouteRetryKey((key) => key + 1)
