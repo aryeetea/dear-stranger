@@ -212,6 +212,9 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
 
   function handleEnter() {
     const answersRecord: Record<number, string> = {}
+    const effectiveStyle = selectedStyle || (customStyle.trim()
+      ? { id: 'custom', label: customStyle.trim(), desc: customStyle.trim() }
+      : undefined)
     if (avatarMode === 'freeform') {
       answersRecord[0] = freeformText
       answersRecord[1] = hubName.trim()
@@ -221,7 +224,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
     }
     onComplete?.(
       answersRecord,
-      selectedStyle || undefined,
+      effectiveStyle,
       selectedHubStyle,
       selectedHubColor,
       selectedVoice || undefined,
@@ -324,7 +327,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
               <motion.button
                 whileHover={{ y: -4, boxShadow: '0 0 40px rgba(230,199,110,0.12)' }}
                 whileTap={{ scale: 0.98 }}
-                onClick={() => { setAvatarMode('freeform'); setPhase('freeform') }}
+                onClick={() => { setAvatarMode('freeform'); setPhase('style') }}
                 style={{ ...cardStyle, textAlign: 'left', padding: 'clamp(20px, 4vw, 32px) clamp(16px, 3vw, 28px)', borderRadius: '12px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '14px', border: '1px solid rgba(230,199,110,0.22)', background: 'rgba(10,12,30,0.9)' }}
               >
                 <GoldLines />
@@ -361,15 +364,21 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
           </motion.div>
         )}
 
-        {phase === 'style' && avatarMode === 'guided' && (
+        {phase === 'style' && (
           <motion.div key="style" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.4 }}
             style={{ ...cardStyle, width: 'min(680px, 95vw)', padding: 'clamp(28px,5vw,44px)' }}>
             <GoldLines />
-            <SectionHeader step="Soul Mirror · Step 2 of 6" title="Choose your avatar style" sub="This shapes how your Soul Mirror portrait is designed." />
+            <SectionHeader
+              step={avatarMode === 'guided' ? 'Soul Mirror · Step 2 of 6' : 'Soul Mirror'}
+              title="Choose your avatar style"
+              sub={avatarMode === 'guided'
+                ? 'This shapes how your Soul Mirror portrait is designed.'
+                : 'This helps the mirror create a character and background that match your description.'}
+            />
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(210px, 100%), 1fr))', gap: '12px', marginBottom: '16px' }}>
               {STYLE_OPTIONS.map(style => (
                 <motion.button key={style.id} whileHover={{ y: -2 }} whileTap={{ scale: 0.97 }}
-                  onClick={() => { setSelectedStyle(style); setShowCustomStyle(false); setPhase('chat') }}
+                  onClick={() => { setSelectedStyle(style); setShowCustomStyle(false); setPhase(avatarMode === 'guided' ? 'chat' : 'freeform') }}
                   style={{ textAlign: 'left', padding: '16px', borderRadius: '12px', border: '1px solid rgba(230,199,110,0.2)', background: 'rgba(255,255,255,0.04)', cursor: 'pointer', transition: 'all 0.2s' }}
                   onMouseEnter={e => { e.currentTarget.style.background = 'rgba(230,199,110,0.09)'; e.currentTarget.style.borderColor = 'rgba(230,199,110,0.4)' }}
                   onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor = 'rgba(230,199,110,0.2)' }}>
@@ -399,7 +408,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
                 />
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
                   <button
-                    onClick={() => { if (customStyle.trim()) setPhase('chat') }}
+                    onClick={() => { if (customStyle.trim()) setPhase(avatarMode === 'guided' ? 'chat' : 'freeform') }}
                     disabled={!customStyle.trim()}
                     style={{ padding: '10px 24px', borderRadius: '8px', border: '1px solid rgba(230,199,110,0.45)', background: customStyle.trim() ? 'rgba(230,199,110,0.13)' : 'rgba(255,255,255,0.03)', color: customStyle.trim() ? '#e6c76e' : 'rgba(255,255,255,0.3)', fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase', cursor: customStyle.trim() ? 'pointer' : 'default' }}
                   >Continue ✦</button>
@@ -407,7 +416,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
               </div>
             )}
             <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
-              <button onClick={() => setPhase('voice')} style={backBtn}>← Back</button>
+              <button onClick={() => setPhase(avatarMode === 'guided' ? 'voice' : 'mode')} style={backBtn}>← Back</button>
             </div>
           </motion.div>
         )}
@@ -518,7 +527,11 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
           <motion.div key="freeform" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.4 }}
             style={{ ...cardStyle, width: 'min(580px, 95vw)', padding: 'clamp(36px,5vw,52px)' }}>
             <GoldLines />
-            <SectionHeader step="Soul Mirror" title="Describe your avatar in your own words" sub="Write as much or as little as you like. You can switch to guided mode anytime." />
+            <SectionHeader
+              step="Soul Mirror"
+              title="Describe your avatar in your own words"
+              sub={`Write as much or as little as you like. Style: ${selectedStyle?.label || customStyle.trim() || 'your own'}.`}
+            />
             <textarea
               value={freeformText}
               onChange={e => setFreeformText(e.target.value)}
@@ -534,7 +547,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
               </span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <button onClick={() => setPhase('mode')} style={backBtn}>← Back</button>
+              <button onClick={() => setPhase('style')} style={backBtn}>← Back</button>
               <button onClick={() => setPhase('bio')} style={continueBtn} disabled={!freeformText.trim()}>
                 Continue ✦
               </button>

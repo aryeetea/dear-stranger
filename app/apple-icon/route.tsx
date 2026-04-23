@@ -7,7 +7,7 @@ export const size = {
 
 export const contentType = 'image/png'
 
-export default function AppleIcon() {
+export function GET() {
   return new ImageResponse(
     (
       <div
@@ -44,6 +44,6 @@ export default function AppleIcon() {
         </div>
       </div>
     ),
-    size
+    size,
   )
 }

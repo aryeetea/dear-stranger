@@ -1,11 +1,9 @@
-import type { MetadataRoute } from 'next'
-
-export default function manifest(): MetadataRoute.Manifest {
-  return {
+export function GET() {
+  return Response.json({
     id: '/',
     name: 'Dear Stranger',
     short_name: 'Dear Stranger',
-    description: 'A universe of slow, anonymous letters — write to strangers, drift through the cosmos, and be found.',
+    description: 'A universe of slow, anonymous letters - write to strangers, drift through the cosmos, and be found.',
     start_url: '/',
     scope: '/',
     display: 'standalone',
@@ -14,30 +12,25 @@ export default function manifest(): MetadataRoute.Manifest {
     orientation: 'portrait',
     lang: 'en',
     categories: ['social', 'lifestyle', 'entertainment'],
-    // prefer_related_applications must be false for TWA to work
     prefer_related_applications: false,
     icons: [
       {
         src: '/icon?size=192',
         sizes: '192x192',
         type: 'image/png',
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        purpose: 'any' as any,
+        purpose: 'any',
       },
       {
         src: '/icon?size=512',
         sizes: '512x512',
         type: 'image/png',
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        purpose: 'any' as any,
+        purpose: 'any',
       },
       {
-        // Maskable icon: used by Android to fill the adaptive icon shape
         src: '/icon?size=512',
         sizes: '512x512',
         type: 'image/png',
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        purpose: 'maskable' as any,
+        purpose: 'maskable',
       },
       {
         src: '/apple-icon',
@@ -61,5 +54,5 @@ export default function manifest(): MetadataRoute.Manifest {
         icons: [{ src: '/icon?size=192', sizes: '192x192' }],
       },
     ],
-  }
+  })
 }
