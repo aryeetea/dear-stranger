@@ -56,6 +56,7 @@ const STARS = Array.from({ length: 30 }, (_, i) => ({
 
 const HUB_COLOR_IDS: HubColor[] = ['gold', 'sage', 'rose', 'azure', 'amber', 'violet', 'teal', 'sand']
 const LAST_OVERLAY_KEY = 'ds_last_overlay'
+const AVATAR_STYLE_STORAGE_PREFIX = 'ds_avatar_style_'
 const SESSION_TIMEOUT_MS = 8000
 const HUB_FETCH_TIMEOUT_MS = 7000
 const APP_LOADING_SLOW_MS = 3500
@@ -67,6 +68,23 @@ function shouldShowWelcomePage() {
 
 function coerceHubColor(value?: string | null): HubColor {
   return HUB_COLOR_IDS.includes(value as HubColor) ? (value as HubColor) : 'gold'
+}
+
+function getAvatarStyleStorageKey(userId: string) {
+  return `${AVATAR_STYLE_STORAGE_PREFIX}${userId}`
+}
+
+function readStoredAvatarStyle(userId?: string) {
+  if (typeof window === 'undefined' || !userId) return ''
+  return localStorage.getItem(getAvatarStyleStorageKey(userId)) || ''
+}
+
+function storeAvatarStyle(userId: string | undefined, style?: string) {
+  if (typeof window === 'undefined' || !userId) return
+  const key = getAvatarStyleStorageKey(userId)
+  const cleanedStyle = style?.trim() || ''
+  if (cleanedStyle) localStorage.setItem(key, cleanedStyle)
+  else localStorage.removeItem(key)
 }
 
 function AuthBackground() {
@@ -485,6 +503,7 @@ export default function Home() {
   const [hubAskAbout, setHubAskAbout] = useState('')
   const [hubAvatarUrl, setHubAvatarUrl] = useState('')
   const [hubAvatarPending, setHubAvatarPending] = useState<string | null>(null)
+  const [avatarStyle, setAvatarStyle] = useState('')
   const avatarRetryAttemptedRef = useRef(false)
   const [hubStyle, setHubStyle] = useState<HubStyle>('portal')
   const [hubColor, setHubColor] = useState<HubColor>('gold')
@@ -569,6 +588,7 @@ export default function Home() {
     setHubRegenCount(0)
     setHubCreatedAt('')
     setHubAvatarPending(null)
+    setAvatarStyle('')
     setObservatoryOpen(false)
     setProfileOpen(false)
     setDriftOpen(false)
@@ -578,12 +598,14 @@ export default function Home() {
 
   const applyHubState = useCallback((hub: HubWithMeta | null, userId?: string) => {
     if (!hub) return
-    setCurrentUserId(userId || hub.id || '')
+    const resolvedUserId = userId || hub.id || ''
+    setCurrentUserId(resolvedUserId)
     setHubName(hub.hub_name || '')
     setHubBio(hub.bio || '')
     setHubAskAbout(hub.ask_about || '')
     setHubAvatarUrl(hub.avatar_url || '')
     setHubAvatarPending(hub.avatar_prompt_pending || null)
+    setAvatarStyle(readStoredAvatarStyle(resolvedUserId))
     setHubStyle((hub.hub_style as HubStyle) || 'portal')
     setHubColor(coerceHubColor(hub.backdrop_id))
     setHubDecoration((hub.decoration as HubDecoration) || 'none')
@@ -665,7 +687,9 @@ export default function Home() {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
         setAvatarGenerating(true)
-        const avatarUrl = await requestAvatarImage({ 0: prompt }, user.id)
+        const rememberedAvatarStyle = readStoredAvatarStyle(user.id)
+        if (rememberedAvatarStyle) setAvatarStyle(rememberedAvatarStyle)
+        const avatarUrl = await requestAvatarImage({ 0: prompt }, user.id, rememberedAvatarStyle || undefined)
         if (!avatarUrl) return
         const permanentUrl = await uploadAvatarToStorage(avatarUrl, user.id)
         setHubAvatarUrl(permanentUrl)
@@ -1154,7 +1178,10 @@ export default function Home() {
             // Only use the user's explicit avatar description for avatar generation
             if (!avatarDescription || !userId) return
             setAvatarGenerating(true)
-            const avatarUrl = await requestAvatarImage({ 0: avatarDescription }, userId, selectedStyle?.label)
+            const chosenAvatarStyle = selectedStyle?.label?.trim() || ''
+            storeAvatarStyle(userId, chosenAvatarStyle)
+            setAvatarStyle(chosenAvatarStyle)
+            const avatarUrl = await requestAvatarImage({ 0: avatarDescription }, userId, chosenAvatarStyle || undefined)
             if (!avatarUrl) return
             const permanentUrl = await uploadAvatarToStorage(avatarUrl, userId)
             setHubAvatarUrl(permanentUrl)
@@ -1731,6 +1758,7 @@ export default function Home() {
             askAbout={hubAskAbout}
             avatarUrl={hubAvatarUrl}
             avatarPromptPending={hubAvatarPending}
+            avatarStyle={avatarStyle}
             regenCount={hubRegenCount}
             hubCreatedAt={hubCreatedAt}
             hubStyle={hubStyle}
