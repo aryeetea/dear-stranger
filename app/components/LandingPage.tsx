@@ -103,19 +103,6 @@ export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: (
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const letterExtras = [
-    'papers',
-    'fonts',
-    'ink',
-    'stamps',
-    'envelopes',
-    'wax seals',
-    'voice notes',
-    'handwriting',
-    'time capsules',
-    'burn after reading',
-  ]
-
   const observatoryBeats = [
     { label: 'In Transit', text: 'letters still traveling show their progress and arrival date', glow: 'rgba(120,190,255,0.82)' },
     { label: 'Arrived', text: 'new letters brighten until you open and read them', glow: 'rgba(230,199,110,0.9)' },
@@ -922,38 +909,6 @@ export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: (
 
             <div style={{
               position: 'absolute',
-              left: 'clamp(14px, 4vw, 32px)',
-              right: 'clamp(14px, 4vw, 32px)',
-              bottom: 'clamp(12px, 3vw, 22px)',
-              zIndex: 3,
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: '6px',
-              justifyContent: 'center',
-              opacity: showScribe ? 1 : 0.28,
-              transition: 'opacity 0.35s ease',
-            }}>
-              {letterExtras.slice(0, 6).map((extra, i) => (
-                <span
-                  key={extra}
-                  style={{
-                    border: '1px solid rgba(92,61,10,0.16)',
-                    background: i % 2 === 0 ? 'rgba(255,252,238,0.68)' : 'rgba(226,199,139,0.34)',
-                    color: 'rgba(62,39,8,0.68)',
-                    fontFamily: "'Cinzel', serif",
-                    fontSize: 'clamp(7px, 1vw, 8px)',
-                    letterSpacing: '0.12em',
-                    textTransform: 'uppercase',
-                    padding: '5px 7px',
-                  }}
-                >
-                  {extra}
-                </span>
-              ))}
-            </div>
-
-            <div style={{
-              position: 'absolute',
               left: 'clamp(16px, 4vw, 34px)',
               right: 'clamp(16px, 4vw, 34px)',
               bottom: 'clamp(50px, 9vw, 76px)',
@@ -986,39 +941,6 @@ export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: (
               ))}
             </div>
           </div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={phase >= 3 ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.9, delay: 1.1, ease: 'easeOut' }}
-            style={{
-              borderTop: '1px solid rgba(120,88,24,0.2)',
-              borderBottom: '1px solid rgba(120,88,24,0.16)',
-              padding: '14px 0',
-              marginBottom: '20px',
-            }}
-          >
-            <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.28em', color: 'rgba(82,56,12,0.56)', textTransform: 'uppercase', margin: '0 0 10px' }}>
-              The little extras
-            </p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '7px' }}>
-              {letterExtras.map((extra) => (
-                <span
-                  key={extra}
-                  style={{
-                    border: '1px solid rgba(120,88,24,0.16)',
-                    color: 'rgba(55,34,8,0.68)',
-                    background: 'rgba(255,252,238,0.32)',
-                    fontFamily: "'IM Fell English', serif",
-                    fontSize: 'clamp(12px, 1.4vw, 14px)',
-                    padding: '5px 8px',
-                  }}
-                >
-                  {extra}
-                </span>
-              ))}
-            </div>
-          </motion.div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div style={{ width: '28px', height: '1px', background: 'rgba(120,88,24,0.28)' }} />
