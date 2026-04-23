@@ -12,14 +12,16 @@ const BASE_RENDER =
   'Style: Clean 3D character design with smooth, sculpted features. ' +
   'CRITICAL SKIN RULE: Render the character\'s skin tone EXACTLY as described by the user — do not lighten, alter, or approximate any described skin color. ' +
   'If no skin color is described, default to a warm neutral tone. ' +
-  'Texture: Hand-painted textures, vibrant colors, and soft-focus backgrounds. ' +
-  'Lighting: Dreamy volumetric lighting, glowing rim highlights, and soft-box studio shadows. ' +
+  'Texture: Hand-painted textures, vibrant colors, and a clear illustrated environment. ' +
+  'Lighting: Cinematic natural lighting that fits the scene, with controlled rim light only when appropriate. ' +
   'Think high-budget 3D animated cinematic (Arcane/League of Legends style) — polished, smooth, and artistic.'
 
 const RENDERING_INSTRUCTION =
   'COMPOSITION: The image MUST be a vertical portrait (taller than wide). Full body visible head to toe. ' +
   'The character fills most of the frame. NEVER produce a landscape or square composition. ' +
-  'Background: A rich, atmospheric environment with a soft bokeh effect. ' +
+  'BACKGROUND: Generate a complete, meaningful background environment that matches the character description, clothing, mood, and chosen style. ' +
+  'The background should feel like the character belongs there: include setting details such as architecture, nature, room design, weather, era, objects, landscape, or cosmic elements only when they fit the user description. ' +
+  'Avoid generic shiny blobs, random glitter, abstract bokeh dots, lens flare clutter, empty gradients, and unrelated glowing particles. ' +
   'COMPANIONS: If the user mentions a pet, animal, or creature companion, include it alongside the character — ' +
   'this applies especially to otherworldly themes (e.g. a spirit fox, cosmic dragon, shadow cat, magical beast). ' +
   'IMPORTANT: No text, no watermarks, no skin pores, no grainy textures, no realistic wrinkles.'
@@ -42,10 +44,11 @@ function buildAvatarPrompt(answers: string[], styleKey?: string) {
 
   return [
     `PORTRAIT — Stylized 3D character portrait of: ${details || 'a mysterious figure'}.`,
+    `Create both the character and their matching world/background from these details: ${details || 'a mysterious figure in a fitting atmospheric setting'}.`,
     BASE_RENDER,
     styleTheme,
     RENDERING_INSTRUCTION,
-    'FINAL REMINDER: Output must be a vertical portrait image only. Landscape orientation is forbidden.',
+    'FINAL REMINDER: Output must be a vertical portrait image only. Landscape orientation is forbidden. The background must be specific, coherent, and relevant to the avatar, not random shiny decoration.',
   ].join('\n\n')
 }
 

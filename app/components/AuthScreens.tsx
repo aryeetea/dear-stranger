@@ -299,10 +299,16 @@ export function SignupScreen({
 
   const anyLoading = googleLoading || discordLoading || magicLoading
 
+  function rememberOnboardingIntent() {
+    if (typeof sessionStorage === 'undefined') return
+    sessionStorage.setItem('ds_goto_onboarding', '1')
+  }
+
   async function handleGoogle() {
     setGoogleLoading(true); setError('')
     try {
       await signOut()
+      rememberOnboardingIntent()
       setPendingCredentials(null)
       await signInWithGoogle()
     } catch (err: unknown) {
@@ -315,6 +321,7 @@ export function SignupScreen({
     setDiscordLoading(true); setError('')
     try {
       await signOut()
+      rememberOnboardingIntent()
       setPendingCredentials(null)
       await signInWithDiscord()
     } catch (err: unknown) {
@@ -327,6 +334,7 @@ export function SignupScreen({
     if (!magicEmail.trim()) { setError('Enter your email address.'); return }
     setMagicLoading(true); setError('')
     try {
+      rememberOnboardingIntent()
       await signInWithMagicLink(magicEmail.trim())
       setMagicSent(true)
     } catch (err: unknown) {

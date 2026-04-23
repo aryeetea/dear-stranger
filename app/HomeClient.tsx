@@ -872,6 +872,7 @@ export default function Home() {
               return
             }
             setCurrentUserId(session.user?.id || '')
+            if (screen === 'onboarding') return
             let hub = null
             let hubCheckFailed = false
             try {
@@ -1107,6 +1108,7 @@ export default function Home() {
 
         await withTimeout(
           updateHub({
+            hub_name: hubNameAnswer,
             bio: chosenBio,
             ask_about: chosenAskAbout,
             hub_style: chosenHubStyle,
