@@ -257,6 +257,22 @@ export async function createHubForCurrentUser(
   return data
 }
 
+export async function createFallbackHubForCurrentUser() {
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser()
+
+  if (userError) throw userError
+  if (!user) throw new Error('No authenticated user found')
+
+  const fallbackHubName = `Stranger ${user.id.slice(0, 8)}`
+  const fallbackBio = 'A wanderer who arrived here quietly, carrying something unspoken.'
+  const fallbackAsk = 'Silence, slow mornings, and letters that take their time.'
+
+  return createHubForCurrentUser(fallbackHubName, fallbackBio, fallbackAsk)
+}
+
 export async function signInAndCreateHub(hubName: string, bio: string, askAbout: string) {
   await assertHubNameAvailable(hubName)
 

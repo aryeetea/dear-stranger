@@ -20,6 +20,7 @@ import { supabase } from '../lib/supabase'
 import {
   signUpAndCreateHub,
   createHubForCurrentUser,
+  createFallbackHubForCurrentUser,
   getSession,
   getMyHub,
   getAllHubs,
@@ -754,6 +755,18 @@ export default function Home() {
         return
       }
 
+      if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('ds_goto_onboarding') === '1') {
+        sessionStorage.removeItem('ds_goto_onboarding')
+        const raw = sessionStorage.getItem('ds_pending_creds')
+        if (raw) {
+          try { setPendingCredentials(JSON.parse(raw)) } catch {}
+        }
+        setOnboardingError('')
+        setScreen('onboarding')
+        console.log('[routeFromSession] signup flow, go to onboarding')
+        return
+      }
+
       const userId = session.user?.id
       setCurrentUserId(userId || '')
       let hub = null
@@ -794,6 +807,22 @@ export default function Home() {
         window.setTimeout(() => setAuthRouteRetryKey((key) => key + 1), 1500)
         console.log('[routeFromSession] hub lookup failed, retrying before routing away')
         return
+      }
+
+      try {
+        await createFallbackHubForCurrentUser()
+        hub = await withTimeout(getMyHub(userId), HUB_FETCH_TIMEOUT_MS, 'Created hub lookup timed out.')
+        if (hub) {
+          applyHubState(hub as HubWithMeta, userId)
+          setOnboardingError('')
+          setOnboardingResumeState(null)
+          setScreen('universe')
+          restoreUniverseOverlay()
+          console.log('[routeFromSession] session+repaired hub, go to universe')
+          return
+        }
+      } catch (repairError) {
+        console.error('[routeFromSession] missing hub repair failed:', repairError)
       }
 
       clearHubState(false)
@@ -855,6 +884,18 @@ export default function Home() {
                 setLoadingTookLong(true)
                 window.setTimeout(() => setAuthRouteRetryKey((key) => key + 1), 1500)
                 return
+              }
+              try {
+                await createFallbackHubForCurrentUser()
+                hub = await withTimeout(getMyHub(session.user?.id), HUB_FETCH_TIMEOUT_MS, 'Created hub check timed out.')
+                if (hub) {
+                  applyHubState(hub as HubWithMeta, session.user?.id)
+                  setScreen('universe')
+                  restoreUniverseOverlay()
+                  return
+                }
+              } catch (repairError) {
+                console.error('[checkSession] missing hub repair failed:', repairError)
               }
               setScreen('onboarding')
               return

@@ -3,7 +3,7 @@
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { LoginScreen } from '../components/AuthScreens'
-import { getSession, getMyHub, createHubForCurrentUser } from '../lib/auth'
+import { getSession, getMyHub, createFallbackHubForCurrentUser } from '../lib/auth'
 import { supabase } from '../../lib/supabase'
 
 const STARS = Array.from({ length: 30 }, (_, i) => ({
@@ -56,14 +56,10 @@ export default function LoginPage() {
       try {
         let hub = await getMyHub()
         if (!hub) {
-          // Fallback values for onboarding
-          const fallbackHubName = 'Your Hub'
-          const fallbackBio = 'A wanderer who arrived here quietly, carrying something unspoken.'
-          const fallbackAsk = 'Silence, slow mornings, and letters that take their time.'
           try {
-            await createHubForCurrentUser(fallbackHubName, fallbackBio, fallbackAsk)
+            await createFallbackHubForCurrentUser()
             hub = await getMyHub()
-          } catch (err) {
+          } catch {
             // If hub creation fails, send to onboarding or show error
             router.replace('/signup')
             return
@@ -84,13 +80,10 @@ export default function LoginPage() {
         try {
           let hub = await getMyHub()
           if (!hub) {
-            const fallbackHubName = 'Your Hub'
-            const fallbackBio = 'A wanderer who arrived here quietly, carrying something unspoken.'
-            const fallbackAsk = 'Silence, slow mornings, and letters that take their time.'
             try {
-              await createHubForCurrentUser(fallbackHubName, fallbackBio, fallbackAsk)
+              await createFallbackHubForCurrentUser()
               hub = await getMyHub()
-            } catch (err) {
+            } catch {
               router.replace('/signup')
               return
             }
