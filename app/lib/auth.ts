@@ -49,6 +49,7 @@ type UniverseLetterRow = {
   paper_id?: string | null
   font_id?: string | null
   font_color?: string | null
+  paper_color?: string | null
   handwriting_style?: string | null
   handwritten_image_url?: string | null
   embellishment_id?: string | null
@@ -468,7 +469,7 @@ export async function getUniverseLetters() {
   try {
     const { data, error } = await supabase
       .from('letters')
-      .select('id, sender_id, body, subject, paper_id, font_id, font_color, handwriting_style, handwritten_image_url, embellishment_id, is_anonymous, sender:sender_id(hub_name)')
+      .select('id, sender_id, body, subject, paper_id, font_id, font_color, paper_color, handwriting_style, handwritten_image_url, embellishment_id, is_anonymous, sender:sender_id(hub_name)')
       .eq('is_universe_letter', true)
       .eq('status', 'arrived')
       .not('paper_id', 'in', DRIFT_PAPER_FILTER)
@@ -487,6 +488,7 @@ export async function getUniverseLetters() {
       paperId: (l.paper_id as string) || 'void-parchment',
       fontId: (l.font_id as string) || 'im-fell',
       fontColor: (l.font_color as string) || undefined,
+      paperColor: (l.paper_color as string) || undefined,
       handwritingStyle: (l.handwriting_style as string) || 'typed',
       handwrittenImageUrl: (l.handwritten_image_url as string) || undefined,
       embellishmentId: (l.embellishment_id as string) || 'none',

@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { getAllHubs, getUniverseLetters, getReturnPaths, recordHubVisit } from '../lib/auth'
 import { playShootingStarCatch, playClick } from '../../lib/sounds'
 import { supabase } from '../../lib/supabase'
+import { PAPER_TONES, PAPER_INK, renderLetterPaper } from '../lib/letterPapers'
+import { getHandwritingStyleStyles, renderLetterEmbellishment, type EmbellishmentId, type HandwritingStyle } from '../lib/letterEnrichments'
 // ── HUB STYLE TYPES ──
 export type HubStyle = 'portal' | 'lantern' | 'ruin' | 'hourglass' | 'telescope' | 'greenhouse' | 'lotus' | 'cottage' | 'forge' | 'tower' | 'ship'
 export type HubColor = 'gold' | 'sage' | 'rose' | 'azure' | 'amber' | 'violet' | 'teal' | 'sand' | 'steel' | 'crimson' | 'forest'
@@ -55,6 +57,49 @@ export const HUB_COLOR_THEMES: { id: HubColor; label: string; ring: string; glow
   { id: 'forest', label: 'Forest', ring: '#3a7a4a', glow: '58,122,74', inner: '#1a3a22' },
 ]
 
+const FONT_FAMILIES: Record<string, string> = {
+  cormorant: "'Cormorant Garamond', serif",
+  'im-fell': "'IM Fell English', serif",
+  georgia: 'Georgia, serif',
+  times: "'Times New Roman', Times, serif",
+  playfair: "'Playfair Display', serif",
+  dancing: "'Dancing Script', cursive",
+  parisienne: "'Parisienne', cursive",
+  allura: "'Allura', cursive",
+  sacramento: "'Sacramento', cursive",
+  'style-script': "'Style Script', cursive",
+  satisfy: "'Satisfy', cursive",
+  pacifico: "'Pacifico', cursive",
+  'special-elite': "'Special Elite', cursive",
+  bellefair: "'Bellefair', serif",
+  baskervville: "'Baskervville', serif",
+  marcellus: "'Marcellus', serif",
+  courier: "'Courier Prime', monospace",
+  indie: "'Indie Flower', cursive",
+  'roboto-slab': "'Roboto Slab', serif",
+  lora: "'Lora', serif",
+  quicksand: "'Quicksand', sans-serif",
+  'source-sans': "'Source Sans 3', sans-serif",
+  cinzel: "'Cinzel', serif",
+  roboto: "'Roboto', sans-serif",
+  lato: "'Lato', sans-serif",
+}
+
+const FONT_COLOR_MAP: Record<string, string> = {
+  'iron-gall': '#1a0e04',
+  prussian: '#0c2040',
+  forest: '#0c2410',
+  burgundy: '#380614',
+  amethyst: '#260c38',
+  sepia: '#4a2a08',
+  midnight: '#08081c',
+  jade: '#0a2820',
+  crimson: '#420808',
+  slate: '#161620',
+  teak: '#3a1c06',
+  navy: '#060a28',
+}
+
 interface Hub {
   id: string
   x: number; y: number
@@ -73,6 +118,8 @@ interface ShootingStar {
   controlX: number; controlY: number; progress: number; speed: number; alpha: number
   tail: { x: number; y: number }[]
   letterId: string; senderId: string; senderName: string; preview: string; body: string
+  subject: string; paperId: string; fontId: string; fontColor?: string; paperColor?: string
+  handwritingStyle?: HandwritingStyle | string; handwrittenImageUrl?: string; embellishmentId?: EmbellishmentId | string
   age: number; maxAge: number; clicked: boolean
 }
 
@@ -1128,6 +1175,79 @@ function drawShootingStar(ctx: CanvasRenderingContext2D, star: ShootingStar) {
   ctx.fillStyle = `rgba(255,255,220,${alpha})`; ctx.fill()
 }
 
+function ShootingStarLetterModal({
+  star,
+  onClose,
+  onDismiss,
+  onReplyUniverse,
+  onReplySender,
+}: {
+  star: ShootingStar
+  onClose: () => void
+  onDismiss: () => void
+  onReplyUniverse: () => void
+  onReplySender: () => void
+}) {
+  const paperId = star.paperId || 'ornate'
+  const paperBg = star.paperColor ? (PAPER_TONES.find(t => t.id === star.paperColor)?.bg ?? undefined) : undefined
+  const ink = PAPER_INK[paperId] || PAPER_INK.ornate
+  const bodyFont = FONT_FAMILIES[star.fontId] || "'Cormorant Garamond', serif"
+  const bodyColor = star.fontColor && FONT_COLOR_MAP[star.fontColor] ? FONT_COLOR_MAP[star.fontColor] : ink.main
+  const writingStyle = getHandwritingStyleStyles(star.handwritingStyle || 'typed')
+
+  return (
+    <motion.div key="star-preview" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      onClick={onClose}
+      style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 80, background: 'rgba(0,0,5,0.82)', backdropFilter: 'blur(10px)', padding: 'clamp(12px, 2vw, 22px)' }}>
+      <motion.div initial={{ opacity: 0, scale: 0.95, y: 14 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 8 }} transition={{ duration: 0.35 }}
+        onClick={e => e.stopPropagation()}
+        style={{ width: 'min(620px, 94vw)', maxHeight: '84vh', overflowY: 'auto', borderRadius: '4px', boxShadow: `0 18px 70px rgba(0,0,0,0.92), 0 0 48px ${ink.accent}22`, position: 'relative' }}>
+        <button onClick={onClose}
+          style={{ position: 'absolute', top: '14px', right: '14px', zIndex: 12, background: 'rgba(0,0,0,0.12)', border: `1px solid ${ink.accent}40`, borderRadius: '50%', width: '34px', height: '34px', color: bodyColor, cursor: 'pointer', fontSize: '18px', lineHeight: 1 }}>
+          ×
+        </button>
+        {renderLetterPaper(paperId, paperBg, (
+          <div style={{ position: 'relative' }}>
+            {renderLetterEmbellishment(star.embellishmentId as EmbellishmentId, ink.accent, 'read')}
+            <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.4em', color: ink.accent, textTransform: 'uppercase', marginBottom: '16px', opacity: 0.88 }}>Universe Letter</p>
+            <p style={{ fontFamily: "'Cinzel', serif", fontSize: '12px', letterSpacing: '0.18em', color: bodyColor, opacity: 0.72, marginBottom: '18px' }}>{star.subject}</p>
+            <p style={{ fontFamily: bodyFont, fontSize: '17px', fontStyle: 'italic', color: bodyColor, opacity: 0.9, marginBottom: '16px', lineHeight: 1.8 }}>Dear Stranger,</p>
+            {star.handwritingStyle === 'handwritten' && star.handwrittenImageUrl ? (
+              <div style={{ margin: '16px 0' }}>
+                <img src={star.handwrittenImageUrl} alt="Handwritten universe letter" style={{ width: '100%', height: 'auto', borderRadius: '4px' }} />
+              </div>
+            ) : (
+              star.body.split('\n\n— ✦ —\n\n').map((page, i, arr) => (
+                <div key={i} style={writingStyle}>
+                  <p style={{ fontFamily: bodyFont, fontSize: 'clamp(15px,2vw,18px)', lineHeight: 2, letterSpacing: '0.02em', color: bodyColor, opacity: 0.98, whiteSpace: 'pre-wrap', overflowWrap: 'break-word', wordBreak: 'break-word' }}>{page}</p>
+                  {i < arr.length - 1 && <div style={{ textAlign: 'center', margin: '24px 0', opacity: 0.4 }}><span style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.4em', color: ink.accent }}>— ✦ —</span></div>}
+                </div>
+              ))
+            )}
+            <p style={{ fontFamily: bodyFont, fontStyle: 'italic', fontSize: '15px', color: bodyColor, opacity: 0.86, marginTop: '24px', lineHeight: 1.9 }}>With presence,<br /><span style={{ color: ink.accent, opacity: 0.95 }}>{star.senderName || 'A Stranger'}</span></p>
+          </div>
+        ))}
+        <div style={{ background: 'rgba(4,5,14,0.98)', borderTop: `1px solid ${ink.accent}45`, padding: '14px 16px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          <button onClick={onDismiss}
+            style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.22em', color: 'rgba(255,255,255,0.72)', padding: '10px 14px', border: '1px solid rgba(255,255,255,0.18)', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase', borderRadius: '4px' }}>
+            Let it pass
+          </button>
+          <button onClick={onReplyUniverse}
+            style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.22em', color: 'rgba(255,255,255,0.82)', padding: '10px 14px', border: '1px solid rgba(255,255,255,0.22)', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase', borderRadius: '4px' }}>
+            Reply into the universe
+          </button>
+          {star.senderId && (
+            <button onClick={onReplySender}
+              style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.22em', color: ink.accent, padding: '10px 14px', border: `1px solid ${ink.accent}70`, background: `${ink.accent}12`, cursor: 'pointer', textTransform: 'uppercase', borderRadius: '4px' }}>
+              Write to this stranger
+            </button>
+          )}
+        </div>
+      </motion.div>
+    </motion.div>
+  )
+}
+
 export default function UniverseMap({
   hubName, hubBio, hubAskAbout, hubAvatarUrl, hubStyle = 'portal', hubColor = 'gold',
   hubDecoration = 'none', hubGlowIntensity = 'normal', currentUserId = '',
@@ -1267,7 +1387,21 @@ export default function UniverseMap({
   }, [])
 
   // Spawn a shooting star carrying a letter
-  function spawnShootingStar(letter?: { id: string; senderId: string; senderName: string; preview: string; body: string }) {
+  function spawnShootingStar(letter?: {
+    id: string
+    senderId: string
+    senderName: string
+    preview: string
+    body: string
+    subject?: string
+    paperId?: string
+    fontId?: string
+    fontColor?: string
+    paperColor?: string
+    handwritingStyle?: string
+    handwrittenImageUrl?: string
+    embellishmentId?: string
+  }) {
     const canvas = canvasRef.current
     if (!canvas) return
     const edge = Math.floor(Math.random() * 4)
@@ -1299,6 +1433,14 @@ export default function UniverseMap({
       letterId: letter?.id || '', senderId: letter?.senderId || '', senderName: letter?.senderName || 'A Stranger',
       preview: letter?.preview || 'A letter drifts through the universe...',
       body: letter?.body || 'A letter drifts through the universe...',
+      subject: letter?.subject || 'A letter for you',
+      paperId: letter?.paperId || 'ornate',
+      fontId: letter?.fontId || 'cormorant',
+      fontColor: letter?.fontColor,
+      paperColor: letter?.paperColor,
+      handwritingStyle: letter?.handwritingStyle || 'typed',
+      handwrittenImageUrl: letter?.handwrittenImageUrl,
+      embellishmentId: letter?.embellishmentId,
       age: 0, maxAge: Math.max(320, Math.round(1 / speed) + Math.round(dist * 0.16)), clicked: false,
     }
     shootingStarsRef.current.push(star)
@@ -1306,7 +1448,7 @@ export default function UniverseMap({
 
   useEffect(() => {
     let cancelled = false
-    let universeLetters: { id: string; senderId: string; senderName: string; preview: string; body: string }[] = []
+    let universeLetters: NonNullable<Parameters<typeof spawnShootingStar>[0]>[] = []
 
     async function refreshUniverseLetters() {
       const letters = await getUniverseLetters()
@@ -1846,37 +1988,13 @@ export default function UniverseMap({
       {/* Shooting Star Preview */}
       <AnimatePresence>
         {starPreview && (
-          <motion.div key="star-preview" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
-            onClick={() => setStarPreview(null)}
-            style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 80, background: 'rgba(0,0,5,0.75)', backdropFilter: 'blur(8px)' }}>
-            <motion.div onClick={e => e.stopPropagation()}
-              style={{ background: 'rgba(8,10,28,0.97)', border: '1px solid rgba(201,168,76,0.35)', borderRadius: '12px', padding: '32px 36px 28px', width: 'min(520px, 92vw)', maxHeight: '80vh', display: 'flex', flexDirection: 'column', boxShadow: '0 0 80px rgba(201,168,76,0.12)', position: 'relative' }}>
-              <div style={{ position: 'absolute', top: 0, left: '20%', right: '20%', height: '1px', background: 'linear-gradient(90deg, transparent, rgba(201,168,76,0.5), transparent)' }} />
-              <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.4em', color: 'rgba(201,168,76,0.6)', textTransform: 'uppercase', marginBottom: '6px', flexShrink: 0 }}>✦ Universe Letter</p>
-              <p style={{ fontFamily: "'Cinzel', serif", fontSize: '11px', letterSpacing: '0.2em', color: 'rgba(255,255,255,0.4)', marginBottom: '20px', flexShrink: 0 }}>Found drifting through the universe</p>
-              <div style={{ overflowY: 'auto', flex: 1, marginBottom: '24px', paddingRight: '6px', scrollbarWidth: 'thin', scrollbarColor: 'rgba(201,168,76,0.2) transparent' }}>
-                <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '17px', color: 'rgba(255,255,255,0.88)', lineHeight: 1.8 }}>
-                  &ldquo;{starPreview.body}&rdquo;
-                </p>
-              </div>
-              <div style={{ display: 'flex', gap: '10px', flexShrink: 0, flexWrap: 'wrap' }}>
-                <button onClick={() => { if (starPreview.letterId) dismissedLetterIdsRef.current.add(starPreview.letterId); setStarPreview(null) }}
-                  style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.25em', color: 'rgba(255,255,255,0.45)', padding: '10px 16px', border: '1px solid rgba(255,255,255,0.12)', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase', borderRadius: '4px' }}>
-                  Let it pass
-                </button>
-                <button onClick={() => { setStarPreview(null); onWriteLetter?.() }}
-                  style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.25em', color: 'rgba(255,255,255,0.6)', padding: '10px 16px', border: '1px solid rgba(255,255,255,0.15)', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase', borderRadius: '4px' }}>
-                  Reply into the universe ✦
-                </button>
-                {starPreview.senderId && (
-                  <button onClick={() => { setStarPreview(null); onWriteLetter?.(starPreview.senderName) }}
-                    style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.25em', color: '#c9a84c', padding: '10px 16px', border: '1px solid rgba(201,168,76,0.45)', background: 'rgba(201,168,76,0.07)', cursor: 'pointer', textTransform: 'uppercase', borderRadius: '4px' }}>
-                    Write to this stranger ✦
-                  </button>
-                )}
-              </div>
-            </motion.div>
-          </motion.div>
+          <ShootingStarLetterModal
+            star={starPreview}
+            onClose={() => setStarPreview(null)}
+            onDismiss={() => { if (starPreview.letterId) dismissedLetterIdsRef.current.add(starPreview.letterId); setStarPreview(null) }}
+            onReplyUniverse={() => { setStarPreview(null); onWriteLetter?.() }}
+            onReplySender={() => { setStarPreview(null); onWriteLetter?.(starPreview.senderName) }}
+          />
         )}
       </AnimatePresence>
 
