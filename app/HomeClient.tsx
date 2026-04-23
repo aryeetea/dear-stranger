@@ -997,6 +997,7 @@ export default function Home() {
     userAskAbout?: string,
     userHubName?: string,
     hubDecoration?: HubDecoration,
+    avatarDescriptionInput?: string,
     firstLetterBody?: string,
   ) {
     setOnboardingError('')
@@ -1008,7 +1009,7 @@ export default function Home() {
     const hubNameAnswer = (userHubName || answers[keys[keys.length - 1]] || 'Your Hub').trim()
 
 
-    const avatarDescription = keys
+    const avatarDescription = avatarDescriptionInput?.trim() || keys
       .slice(0, -1)
       .map((key) => answers[key]?.trim())
       .filter(Boolean)
@@ -1026,6 +1027,7 @@ export default function Home() {
       selectedHubColor: chosenHubColor,
       selectedVoice: mirrorVoice,
       userAnswers: keys.slice(0, -1).map((key) => answers[key]),
+      avatarDescription,
       hubName: hubNameAnswer,
       bio: chosenBio,
       askAbout: chosenAskAbout,

@@ -87,6 +87,7 @@ export interface SoulMirrorResumeState {
   selectedHubColor?: HubColor
   selectedVoice?: MirrorVoice
   userAnswers?: string[]
+  avatarDescription?: string
   hubName?: string
   bio?: string
   askAbout?: string
@@ -109,6 +110,7 @@ interface SoulMirrorProps {
     askAbout?: string,
     hubNameFromOnboarding?: string,
     hubDecoration?: HubDecoration,
+    avatarDescription?: string,
     firstLetterBody?: string,
   ) => void
 }
@@ -120,7 +122,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
   const [customStyle, setCustomStyle] = useState('')
   const [showCustomStyle, setShowCustomStyle] = useState(false)
   const [avatarMode, setAvatarMode] = useState<'guided' | 'freeform'>('guided')
-  const [freeformText, setFreeformText] = useState('')
+  const [freeformText, setFreeformText] = useState(resumeState?.avatarDescription || '')
   const [selectedHubStyle, setSelectedHubStyle] = useState<HubStyle>(resumeState?.selectedHubStyle || 'portal')
   const [selectedHubColor, setSelectedHubColor] = useState<HubColor>(resumeState?.selectedHubColor || 'gold')
   const [selectedDecoration, setSelectedDecoration] = useState<HubDecoration>('none')
@@ -210,13 +212,20 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
     await fetchAIMessage(newMessages, newAnswers)
   }
 
+  function buildAvatarDescription() {
+    const editedDescription = freeformText.trim()
+    if (editedDescription) return editedDescription
+    return userAnswers.map((answer) => answer.trim()).filter(Boolean).join('\n')
+  }
+
   function handleEnter() {
     const answersRecord: Record<number, string> = {}
+    const finalAvatarDescription = buildAvatarDescription()
     const effectiveStyle = selectedStyle || (customStyle.trim()
       ? { id: 'custom', label: customStyle.trim(), desc: customStyle.trim() }
       : undefined)
     if (avatarMode === 'freeform') {
-      answersRecord[0] = freeformText
+      answersRecord[0] = finalAvatarDescription
       answersRecord[1] = hubName.trim()
     } else {
       userAnswers.forEach((a, i) => { answersRecord[i] = a })
@@ -232,6 +241,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
       askAbout.trim(),
       hubName.trim(),
       selectedDecoration,
+      finalAvatarDescription,
       letterReleased ? generatedLetter : undefined,
     )
   }
@@ -499,9 +509,14 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
 
             <div style={{ padding: '10px 16px 18px', borderTop: '1px solid rgba(255,255,255,0.07)', flexShrink: 0, marginTop: '8px' }}>
               {chatDone ? (
-                <motion.button initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} onClick={() => setPhase('bio')}
+                <motion.button initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} onClick={() => {
+                  if (!freeformText.trim()) {
+                    setFreeformText(userAnswers.map((answer) => answer.trim()).filter(Boolean).join('\n'))
+                  }
+                  setPhase('freeform')
+                }}
                   style={{ width: '100%', padding: '14px', background: 'rgba(230,199,110,0.12)', border: '1px solid rgba(230,199,110,0.55)', color: '#e6c76e', fontFamily: "'Cinzel', serif", fontSize: '11px', letterSpacing: '0.3em', textTransform: 'uppercase', cursor: 'pointer', borderRadius: '8px' }}>
-                  Continue ✦
+                  Review Avatar ✦
                 </motion.button>
               ) : (
                 <>
@@ -523,19 +538,23 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
           </motion.div>
         )}
 
-        {phase === 'freeform' && avatarMode === 'freeform' && (
+        {phase === 'freeform' && (
           <motion.div key="freeform" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.4 }}
             style={{ ...cardStyle, width: 'min(580px, 95vw)', padding: 'clamp(36px,5vw,52px)' }}>
             <GoldLines />
             <SectionHeader
-              step="Soul Mirror"
-              title="Describe your avatar in your own words"
-              sub={`Write as much or as little as you like. Style: ${selectedStyle?.label || customStyle.trim() || 'your own'}.`}
+              step={avatarMode === 'guided' ? 'Soul Mirror · Step 4 of 7' : 'Soul Mirror'}
+              title={avatarMode === 'guided' ? 'Review your avatar description' : 'Describe your avatar in your own words'}
+              sub={avatarMode === 'guided'
+                ? `The mirror gathered details from your answers. Edit them until they feel right. Style: ${selectedStyle?.label || customStyle.trim() || 'your own'}.`
+                : `Write as much or as little as you like. Style: ${selectedStyle?.label || customStyle.trim() || 'your own'}.`}
             />
             <textarea
               value={freeformText}
               onChange={e => setFreeformText(e.target.value)}
-              placeholder="In another world, how do you look? (Tip: Mention your gender if you want the mirror to see you as you wish.) Include features, skin tone, hair, clothing, build, and anything that makes you distinctly you."
+              placeholder={avatarMode === 'guided'
+                ? 'Describe exactly how you want your avatar to appear before the mirror creates it.'
+                : 'In another world, how do you look? (Tip: Mention your gender if you want the mirror to see you as you wish.) Include features, skin tone, hair, clothing, build, and anything that makes you distinctly you.'}
               rows={8}
               style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '8px', color: 'rgba(255,255,255,0.9)', fontFamily: "'Cormorant Garamond', serif", fontSize: '16px', lineHeight: 1.8, padding: '14px 16px', outline: 'none', resize: 'none', caretColor: '#e6c76e', marginBottom: '8px' }}
               onFocus={e => { e.target.style.borderColor = 'rgba(230,199,110,0.4)' }}
@@ -547,18 +566,20 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
               </span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <button onClick={() => setPhase('style')} style={backBtn}>← Back</button>
+              <button onClick={() => setPhase(avatarMode === 'freeform' ? 'style' : 'chat')} style={backBtn}>← Back</button>
               <button onClick={() => setPhase('bio')} style={continueBtn} disabled={!freeformText.trim()}>
                 Continue ✦
               </button>
             </div>
             <div style={{ marginTop: '18px', textAlign: 'center' }}>
+              {avatarMode === 'freeform' && (
               <button
                 onClick={() => { setAvatarMode('guided'); setPhase('voice') }}
                 style={{ background: 'none', border: 'none', color: '#e6c76e', fontFamily: "'Cinzel', serif", fontSize: '11px', letterSpacing: '0.13em', textTransform: 'uppercase', cursor: 'pointer', textDecoration: 'underline', marginTop: '8px' }}
               >
                 Switch to Guided Questions
               </button>
+              )}
             </div>
           </motion.div>
         )}
@@ -568,7 +589,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
             style={{ ...cardStyle, width: 'min(520px, 95vw)', padding: 'clamp(36px,5vw,52px)' }}>
             <GoldLines />
             <div style={{ marginBottom: '24px' }}>
-              <p style={{ fontFamily: "'Cinzel', serif", fontSize: '11px', letterSpacing: '0.5em', color: '#e6c76e', textTransform: 'uppercase', marginBottom: '10px' }}>Step 4 of 6</p>
+              <p style={{ fontFamily: "'Cinzel', serif", fontSize: '11px', letterSpacing: '0.5em', color: '#e6c76e', textTransform: 'uppercase', marginBottom: '10px' }}>{avatarMode === 'guided' ? 'Step 5 of 7' : 'Step 4 of 6'}</p>
               <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: 'clamp(16px,2.5vw,22px)', color: 'rgba(255,255,255,0.9)', lineHeight: 1.6, marginBottom: '8px' }}>Tell the universe who you are</p>
               <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '15px', color: 'rgba(255,255,255,0.45)', lineHeight: 1.6 }}>This appears on your hub card when others visit. You can always edit it in your profile.</p>
             </div>
@@ -591,7 +612,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
             style={{ ...cardStyle, width: 'min(520px, 95vw)', padding: 'clamp(36px,5vw,52px)' }}>
             <GoldLines />
             <div style={{ marginBottom: '24px' }}>
-              <p style={{ fontFamily: "'Cinzel', serif", fontSize: '11px', letterSpacing: '0.5em', color: '#e6c76e', textTransform: 'uppercase', marginBottom: '10px' }}>Step 5 of 6</p>
+              <p style={{ fontFamily: "'Cinzel', serif", fontSize: '11px', letterSpacing: '0.5em', color: '#e6c76e', textTransform: 'uppercase', marginBottom: '10px' }}>{avatarMode === 'guided' ? 'Step 6 of 7' : 'Step 5 of 6'}</p>
               <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: 'clamp(16px,2.5vw,22px)', color: 'rgba(255,255,255,0.9)', lineHeight: 1.6, marginBottom: '8px' }}>What should strangers ask you about?</p>
               <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '15px', color: 'rgba(255,255,255,0.45)', lineHeight: 1.6 }}>This gives people an easy, human way to begin writing to you.</p>
             </div>
@@ -614,7 +635,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
           <motion.div key="hubstyle" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.4 }}
             style={{ ...cardStyle, width: 'min(480px, 98vw)', padding: 'clamp(18px,3vw,28px)' }}>
             <GoldLines />
-            <SectionHeader step="Soul Mirror · Step 6 of 6" title="How does your hub appear in the universe?" sub="Tap a section to choose." />
+            <SectionHeader step={avatarMode === 'guided' ? 'Soul Mirror · Step 7 of 7' : 'Soul Mirror · Step 6 of 6'} title="How does your hub appear in the universe?" sub="Tap a section to choose." />
 
             {/* Hub Style accordion tab */}
             <div style={{ marginBottom: '8px', border: '1px solid rgba(230,199,110,0.15)', borderRadius: '8px', overflow: 'hidden' }}>
