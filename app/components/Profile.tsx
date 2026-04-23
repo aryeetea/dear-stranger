@@ -16,6 +16,13 @@ type SanctumPanel = 'appearance' | 'visitors' | 'settings' | 'share'
 // This lets us detect which cycle the regens belong to using a single DB integer.
 const CYCLE_DAYS = 90
 const DAY_MS = 1000 * 60 * 60 * 24
+const DEFAULT_WELCOME_URL = 'https://dear-stranger.vercel.app/?welcome=1'
+
+function getWelcomeUrl(origin: string) {
+  const url = new URL(origin)
+  url.searchParams.set('welcome', '1')
+  return url.toString()
+}
 
 function getLocalDayIndex(date: Date) {
   return Math.floor(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / DAY_MS)
@@ -126,7 +133,7 @@ export default function Profile({
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const [appUrl, setAppUrl] = useState('https://dear-stranger.vercel.app')
+  const [appUrl, setAppUrl] = useState(DEFAULT_WELCOME_URL)
   const [copied, setCopied] = useState(false)
 
   const [leavingConfirm, setLeavingConfirm] = useState(false)
@@ -150,7 +157,7 @@ export default function Profile({
   }, [initialAvatarUrl, lastAvatarProp])
 
   useEffect(() => {
-    if (typeof window !== 'undefined') setAppUrl(window.location.origin)
+    if (typeof window !== 'undefined') setAppUrl(getWelcomeUrl(window.location.origin))
   }, [])
 
   useEffect(() => {

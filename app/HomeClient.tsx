@@ -59,6 +59,11 @@ const SESSION_TIMEOUT_MS = 8000
 const HUB_FETCH_TIMEOUT_MS = 7000
 const APP_LOADING_SLOW_MS = 3500
 
+function shouldShowWelcomePage() {
+  if (typeof window === 'undefined') return false
+  return new URLSearchParams(window.location.search).get('welcome') === '1'
+}
+
 function coerceHubColor(value?: string | null): HubColor {
   return HUB_COLOR_IDS.includes(value as HubColor) ? (value as HubColor) : 'gold'
 }
@@ -718,6 +723,14 @@ export default function Home() {
   const routeFromSession = useCallback(async (knownSession?: Session | null) => {
     try {
       console.log('[routeFromSession] begin')
+
+      if (shouldShowWelcomePage()) {
+        setSavedOverlay(null)
+        setScreen('landing')
+        console.log('[routeFromSession] welcome link, go to landing')
+        return
+      }
+
       const session = knownSession ?? await withTimeout(getSession(), SESSION_TIMEOUT_MS, 'Session check timed out.')
       console.log('[routeFromSession] getSession result:', session)
 
