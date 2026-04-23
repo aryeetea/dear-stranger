@@ -61,14 +61,14 @@ function getMirrorCycle(createdAt?: string, nowMs = Date.now()) {
 }
 
 export default function Profile({
-  hubName, bio, askAbout, avatarUrl: initialAvatarUrl, avatarPromptPending, avatarStyle, regenCount: initialRegenCount,
+  hubName, bio, askAbout, avatarUrl: initialAvatarUrl, avatarPromptPending, regenCount: initialRegenCount,
   hubCreatedAt,
   visitorBookEnabled: initialVisitorBookEnabled = true,
   hubStyle: initialHubStyle = 'portal', hubColor: initialHubColor = 'gold',
   hubDecoration: initialHubDecoration = 'none', hubGlowIntensity: initialHubGlowIntensity = 'normal',
   onClose, onUpdateHub,
 }: {
-  hubName?: string; bio?: string; askAbout?: string; avatarUrl?: string; avatarPromptPending?: string | null; avatarStyle?: string; regenCount?: number
+  hubName?: string; bio?: string; askAbout?: string; avatarUrl?: string; avatarPromptPending?: string | null; regenCount?: number
   hubCreatedAt?: string
   visitorBookEnabled?: boolean
   hubStyle?: HubStyle; hubColor?: HubColor
@@ -281,8 +281,8 @@ export default function Profile({
       // If there's no existing avatar but we have the original description, generate fresh
       const hasExistingAvatar = Boolean(currentAvatarUrl)
       const requestBody = !hasExistingAvatar && avatarPromptPending
-        ? { answers: { 0: avatarPromptPending }, feedback: regenFeedback || undefined, mode: 'create', style: avatarStyle || undefined }
-        : { answers: { 0: bioState, 1: askState }, feedback: regenFeedback, mode: 'reimagine', previousImageUrl: currentAvatarUrl || undefined, style: avatarStyle || undefined }
+        ? { answers: { 0: avatarPromptPending }, feedback: regenFeedback || undefined, mode: 'create' }
+        : { answers: { 0: bioState, 1: askState }, feedback: regenFeedback, mode: 'reimagine', previousImageUrl: currentAvatarUrl || undefined }
       let avatarToken: string | undefined
       try {
         const { data, error } = await supabase.auth.refreshSession()

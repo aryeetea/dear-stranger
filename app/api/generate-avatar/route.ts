@@ -8,10 +8,6 @@ export const maxDuration = 120
 // STYLE DESCRIPTORS — background/mood only, never override clothing or hair
 // ---------------------------------------------------------------------------
 const STYLE_DESCRIPTORS: Record<string, string> = {
-  realistic:
-    'Background mood: natural lighting, believable environment, grounded atmosphere, subtle depth.',
-  '3d-digital':
-    'Background mood: cinematic digital environment, sculpted lighting, vivid depth, polished fantasy-game ambience.',
   fantasy:
     'Background mood: magical glowing environment, ethereal aura, soft mist, otherworldly light.',
   modern:
@@ -65,42 +61,6 @@ function buildIdentityInstruction(details: string): string {
   return 'GENDER: Preserve the gender, role, and identity words the user provided. Never swap roles (e.g. princess → prince).'
 }
 
-function buildArtStyleInstruction(styleKey?: string) {
-  const normalizedStyle = normalizeStyleKey(styleKey)
-  const rawStyle = normalizeDetail(styleKey || '').toLowerCase()
-
-  if (
-    normalizedStyle === 'realistic' ||
-    /\b(realistic|photoreal|photorealistic|lifelike|naturalistic)\b/.test(rawStyle)
-  ) {
-    return `
-ART STYLE:
-High-end realistic digital portrait art. Natural human proportions, believable lighting, grounded textures, lifelike rendering.
-Not cartoon, not anime, not exaggerated 3D stylization, not doll-like.
-No watermarks, no text, no labels.
-`.trim()
-  }
-
-  if (
-    normalizedStyle === '3d-digital' ||
-    /\b(3d|three[- ]d|stylized|cinematic|game art|digital art|arcane)\b/.test(rawStyle)
-  ) {
-    return `
-ART STYLE:
-High-end stylized 3D digital art. Cinematic game-art quality, smooth sculpted features, hand-painted textures, vibrant colors, dramatic lighting.
-Not a photograph, not photorealistic, no skin pores, no grain.
-No watermarks, no text, no labels.
-`.trim()
-  }
-
-  return `
-ART STYLE:
-Match the visual medium the user requested. If they asked for realism, render it realistically. If they asked for stylized 3D digital art, render it as stylized 3D.
-If the user did not specify, use polished digital portrait art with clear, intentional lighting.
-No watermarks, no text, no labels.
-`.trim()
-}
-
 // ---------------------------------------------------------------------------
 // Prompt builder — user description is ALWAYS first and most specific
 // ---------------------------------------------------------------------------
@@ -131,7 +91,10 @@ SKIN TONE — CRITICAL:
 Render the character's skin tone EXACTLY as described. Never lighten, darken, or approximate it.
 If no skin tone is described, use a warm neutral tone. Do not let the background style or mood influence the skin tone — it must remain true to the user's description.
 
-${buildArtStyleInstruction(styleKey)}
+ART STYLE:
+High-end stylized 3D digital art — NOT a photograph, NOT realistic. Style: Arcane / League of Legends cinematic quality.
+Smooth sculpted features, hand-painted textures, vibrant colors, cinematic lighting.
+No skin pores, no photorealism, no grain, no watermarks, no text, no labels.
 
 COMPOSITION:
 Vertical portrait (taller than wide). Full body visible from head to toe. Character upright, facing viewer.
