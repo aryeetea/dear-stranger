@@ -624,7 +624,7 @@ export default function Scribe({ recipientName, senderName, draftOwnerId, letter
       setTimeout(() => {
         void (async () => {
           try {
-            await onSend?.({ to: journalMode ? undefined : recipientName, body, paperId: selectedPaper.id, subject, fontId: selectedFont.id, colorId: selectedColor ?? undefined, paperColorId: selectedPaperColor ?? undefined, stampId: selectedStamp, envelopeId: selectedEnvelope, capsuleDays: journalMode ? capsuleDays : undefined, burnAfterReading: burnAfterReading || undefined, voiceNoteBlob: voiceNoteBlob ?? undefined, voiceEffect: voiceNoteBlob ? voiceEffect : undefined, handwritingStyle: selectedHandwriting, embellishmentId: selectedEmbellishment, handwrittenImageBlob: handwrittenImageBlob ?? undefined, anonymous: (!recipientName && !journalMode) ? isAnonymous : undefined })
+            await onSend?.({ to: journalMode ? undefined : recipientName, body, paperId: selectedPaper.id, subject, fontId: selectedFont.id, colorId: selectedColor ?? undefined, paperColorId: selectedPaperColor ?? undefined, stampId: selectedStamp, envelopeId: selectedEnvelope, capsuleDays: journalMode ? capsuleDays : undefined, burnAfterReading: burnAfterReading || undefined, voiceNoteBlob: voiceNoteBlob ?? undefined, voiceEffect: voiceNoteBlob ? voiceEffect : undefined, handwritingStyle: selectedHandwriting, embellishmentId: selectedEmbellishment, handwrittenImageBlob: handwrittenImageBlob ?? undefined, anonymous: journalMode ? false : isAnonymous })
             clearDraft()
             onClose?.()
           } catch (err) {

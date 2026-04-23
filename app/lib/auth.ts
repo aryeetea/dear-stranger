@@ -882,7 +882,7 @@ export async function sendLetter(
         handwriting_style: handwritingStyle || 'typed',
         ...(embellishmentId && embellishmentId !== 'none' ? { embellishment_id: embellishmentId } : {}),
         ...(handwrittenImageUrl ? { handwritten_image_url: handwrittenImageUrl } : {}),
-        ...(isAnonymous ? { is_anonymous: true } : {}),
+        is_anonymous: isAnonymous === true,
       },
     ])
     .select()
