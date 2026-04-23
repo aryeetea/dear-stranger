@@ -748,18 +748,13 @@ export default function Home() {
       console.log('[routeFromSession] getSession result:', session)
 
       if (!session) {
-        // Check if the signup page stored pending credentials + onboarding intent
+        // Soul Mirror now requires an authenticated session for its API requests.
+        // If onboarding intent exists but auth has not completed yet, do not open
+        // onboarding in a logged-out state or the mirror will immediately fail.
         if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('ds_goto_onboarding') === '1') {
           sessionStorage.removeItem('ds_goto_onboarding')
-          const raw = sessionStorage.getItem('ds_pending_creds')
-          if (raw) {
-            try { setPendingCredentials(JSON.parse(raw)) } catch {}
-          }
-          setOnboardingError('')
-          finishAuthRoute()
-          setScreen('onboarding')
-          console.log('[routeFromSession] no session but signup flow, go to onboarding')
-          return
+          sessionStorage.removeItem('ds_pending_creds')
+          console.log('[routeFromSession] onboarding intent found without session; waiting for a completed sign-in')
         }
         clearHubState()
         finishAuthRoute()
