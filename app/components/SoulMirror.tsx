@@ -745,14 +745,14 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
             <GoldLines />
             <div style={{ textAlign: 'center', marginBottom: '28px' }}>
               <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.5em', color: 'rgba(201,168,76,0.6)', textTransform: 'uppercase', marginBottom: '8px' }}>Before you enter</p>
-              <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: 'clamp(18px,2.8vw,24px)', color: 'rgba(255,255,255,0.92)', lineHeight: 1.5, marginBottom: '8px' }}>Leave your first letter</p>
-              <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '15px', color: 'rgba(255,255,255,0.45)', lineHeight: 1.65 }}>You can answer a few prompts and let the mirror shape it, or write the whole thing yourself.</p>
+              <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: 'clamp(18px,2.8vw,24px)', color: 'rgba(255,255,255,0.92)', lineHeight: 1.5, marginBottom: '8px' }}>Write your first letter</p>
+              <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '15px', color: 'rgba(255,255,255,0.45)', lineHeight: 1.65 }}>This will be the first letter you release into the universe. Write whatever you want a stranger to find from you.</p>
             </div>
             <textarea
               autoFocus
               value={customFirstLetter}
               onChange={e => setCustomFirstLetter(e.target.value)}
-              placeholder="Dear Stranger..."
+              placeholder="Dear Stranger,&#10;&#10;This is my first letter..."
               style={{
                 width: '100%',
                 minHeight: '260px',
