@@ -59,6 +59,7 @@ const LAST_OVERLAY_KEY = 'ds_last_overlay'
 const SESSION_TIMEOUT_MS = 8000
 const HUB_FETCH_TIMEOUT_MS = 7000
 const APP_LOADING_SLOW_MS = 3500
+const MAX_AUTH_ROUTE_RETRIES = 3
 
 function shouldShowWelcomePage() {
   if (typeof window === 'undefined') return false
@@ -509,6 +510,7 @@ export default function Home() {
   const [isGuest, setIsGuest] = useState(false)
   const [currentUserId, setCurrentUserId] = useState('')
   const [loadingTookLong, setLoadingTookLong] = useState(false)
+  const [loadingBlocked, setLoadingBlocked] = useState(false)
   const [authRouteRetryKey, setAuthRouteRetryKey] = useState(0)
   const [guestBannerDismissed, setGuestBannerDismissed] = useState(false)
   const [guestNudgeOpen, setGuestNudgeOpen] = useState(false)
@@ -525,6 +527,7 @@ export default function Home() {
 
   const screenRef = useRef<Screen>('loading')
   const onboardingInFlightRef = useRef(false)
+  const authRouteRetryCountRef = useRef(0)
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -591,6 +594,23 @@ export default function Home() {
     setVisitorBookEnabled(hub.visitor_book_enabled !== false)
     setHubRegenCount(hub.regen_count || 0)
     setHubCreatedAt(hub.created_at || '')
+  }, [])
+
+  const finishAuthRoute = useCallback(() => {
+    authRouteRetryCountRef.current = 0
+    setLoadingBlocked(false)
+    setLoadingTookLong(false)
+  }, [])
+
+  const requestAuthRouteRetry = useCallback(() => {
+    setLoadingTookLong(true)
+    if (authRouteRetryCountRef.current >= MAX_AUTH_ROUTE_RETRIES) {
+      setLoadingBlocked(true)
+      return
+    }
+    authRouteRetryCountRef.current += 1
+    setLoadingBlocked(false)
+    window.setTimeout(() => setAuthRouteRetryKey((key) => key + 1), 1500)
   }, [])
 
   useEffect(() => {
@@ -726,6 +746,7 @@ export default function Home() {
       console.log('[routeFromSession] begin')
 
       if (shouldShowWelcomePage()) {
+        finishAuthRoute()
         setSavedOverlay(null)
         setScreen('landing')
         console.log('[routeFromSession] welcome link, go to landing')
@@ -744,11 +765,13 @@ export default function Home() {
             try { setPendingCredentials(JSON.parse(raw)) } catch {}
           }
           setOnboardingError('')
+          finishAuthRoute()
           setScreen('onboarding')
           console.log('[routeFromSession] no session but signup flow, go to onboarding')
           return
         }
         clearHubState()
+        finishAuthRoute()
         setSavedOverlay(null)
         setScreen('landing')
         console.log('[routeFromSession] no session, go to landing')
@@ -762,6 +785,7 @@ export default function Home() {
           try { setPendingCredentials(JSON.parse(raw)) } catch {}
         }
         setOnboardingError('')
+        finishAuthRoute()
         setScreen('onboarding')
         console.log('[routeFromSession] signup flow, go to onboarding')
         return
@@ -795,6 +819,7 @@ export default function Home() {
         setOnboardingError('')
         setOnboardingResumeState(null)
 
+        finishAuthRoute()
         setScreen('universe')
         restoreUniverseOverlay()
         console.log('[routeFromSession] session+hub, go to universe')
@@ -803,8 +828,7 @@ export default function Home() {
 
       if (hubLookupFailed) {
         setScreen('loading')
-        setLoadingTookLong(true)
-        window.setTimeout(() => setAuthRouteRetryKey((key) => key + 1), 1500)
+        requestAuthRouteRetry()
         console.log('[routeFromSession] hub lookup failed, retrying before routing away')
         return
       }
@@ -816,6 +840,7 @@ export default function Home() {
           applyHubState(hub as HubWithMeta, userId)
           setOnboardingError('')
           setOnboardingResumeState(null)
+          finishAuthRoute()
           setScreen('universe')
           restoreUniverseOverlay()
           console.log('[routeFromSession] session+repaired hub, go to universe')
@@ -827,23 +852,24 @@ export default function Home() {
 
       clearHubState(false)
       setSavedOverlay(null)
-      setScreen('onboarding')
-      console.log('[routeFromSession] session+no hub, go to onboarding')
+      setScreen('loading')
+      requestAuthRouteRetry()
+      console.log('[routeFromSession] session+no hub, staying on loading while retrying')
     } catch (err) {
       console.error('[routeFromSession] error:', err)
       if (isTimeoutError(err, 'Session check timed out.')) {
         setScreen('loading')
-        setLoadingTookLong(true)
-        window.setTimeout(() => setAuthRouteRetryKey((key) => key + 1), 1500)
+        requestAuthRouteRetry()
         console.log('[routeFromSession] session check timed out, retrying')
         return
       }
       clearHubState()
+      finishAuthRoute()
       setSavedOverlay(null)
       setScreen('landing')
       console.log('[routeFromSession] fallback to landing')
     }
-  }, [applyHubState, clearHubState, restoreUniverseOverlay, setSavedOverlay])
+  }, [applyHubState, clearHubState, finishAuthRoute, requestAuthRouteRetry, restoreUniverseOverlay, setSavedOverlay])
 
   useEffect(() => {
     if (screen !== 'loading') {
@@ -868,6 +894,7 @@ export default function Home() {
           if (authAwareScreens.includes(screen)) {
             const session = await withTimeout(getSession(), SESSION_TIMEOUT_MS, 'Session check timed out.')
             if (!session) {
+              finishAuthRoute()
               setScreen(screen === 'onboarding' ? 'onboarding' : 'landing')
               return
             }
@@ -882,8 +909,7 @@ export default function Home() {
             }
             if (!hub) {
               if (hubCheckFailed) {
-                setLoadingTookLong(true)
-                window.setTimeout(() => setAuthRouteRetryKey((key) => key + 1), 1500)
+                requestAuthRouteRetry()
                 return
               }
               try {
@@ -891,6 +917,7 @@ export default function Home() {
                 hub = await withTimeout(getMyHub(session.user?.id), HUB_FETCH_TIMEOUT_MS, 'Created hub check timed out.')
                 if (hub) {
                   applyHubState(hub as HubWithMeta, session.user?.id)
+                  finishAuthRoute()
                   setScreen('universe')
                   restoreUniverseOverlay()
                   return
@@ -898,10 +925,12 @@ export default function Home() {
               } catch (repairError) {
                 console.error('[checkSession] missing hub repair failed:', repairError)
               }
-              setScreen('onboarding')
+              setScreen('loading')
+              requestAuthRouteRetry()
               return
             }
             applyHubState(hub as HubWithMeta, session.user?.id)
+            finishAuthRoute()
             setScreen('universe')
             restoreUniverseOverlay()
           }
@@ -910,12 +939,12 @@ export default function Home() {
         console.error('checkSession failed:', err)
         if (isTimeoutError(err, 'Session check timed out.')) {
           setScreen('loading')
-          setLoadingTookLong(true)
-          window.setTimeout(() => setAuthRouteRetryKey((key) => key + 1), 1500)
+          requestAuthRouteRetry()
           console.log('[checkSession] session check timed out, retrying')
           return
         }
         clearHubState()
+        finishAuthRoute()
         setScreen('landing')
         console.log('[checkSession] fallback to landing')
       }
@@ -928,6 +957,7 @@ export default function Home() {
       console.log('[authStateChange]', event)
       if (event === 'SIGNED_OUT') {
         clearHubState()
+        finishAuthRoute()
         setPendingCredentials(null)
         setOnboardingError('')
         setIsGuest(false)
@@ -947,7 +977,7 @@ export default function Home() {
       ignore = true
       authListener.subscription.unsubscribe()
     }
-  }, [applyHubState, authRouteRetryKey, clearHubState, restoreUniverseOverlay, routeFromSession, screen, setSavedOverlay])
+  }, [applyHubState, authRouteRetryKey, clearHubState, finishAuthRoute, requestAuthRouteRetry, restoreUniverseOverlay, routeFromSession, screen, setSavedOverlay])
 
   // Prevent browser back button from escaping the SPA when user is authenticated
   useEffect(() => {
@@ -1189,33 +1219,91 @@ export default function Home() {
         }}
       >
         {/* Orbit ring */}
-        <div style={{ position: 'relative', width: '48px', height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{
-            position: 'absolute',
-            inset: 0,
-            borderRadius: '50%',
-            border: '1px solid rgba(201,168,76,0.15)',
-            borderTopColor: 'rgba(201,168,76,0.55)',
-            animation: 'ds-loading-orbit 1.6s linear infinite',
-          }} />
-          {/* Central star */}
-          <div
-            style={{
-              fontFamily: "'Cinzel', serif",
-              fontSize: '13px',
-              letterSpacing: '0.4em',
-              color: 'rgba(201,168,76,0.75)',
-              animation: 'ds-loading-pulse 2.2s ease-in-out infinite',
-            }}
-          >
-            ✦
+        {!loadingBlocked && (
+          <div style={{ position: 'relative', width: '48px', height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{
+              position: 'absolute',
+              inset: 0,
+              borderRadius: '50%',
+              border: '1px solid rgba(201,168,76,0.15)',
+              borderTopColor: 'rgba(201,168,76,0.55)',
+              animation: 'ds-loading-orbit 1.6s linear infinite',
+            }} />
+            {/* Central star */}
+            <div
+              style={{
+                fontFamily: "'Cinzel', serif",
+                fontSize: '13px',
+                letterSpacing: '0.4em',
+                color: 'rgba(201,168,76,0.75)',
+                animation: 'ds-loading-pulse 2.2s ease-in-out infinite',
+              }}
+            >
+              ✦
+            </div>
           </div>
-        </div>
+        )}
         <div>
           <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.28em', color: 'rgba(201,168,76,0.62)', textTransform: 'uppercase', margin: '0 0 8px' }}>
-            {loadingTookLong ? 'Still finding your hub...' : 'Finding your place in the universe...'}
+            {loadingBlocked
+              ? 'We could not open your hub yet'
+              : loadingTookLong
+                ? 'Still finding your hub...'
+                : 'Finding your place in the universe...'}
           </p>
-          {loadingTookLong && (
+          {loadingBlocked ? (
+            <>
+              <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(255,255,255,0.46)', margin: 0, lineHeight: 1.5 }}>
+                The connection did not answer in time. You can try again or return to the start.
+              </p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '10px', marginTop: '20px' }}>
+                <button
+                  onClick={() => {
+                    authRouteRetryCountRef.current = 0
+                    setLoadingBlocked(false)
+                    setLoadingTookLong(false)
+                    setAuthRouteRetryKey((key) => key + 1)
+                  }}
+                  style={{
+                    background: 'rgba(201,168,76,0.12)',
+                    border: '1px solid rgba(201,168,76,0.35)',
+                    color: 'rgba(201,168,76,0.9)',
+                    fontFamily: "'Cinzel', serif",
+                    fontSize: '9px',
+                    letterSpacing: '0.2em',
+                    textTransform: 'uppercase',
+                    padding: '11px 18px',
+                    cursor: 'pointer',
+                    borderRadius: '4px',
+                  }}
+                >
+                  Try again
+                </button>
+                <button
+                  onClick={() => {
+                    clearHubState()
+                    finishAuthRoute()
+                    setSavedOverlay(null)
+                    setScreen('landing')
+                  }}
+                  style={{
+                    background: 'rgba(255,255,255,0.04)',
+                    border: '1px solid rgba(255,255,255,0.12)',
+                    color: 'rgba(255,255,255,0.6)',
+                    fontFamily: "'Cinzel', serif",
+                    fontSize: '9px',
+                    letterSpacing: '0.2em',
+                    textTransform: 'uppercase',
+                    padding: '11px 18px',
+                    cursor: 'pointer',
+                    borderRadius: '4px',
+                  }}
+                >
+                  Back to start
+                </button>
+              </div>
+            </>
+          ) : loadingTookLong && (
             <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(255,255,255,0.46)', margin: 0, lineHeight: 1.5 }}>
               The connection is quiet. We are still listening for it.
             </p>
