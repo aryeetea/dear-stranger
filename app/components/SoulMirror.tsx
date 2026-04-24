@@ -91,7 +91,7 @@ export interface SoulMirrorResumeState {
   hubName?: string
   bio?: string
   askAbout?: string
-  decoration?: string
+  decoration?: HubDecoration
 }
 
 type Phase = 'mode' | 'voice' | 'style' | 'chat' | 'freeform' | 'bio' | 'askabout' | 'hubstyle' | 'hubname' | 'firstletter' | 'firstletter_preview' | 'welcome'
@@ -125,7 +125,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
   const [freeformText, setFreeformText] = useState(resumeState?.avatarDescription || '')
   const [selectedHubStyle, setSelectedHubStyle] = useState<HubStyle>(resumeState?.selectedHubStyle || 'portal')
   const [selectedHubColor, setSelectedHubColor] = useState<HubColor>(resumeState?.selectedHubColor || 'gold')
-  const [selectedDecoration, setSelectedDecoration] = useState<HubDecoration>('none')
+  const [selectedDecoration, setSelectedDecoration] = useState<HubDecoration>(resumeState?.decoration || 'none')
   const [openSection, setOpenSection] = useState<'style' | 'color' | 'decoration' | null>(null)
   const [messages, setMessages] = useState<{ role: 'ai' | 'user'; text: string; isClosing?: boolean; chips?: string[] }[]>([])
   const [userAnswers, setUserAnswers] = useState<string[]>(resumeState?.userAnswers || [])

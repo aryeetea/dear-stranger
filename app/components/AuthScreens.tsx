@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { signInWithGoogle, signInWithDiscord, signInWithMagicLink, signOut } from '../lib/auth'
+import { signInWithGoogle, signInWithDiscord, sendEmailCode, verifyEmailCode, signOut } from '../lib/auth'
 
 function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback
@@ -93,6 +93,108 @@ function MailIcon() {
   )
 }
 
+function EmailCodePanel({
+  email,
+  setEmail,
+  code,
+  setCode,
+  loading,
+  error,
+  sent,
+  sendLabel,
+  verifyLabel,
+  sentTitle,
+  sentBody,
+  onSend,
+  onVerify,
+  onReset,
+}: {
+  email: string
+  setEmail: (value: string) => void
+  code: string
+  setCode: (value: string) => void
+  loading: boolean
+  error: string
+  sent: boolean
+  sendLabel: string
+  verifyLabel: string
+  sentTitle: string
+  sentBody: React.ReactNode
+  onSend: () => Promise<void>
+  onVerify: () => Promise<void>
+  onReset: () => void
+}) {
+  if (sent) {
+    return (
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}
+        style={{ width: 'min(420px, 92vw)', zIndex: 2, textAlign: 'center' }}>
+        <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.5em', color: 'rgba(201,168,76,0.6)', textTransform: 'uppercase', marginBottom: '12px' }}>Dear Stranger</p>
+        <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '24px', color: 'rgba(255,255,255,0.88)', letterSpacing: '0.06em', marginBottom: '12px' }}>{sentTitle}</p>
+        <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(255,255,255,0.5)', lineHeight: 1.6, marginBottom: '24px' }}>
+          {sentBody}
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+          <input
+            type="text"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            placeholder="6-digit code"
+            value={code}
+            onChange={e => setCode(e.target.value.replace(/\s/g, ''))}
+            onKeyDown={e => e.key === 'Enter' && void onVerify()}
+            disabled={loading}
+            style={{ width: '100%', padding: '12px 14px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.88)', fontFamily: "'IM Fell English', serif", fontSize: '14px', borderRadius: '4px', outline: 'none', textAlign: 'center', letterSpacing: '0.18em' }}
+          />
+          <button onClick={() => void onVerify()} disabled={loading}
+            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px 18px', background: 'rgba(201,168,76,0.12)', border: '1px solid rgba(201,168,76,0.35)', color: 'rgba(201,168,76,0.9)', fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.15em', textTransform: 'uppercase', cursor: 'pointer', borderRadius: '4px', whiteSpace: 'nowrap', transition: 'all 0.2s' }}>
+            <MailIcon />
+            {loading ? 'Verifying...' : verifyLabel}
+          </button>
+        </div>
+        {error && (
+          <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(220,100,100,0.85)', marginBottom: '14px', textAlign: 'center' }}>{error}</p>
+        )}
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          <button onClick={onReset}
+            style={{ background: 'none', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.5)', fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.2em', textTransform: 'uppercase', padding: '10px 22px', cursor: 'pointer', borderRadius: '4px' }}>
+            Use a different email
+          </button>
+          <button onClick={() => void onSend()}
+            style={{ background: 'none', border: '1px solid rgba(201,168,76,0.2)', color: 'rgba(201,168,76,0.75)', fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.2em', textTransform: 'uppercase', padding: '10px 22px', cursor: 'pointer', borderRadius: '4px' }}>
+            Resend code
+          </button>
+        </div>
+      </motion.div>
+    )
+  }
+
+  return (
+    <div style={{ marginBottom: '16px' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+        <input
+          type="email"
+          placeholder="your@email.com"
+          value={email}
+          onChange={e => setEmail(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && void onSend()}
+          disabled={loading}
+          style={{ flex: '1 1 200px', minWidth: 0, padding: '12px 14px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.88)', fontFamily: "'IM Fell English', serif", fontSize: '14px', borderRadius: '4px', outline: 'none' }}
+        />
+        <button onClick={() => void onSend()} disabled={loading}
+          style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px 18px', background: 'rgba(201,168,76,0.12)', border: '1px solid rgba(201,168,76,0.35)', color: 'rgba(201,168,76,0.9)', fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.15em', textTransform: 'uppercase', cursor: 'pointer', borderRadius: '4px', whiteSpace: 'nowrap', transition: 'all 0.2s' }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(201,168,76,0.22)'; e.currentTarget.style.borderColor = 'rgba(201,168,76,0.6)' }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(201,168,76,0.12)'; e.currentTarget.style.borderColor = 'rgba(201,168,76,0.35)' }}>
+          <MailIcon />
+          {loading ? 'Sending...' : sendLabel}
+        </button>
+      </div>
+      {error && (
+        <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(220,100,100,0.85)', marginTop: '14px', marginBottom: 0, textAlign: 'center' }}>{error}</p>
+      )}
+    </div>
+  )
+}
+
 export function LoginScreen({
   onSuccess,
   onGoToSignup,
@@ -100,35 +202,32 @@ export function LoginScreen({
   onSuccess: () => void
   onGoToSignup: () => void
 }) {
-
   const [error, setError] = useState('')
   const [googleLoading, setGoogleLoading] = useState(false)
   const [discordLoading, setDiscordLoading] = useState(false)
-  const [magicEmail, setMagicEmail] = useState('')
-  const [magicLoading, setMagicLoading] = useState(false)
-  const [magicSent, setMagicSent] = useState(false)
+  const [email, setEmail] = useState('')
+  const [emailCode, setEmailCode] = useState('')
+  const [emailLoading, setEmailLoading] = useState(false)
+  const [codeSent, setCodeSent] = useState(false)
 
-  // Reset loading states on mount
   useEffect(() => {
     setGoogleLoading(false)
     setDiscordLoading(false)
-    setMagicLoading(false)
+    setEmailLoading(false)
   }, [])
 
-  // Reset loading states on Supabase OAuth event
   useEffect(() => {
-    // Import supabase directly here to avoid circular import
     import('../../lib/supabase').then(({ supabase }) => {
       const { data: authListener } = supabase.auth.onAuthStateChange(() => {
         setGoogleLoading(false)
         setDiscordLoading(false)
-        setMagicLoading(false)
+        setEmailLoading(false)
       })
       return () => authListener.subscription.unsubscribe()
     })
   }, [])
 
-  const anyLoading = googleLoading || discordLoading || magicLoading
+  const anyLoading = googleLoading || discordLoading || emailLoading
 
   async function handleGoogle() {
     setGoogleLoading(true); setError('')
@@ -152,35 +251,50 @@ export function LoginScreen({
     }
   }
 
-  async function handleMagicLink() {
-    if (!magicEmail.trim()) { setError('Enter your email address.'); return }
-    setMagicLoading(true); setError('')
+  async function handleSendCode() {
+    if (!email.trim()) { setError('Enter your email address.'); return }
+    setEmailLoading(true); setError('')
     try {
-      await signInWithMagicLink(magicEmail.trim())
-      setMagicSent(true)
+      await sendEmailCode(email.trim(), false)
+      setCodeSent(true)
     } catch (err: unknown) {
-      setError(getErrorMessage(err, 'Could not send magic link.'))
+      setError(getErrorMessage(err, 'Could not send code.'))
     } finally {
-      setMagicLoading(false)
+      setEmailLoading(false)
     }
   }
 
-  if (magicSent) {
+  async function handleVerifyCode() {
+    if (!emailCode.trim()) { setError('Enter the code from your email.'); return }
+    setEmailLoading(true); setError('')
+    try {
+      await verifyEmailCode(email.trim(), emailCode.trim(), 'email')
+      onSuccess()
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Could not verify code.'))
+    } finally {
+      setEmailLoading(false)
+    }
+  }
+
+  if (codeSent) {
     return (
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}
-        style={{ width: 'min(420px, 92vw)', zIndex: 2, textAlign: 'center' }}>
-        <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.5em', color: 'rgba(201,168,76,0.6)', textTransform: 'uppercase', marginBottom: '12px' }}>Dear Stranger</p>
-        <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '24px', color: 'rgba(255,255,255,0.88)', letterSpacing: '0.06em', marginBottom: '12px' }}>Check your inbox</p>
-        <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(255,255,255,0.5)', lineHeight: 1.6, marginBottom: '24px' }}>
-          A magic link has been sent to<br />
-          <span style={{ color: 'rgba(201,168,76,0.8)' }}>{magicEmail}</span><br />
-          Click it to enter the universe.
-        </p>
-        <button onClick={() => { setMagicSent(false); setMagicEmail('') }}
-          style={{ background: 'none', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.5)', fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.2em', textTransform: 'uppercase', padding: '10px 22px', cursor: 'pointer', borderRadius: '4px' }}>
-          Use a different email
-        </button>
-      </motion.div>
+      <EmailCodePanel
+        email={email}
+        setEmail={setEmail}
+        code={emailCode}
+        setCode={setEmailCode}
+        loading={anyLoading}
+        error={error}
+        sent={codeSent}
+        sendLabel="Send code"
+        verifyLabel="Verify code"
+        sentTitle="Enter your code"
+        sentBody={<><span>A sign-in code has been sent to<br /><span style={{ color: 'rgba(201,168,76,0.8)' }}>{email}</span><br />Type it here to enter the universe.</span></>}
+        onSend={handleSendCode}
+        onVerify={handleVerifyCode}
+        onReset={() => { setCodeSent(false); setEmailCode(''); setEmail(''); setError('') }}
+      />
     )
   }
 
@@ -195,27 +309,22 @@ export function LoginScreen({
           <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(255,255,255,0.38)' }}>Your hub is waiting in the universe</p>
         </div>
 
-        {/* Magic link email */}
-        <div style={{ marginBottom: '16px' }}>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-            <input
-              type="email"
-              placeholder="your@email.com"
-              value={magicEmail}
-              onChange={e => setMagicEmail(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleMagicLink()}
-              disabled={anyLoading}
-              style={{ flex: '1 1 200px', minWidth: 0, padding: '12px 14px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.88)', fontFamily: "'IM Fell English', serif", fontSize: '14px', borderRadius: '4px', outline: 'none' }}
-            />
-            <button onClick={handleMagicLink} disabled={anyLoading}
-              style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px 18px', background: 'rgba(201,168,76,0.12)', border: '1px solid rgba(201,168,76,0.35)', color: 'rgba(201,168,76,0.9)', fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.15em', textTransform: 'uppercase', cursor: 'pointer', borderRadius: '4px', whiteSpace: 'nowrap', transition: 'all 0.2s' }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(201,168,76,0.22)'; e.currentTarget.style.borderColor = 'rgba(201,168,76,0.6)' }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(201,168,76,0.12)'; e.currentTarget.style.borderColor = 'rgba(201,168,76,0.35)' }}>
-              <MailIcon />
-              {magicLoading ? 'Sending...' : 'Send link'}
-            </button>
-          </div>
-        </div>
+        <EmailCodePanel
+          email={email}
+          setEmail={setEmail}
+          code={emailCode}
+          setCode={setEmailCode}
+          loading={anyLoading}
+          error={error}
+          sent={false}
+          sendLabel="Send code"
+          verifyLabel="Verify code"
+          sentTitle=""
+          sentBody={null}
+          onSend={handleSendCode}
+          onVerify={handleVerifyCode}
+          onReset={() => {}}
+        />
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '4px 0 16px' }}>
           <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.08)' }} />
@@ -223,7 +332,6 @@ export function LoginScreen({
           <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.08)' }} />
         </div>
 
-        {/* Google */}
         <button onClick={handleGoogle} disabled={anyLoading}
           style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '13px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.82)', fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase', cursor: 'pointer', borderRadius: '4px', marginBottom: '10px', transition: 'all 0.2s' }}
           onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.22)' }}
@@ -232,8 +340,6 @@ export function LoginScreen({
           {googleLoading ? 'Connecting...' : 'Continue with Google'}
         </button>
 
-
-        {/* Discord */}
         <button onClick={handleDiscord} disabled={anyLoading}
           style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '13px', background: 'rgba(88,101,242,0.1)', border: '1px solid rgba(88,101,242,0.35)', color: 'rgba(255,255,255,0.82)', fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase', cursor: 'pointer', borderRadius: '4px', marginBottom: '10px', transition: 'all 0.2s' }}
           onMouseEnter={e => { e.currentTarget.style.background = 'rgba(88,101,242,0.2)'; e.currentTarget.style.borderColor = 'rgba(88,101,242,0.6)' }}
@@ -242,7 +348,6 @@ export function LoginScreen({
           {discordLoading ? 'Connecting...' : 'Continue with Discord'}
         </button>
 
-        {/* Back to Main Screen */}
         <button
           onClick={() => window.location.replace('/')}
           style={{
@@ -268,10 +373,6 @@ export function LoginScreen({
           ← Back to Main
         </button>
 
-        {error && (
-          <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(220,100,100,0.85)', marginBottom: '14px', textAlign: 'center' }}>{error}</p>
-        )}
-
         <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(255,255,255,0.35)' }}>
             New to the universe?{' '}
@@ -293,11 +394,12 @@ export function SignupScreen({
   const [error, setError] = useState('')
   const [googleLoading, setGoogleLoading] = useState(false)
   const [discordLoading, setDiscordLoading] = useState(false)
-  const [magicEmail, setMagicEmail] = useState('')
-  const [magicLoading, setMagicLoading] = useState(false)
-  const [magicSent, setMagicSent] = useState(false)
+  const [email, setEmail] = useState('')
+  const [emailCode, setEmailCode] = useState('')
+  const [emailLoading, setEmailLoading] = useState(false)
+  const [codeSent, setCodeSent] = useState(false)
 
-  const anyLoading = googleLoading || discordLoading || magicLoading
+  const anyLoading = googleLoading || discordLoading || emailLoading
 
   function rememberOnboardingIntent() {
     if (typeof sessionStorage === 'undefined') return
@@ -330,36 +432,53 @@ export function SignupScreen({
     }
   }
 
-  async function handleMagicLink() {
-    if (!magicEmail.trim()) { setError('Enter your email address.'); return }
-    setMagicLoading(true); setError('')
+  async function handleSendCode() {
+    if (!email.trim()) { setError('Enter your email address.'); return }
+    setEmailLoading(true); setError('')
     try {
       rememberOnboardingIntent()
-      await signInWithMagicLink(magicEmail.trim())
-      setMagicSent(true)
+      await sendEmailCode(email.trim(), true)
+      setCodeSent(true)
     } catch (err: unknown) {
-      setError(getErrorMessage(err, 'Could not send magic link.'))
+      setError(getErrorMessage(err, 'Could not send code.'))
     } finally {
-      setMagicLoading(false)
+      setEmailLoading(false)
     }
   }
 
-  if (magicSent) {
+  async function handleVerifyCode() {
+    if (!emailCode.trim()) { setError('Enter the code from your email.'); return }
+    setEmailLoading(true); setError('')
+    try {
+      rememberOnboardingIntent()
+      setPendingCredentials(null)
+      await verifyEmailCode(email.trim(), emailCode.trim(), 'signup')
+      onSuccess()
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Could not verify code.'))
+    } finally {
+      setEmailLoading(false)
+    }
+  }
+
+  if (codeSent) {
     return (
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}
-        style={{ width: 'min(420px, 92vw)', zIndex: 2, textAlign: 'center' }}>
-        <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.5em', color: 'rgba(201,168,76,0.6)', textTransform: 'uppercase', marginBottom: '12px' }}>Dear Stranger</p>
-        <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '24px', color: 'rgba(255,255,255,0.88)', letterSpacing: '0.06em', marginBottom: '12px' }}>Check your inbox</p>
-        <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(255,255,255,0.5)', lineHeight: 1.6, marginBottom: '24px' }}>
-          A magic link has been sent to<br />
-          <span style={{ color: 'rgba(201,168,76,0.8)' }}>{magicEmail}</span><br />
-          Click it to enter the universe.
-        </p>
-        <button onClick={() => { setMagicSent(false); setMagicEmail('') }}
-          style={{ background: 'none', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.5)', fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.2em', textTransform: 'uppercase', padding: '10px 22px', cursor: 'pointer', borderRadius: '4px' }}>
-          Use a different email
-        </button>
-      </motion.div>
+      <EmailCodePanel
+        email={email}
+        setEmail={setEmail}
+        code={emailCode}
+        setCode={setEmailCode}
+        loading={anyLoading}
+        error={error}
+        sent={codeSent}
+        sendLabel="Send code"
+        verifyLabel="Verify code"
+        sentTitle="Enter your code"
+        sentBody={<><span>A sign-up code has been sent to<br /><span style={{ color: 'rgba(201,168,76,0.8)' }}>{email}</span><br />Type it here to open your account.</span></>}
+        onSend={handleSendCode}
+        onVerify={handleVerifyCode}
+        onReset={() => { setCodeSent(false); setEmailCode(''); setEmail(''); setError('') }}
+      />
     )
   }
 
@@ -374,27 +493,22 @@ export function SignupScreen({
           <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(255,255,255,0.38)' }}>A hub will be built for you</p>
         </div>
 
-        {/* Magic link email */}
-        <div style={{ marginBottom: '16px' }}>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-            <input
-              type="email"
-              placeholder="your@email.com"
-              value={magicEmail}
-              onChange={e => setMagicEmail(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleMagicLink()}
-              disabled={anyLoading}
-              style={{ flex: '1 1 200px', minWidth: 0, padding: '12px 14px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.88)', fontFamily: "'IM Fell English', serif", fontSize: '14px', borderRadius: '4px', outline: 'none' }}
-            />
-            <button onClick={handleMagicLink} disabled={anyLoading}
-              style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px 18px', background: 'rgba(201,168,76,0.12)', border: '1px solid rgba(201,168,76,0.35)', color: 'rgba(201,168,76,0.9)', fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.15em', textTransform: 'uppercase', cursor: 'pointer', borderRadius: '4px', whiteSpace: 'nowrap', transition: 'all 0.2s' }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(201,168,76,0.22)'; e.currentTarget.style.borderColor = 'rgba(201,168,76,0.6)' }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(201,168,76,0.12)'; e.currentTarget.style.borderColor = 'rgba(201,168,76,0.35)' }}>
-              <MailIcon />
-              {magicLoading ? 'Sending...' : 'Send link'}
-            </button>
-          </div>
-        </div>
+        <EmailCodePanel
+          email={email}
+          setEmail={setEmail}
+          code={emailCode}
+          setCode={setEmailCode}
+          loading={anyLoading}
+          error={error}
+          sent={false}
+          sendLabel="Send code"
+          verifyLabel="Verify code"
+          sentTitle=""
+          sentBody={null}
+          onSend={handleSendCode}
+          onVerify={handleVerifyCode}
+          onReset={() => {}}
+        />
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '4px 0 16px' }}>
           <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.08)' }} />
@@ -402,7 +516,6 @@ export function SignupScreen({
           <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.08)' }} />
         </div>
 
-        {/* Google */}
         <button onClick={handleGoogle} disabled={anyLoading}
           style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '13px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.82)', fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase', cursor: 'pointer', borderRadius: '4px', marginBottom: '10px', transition: 'all 0.2s' }}
           onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.22)' }}
@@ -411,8 +524,6 @@ export function SignupScreen({
           {googleLoading ? 'Connecting...' : 'Continue with Google'}
         </button>
 
-
-        {/* Discord */}
         <button onClick={handleDiscord} disabled={anyLoading}
           style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '13px', background: 'rgba(88,101,242,0.1)', border: '1px solid rgba(88,101,242,0.35)', color: 'rgba(255,255,255,0.82)', fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase', cursor: 'pointer', borderRadius: '4px', marginBottom: '10px', transition: 'all 0.2s' }}
           onMouseEnter={e => { e.currentTarget.style.background = 'rgba(88,101,242,0.2)'; e.currentTarget.style.borderColor = 'rgba(88,101,242,0.6)' }}
@@ -421,7 +532,6 @@ export function SignupScreen({
           {discordLoading ? 'Connecting...' : 'Continue with Discord'}
         </button>
 
-        {/* Back to Main Screen */}
         <button
           onClick={() => window.location.replace('/')}
           style={{
@@ -446,11 +556,6 @@ export function SignupScreen({
         >
           ← Back to Main
         </button>
-
-        {error && (
-          <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(220,100,100,0.85)', marginBottom: '14px', textAlign: 'center' }}>{error}</p>
-        )}
-
       </motion.div>
     </>
   )

@@ -32,6 +32,7 @@ import {
   uploadAvatarToStorage,
   getMyLetters,
   setHubOnlineStatus,
+  verifyEmailCode,
 } from './lib/auth'
 import { playChime, startAmbient, stopAmbient, setAmbientMuted } from '../lib/sounds'
 import { AnimatePresence } from 'framer-motion'
@@ -520,6 +521,9 @@ export default function Home() {
     password: string
   } | null>(null)
   const [confirmEmail, setConfirmEmail] = useState('')
+  const [confirmCode, setConfirmCode] = useState('')
+  const [confirmCodeLoading, setConfirmCodeLoading] = useState(false)
+  const [confirmCodeError, setConfirmCodeError] = useState('')
   const [onboardingError, setOnboardingError] = useState('')
   const [onboardingResumeState, setOnboardingResumeState] =
     useState<SoulMirrorResumeState | null>(null)
@@ -597,6 +601,15 @@ export default function Home() {
   const finishAuthRoute = useCallback(() => {
     setLoadingBlocked(false)
     setLoadingTookLong(false)
+  }, [])
+
+  const showConfirmEmailScreen = useCallback((email: string, resumeState: SoulMirrorResumeState) => {
+    setConfirmEmail(email)
+    setConfirmCode('')
+    setConfirmCodeError('')
+    setOnboardingResumeState(resumeState)
+    setPendingCredentials(null)
+    setScreen('confirm_email')
   }, [])
 
   const requestAuthRouteRetry = useCallback(() => {
@@ -1026,6 +1039,7 @@ export default function Home() {
       hubName: hubNameAnswer,
       bio: chosenBio,
       askAbout: chosenAskAbout,
+      decoration: chosenDecoration,
     }
 
     try {
@@ -1053,9 +1067,7 @@ export default function Home() {
             const msg = signUpErr instanceof Error ? signUpErr.message.toLowerCase() : ''
             if (msg === 'please_confirm_email') {
               // Email confirmation required — auth user created, no session yet
-              setConfirmEmail(pendingCredentials.email)
-              setPendingCredentials(null)
-              setScreen('confirm_email')
+              showConfirmEmailScreen(pendingCredentials.email, resumeState)
               return
             } else if (msg.includes('already registered') || msg.includes('already exists') || msg.includes('user already')) {
               signUpFailed = true
@@ -1072,9 +1084,7 @@ export default function Home() {
             } catch (signInErr) {
               const signInMsg = signInErr instanceof Error ? signInErr.message.toLowerCase() : ''
               if (signInMsg.includes('not confirmed') || signInMsg.includes('email not confirmed')) {
-                setConfirmEmail(pendingCredentials.email)
-                setPendingCredentials(null)
-                setScreen('confirm_email')
+                showConfirmEmailScreen(pendingCredentials.email, resumeState)
                 return
               }
               throw signInErr
@@ -1089,9 +1099,7 @@ export default function Home() {
             } catch (signInErr) {
               const signInMsg = signInErr instanceof Error ? signInErr.message.toLowerCase() : ''
               if (signInMsg.includes('not confirmed') || signInMsg.includes('email not confirmed')) {
-                setConfirmEmail(pendingCredentials.email)
-                setPendingCredentials(null)
-                setScreen('confirm_email')
+                showConfirmEmailScreen(pendingCredentials.email, resumeState)
                 return
               }
               throw signInErr
@@ -1175,9 +1183,7 @@ export default function Home() {
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : ''
       if (errMsg === 'PLEASE_CONFIRM_EMAIL') {
-        setConfirmEmail(pendingCredentials?.email ?? '')
-        setPendingCredentials(null)
-        setScreen('confirm_email')
+        showConfirmEmailScreen(pendingCredentials?.email ?? '', resumeState)
       } else if (errMsg === 'That hub name is already taken. Choose another one.') {
         setOnboardingResumeState({ ...resumeState, phase: 'hubname' })
         setScreen('onboarding')
@@ -1189,6 +1195,32 @@ export default function Home() {
       }
     } finally {
       onboardingInFlightRef.current = false
+    }
+  }
+
+  async function handleConfirmEmailCode() {
+    if (!confirmEmail.trim()) {
+      setConfirmCodeError('Enter an email address first.')
+      return
+    }
+    if (!confirmCode.trim()) {
+      setConfirmCodeError('Enter the code from your email.')
+      return
+    }
+
+    setConfirmCodeLoading(true)
+    setConfirmCodeError('')
+
+    try {
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.setItem('ds_goto_onboarding', '1')
+      }
+      await verifyEmailCode(confirmEmail.trim(), confirmCode.trim(), 'signup')
+      setScreen('onboarding')
+    } catch (err) {
+      setConfirmCodeError(err instanceof Error && err.message ? err.message : 'Could not verify code.')
+    } finally {
+      setConfirmCodeLoading(false)
     }
   }
 
@@ -1404,14 +1436,39 @@ export default function Home() {
         <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', background: 'radial-gradient(ellipse 70% 50% at 50% 45%, rgba(90,20,180,0.45) 0%, rgba(15,45,155,0.2) 55%, transparent 80%)' }} />
         <div style={{ position: 'relative', zIndex: 2, textAlign: 'center', maxWidth: '420px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
           <span style={{ fontSize: '36px', color: 'rgba(201,168,76,0.85)', filter: 'drop-shadow(0 0 12px rgba(201,168,76,0.4))' }}>✉</span>
-          <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.4em', color: 'rgba(201,168,76,0.7)', textTransform: 'uppercase' }}>Check your inbox</p>
+          <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.4em', color: 'rgba(201,168,76,0.7)', textTransform: 'uppercase' }}>Enter your code</p>
           <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '17px', color: 'rgba(255,255,255,0.75)', lineHeight: 1.6 }}>
-            A confirmation link has been sent to<br />
+            A confirmation code has been sent to<br />
             <span style={{ color: 'rgba(201,168,76,0.9)' }}>{confirmEmail}</span>
           </p>
           <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(255,255,255,0.35)', lineHeight: 1.6 }}>
-            Click the link in that email to activate your account, then return here to complete your hub.
+            Type the code from that email to activate your account, then continue building your hub.
           </p>
+          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '6px' }}>
+            <input
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              placeholder="6-digit code"
+              value={confirmCode}
+              onChange={e => setConfirmCode(e.target.value.replace(/\s/g, ''))}
+              onKeyDown={e => e.key === 'Enter' && void handleConfirmEmailCode()}
+              disabled={confirmCodeLoading}
+              style={{ width: '100%', padding: '12px 14px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.88)', fontFamily: "'IM Fell English', serif", fontSize: '14px', borderRadius: '4px', outline: 'none', textAlign: 'center', letterSpacing: '0.18em' }}
+            />
+            <button
+              onClick={() => void handleConfirmEmailCode()}
+              disabled={confirmCodeLoading}
+              style={{ width: '100%', background: 'rgba(201,168,76,0.12)', border: '1px solid rgba(201,168,76,0.35)', color: 'rgba(201,168,76,0.9)', fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.22em', padding: '12px 18px', cursor: 'pointer', textTransform: 'uppercase', borderRadius: '4px' }}
+            >
+              {confirmCodeLoading ? 'Verifying...' : 'Verify code'}
+            </button>
+          </div>
+          {confirmCodeError && (
+            <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(220,100,100,0.85)', lineHeight: 1.6, margin: 0 }}>
+              {confirmCodeError}
+            </p>
+          )}
           <button
             onClick={() => { setScreen('landing') }}
             style={{ marginTop: '8px', background: 'none', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.45)', fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.3em', padding: '9px 20px', cursor: 'pointer', textTransform: 'uppercase' }}

@@ -195,14 +195,28 @@ export async function signInWithDiscord() {
   if (typeof window !== 'undefined' && data.url) window.location.assign(data.url)
 }
 
-export async function signInWithMagicLink(email: string) {
+export async function sendEmailCode(email: string, shouldCreateUser = false) {
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: {
-      emailRedirectTo: typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined,
+      shouldCreateUser,
     },
   })
   if (error) throw error
+}
+
+export async function verifyEmailCode(
+  email: string,
+  token: string,
+  type: 'email' | 'signup' = 'email',
+) {
+  const { data, error } = await supabase.auth.verifyOtp({
+    email,
+    token,
+    type,
+  })
+  if (error) throw error
+  return data
 }
 
 export async function createHubForCurrentUser(
