@@ -15,6 +15,7 @@ interface Props {
   inkColor?: string
   lineWidth?: number
   style?: React.CSSProperties
+  allowFingerDraw?: boolean
 }
 
 interface Point {
@@ -47,7 +48,7 @@ function catmullRomPoint(
 }
 
 const HandwritingCanvas = forwardRef<HandwritingCanvasRef, Props>(function HandwritingCanvas(
-  { width = 600, height = 400, inkColor = '#1a1208', lineWidth = 1.8, style },
+  { width = 600, height = 400, inkColor = '#1a1208', lineWidth = 1.8, style, allowFingerDraw = false },
   ref
 ) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -60,6 +61,20 @@ const HandwritingCanvas = forwardRef<HandwritingCanvasRef, Props>(function Handw
   const pointsRef = useRef<Point[]>([])
   const historyRef = useRef<ImageData[]>([])
   const dprRef = useRef(1)
+  const activePointerIdRef = useRef<number | null>(null)
+
+  const getInputKind = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
+    const touchType = String((e.nativeEvent as PointerEvent & { touchType?: string }).touchType || '').toLowerCase()
+    if (e.pointerType === 'pen' || touchType === 'stylus') return 'pen'
+    if (e.pointerType === 'mouse') return 'mouse'
+    return 'touch'
+  }, [])
+
+  const canDrawWithEvent = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
+    const kind = getInputKind(e)
+    if (kind === 'pen' || kind === 'mouse') return true
+    return allowFingerDraw
+  }, [allowFingerDraw, getInputKind])
 
   // ── Init canvas with correct DPR once ──
   useEffect(() => {
@@ -96,9 +111,21 @@ const HandwritingCanvas = forwardRef<HandwritingCanvasRef, Props>(function Handw
     // Soften extreme pressure — makes thin strokes more achievable
     pressure = Math.pow(pressure, 0.7)
 
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
+    const previous = pointsRef.current[pointsRef.current.length - 1]
+    const distance = previous ? Math.hypot(x - previous.x, y - previous.y) : 0
+    const smoothing = previous
+      ? distance > 18
+        ? 0.82
+        : distance > 8
+          ? 0.72
+          : 0.58
+      : 1
+
     return {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
+      x: previous ? previous.x + (x - previous.x) * smoothing : x,
+      y: previous ? previous.y + (y - previous.y) * smoothing : y,
       pressure,
       time: Date.now(),
     }
@@ -122,22 +149,23 @@ const HandwritingCanvas = forwardRef<HandwritingCanvasRef, Props>(function Handw
   ) {
     if (pts.length < 2) return
 
-    // Need 4 control points for Catmull-Rom — pad if needed
+    // Catmull-Rom interpolates the segment between p1 and p2.
+    // Drawing from p2 was causing the stroke to jump backward and loop.
     const p0 = pts[Math.max(0, pts.length - 4)]
     const p1 = pts[Math.max(0, pts.length - 3)]
     const p2 = pts[pts.length - 2]
     const p3 = pts[pts.length - 1]
 
-    // Velocity-based width modulation (fast = slightly wider, slow = thinner)
+    // Slight stabilization so quick strokes stay elegant instead of spiky.
     const dx = p3.x - p2.x
     const dy = p3.y - p2.y
     const dt = Math.max(1, p3.time - p2.time)
     const velocity = Math.sqrt(dx * dx + dy * dy) / dt
-    const velocityFactor = Math.max(0.4, Math.min(1.4, 1 - velocity * 0.8))
+    const velocityFactor = Math.max(0.72, Math.min(1.12, 1.02 - velocity * 0.18))
 
     // Pressure-based width
     const avgPressure = (p2.pressure + p3.pressure) / 2
-    const strokeWidth = baseWidth * (0.5 + avgPressure * 1.2) * velocityFactor
+    const strokeWidth = baseWidth * (0.72 + avgPressure * 0.58) * velocityFactor
 
     ctx.globalCompositeOperation = 'source-over'
     ctx.strokeStyle = color
@@ -147,7 +175,7 @@ const HandwritingCanvas = forwardRef<HandwritingCanvasRef, Props>(function Handw
 
     // Draw using Catmull-Rom interpolation with 8 steps per segment
     ctx.beginPath()
-    ctx.moveTo(p2.x, p2.y)
+    ctx.moveTo(p1.x, p1.y)
 
     const steps = 8
     for (let i = 1; i <= steps; i++) {
@@ -159,11 +187,11 @@ const HandwritingCanvas = forwardRef<HandwritingCanvasRef, Props>(function Handw
   }
 
   const handlePointerDown = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
-    // Only respond to pen (Apple Pencil) or primary mouse/touch
-    if (e.pointerType === 'touch' && tool === 'pen') return // let touch scroll, not draw
+    if (!e.isPrimary || !canDrawWithEvent(e)) return
     e.preventDefault()
     const canvas = canvasRef.current
     if (!canvas) return
+    activePointerIdRef.current = e.pointerId
     canvas.setPointerCapture(e.pointerId)
     saveToHistory()
     const pt = getPoint(e)
@@ -187,11 +215,10 @@ const HandwritingCanvas = forwardRef<HandwritingCanvasRef, Props>(function Handw
       ctx.arc(pt.x, pt.y, (lineWidth * (0.5 + pt.pressure * 0.8)) / 2, 0, Math.PI * 2)
       ctx.fill()
     }
-  }, [getPoint, saveToHistory, lineWidth, inkColor, tool])
+  }, [canDrawWithEvent, getPoint, saveToHistory, lineWidth, inkColor, tool])
 
   const handlePointerMove = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (!isDrawing) return
-    if (e.pointerType === 'touch' && tool === 'pen') return
+    if (!isDrawing || activePointerIdRef.current !== e.pointerId || !canDrawWithEvent(e)) return
     e.preventDefault()
     const canvas = canvasRef.current
     if (!canvas) return
@@ -212,21 +239,27 @@ const HandwritingCanvas = forwardRef<HandwritingCanvasRef, Props>(function Handw
     // Keep a rolling buffer of last 8 points
     if (pointsRef.current.length > 8) pointsRef.current.shift()
 
+    const previous = pointsRef.current[pointsRef.current.length - 2]
+    if (previous && Math.hypot(pt.x - previous.x, pt.y - previous.y) < 0.45) return
+
     if (pointsRef.current.length >= 2) {
       drawStrokeSegment(ctx, pointsRef.current, lineWidth, inkColor)
     }
-  }, [isDrawing, getPoint, lineWidth, inkColor, tool])
+  }, [isDrawing, canDrawWithEvent, getPoint, lineWidth, inkColor, tool])
 
   const handlePointerUp = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (!isDrawing) return
-    if (e.pointerType === 'touch' && tool === 'pen') return
+    if (!isDrawing || activePointerIdRef.current !== e.pointerId) return
     setIsDrawing(false)
+    activePointerIdRef.current = null
     const canvas = canvasRef.current
     if (!canvas) return
+    if (canvas.hasPointerCapture(e.pointerId)) {
+      canvas.releasePointerCapture(e.pointerId)
+    }
     const ctx = canvas.getContext('2d')
     if (ctx) ctx.globalCompositeOperation = 'source-over'
     pointsRef.current = []
-  }, [isDrawing, tool])
+  }, [isDrawing])
 
   const handleUndo = useCallback(() => {
     const canvas = canvasRef.current
@@ -279,7 +312,7 @@ const HandwritingCanvas = forwardRef<HandwritingCanvasRef, Props>(function Handw
       {/* Toolbar */}
       <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap' }}>
         {[
-          { id: 'pen', label: '✎ Pen' },
+          { id: 'pen', label: '✎ Pencil / Stylus' },
           { id: 'eraser', label: '◯ Eraser' },
         ].map(t => (
           <button key={t.id} onClick={() => setTool(t.id as 'pen' | 'eraser')}
@@ -318,7 +351,7 @@ const HandwritingCanvas = forwardRef<HandwritingCanvasRef, Props>(function Handw
           width: '100%',
           display: 'block',
           borderRadius: '4px',
-          touchAction: 'none',
+          touchAction: allowFingerDraw ? 'none' : 'manipulation',
           cursor: 'crosshair',
           background: 'transparent',
           border: '1.5px solid rgba(230,199,110,0.4)',
@@ -332,8 +365,8 @@ const HandwritingCanvas = forwardRef<HandwritingCanvasRef, Props>(function Handw
       />
 
       <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '11px', color: 'rgba(255,255,255,0.35)', margin: '6px 0 0', textAlign: 'center' }}>
-        Use Apple Pencil or stylus for the best experience.{' '}
-        <span style={{ color: '#e6c76e' }}>Finger drawing is disabled to allow scrolling.</span>
+        Built for Apple Pencil and stylus writing first.{' '}
+        <span style={{ color: '#e6c76e' }}>Finger and palm touches stay out of the way unless finger drawing is enabled.</span>
       </p>
     </div>
   )
