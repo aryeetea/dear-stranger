@@ -21,7 +21,6 @@ import { supabase } from '../lib/supabase'
 import {
   signUpAndCreateHub,
   createHubForCurrentUser,
-  createFallbackHubForCurrentUser,
   getSession,
   getMyHub,
   getAllHubs,
@@ -487,7 +486,6 @@ export default function Home() {
   const [hubAskAbout, setHubAskAbout] = useState('')
   const [hubAvatarUrl, setHubAvatarUrl] = useState('')
   const [hubAvatarPending, setHubAvatarPending] = useState<string | null>(null)
-  const avatarRetryAttemptedRef = useRef(false)
   const [hubStyle, setHubStyle] = useState<HubStyle>('portal')
   const [hubColor, setHubColor] = useState<HubColor>('gold')
   const [hubDecoration, setHubDecoration] = useState<HubDecoration>('none')
@@ -667,32 +665,6 @@ export default function Home() {
     setSavedOverlay(activeOverlay)
   }, [driftOpen, observatoryOpen, pagesOpen, profileOpen, screen, setSavedOverlay])
 
-  // Auto-retry avatar generation when returning to universe with a pending description,
-  // or as a fallback for users who have no avatar and no pending prompt (use their bio).
-  useEffect(() => {
-    if (screen !== 'universe' || hubAvatarUrl || avatarRetryAttemptedRef.current) return
-    const prompt = hubAvatarPending || hubBio
-    if (!prompt) return
-    avatarRetryAttemptedRef.current = true
-    void (async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
-        setAvatarGenerating(true)
-        const avatarUrl = await requestAvatarImage({ 0: prompt }, user.id)
-        if (!avatarUrl) return
-        const permanentUrl = await uploadAvatarToStorage(avatarUrl, user.id)
-        setHubAvatarUrl(permanentUrl)
-        setHubAvatarPending(null)
-        await updateHub({ avatar_url: permanentUrl, avatar_prompt_pending: null })
-      } catch (err) {
-        console.error('Avatar auto-retry failed:', err)
-      } finally {
-        setAvatarGenerating(false)
-      }
-    })()
-  }, [screen, hubAvatarPending, hubAvatarUrl, hubBio])
-
   // Start/stop cosmic ambient based on screen
   useEffect(() => {
     if (screen === 'universe') {
@@ -833,28 +805,13 @@ export default function Home() {
         return
       }
 
-      try {
-        await createFallbackHubForCurrentUser()
-        hub = await withTimeout(getMyHub(userId), HUB_FETCH_TIMEOUT_MS, 'Created hub lookup timed out.')
-        if (hub) {
-          applyHubState(hub as HubWithMeta, userId)
-          setOnboardingError('')
-          setOnboardingResumeState(null)
-          finishAuthRoute()
-          setScreen('universe')
-          restoreUniverseOverlay()
-          console.log('[routeFromSession] session+repaired hub, go to universe')
-          return
-        }
-      } catch (repairError) {
-        console.error('[routeFromSession] missing hub repair failed:', repairError)
-      }
-
       clearHubState(false)
+      setOnboardingError('')
+      setOnboardingResumeState(null)
+      finishAuthRoute()
       setSavedOverlay(null)
-      setScreen('loading')
-      requestAuthRouteRetry()
-      console.log('[routeFromSession] session+no hub, staying on loading while retrying')
+      setScreen('onboarding')
+      console.log('[routeFromSession] session+no hub, go to onboarding')
     } catch (err) {
       console.error('[routeFromSession] error:', err)
       if (isTimeoutError(err, 'Session check timed out.')) {
@@ -912,21 +869,10 @@ export default function Home() {
                 requestAuthRouteRetry()
                 return
               }
-              try {
-                await createFallbackHubForCurrentUser()
-                hub = await withTimeout(getMyHub(session.user?.id), HUB_FETCH_TIMEOUT_MS, 'Created hub check timed out.')
-                if (hub) {
-                  applyHubState(hub as HubWithMeta, session.user?.id)
-                  finishAuthRoute()
-                  setScreen('universe')
-                  restoreUniverseOverlay()
-                  return
-                }
-              } catch (repairError) {
-                console.error('[checkSession] missing hub repair failed:', repairError)
-              }
-              setScreen('loading')
-              requestAuthRouteRetry()
+              setOnboardingError('')
+              setOnboardingResumeState(null)
+              finishAuthRoute()
+              setScreen('onboarding')
               return
             }
             applyHubState(hub as HubWithMeta, session.user?.id)
