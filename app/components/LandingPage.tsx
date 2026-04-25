@@ -1057,65 +1057,103 @@ export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: (
                 style={{
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '10px',
-                  padding: '14px',
-                  background: 'rgba(255,249,231,0.54)',
-                  border: '1px solid rgba(140,100,30,0.18)',
-                  borderRadius: '10px',
+                  gap: '14px',
+                  padding: '18px',
+                  background: 'linear-gradient(180deg, rgba(255,250,238,0.86) 0%, rgba(250,241,214,0.8) 100%)',
+                  border: '1px solid rgba(140,100,30,0.2)',
+                  borderRadius: '18px',
+                  boxShadow: '0 16px 40px rgba(120,88,24,0.14)',
                 }}
               >
-                <p
-                  style={{
-                    fontFamily: "'IM Fell English', serif",
-                    fontStyle: 'italic',
-                    fontSize: 'clamp(13px, 1.5vw, 15px)',
-                    color: 'rgba(75,52,12,0.62)',
-                    textAlign: 'center',
-                    margin: '0 0 2px',
-                    lineHeight: 1.5,
-                  }}
-                >
-                  Choose your path into the universe.
-                </p>
+                <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <p
+                    style={{
+                      fontFamily: "'Cinzel', serif",
+                      fontSize: 'clamp(9px, 1.1vw, 10px)',
+                      letterSpacing: '0.22em',
+                      textTransform: 'uppercase',
+                      color: 'rgba(120,88,24,0.56)',
+                      margin: 0,
+                    }}
+                  >
+                    Choose Your Path
+                  </p>
+                  <p
+                    style={{
+                      fontFamily: "'IM Fell English', serif",
+                      fontStyle: 'italic',
+                      fontSize: 'clamp(13px, 1.5vw, 15px)',
+                      color: 'rgba(75,52,12,0.7)',
+                      textAlign: 'center',
+                      margin: 0,
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    New here, or returning to your hub?
+                  </p>
+                </div>
 
-                <button
-                  onClick={onEnter}
+                <div
                   style={{
-                    fontFamily: "'Cinzel', serif",
-                    fontSize: 'clamp(9px, 1.1vw, 10px)',
-                    letterSpacing: '0.26em',
-                    textTransform: 'uppercase',
-                    color: '#f5edd8',
-                    background: 'linear-gradient(135deg, #7a5a18 0%, #c9a84c 48%, #7a5a18 100%)',
-                    border: 'none',
-                    padding: '13px 22px',
-                    cursor: 'pointer',
-                    width: '100%',
-                    borderRadius: '8px',
-                    boxShadow: '0 2px 18px rgba(120,88,24,0.28)',
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                    gap: '12px',
                   }}
                 >
-                  Create a Hub
-                </button>
+                  <button
+                    onClick={onEnter}
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'flex-start',
+                      gap: '7px',
+                      fontFamily: "'Cinzel', serif",
+                      textAlign: 'left',
+                      color: '#f5edd8',
+                      background: 'linear-gradient(135deg, #7a5a18 0%, #c9a84c 48%, #7a5a18 100%)',
+                      border: 'none',
+                      padding: '16px 18px',
+                      cursor: 'pointer',
+                      width: '100%',
+                      borderRadius: '14px',
+                      boxShadow: '0 8px 24px rgba(120,88,24,0.22)',
+                    }}
+                  >
+                    <span style={{ fontSize: 'clamp(9px, 1.1vw, 10px)', letterSpacing: '0.24em', textTransform: 'uppercase' }}>
+                      Create a Hub
+                    </span>
+                    <span style={{ fontFamily: "'IM Fell English', serif", fontSize: '14px', letterSpacing: '0.02em', lineHeight: 1.4, textTransform: 'none', opacity: 0.94 }}>
+                      Begin onboarding and shape your place in the universe.
+                    </span>
+                  </button>
 
-                <button
-                  onClick={onLogin}
-                  style={{
-                    fontFamily: "'Cinzel', serif",
-                    fontSize: 'clamp(9px, 1.1vw, 10px)',
-                    letterSpacing: '0.22em',
-                    textTransform: 'uppercase',
-                    color: 'rgba(75,52,12,0.72)',
-                    background: 'transparent',
-                    border: '1px solid rgba(140,100,30,0.26)',
-                    padding: '13px 22px',
-                    cursor: 'pointer',
-                    width: '100%',
-                    borderRadius: '8px',
-                  }}
-                >
-                  Got a Hub? Sign In
-                </button>
+                  <button
+                    onClick={onLogin}
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'flex-start',
+                      gap: '7px',
+                      fontFamily: "'Cinzel', serif",
+                      textAlign: 'left',
+                      color: 'rgba(75,52,12,0.78)',
+                      background: 'rgba(255,252,244,0.7)',
+                      border: '1px solid rgba(140,100,30,0.2)',
+                      padding: '16px 18px',
+                      cursor: 'pointer',
+                      width: '100%',
+                      borderRadius: '14px',
+                      boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.42)',
+                    }}
+                  >
+                    <span style={{ fontSize: 'clamp(9px, 1.1vw, 10px)', letterSpacing: '0.22em', textTransform: 'uppercase' }}>
+                      Got a Hub? Sign In
+                    </span>
+                    <span style={{ fontFamily: "'IM Fell English', serif", fontSize: '14px', letterSpacing: '0.02em', lineHeight: 1.4, textTransform: 'none', opacity: 0.82 }}>
+                      Return straight to your account and pick up where you left off.
+                    </span>
+                  </button>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
