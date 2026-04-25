@@ -7,7 +7,7 @@ import { updateHub, signOut, deleteAccount, exportMyLetters, uploadAvatarToStora
 import { supabase } from '../../lib/supabase'
 import { HUB_COLOR_THEMES, HUB_STYLES, HUB_DECORATIONS, HUB_GLOW_LEVELS, type HubColor, type HubStyle, type HubDecoration, type HubGlowIntensity } from './UniverseMap'
 
-const MAX_REGEN_ATTEMPTS = 1
+const MAX_REGEN_ATTEMPTS = 2
 
 type DeleteStep = 'idle' | 'exporting' | 'exported' | 'deleting' | 'deleted'
 type SanctumPanel = 'appearance' | 'visitors' | 'settings' | 'share'
@@ -88,6 +88,7 @@ export default function Profile({
   const [regenLoading, setRegenLoading] = useState(false)
   const [regenFeedback, setRegenFeedback] = useState('')
   const [showRegenInput, setShowRegenInput] = useState(false)
+  const [forceNewAvatar, setForceNewAvatar] = useState(false)
   const [regenError, setRegenError] = useState('')
 
   const [editingHub, setEditingHub] = useState(false)
@@ -282,7 +283,7 @@ export default function Profile({
       const hasExistingAvatar = Boolean(currentAvatarUrl)
       const requestBody = !hasExistingAvatar && avatarPromptPending
         ? { answers: { 0: avatarPromptPending }, feedback: regenFeedback || undefined, mode: 'create' }
-        : { answers: { 0: bioState, 1: askState }, feedback: regenFeedback, mode: 'reimagine', previousImageUrl: currentAvatarUrl || undefined }
+        : { answers: { 0: bioState, 1: askState }, feedback: regenFeedback, mode: 'reimagine', previousImageUrl: currentAvatarUrl || undefined, forceNewAvatar }
       let avatarToken: string | undefined
       try {
         const { data, error } = await supabase.auth.refreshSession()
@@ -310,6 +311,7 @@ export default function Profile({
       setCurrentAvatarUrl(data.imageUrl)
       setRegenCount(newCount)
       setRegenFeedback('')
+      setForceNewAvatar(false)
       setRegenLoading(false)
 
       // ── Upload to Storage in the background ──
@@ -614,9 +616,9 @@ export default function Profile({
 
             {showRegenInput && attemptsLeft > 0 && (
               <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} style={{ marginTop: '12px' }}>
-                <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(255,255,255,0.5)', marginBottom: '8px' }}>Tell the mirror what to change — or leave blank to reimagine freely.</p>
+                <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(255,255,255,0.5)', marginBottom: '8px' }}>Tell the mirror what to change. It will edit your current avatar by default. Describe a completely new avatar only if you want a full replacement.</p>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <input value={regenFeedback} onChange={e => setRegenFeedback(e.target.value)} placeholder="e.g. more dark and moody, different outfit..."
+                  <input value={regenFeedback} onChange={e => setRegenFeedback(e.target.value)} placeholder="e.g. softer lighting, different outfit, more confident..."
                     style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(201,168,76,0.2)', borderRadius: '6px', color: 'rgba(255,255,255,0.85)', fontFamily: "'Cormorant Garamond', serif", fontSize: '14px', padding: '8px 12px', outline: 'none', caretColor: '#c9a84c' }}
                     onKeyDown={e => { if (e.key === 'Enter') void regenerateAvatar() }} />
                   <button onClick={() => void regenerateAvatar()} disabled={regenLoading}
@@ -624,6 +626,15 @@ export default function Profile({
                     Reimagine ✦
                   </button>
                 </div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '10px', color: 'rgba(255,255,255,0.62)', fontFamily: "'EB Garamond', serif", fontSize: '14px', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={forceNewAvatar}
+                    onChange={e => setForceNewAvatar(e.target.checked)}
+                    style={{ accentColor: '#c9a84c' }}
+                  />
+                  Create a completely new avatar instead of editing this one
+                </label>
                 {regenError && (
                   <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(220,100,100,0.85)', marginTop: '8px' }}>{regenError}</p>
                 )}

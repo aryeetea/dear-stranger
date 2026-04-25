@@ -876,7 +876,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
             <GoldLines />
             <div style={{ textAlign: 'center', marginBottom: '32px' }}>
               <p style={{ fontFamily: "'Cinzel', serif", fontSize: '11px', letterSpacing: '0.5em', color: '#e6c76e', textTransform: 'uppercase', marginBottom: '12px' }}>Welcome, {hubName || 'Stranger'}</p>
-              <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: 'clamp(16px,2.5vw,22px)', color: 'rgba(255,255,255,0.9)', lineHeight: 1.6 }}>Before you enter, read this slowly.</p>
+              <p style={{ fontFamily: "'Comic Sans MS', 'Comic Sans', cursive", fontSize: '12px', color: 'rgba(255,255,255,0.9)', lineHeight: 1.6 }}>Before you enter, read this slowly.</p>
               <div style={{ height: '1px', background: 'linear-gradient(90deg, transparent, rgba(230,199,110,0.3), transparent)', marginTop: '18px' }} />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', marginBottom: '36px' }}>
@@ -886,7 +886,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
                   <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'rgba(230,199,110,0.1)', border: '1px solid rgba(230,199,110,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', flexShrink: 0, marginTop: '2px' }}>{rule.icon}</div>
                   <div>
                     <p style={{ fontFamily: "'Cinzel', serif", fontSize: '11px', letterSpacing: '0.22em', color: '#e6c76e', textTransform: 'uppercase', marginBottom: '6px' }}>{rule.title}</p>
-                    <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '15px', color: 'rgba(255,255,255,0.75)', lineHeight: 1.75 }}>{rule.desc}</p>
+                    <p style={{ fontFamily: "'Comic Sans MS', 'Comic Sans', cursive", fontSize: '12px', color: 'rgba(255,255,255,0.75)', lineHeight: 1.75 }}>{rule.desc}</p>
                   </div>
                 </motion.div>
               ))}

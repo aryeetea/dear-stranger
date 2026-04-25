@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import OpenAI from 'openai'
+import { toFile } from 'openai/uploads'
 import { createClient } from '@supabase/supabase-js'
 
 export const maxDuration = 120
@@ -38,6 +39,15 @@ function normalizeStyleKey(styleKey?: string): string {
     .toLowerCase()
     .replace(/&/g, 'and')
     .replace(/\s+/g, '-')
+}
+
+function normalizeFeedback(value?: string): string {
+  return normalizeDetail(value || '').slice(0, 500)
+}
+
+function requestsWholeNewAvatar(feedback: string): boolean {
+  if (!feedback) return false
+  return /\b(whole new avatar|completely new avatar|entirely new avatar|totally new avatar|brand new avatar|start over|from scratch|completely different|totally different|change everything|different person|new character)\b/i.test(feedback)
 }
 
 function buildIdentityInstruction(details: string): string {
@@ -92,13 +102,14 @@ Render the character's skin tone EXACTLY as described. Never lighten, darken, or
 If no skin tone is described, use a warm neutral tone. Do not let the background style or mood influence the skin tone — it must remain true to the user's description.
 
 ART STYLE:
-High-end stylized 3D digital art — NOT a photograph, NOT realistic. Style: Arcane / League of Legends cinematic quality.
-Smooth sculpted features, hand-painted textures, vibrant colors, cinematic lighting.
-No skin pores, no photorealism, no grain, no watermarks, no text, no labels.
+Semi-realistic cinematic illustration. Believable anatomy and lighting, but still clearly stylized and artistic.
+Painterly finish, hand-crafted detail, cinematic color and atmosphere.
+NOT a photograph, NOT hyperreal, NOT plastic-looking 3D, NOT cartoon. No watermarks, no text, no labels.
 
 COMPOSITION:
 Vertical portrait (taller than wide). Full body visible from head to toe. Character upright, facing viewer.
-Never rotate sideways. Never produce a landscape, reference sheet, collage, or split layout.
+Head must be at the top of the frame and feet at the bottom. Never rotate sideways or 90 degrees.
+Never produce a landscape, reference sheet, collage, split layout, or sideways composition.
 
 BACKGROUND:
 ${backgroundMood}
@@ -112,6 +123,32 @@ If the user mentioned a pet, animal, or creature companion, include it beside th
 
 FINAL CHECK:
 One upright full-body character. Exact clothing and hair as described. No text, no labels, no UI chrome.
+`.trim()
+}
+
+function buildReimaginePrompt(feedback: string) {
+  const normalizedFeedback = normalizeFeedback(feedback)
+  return `
+TASK:
+Edit the provided avatar image. Preserve the same person, same identity, same face, same hairstyle, same general character design, and same overall vibe.
+
+GOAL:
+This is a reimagination of the existing avatar, not a replacement with a different person.
+Make the result feel refined, cohesive, and slightly more cinematic while keeping the character recognizably the same.
+
+STYLE:
+Semi-realistic cinematic illustration. Believable anatomy and lighting, but still clearly stylized and artistic.
+Painterly finish, not photoreal, not plastic 3D, not cartoon.
+
+COMPOSITION:
+Keep it vertical portrait orientation and upright. Never rotate the character sideways.
+
+EDIT INSTRUCTIONS:
+${normalizedFeedback || 'Do a gentle reimagination only: improve polish, styling, atmosphere, and coherence while preserving the character.'}
+
+SAFETY CHECK:
+Do not replace the person with a different character unless the user explicitly asked for a whole new avatar.
+Do not randomize race, skin tone, facial structure, or hair identity.
 `.trim()
 }
 
@@ -155,9 +192,13 @@ export async function POST(req: Request) {
     const body = (await req.json()) as {
       answers?: Record<string, unknown>
       style?: string
+      feedback?: string
+      mode?: 'create' | 'reimagine'
+      previousImageUrl?: string
+      forceNewAvatar?: boolean
     }
 
-    const { answers, style } = body
+    const { answers, style, feedback, mode, previousImageUrl, forceNewAvatar } = body
 
     if (!answers || typeof answers !== 'object' || Array.isArray(answers)) {
       return NextResponse.json({ error: 'Invalid answers payload.' }, { status: 400 })
@@ -171,24 +212,50 @@ export async function POST(req: Request) {
 
     // Sanitize style input
     const sanitizedStyle = typeof style === 'string' ? style.slice(0, 100) : undefined
+    const sanitizedFeedback = typeof feedback === 'string' ? normalizeFeedback(feedback) : ''
+    const shouldEditExisting =
+      mode === 'reimagine' &&
+      typeof previousImageUrl === 'string' &&
+      previousImageUrl.trim().length > 0 &&
+      forceNewAvatar !== true &&
+      !requestsWholeNewAvatar(sanitizedFeedback)
 
-    // 3. Build prompt
-    const finalPrompt = buildAvatarPrompt(orderedAnswers, sanitizedStyle)
-
-    // 4. Generate image
+    // 3. Generate image
     const openaiKey = process.env.OPENAI_API_KEY
     if (!openaiKey) return NextResponse.json({ error: 'Missing API Key' }, { status: 500 })
 
     const openai = new OpenAI({ apiKey: openaiKey })
 
-    const response = await openai.images.generate({
-      model: 'dall-e-3',
-      prompt: finalPrompt,
-      size: '1024x1792',
-      quality: 'hd',
-      response_format: 'b64_json',
-      user: user.id, // ✅ use verified server-side user ID, never trust client
-    })
+    let response
+    if (shouldEditExisting) {
+      const imageResponse = await fetch(previousImageUrl!)
+      if (!imageResponse.ok) {
+        return NextResponse.json({ error: 'Could not load the current avatar for reimagine.' }, { status: 400 })
+      }
+      const imageBlob = await imageResponse.blob()
+      const imageFile = await toFile(imageBlob, 'avatar-reference.png')
+
+      response = await openai.images.edit({
+        model: 'gpt-image-1',
+        image: imageFile,
+        prompt: buildReimaginePrompt(sanitizedFeedback),
+        size: '1024x1536',
+        quality: 'high',
+        input_fidelity: 'high',
+        output_format: 'png',
+        user: user.id,
+      })
+    } else {
+      const finalPrompt = buildAvatarPrompt(orderedAnswers, sanitizedStyle)
+      response = await openai.images.generate({
+        model: 'dall-e-3',
+        prompt: finalPrompt,
+        size: '1024x1792',
+        quality: 'hd',
+        response_format: 'b64_json',
+        user: user.id,
+      })
+    }
 
     const image = response.data?.[0]
 
