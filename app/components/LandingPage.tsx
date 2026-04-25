@@ -107,6 +107,7 @@ export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: (
   const [phase, setPhase] = useState(0)
   const [titleOut, setTitleOut] = useState(false)
   const [guideTopic, setGuideTopic] = useState('mirror')
+  const [showUniverseChoices, setShowUniverseChoices] = useState(false)
   useEffect(() => {
     const timers = [
       setTimeout(() => setTitleOut(true), 1400),
@@ -1025,7 +1026,7 @@ export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: (
           style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}
         >
           <button
-            onClick={onEnter}
+            onClick={() => setShowUniverseChoices((v) => !v)}
             style={{
               fontFamily: "'Cinzel', serif",
               fontSize: 'clamp(9px, 1.1vw, 11px)',
@@ -1046,36 +1047,78 @@ export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: (
           >
             Enter the Universe ✦
           </button>
+          <AnimatePresence>
+            {showUniverseChoices && (
+              <motion.div
+                initial={{ opacity: 0, y: -8, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -8, scale: 0.98 }}
+                transition={{ duration: 0.22, ease: 'easeOut' }}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px',
+                  padding: '14px',
+                  background: 'rgba(255,249,231,0.54)',
+                  border: '1px solid rgba(140,100,30,0.18)',
+                  borderRadius: '10px',
+                }}
+              >
+                <p
+                  style={{
+                    fontFamily: "'IM Fell English', serif",
+                    fontStyle: 'italic',
+                    fontSize: 'clamp(13px, 1.5vw, 15px)',
+                    color: 'rgba(75,52,12,0.62)',
+                    textAlign: 'center',
+                    margin: '0 0 2px',
+                    lineHeight: 1.5,
+                  }}
+                >
+                  Choose your path into the universe.
+                </p>
 
-          <button
-            onClick={onLogin}
-            style={{
-              fontFamily: "'Cinzel', serif",
-              fontSize: 'clamp(9px, 1.1vw, 10px)',
-              letterSpacing: '0.28em',
-              textTransform: 'uppercase',
-              color: 'rgba(75,52,12,0.6)',
-              background: 'transparent',
-              border: '1px solid rgba(140,100,30,0.26)',
-              padding: '13px 32px',
-              cursor: 'pointer',
-              width: '100%',
-              borderRadius: '2px',
-              transition: 'all 0.2s',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = 'rgba(75,52,12,0.9)'
-              e.currentTarget.style.borderColor = 'rgba(140,100,30,0.52)'
-              e.currentTarget.style.background = 'rgba(140,100,30,0.06)'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = 'rgba(75,52,12,0.6)'
-              e.currentTarget.style.borderColor = 'rgba(140,100,30,0.26)'
-              e.currentTarget.style.background = 'transparent'
-            }}
-          >
-            Already have a hub? Sign in
-          </button>
+                <button
+                  onClick={onEnter}
+                  style={{
+                    fontFamily: "'Cinzel', serif",
+                    fontSize: 'clamp(9px, 1.1vw, 10px)',
+                    letterSpacing: '0.26em',
+                    textTransform: 'uppercase',
+                    color: '#f5edd8',
+                    background: 'linear-gradient(135deg, #7a5a18 0%, #c9a84c 48%, #7a5a18 100%)',
+                    border: 'none',
+                    padding: '13px 22px',
+                    cursor: 'pointer',
+                    width: '100%',
+                    borderRadius: '8px',
+                    boxShadow: '0 2px 18px rgba(120,88,24,0.28)',
+                  }}
+                >
+                  Create a Hub
+                </button>
+
+                <button
+                  onClick={onLogin}
+                  style={{
+                    fontFamily: "'Cinzel', serif",
+                    fontSize: 'clamp(9px, 1.1vw, 10px)',
+                    letterSpacing: '0.22em',
+                    textTransform: 'uppercase',
+                    color: 'rgba(75,52,12,0.72)',
+                    background: 'transparent',
+                    border: '1px solid rgba(140,100,30,0.26)',
+                    padding: '13px 22px',
+                    cursor: 'pointer',
+                    width: '100%',
+                    borderRadius: '8px',
+                  }}
+                >
+                  Got a Hub? Sign In
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <button
             onClick={onGuest}

@@ -15,6 +15,7 @@ export default function EntryScreen({
   onGuest?: () => void
 }) {
   const [phase, setPhase] = useState(0)
+  const [showUniverseChoices, setShowUniverseChoices] = useState(false)
 
   useEffect(() => {
     const timers = [
@@ -99,7 +100,7 @@ export default function EntryScreen({
             style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px', marginTop: '64px' }}
           >
             <button
-              onClick={onEnter}
+              onClick={() => setShowUniverseChoices((v) => !v)}
               onMouseEnter={e => {
                 e.currentTarget.style.background = 'rgba(230,199,110,0.12)'
                 e.currentTarget.style.borderColor = '#e6c76e'
@@ -130,6 +131,80 @@ export default function EntryScreen({
             >
               Enter the Universe
             </button>
+            <AnimatePresence>
+              {showUniverseChoices && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -8, scale: 0.98 }}
+                  transition={{ duration: 0.22, ease: 'easeOut' }}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '10px',
+                    padding: '14px 14px 12px',
+                    background: 'rgba(8,10,28,0.72)',
+                    border: '1px solid rgba(230,199,110,0.18)',
+                    borderRadius: '12px',
+                    backdropFilter: 'blur(12px)',
+                    boxShadow: '0 18px 40px rgba(0,0,0,0.28)',
+                  }}
+                >
+                  <p
+                    style={{
+                      margin: 0,
+                      color: 'rgba(255,255,255,0.42)',
+                      fontFamily: "'IM Fell English', serif",
+                      fontStyle: 'italic',
+                      fontSize: '12px',
+                      letterSpacing: '0.04em',
+                      textAlign: 'center',
+                    }}
+                  >
+                    Choose your path into the universe.
+                  </p>
+
+                  <button
+                    onClick={onEnter}
+                    style={{
+                      padding: '11px 20px',
+                      minWidth: '260px',
+                      background: 'rgba(230,199,110,0.08)',
+                      border: '1px solid rgba(230,199,110,0.38)',
+                      color: '#f3df9a',
+                      fontFamily: "'Cinzel', serif",
+                      fontSize: '11px',
+                      letterSpacing: '0.22em',
+                      textTransform: 'uppercase',
+                      cursor: 'pointer',
+                      borderRadius: '8px',
+                    }}
+                  >
+                    Create a Hub
+                  </button>
+
+                  <button
+                    onClick={_onLogin}
+                    style={{
+                      padding: '11px 20px',
+                      minWidth: '260px',
+                      background: 'transparent',
+                      border: '1px solid rgba(255,255,255,0.14)',
+                      color: 'rgba(255,255,255,0.64)',
+                      fontFamily: "'Cinzel', serif",
+                      fontSize: '11px',
+                      letterSpacing: '0.18em',
+                      textTransform: 'uppercase',
+                      cursor: 'pointer',
+                      borderRadius: '8px',
+                    }}
+                  >
+                    Got a Hub? Sign In
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             <button
               onClick={onGuest}
