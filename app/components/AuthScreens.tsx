@@ -301,8 +301,8 @@ export function LoginScreen({
         sent={codeSent}
         sendLabel="Send code"
         verifyLabel="Verify code"
-        sentTitle="Enter your code"
-        sentBody={<><span>A sign-in code has been sent to<br /><span style={{ color: 'rgba(201,168,76,0.8)' }}>{email}</span><br />Type it here to enter the universe.</span></>}
+        sentTitle="Check your email"
+        sentBody={<><span>A sign-in code has been sent to<br /><span style={{ color: 'rgba(201,168,76,0.8)' }}>{email}</span><br />Enter the code you got in your email to enter the universe.</span></>}
         onSend={handleSendCode}
         onVerify={handleVerifyCode}
         onReset={() => { setCodeSent(false); setEmailCode(''); setEmail(''); setError('') }}
@@ -503,8 +503,8 @@ export function SignupScreen({
         sent={codeSent}
         sendLabel="Send code"
         verifyLabel="Verify code"
-        sentTitle="Enter your code"
-        sentBody={<><span>A sign-up code has been sent to<br /><span style={{ color: 'rgba(201,168,76,0.8)' }}>{email}</span><br />Type it here to open your account.</span></>}
+        sentTitle="Check your email"
+        sentBody={<><span>A sign-up code has been sent to<br /><span style={{ color: 'rgba(201,168,76,0.8)' }}>{email}</span><br />Enter the code you got in your email to open your account.</span></>}
         onSend={handleSendCode}
         onVerify={handleVerifyCode}
         onReset={() => { setCodeSent(false); setEmailCode(''); setEmail(''); setError('') }}
