@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { signInWithGoogle, signInWithDiscord, sendEmailCode, verifyEmailCode, signOut } from '../lib/auth'
+import { supabase } from '../../lib/supabase'
 
 function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback
@@ -63,6 +64,12 @@ function InAppBrowserBanner() {
       )}
     </AnimatePresence>
   )
+}
+
+function clearSignupIntent() {
+  if (typeof sessionStorage === 'undefined') return
+  sessionStorage.removeItem('ds_goto_onboarding')
+  sessionStorage.removeItem('ds_pending_creds')
 }
 
 function DiscordIcon() {
@@ -217,14 +224,15 @@ export function LoginScreen({
   }, [])
 
   useEffect(() => {
-    import('../../lib/supabase').then(({ supabase }) => {
-      const { data: authListener } = supabase.auth.onAuthStateChange(() => {
-        setGoogleLoading(false)
-        setDiscordLoading(false)
-        setEmailLoading(false)
-      })
-      return () => authListener.subscription.unsubscribe()
+    const { data: authListener } = supabase.auth.onAuthStateChange(() => {
+      setGoogleLoading(false)
+      setDiscordLoading(false)
+      setEmailLoading(false)
     })
+
+    return () => {
+      authListener.subscription.unsubscribe()
+    }
   }, [])
 
   const anyLoading = googleLoading || discordLoading || emailLoading
@@ -232,6 +240,7 @@ export function LoginScreen({
   async function handleGoogle() {
     setGoogleLoading(true); setError('')
     try {
+      clearSignupIntent()
       await signOut()
       await signInWithGoogle()
     } catch (err: unknown) {
@@ -243,6 +252,7 @@ export function LoginScreen({
   async function handleDiscord() {
     setDiscordLoading(true); setError('')
     try {
+      clearSignupIntent()
       await signOut()
       await signInWithDiscord()
     } catch (err: unknown) {
@@ -255,6 +265,7 @@ export function LoginScreen({
     if (!email.trim()) { setError('Enter your email address.'); return }
     setEmailLoading(true); setError('')
     try {
+      clearSignupIntent()
       await sendEmailCode(email.trim(), false)
       setCodeSent(true)
     } catch (err: unknown) {
@@ -268,6 +279,7 @@ export function LoginScreen({
     if (!emailCode.trim()) { setError('Enter the code from your email.'); return }
     setEmailLoading(true); setError('')
     try {
+      clearSignupIntent()
       await verifyEmailCode(email.trim(), emailCode.trim(), 'email')
       onSuccess()
     } catch (err: unknown) {
@@ -398,6 +410,24 @@ export function SignupScreen({
   const [emailCode, setEmailCode] = useState('')
   const [emailLoading, setEmailLoading] = useState(false)
   const [codeSent, setCodeSent] = useState(false)
+
+  useEffect(() => {
+    setGoogleLoading(false)
+    setDiscordLoading(false)
+    setEmailLoading(false)
+  }, [])
+
+  useEffect(() => {
+    const { data: authListener } = supabase.auth.onAuthStateChange(() => {
+      setGoogleLoading(false)
+      setDiscordLoading(false)
+      setEmailLoading(false)
+    })
+
+    return () => {
+      authListener.subscription.unsubscribe()
+    }
+  }, [])
 
   const anyLoading = googleLoading || discordLoading || emailLoading
 

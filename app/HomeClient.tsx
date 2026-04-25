@@ -16,6 +16,7 @@ import PagesAndInk from './components/PagesAndInk'
 import DriftStream from './components/DriftStream'
 import { LoginScreen, SignupScreen } from './components/AuthScreens'
 import NotificationBanner, { sendLocalNotification } from './components/NotificationBanner'
+import FeedbackButton from './components/Feedbackbutton'
 import { supabase } from '../lib/supabase'
 import {
   signUpAndCreateHub,
@@ -1603,6 +1604,8 @@ export default function Home() {
       )}
 
       {screen === 'universe' && <NotificationBanner />}
+
+      {['landing', 'entry', 'universe'].includes(screen) && <FeedbackButton />}
 
       {screen === 'universe' && (
         <button

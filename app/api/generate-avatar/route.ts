@@ -9,21 +9,21 @@ export const maxDuration = 120
 // ---------------------------------------------------------------------------
 const STYLE_DESCRIPTORS: Record<string, string> = {
   fantasy:
-    'Background mood: magical glowing environment, ethereal aura, soft mist, otherworldly light.',
+    'Background mood: a grounded fantasy environment with real setting detail such as a forest path, quiet courtyard, stone hall, cliffside, market lane, or camp at dusk. Rich atmosphere, but not abstract or mystical by default.',
   modern:
-    'Background mood: stylish contemporary setting, clean urban backdrop, soft ambient light.',
+    'Background mood: a believable contemporary place such as a studio, street, cafe, apartment, rooftop, or city walkway with soft natural depth.',
   'fantasy-modern':
-    'Background mood: grounded cinematic setting with subtle magical ambience — city streets with faint enchanted glow.',
+    'Background mood: a grounded cinematic setting where modern life meets subtle fantasy, such as a city street, alley, station, or courtyard with only a light touch of enchantment.',
   celestial:
-    'Background mood: cosmic moonlit atmosphere, radiant starfield, divine energy in the sky.',
+    'Background mood: moonlit, airy, and luminous, but still environmental and scene-based rather than abstract cosmic voids.',
   royal:
-    'Background mood: elegant palace corridor, throne room, or noble garden with refined architectural details.',
+    'Background mood: elegant architectural spaces such as a palace corridor, noble garden, library, gallery, or terrace with refined detail.',
   streetwear:
-    'Background mood: vivid urban street environment, bold graffiti walls, dynamic city energy.',
+    'Background mood: vivid urban environments such as sidewalks, murals, storefronts, train platforms, and city corners with strong personality.',
   futuristic:
-    'Background mood: sleek sci-fi city, neon-lit streets, holographic signage.',
+    'Background mood: sleek futuristic environments such as transit hubs, observation decks, city streets, or interior corridors with clear spatial depth.',
   nature:
-    'Background mood: enchanted forest, golden-hour sunlight filtering through ancient trees.',
+    'Background mood: a natural environment with real landscape detail such as forest clearings, coastlines, gardens, mountains, rain-soaked paths, or golden-hour trees.',
 }
 
 // ---------------------------------------------------------------------------
@@ -103,7 +103,9 @@ Never rotate sideways. Never produce a landscape, reference sheet, collage, or s
 BACKGROUND:
 ${backgroundMood}
 The background must be coherent, specific, and match the character's vibe.
-No random glitter, abstract bokeh, empty gradients, or unrelated particles.
+Prefer a distinct place with depth and environmental detail, not a generic glowing backdrop.
+Avoid mystical halos, magic circles, portal rings, spotlight auras, abstract voids, centered sigils, random glitter, empty gradients, or unrelated particles unless the user explicitly asked for them.
+Different characters should feel like they belong in different places rather than the same default background treatment.
 
 COMPANIONS:
 If the user mentioned a pet, animal, or creature companion, include it beside the character.

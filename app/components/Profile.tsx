@@ -462,7 +462,7 @@ export default function Profile({
         {/* LEFT — Avatar + Hub Centerpiece */}
         <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6 }}
           className="profile-avatar-col">
-          <div style={{ position: 'absolute', inset: 0, zIndex: 3, pointerEvents: 'none', background: 'linear-gradient(to right, transparent 65%, rgba(0,0,5,0.97) 100%), linear-gradient(to bottom, rgba(0,0,5,0.3) 0%, transparent 15%, transparent 85%, rgba(0,0,5,0.6) 100%)' }} />
+          <div style={{ position: 'absolute', inset: 0, zIndex: 3, pointerEvents: 'none', background: 'linear-gradient(to right, transparent 78%, rgba(0,0,5,0.82) 100%), linear-gradient(to bottom, rgba(0,0,5,0.14) 0%, transparent 12%, transparent 88%, rgba(0,0,5,0.28) 100%)' }} />
 
           {/* Hub structure centerpiece ring — removed from avatar col, now in info col */}
 
@@ -477,79 +477,15 @@ export default function Profile({
           )}
           {currentAvatarUrl ? (
             <>
-              {/* Holographic projection cone — light beams rising from portal ring */}
-              <div style={{
-                position: 'absolute', bottom: '10%', left: '50%',
-                transform: 'translateX(-50%)',
-                width: '120%', height: '78%',
-                background: `radial-gradient(ellipse at 50% 100%, rgba(${hubGlowRgb},0.20) 0%, rgba(0,170,255,0.09) 20%, transparent 64%)`,
-                pointerEvents: 'none', zIndex: 2,
-                mixBlendMode: 'screen' as CSSProperties['mixBlendMode'],
-              }} />
-              {/* Pulsing secondary beam for depth */}
-              <motion.div
-                animate={{ opacity: [0.38, 0.72, 0.38] }}
-                transition={{ duration: 4.5, repeat: Infinity, ease: 'easeInOut' }}
-                style={{
-                  position: 'absolute', bottom: '10%', left: '50%',
-                  transform: 'translateX(-50%)',
-                  width: '80%', height: '60%',
-                  background: 'radial-gradient(ellipse at 50% 100%, rgba(0,160,255,0.16) 0%, transparent 70%)',
-                  pointerEvents: 'none', zIndex: 2,
-                  mixBlendMode: 'screen' as CSSProperties['mixBlendMode'],
-                  filter: 'blur(5px)',
-                }}
-              />
-              {/* Avatar — top 85% of container so feet clear the ring */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={currentAvatarUrl} alt="Avatar"
                 style={{
                   position: 'absolute', top: 0, left: 0, right: 0,
-                  height: '85%', width: '100%',
+                  height: '100%', width: '100%',
                   objectFit: 'contain', objectPosition: 'top center',
-                  filter: `brightness(1.08) saturate(0.82) drop-shadow(0 0 ${Math.round(hubGlowIntensityValue * 28)}px rgba(${hubGlowRgb},0.45)) drop-shadow(0 0 10px rgba(0,190,255,0.28))`,
-                  animation: 'holo-flicker 7s ease-in-out infinite',
+                  filter: `brightness(1.02) saturate(1.02) drop-shadow(0 12px 28px rgba(0,0,0,0.28))`,
                 }}
               />
-              {/* Scanlines */}
-              <div style={{
-                position: 'absolute', inset: 0, zIndex: 3, pointerEvents: 'none',
-                background: 'repeating-linear-gradient(to bottom, transparent 0px, transparent 3px, rgba(0,200,255,0.022) 3px, rgba(0,200,255,0.022) 4px)',
-                animation: 'holo-scan 10s linear infinite',
-              }} />
-              {/* Portal ring — at ground level, clearly below the feet */}
-              <motion.div
-                animate={{ opacity: [0.72, 1, 0.72] }}
-                transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
-                style={{ position: 'absolute', bottom: '4%', left: '50%', transform: 'translateX(-50%)', width: '74%', zIndex: 5, pointerEvents: 'none' }}
-              >
-                <svg width="100%" viewBox="0 0 200 58" overflow="visible" style={{ display: 'block' }}>
-                  <defs>
-                    <filter id="php-glow-wide" x="-70%" y="-70%" width="240%" height="240%">
-                      <feGaussianBlur in="SourceGraphic" stdDeviation="7" />
-                    </filter>
-                    <filter id="php-glow-soft" x="-40%" y="-40%" width="180%" height="180%">
-                      <feGaussianBlur in="SourceGraphic" stdDeviation="3" />
-                    </filter>
-                  </defs>
-                  {/* Broad colour halo matching hub theme */}
-                  <ellipse cx="100" cy="29" rx="95" ry="22" fill="none" stroke={`rgba(${hubGlowRgb},0.5)`} strokeWidth="10" filter="url(#php-glow-wide)" />
-                  {/* Teal accent halo */}
-                  <ellipse cx="100" cy="29" rx="95" ry="22" fill="none" stroke="rgba(0,210,255,0.35)" strokeWidth="5" filter="url(#php-glow-soft)" />
-                  {/* Main crisp ring */}
-                  <ellipse cx="100" cy="29" rx="94" ry="21" fill="none" stroke={`rgba(${hubGlowRgb},0.92)`} strokeWidth="1.3" />
-                  {/* Teal inner accent */}
-                  <ellipse cx="100" cy="29" rx="94" ry="21" fill="none" stroke="rgba(0,220,255,0.38)" strokeWidth="0.5" />
-                  {/* Auto-rotating dashed mid ring */}
-                  <ellipse cx="100" cy="29" rx="79" ry="17" fill="none" stroke={`rgba(${hubGlowRgb},0.38)`} strokeWidth="0.9" strokeDasharray="5 3.5">
-                    <animateTransform attributeName="transform" type="rotate" from="0 100 29" to="360 100 29" dur="20s" repeatCount="indefinite" />
-                  </ellipse>
-                  {/* Innermost fine ring */}
-                  <ellipse cx="100" cy="29" rx="61" ry="13" fill="none" stroke="rgba(0,210,255,0.20)" strokeWidth="0.7" />
-                  {/* Translucent inner fill */}
-                  <ellipse cx="100" cy="29" rx="94" ry="21" fill={`rgba(${hubGlowRgb},0.055)`} />
-                </svg>
-              </motion.div>
             </>
           ) : (
             <>
