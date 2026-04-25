@@ -145,7 +145,7 @@ function EmailCodePanel({
             type="text"
             inputMode="numeric"
             autoComplete="one-time-code"
-            placeholder="6-digit code"
+            placeholder="The code you got in your email"
             value={code}
             onChange={e => setCode(e.target.value.replace(/\s/g, ''))}
             onKeyDown={e => e.key === 'Enter' && void onVerify()}
