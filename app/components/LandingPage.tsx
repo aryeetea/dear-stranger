@@ -64,6 +64,44 @@ function GoldRule({ opacity = 0.28 }: { opacity?: number }) {
   )
 }
 
+function FeatherQuillMark() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 32 32"
+      style={{
+        width: '15px',
+        height: '15px',
+        display: 'block',
+        transform: 'translateY(1px) rotate(10deg)',
+      }}
+    >
+      <path
+        d="M24 4C17 6 10 14 9 22c3-1 6-1 8-3 5-4 7-10 7-15Z"
+        fill="rgba(140,100,30,0.16)"
+        stroke="rgba(120,85,20,0.52)"
+        strokeWidth="1.2"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M23.5 6.5c-3.3 2.9-7.2 8.3-10.6 15"
+        fill="none"
+        stroke="rgba(120,85,20,0.5)"
+        strokeWidth="1"
+        strokeLinecap="round"
+      />
+      <path
+        d="M12.6 21.4 9.8 27.8l3.8-2.8"
+        fill="none"
+        stroke="rgba(120,85,20,0.58)"
+        strokeWidth="1.1"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
 export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: () => void; onLogin?: () => void; onGuest?: () => void }) {
   // phase 0 = title splash, 1 = intro arrives, 2 = greeting, 3 = story, 4 = buttons
   const [phase, setPhase] = useState(0)
@@ -395,8 +433,11 @@ export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: (
       >
         <div style={{ marginBottom: '24px' }}>
           <GoldRule opacity={0.26} />
-          <p style={{ fontFamily: "'Dancing Script', cursive", fontSize: '13px', color: 'rgba(100,72,22,0.55)', letterSpacing: '0.1em', textAlign: 'center', marginTop: '18px', marginBottom: 0 }}>
-            Somewhere in the universe
+          <p style={{ fontFamily: "'Dancing Script', cursive", fontSize: '13px', color: 'rgba(100,72,22,0.55)', letterSpacing: '0.1em', textAlign: 'center', marginTop: '18px', marginBottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+            <span>Somewhere in the universe</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+              <FeatherQuillMark />
+            </span>
           </p>
         </div>
 
@@ -526,7 +567,7 @@ export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: (
               inset: 0,
               backgroundImage: 'linear-gradient(rgba(120,88,24,0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(120,88,24,0.05) 1px, transparent 1px)',
               backgroundSize: '42px 42px',
-              opacity: 0.42,
+              opacity: 0.26,
             }} />
 
             <div style={{
@@ -540,11 +581,11 @@ export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: (
               padding: '8px 10px',
               border: `1px solid ${activeGuide.accent}`,
               borderRadius: '999px',
-              background: 'rgba(255,249,231,0.74)',
-              boxShadow: `0 0 20px ${activeGuide.accent.replace('0.84', '0.16').replace('0.78', '0.14').replace('0.82', '0.14')}`,
+              background: 'rgba(255,250,238,0.94)',
+              boxShadow: `0 8px 24px rgba(64,40,8,0.12), 0 0 20px ${activeGuide.accent.replace('0.84', '0.18').replace('0.78', '0.16').replace('0.82', '0.16')}`,
             }} className="ds-tour-stage-label">
               <span style={{ fontSize: '15px', color: activeGuide.accent, lineHeight: 1 }}>{activeGuide.icon}</span>
-              <span style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(62,39,8,0.7)' }}>
+              <span style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.16em', textTransform: 'uppercase', color: 'rgba(62,39,8,0.86)' }}>
                 {activeGuide.label}
               </span>
             </div>
@@ -606,11 +647,11 @@ export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: (
               style={{
                 border: `1px solid ${activeGuide.accent}`,
                 borderRadius: '6px',
-                background: 'rgba(255,249,231,0.8)',
-                boxShadow: `0 16px 42px rgba(60,38,8,0.13), 0 0 28px ${activeGuide.accent.replace('0.84', '0.16').replace('0.78', '0.14').replace('0.82', '0.14')}`,
+                background: 'rgba(255,251,240,0.95)',
+                boxShadow: `0 18px 42px rgba(60,38,8,0.16), 0 0 28px ${activeGuide.accent.replace('0.84', '0.18').replace('0.78', '0.16').replace('0.82', '0.16')}`,
               }}
             >
-              <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.24em', textTransform: 'uppercase', color: 'rgba(62,39,8,0.58)', margin: '0 0 10px' }}>
+              <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(62,39,8,0.84)', margin: '0 0 12px' }}>
                 {activeGuide.label}
               </p>
 
@@ -640,8 +681,8 @@ export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: (
                     <div key={path.label} style={{ display: 'grid', gridTemplateColumns: '10px 1fr', gap: '8px', alignItems: 'start' }}>
                       <span style={{ width: '9px', height: '9px', borderRadius: '50%', marginTop: '4px', background: i === 0 ? 'rgba(201,168,76,0.9)' : 'rgba(90,145,210,0.9)', boxShadow: i === 0 ? '0 0 14px rgba(201,168,76,0.5)' : '0 0 14px rgba(90,145,210,0.48)' }} />
                       <span>
-                        <span style={{ display: 'block', fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.16em', textTransform: 'uppercase', color: i === 0 ? 'rgba(82,56,12,0.74)' : 'rgba(42,70,110,0.8)', marginBottom: '3px' }}>{path.label}</span>
-                        <span style={{ display: 'block', fontFamily: "'IM Fell English', serif", fontSize: '13px', lineHeight: 1.35, color: 'rgba(38,24,6,0.7)' }}>{path.text}</span>
+                        <span style={{ display: 'block', fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.14em', textTransform: 'uppercase', color: i === 0 ? 'rgba(82,56,12,0.88)' : 'rgba(42,70,110,0.92)', marginBottom: '4px' }}>{path.label}</span>
+                        <span style={{ display: 'block', fontFamily: "'IM Fell English', serif", fontSize: '15px', lineHeight: 1.4, color: 'rgba(38,24,6,0.9)' }}>{path.text}</span>
                       </span>
                     </div>
                   ))}
@@ -728,7 +769,7 @@ export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: (
               display: 'grid',
               gap: '7px',
               maxWidth: '42%',
-              opacity: showObservatory ? 1 : 0.2,
+              opacity: showObservatory ? 1 : 0.38,
               transition: 'opacity 0.35s ease',
             }}>
               {observatoryBeats.slice(0, 3).map((beat, i) => (
@@ -739,9 +780,9 @@ export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: (
                     alignItems: 'center',
                     gap: '6px',
                     fontFamily: "'Cinzel', serif",
-                    fontSize: 'clamp(7px, 1vw, 8px)',
-                    letterSpacing: '0.14em',
-                    color: 'rgba(62,39,8,0.66)',
+                    fontSize: 'clamp(8px, 1.05vw, 10px)',
+                    letterSpacing: '0.12em',
+                    color: 'rgba(62,39,8,0.82)',
                     textTransform: 'uppercase',
                     animation: `ds-chip-float 5.2s ease-in-out ${i * 0.5}s infinite`,
                   }}

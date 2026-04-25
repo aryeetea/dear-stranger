@@ -6,28 +6,29 @@
   --gold: #c9a84c;
   --gold-light: #e6c76e;
   --void: #06040e;
-  --font-size-base: 19px;
-  --font-size-label: 15px;
-  --font-size-small: 17px;
+  --font-site: 'EB Garamond', Georgia, serif;
+  --font-size-base: 20px;
+  --font-size-label: 16px;
+  --font-size-small: 18px;
   --font-size-large: 22px;
 }
 
 html.fontsize-default {
-  --font-size-base: 19px;
-  --font-size-label: 15px;
-  --font-size-small: 17px;
+  --font-size-base: 20px;
+  --font-size-label: 16px;
+  --font-size-small: 18px;
   --font-size-large: 22px;
 }
 html.fontsize-large {
-  --font-size-base: 21px;
-  --font-size-label: 17px;
-  --font-size-small: 19px;
+  --font-size-base: 22px;
+  --font-size-label: 18px;
+  --font-size-small: 20px;
   --font-size-large: 24px;
 }
 html.fontsize-xlarge {
-  --font-size-base: 24px;
-  --font-size-label: 19px;
-  --font-size-small: 21px;
+  --font-size-base: 25px;
+  --font-size-label: 20px;
+  --font-size-small: 22px;
   --font-size-large: 27px;
 }
 
@@ -47,7 +48,7 @@ body {
     radial-gradient(ellipse 65% 50% at 15% 85%, rgba(140,20,80,0.28) 0%, transparent 55%),
     #06040e;
   color: rgba(255,255,255,0.92);
-  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-family: var(--font-site);
   font-size: var(--font-size-base);
   margin: 0;
   padding: 0;
@@ -56,6 +57,22 @@ body {
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+body,
+button,
+input,
+textarea,
+select {
+  font-family: var(--font-site);
+}
+
+/* Normalize the many decorative inline font overrides to one readable site font. */
+[style*="Cinzel"],
+[style*="IM Fell English"],
+[style*="Dancing Script"],
+[style*="Cormorant Garamond"] {
+  font-family: var(--font-site) !important;
 }
 
 /* Make fixed-position overlay panels scroll on iOS Safari */
