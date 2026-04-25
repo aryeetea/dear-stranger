@@ -478,14 +478,17 @@ export async function resonatePage(id: string) {
 
 const DRIFT_PAPER_IDS = ['void-parchment','nebula-leaf','starworn','moondust','ember-glow','tide-glass','rose-ash','gilded-dark']
 const DRIFT_PAPER_FILTER = `("${DRIFT_PAPER_IDS.join('","')}")`
+const UNIVERSE_LETTER_TTL_DAYS = 7
 
 export async function getUniverseLetters() {
   try {
+    const cutoff = new Date(Date.now() - UNIVERSE_LETTER_TTL_DAYS * 24 * 60 * 60 * 1000).toISOString()
     const { data, error } = await supabase
       .from('letters')
       .select('id, sender_id, body, subject, paper_id, font_id, font_color, paper_color, handwriting_style, handwritten_image_url, embellishment_id, is_anonymous, sender:sender_id(hub_name)')
       .eq('is_universe_letter', true)
       .eq('status', 'arrived')
+      .gte('created_at', cutoff)
       .not('paper_id', 'in', DRIFT_PAPER_FILTER)
       .order('created_at', { ascending: false })
       .limit(50)
