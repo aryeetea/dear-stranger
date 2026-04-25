@@ -145,7 +145,7 @@ function EmailCodePanel({
             type="text"
             inputMode="numeric"
             autoComplete="one-time-code"
-            placeholder="The code you got in your email"
+            placeholder="6-digit code"
             value={code}
             onChange={e => setCode(e.target.value.replace(/\s/g, ''))}
             onKeyDown={e => e.key === 'Enter' && void onVerify()}
@@ -302,7 +302,7 @@ export function LoginScreen({
         sendLabel="Send code"
         verifyLabel="Verify code"
         sentTitle="Check your email"
-        sentBody={<><span>A sign-in code has been sent to<br /><span style={{ color: 'rgba(201,168,76,0.8)' }}>{email}</span><br />Enter the code you got in your email to enter the universe.</span></>}
+        sentBody={<><span>A sign-in code has been sent to<br /><span style={{ color: 'rgba(201,168,76,0.8)' }}>{email}</span><br />Enter the 6-digit code to enter the universe.</span></>}
         onSend={handleSendCode}
         onVerify={handleVerifyCode}
         onReset={() => { setCodeSent(false); setEmailCode(''); setEmail(''); setError('') }}
@@ -504,7 +504,7 @@ export function SignupScreen({
         sendLabel="Send code"
         verifyLabel="Verify code"
         sentTitle="Check your email"
-        sentBody={<><span>A sign-up code has been sent to<br /><span style={{ color: 'rgba(201,168,76,0.8)' }}>{email}</span><br />Enter the code you got in your email to open your account.</span></>}
+        sentBody={<><span>A sign-up code has been sent to<br /><span style={{ color: 'rgba(201,168,76,0.8)' }}>{email}</span><br />Enter the 6-digit code to open your account.</span></>}
         onSend={handleSendCode}
         onVerify={handleVerifyCode}
         onReset={() => { setCodeSent(false); setEmailCode(''); setEmail(''); setError('') }}
