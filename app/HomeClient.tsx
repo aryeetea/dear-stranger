@@ -740,6 +740,7 @@ export default function Home() {
         if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('ds_goto_onboarding') === '1') {
           sessionStorage.removeItem('ds_goto_onboarding')
           sessionStorage.removeItem('ds_pending_creds')
+          sessionStorage.removeItem('ds_auth_flow')
           console.log('[routeFromSession] onboarding intent found without session; waiting for a completed sign-in')
         }
         clearHubState()
@@ -750,8 +751,15 @@ export default function Home() {
         return
       }
 
-      if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('ds_goto_onboarding') === '1') {
+      const authFlow = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('ds_auth_flow') : null
+      const shouldRouteToOnboarding =
+        typeof sessionStorage !== 'undefined' &&
+        sessionStorage.getItem('ds_goto_onboarding') === '1' &&
+        authFlow === 'signup'
+
+      if (shouldRouteToOnboarding) {
         sessionStorage.removeItem('ds_goto_onboarding')
+        sessionStorage.removeItem('ds_auth_flow')
         const raw = sessionStorage.getItem('ds_pending_creds')
         if (raw) {
           try { setPendingCredentials(JSON.parse(raw)) } catch {}
@@ -790,6 +798,9 @@ export default function Home() {
         applyHubState(hub as HubWithMeta, userId)
         setOnboardingError('')
         setOnboardingResumeState(null)
+        if (typeof sessionStorage !== 'undefined') {
+          sessionStorage.removeItem('ds_auth_flow')
+        }
 
         finishAuthRoute()
         setScreen('universe')

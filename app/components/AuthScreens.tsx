@@ -70,6 +70,12 @@ function clearSignupIntent() {
   if (typeof sessionStorage === 'undefined') return
   sessionStorage.removeItem('ds_goto_onboarding')
   sessionStorage.removeItem('ds_pending_creds')
+  sessionStorage.removeItem('ds_auth_flow')
+}
+
+function setAuthFlow(flow: 'login' | 'signup') {
+  if (typeof sessionStorage === 'undefined') return
+  sessionStorage.setItem('ds_auth_flow', flow)
 }
 
 function DiscordIcon() {
@@ -241,6 +247,7 @@ export function LoginScreen({
     setGoogleLoading(true); setError('')
     try {
       clearSignupIntent()
+      setAuthFlow('login')
       await signOut()
       await signInWithGoogle()
     } catch (err: unknown) {
@@ -253,6 +260,7 @@ export function LoginScreen({
     setDiscordLoading(true); setError('')
     try {
       clearSignupIntent()
+      setAuthFlow('login')
       await signOut()
       await signInWithDiscord()
     } catch (err: unknown) {
@@ -266,6 +274,7 @@ export function LoginScreen({
     setEmailLoading(true); setError('')
     try {
       clearSignupIntent()
+      setAuthFlow('login')
       await sendEmailCode(email.trim(), false)
       setCodeSent(true)
     } catch (err: unknown) {
@@ -280,6 +289,7 @@ export function LoginScreen({
     setEmailLoading(true); setError('')
     try {
       clearSignupIntent()
+      setAuthFlow('login')
       await verifyEmailCode(email.trim(), emailCode.trim(), 'email')
       onSuccess()
     } catch (err: unknown) {
@@ -433,6 +443,7 @@ export function SignupScreen({
 
   function rememberOnboardingIntent() {
     if (typeof sessionStorage === 'undefined') return
+    sessionStorage.setItem('ds_auth_flow', 'signup')
     sessionStorage.setItem('ds_goto_onboarding', '1')
   }
 
