@@ -127,6 +127,30 @@ function buildArtStyleInstruction(details: string): string {
   return 'Semi-realistic cinematic illustration with believable anatomy and lighting, painterly finish, and clear stylization. Not a photograph, not hyperreal, not cartoon.'
 }
 
+function buildBeautyPolishInstruction(details: string): string {
+  const lower = details.toLowerCase()
+  const lines = [
+    'Make the character feel like the most beautiful, visually striking, fully realized version of what the user described.',
+    'Elevate styling, fabric detail, color harmony, silhouette, lighting, and atmosphere without changing any explicitly requested traits.',
+    'Favor main-character energy, polished fantasy design, strong composition, and intentional beauty over bland or generic results.',
+  ]
+
+  if (/\bpixie\b|\bfairy\b|\belf\b|\bmage\b|\bqueen\b|\bprincess\b/.test(lower)) {
+    lines.push('If the concept is fantasy, render it as high-fantasy character design with glamorous, art-directed polish and magical elegance.')
+  }
+  if (/\bstreetwear\b|\bhoodie\b|\bcargo\b|\bmodern\b/.test(lower)) {
+    lines.push('If the concept is modern or streetwear, make it fashion-editorial, cool, and sharply styled rather than plain everyday clothing.')
+  }
+  if (/\bhappy\b|\bjoyful\b|\bpretty\b|\bsoft\b/.test(lower)) {
+    lines.push('Keep the beauty soft, radiant, and warm if the user asked for a happy or gentle mood.')
+  }
+  if (/\bdark\b|\bmysterious\b|\bseductive\b|\bsexy\b/.test(lower)) {
+    lines.push('Keep the beauty moody, glamorous, and atmospheric if the user asked for a darker or more seductive mood.')
+  }
+
+  return lines.join('\n')
+}
+
 function buildAvatarPrompt(detailsInput: string[], styleKey?: string): string {
   const details = detailsInput.map((a) => normalizeDetail(a)).filter(Boolean).join(', ')
   const normalizedStyle = normalizeStyleKey(styleKey)
@@ -134,6 +158,7 @@ function buildAvatarPrompt(detailsInput: string[], styleKey?: string): string {
   const identityInstruction = buildIdentityInstruction(details)
   const accuracyGuard = buildAccuracyGuard(details)
   const artStyleInstruction = buildArtStyleInstruction(details)
+  const beautyPolishInstruction = buildBeautyPolishInstruction(details)
 
   return `
 SUBJECT:
@@ -146,10 +171,14 @@ CLOTHING, HAIR, FEATURES:
 Render every clothing item, hairstyle, hair color, skin tone, glasses, shoes, companion, and held object exactly as described.
 Do not substitute, simplify, modernize, fantasy-wash, or pretty-wash away specific details.
 Do not let the background or style override the user's outfit, hair, skin, race, or companion description.
+Do not borrow traits, species, outfits, colors, companions, or aesthetics from prior examples, other users, or hidden references.
 
 ART STYLE:
 ${artStyleInstruction}
 No watermarks. No text. No labels.
+
+BEAUTY AND POLISH:
+${beautyPolishInstruction}
 
 COMPOSITION:
 Vertical portrait, full body, upright, facing forward.
@@ -174,6 +203,7 @@ ${accuracyGuard}
 function buildReimaginePrompt(feedback: string, identityDescription?: string): string {
   const normalizedFeedback = normalizeFeedback(feedback)
   const normalizedIdentity = normalizeDetail(identityDescription || '')
+  const beautyPolishInstruction = buildBeautyPolishInstruction(`${normalizedIdentity} ${normalizedFeedback}`)
   return `
 TASK:
 Edit the provided avatar image while preserving the same core person and identity.
@@ -184,12 +214,16 @@ ${normalizedIdentity || 'Preserve the current avatar identity exactly unless the
 STYLE:
 Keep the result cinematic, polished, and artistically stylized.
 
+BEAUTY AND POLISH:
+${beautyPolishInstruction}
+
 COMPOSITION:
 Keep it vertical, upright, and full body unless the user explicitly asked for another crop.
 
 LOCKS:
 Do not change race, skin tone, hairstyle, hair color, face identity, outfit category, companion, or key props unless the user explicitly asked to change them.
 Do not add random accessories or remove required ones.
+Do not borrow traits or aesthetics from prior examples, other users, or hidden references.
 
 EDIT INSTRUCTIONS:
 ${normalizedFeedback || 'Refine visuals only while preserving the same character.'}
