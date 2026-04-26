@@ -334,6 +334,53 @@ ${normalizedFeedback || 'Refine visuals only while preserving the same character
 `.trim()
 }
 
+function buildPromptFallbackEditPrompt(feedback: string, identityDescription?: string, styleKey?: string) {
+  const normalizedFeedback = normalizeFeedback(feedback)
+  const normalizedIdentity = normalizeDetail(identityDescription || '')
+  const baseDetails = [normalizedIdentity, normalizedFeedback].filter(Boolean)
+  const artStyleInstruction = buildArtStyleInstruction(baseDetails.join(' '), styleKey)
+  const beautyPolishInstruction = buildBeautyPolishInstruction(baseDetails.join(' '), styleKey)
+  const accuracyGuard = buildAccuracyGuard(baseDetails.join(' '))
+
+  return `
+TASK:
+Create an updated version of the same avatar character while preserving the same core identity.
+
+SOURCE IDENTITY:
+${normalizedIdentity || 'Preserve the existing avatar’s same person, same identity, and same overall character design.'}
+
+EDIT GOAL:
+${normalizedFeedback || 'Refine the existing avatar while keeping the same character.'}
+
+RULES:
+This is an edit-style regeneration, not a completely new person.
+Keep the same person, same species, same race, same skin tone, same face identity, same fashion direction, same body type, and same companion unless the user explicitly asked to change one of those things.
+Do not drift into a different person, different ethnicity, different species, or unrelated styling.
+Keep the character recognizable as the same avatar.
+
+STYLE:
+${artStyleInstruction}
+
+BEAUTY AND POLISH:
+${beautyPolishInstruction}
+
+COMPOSITION:
+Keep it vertical, full body, upright, and clearly readable unless the user explicitly asked for another crop.
+
+NON-NEGOTIABLE ACCURACY CHECK:
+${accuracyGuard}
+`.trim()
+}
+
+function shouldFallbackFromEditApi(error: unknown) {
+  if (!(error instanceof OpenAI.APIError)) return false
+  const message = error.message.toLowerCase()
+  return message.includes("value must be 'dall-e-2'")
+    || message.includes("unknown parameter: 'quality'")
+    || message.includes("unknown parameter: 'input_fidelity'")
+    || message.includes("unknown parameter: 'output_format'")
+}
+
 function sanitizeAnswers(raw: Record<string, unknown>): string[] {
   return Object.entries(raw)
     .sort(([a], [b]) => Number(a) - Number(b))
@@ -465,19 +512,36 @@ export async function POST(req: Request) {
     if (shouldEditExisting) {
       const imageFile = await loadReferenceImageAsFile(previousImageUrl)
 
-      // Keep the edit payload minimal. The live edit endpoint has been stricter
-      // than the generation endpoint about optional parameters.
-      response = await openai.images.edit({
-        model: 'gpt-image-1',
-        image: imageFile,
-        prompt: buildReimaginePrompt(
-          sanitizedFeedback,
-          normalizedIdentityDescription || undefined,
-          typeof style === 'string' ? style : undefined,
-        ),
-        size: '1024x1536',
-        user: user.id,
-      })
+      try {
+        // Keep the edit payload minimal. The live edit endpoint has been stricter
+        // than the generation endpoint about optional parameters.
+        response = await openai.images.edit({
+          model: 'gpt-image-1',
+          image: imageFile,
+          prompt: buildReimaginePrompt(
+            sanitizedFeedback,
+            normalizedIdentityDescription || undefined,
+            typeof style === 'string' ? style : undefined,
+          ),
+          size: '1024x1536',
+          user: user.id,
+        })
+      } catch (error: unknown) {
+        if (!shouldFallbackFromEditApi(error)) throw error
+
+        response = await openai.images.generate({
+          model: 'gpt-image-1',
+          prompt: buildPromptFallbackEditPrompt(
+            sanitizedFeedback,
+            normalizedIdentityDescription || undefined,
+            typeof style === 'string' ? style : undefined,
+          ),
+          size: '1024x1536',
+          quality: 'high',
+          output_format: 'png',
+          user: user.id,
+        })
+      }
     } else {
       response = await openai.images.generate({
         model: 'gpt-image-1',
