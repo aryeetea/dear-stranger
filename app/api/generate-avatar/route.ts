@@ -119,10 +119,15 @@ Avoid mystical halos, magic circles, portal rings, spotlight auras, abstract voi
 Different characters should feel like they belong in different places rather than the same default background treatment.
 
 COMPANIONS:
-If the user mentioned a pet, animal, or creature companion, include it beside the character.
+If the user mentioned a pet, animal, familiar, mount, spirit creature, or companion, it is REQUIRED in the image.
+Do not omit it. Do not replace it with a different animal or creature.
+Keep the companion visually present with the character, clearly readable in the portrait, and consistent with the user's description.
+Treat the companion as part of the avatar identity, not as background decoration.
 
 FINAL CHECK:
-One upright full-body character. Exact clothing and hair as described. No text, no labels, no UI chrome.
+One upright full-body character. Exact clothing and hair as described.
+If a companion was described, it must also be visible in the final image.
+No text, no labels, no UI chrome.
 `.trim()
 }
 
@@ -135,6 +140,7 @@ Edit the provided avatar image. Preserve the same person, same identity, same fa
 GOAL:
 This is a reimagination of the existing avatar, not a replacement with a different person.
 Make the result feel refined, cohesive, and slightly more cinematic while keeping the character recognizably the same.
+If the current avatar includes a pet, animal, or companion, preserve that companion unless the user explicitly asked to remove or change it.
 
 STYLE:
 Semi-realistic cinematic illustration. Believable anatomy and lighting, but still clearly stylized and artistic.
@@ -149,6 +155,7 @@ ${normalizedFeedback || 'Do a gentle reimagination only: improve polish, styling
 SAFETY CHECK:
 Do not replace the person with a different character unless the user explicitly asked for a whole new avatar.
 Do not randomize race, skin tone, facial structure, or hair identity.
+Do not drop an existing companion/pet unless the user explicitly asked for that change.
 `.trim()
 }
 
