@@ -40,6 +40,11 @@ function normalizeFeedback(value?: string): string {
   return normalizeDetail(value || '').slice(0, 1200)
 }
 
+function hasCompanionSignal(details: string): boolean {
+  const lower = details.toLowerCase()
+  return /\bpok[eé]mon-style\b|\bcompanion\b|\bcreature\b|\bfamiliar\b|\bpet\b|\banimal companion\b|\bspirit companion\b|\bsidekick\b|\bby her side\b|\bby his side\b|\bby their side\b|\bon her shoulder\b|\bon his shoulder\b|\bon their shoulder\b|\bfloating beside\b|\borbiting around\b|\bcircling around\b|\brabbit\b|\bbunny\b|\bhare\b|\bfox\b|\bwolf\b|\bcat\b|\bkitten\b|\bdog\b|\bpuppy\b|\bowl\b|\bbird\b|\bcrow\b|\braven\b|\bfalcon\b|\bhawk\b|\bbutterfly\b|\bmoth\b|\bdragon\b|\bdragonet\b|\bserpent\b|\bsnake\b|\bferret\b|\bdeer\b|\bstag\b|\bgoat\b|\blamb\b|\btiger\b|\blion\b|\bleopard\b|\bpanther\b/.test(lower)
+}
+
 function softenPromptForImageSafety(value: string): string {
   return value
     .replace(/\bpok[eé]mon-style\b/gi, 'cute magical creature-companion')
@@ -80,14 +85,16 @@ function buildIdentityInstruction(details: string): string {
 
 function buildCompanionRules(details: string): string[] {
   const lower = details.toLowerCase()
-  const hasCompanion =
-    /\bpokemon-style\b|\bcompanion\b|\bcreature\b|\bfamiliar\b|\bpet\b/.test(lower)
+  const hasCompanion = hasCompanionSignal(details)
 
   if (!hasCompanion) return []
 
   const rules = [
     'The companion is a required part of the character design, not optional background decoration.',
     'The companion must be clearly visible, readable, and intentionally placed in the composition.',
+    'Treat this as a two-subject composition: the main character plus the companion.',
+    'Reserve visible frame space for the companion instead of letting the main figure fill the entire composition.',
+    'The companion must not be tiny, hidden, cropped out, merged into the background, or reduced to an unreadable silhouette.',
     'Keep the companion cute, magical, expressive, and emotionally bonded to the character if that was described.',
   ]
 
@@ -102,6 +109,9 @@ function buildCompanionRules(details: string): string[] {
   }
   if (/\bcolor\b|\bpalette\b|\bvibe\b/.test(lower)) {
     rules.push('If the companion’s colors were described as matching the character’s vibe or palette, keep that harmony.')
+  }
+  if (/\bsmall\b|\btiny\b|\blittle\b/.test(lower)) {
+    rules.push('If the companion was described as small, keep it small but still clearly readable in the frame.')
   }
 
   return rules
@@ -134,7 +144,7 @@ function buildPreservationClauses(details: string): string[] {
   if (/\bwings?\b|\belf ears?\b|\bpointed ears?\b|\bhorns?\b|\btail\b/.test(lower)) {
     rules.push('Do not remove the described fantasy body features if they were described.')
   }
-  if (/\bcompanion\b|\bcreature\b|\bfamiliar\b|\bpet\b|\bpokemon-style\b/.test(lower)) {
+  if (hasCompanionSignal(details)) {
     rules.push('Do not remove the companion if it was described.')
   }
   if (/\bstaff\b|\bsword\b|\bweapon\b|\bwand\b|\bbook\b|\borb\b/.test(lower)) {
@@ -171,8 +181,9 @@ function buildAccuracyGuard(details: string): string {
   if (/\bglasses\b/.test(lower)) {
     rules.push('Glasses are required if they were described.')
   }
-  if (/\bpokemon-style\b|\bcompanion\b|\bcreature\b|\bfamiliar\b|\bpet\b/.test(lower)) {
+  if (hasCompanionSignal(details)) {
     rules.push('A companion is required in the image if it was described.')
+    rules.push('If necessary, make the main figure slightly smaller in frame so both the character and companion are clearly visible.')
   }
   if (/\bstaff\b|\bsword\b|\bweapon\b|\bwand\b|\bbook\b|\borb\b/.test(lower)) {
     rules.push('The described prop or object must be visibly present if it was described.')
@@ -245,6 +256,8 @@ If the user did not describe a background, keep the background supportive and se
 COMPANION:
 If a companion, pet, familiar, or creature was described, it is required in the image and must be clearly visible.
 If a companion was described as flying, fluttering, circling, or orbiting, show that motion clearly instead of placing it like a static prop.
+If a companion was described, compose the image so the companion is immediately readable on first glance.
+Reduce the character's scale slightly if needed so the companion fits naturally in frame.
 
 NON-NEGOTIABLE ACCURACY CHECK:
 ${accuracyGuard}
@@ -282,6 +295,8 @@ If the original user description included a companion, familiar, pet, or creatur
 If the user asked to add or restore a companion, the companion is required and must be clearly visible.
 If the user asked for the companion to feel like it is flying, circling, fluttering, or orbiting, show that motion clearly and intentionally.
 Do not omit the companion when it was requested.
+Treat a requested companion as a second subject in the composition, not a minor accessory.
+Reduce the character's scale slightly if needed so the companion is fully visible and readable.
 Do not invent extra accessories, props, hairstyles, makeup, tattoos, armor pieces, jewelry, companions, or design elements unless the user asked for them or the edit request explicitly adds them.
 
 STYLE:
