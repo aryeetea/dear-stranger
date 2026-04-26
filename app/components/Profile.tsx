@@ -494,6 +494,30 @@ export default function Profile({
     return `${diffMonths}mo ago`
   }
 
+  const groupedVisitorBookEntries = Array.from(
+    visitorBookEntries.reduce((map, entry) => {
+      const key = entry.visitorId || entry.visitorName
+      const existing = map.get(key)
+      if (!existing) {
+        map.set(key, { ...entry, visitCount: 1 })
+        return map
+      }
+
+      const latestVisitedAt =
+        new Date(entry.visitedAt).getTime() > new Date(existing.visitedAt).getTime()
+          ? entry.visitedAt
+          : existing.visitedAt
+
+      map.set(key, {
+        ...existing,
+        visitedAt: latestVisitedAt,
+        visitCount: existing.visitCount + 1,
+        avatarUrl: existing.avatarUrl || entry.avatarUrl,
+      })
+      return map
+    }, new Map<string, VisitorBookEntry & { visitCount: number }>()),
+  ).map(([, entry]) => entry)
+
   // ── Hub style visual map ──
   const hubTheme = HUB_COLOR_THEMES.find(t => t.id === selectedHubColor)
   const hubGlowRgb = hubTheme?.glow || '201,168,76'
@@ -1049,26 +1073,33 @@ export default function Profile({
             </div>
 
             {visitorBookEnabledState ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '14px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '18px' }}>
                 {visitorBookLoading ? (
                   <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(255,255,255,0.5)' }}>Gathering recent visitors...</p>
                 ) : visitorBookError ? (
                   <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(220,100,100,0.85)' }}>{visitorBookError}</p>
-                ) : visitorBookEntries.length === 0 ? (
-                  <div style={{ padding: '14px 16px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px' }}>
+                ) : groupedVisitorBookEntries.length === 0 ? (
+                  <div style={{ padding: '18px 18px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px' }}>
                     <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(255,255,255,0.55)', margin: 0 }}>No one has signed the quiet yet.</p>
                   </div>
-                ) : visitorBookEntries.map((entry) => (
-                  <div key={entry.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', padding: '12px 14px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
+                ) : groupedVisitorBookEntries.map((entry) => (
+                  <div key={entry.visitorId || entry.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '18px', padding: '16px 18px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px', minWidth: 0 }}>
                       {entry.avatarUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={entry.avatarUrl} alt={entry.visitorName} style={{ width: '34px', height: '34px', borderRadius: '50%', objectFit: 'cover', border: '1px solid rgba(201,168,76,0.22)' }} />
+                        <img src={entry.avatarUrl} alt={entry.visitorName} style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover', border: '1px solid rgba(201,168,76,0.22)' }} />
                       ) : (
-                        <div style={{ width: '34px', height: '34px', borderRadius: '50%', border: '1px solid rgba(201,168,76,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(201,168,76,0.55)', fontSize: '14px' }}>✦</div>
+                        <div style={{ width: '38px', height: '38px', borderRadius: '50%', border: '1px solid rgba(201,168,76,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(201,168,76,0.55)', fontSize: '14px' }}>✦</div>
                       )}
                       <div style={{ minWidth: 0 }}>
-                        <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.14em', color: 'rgba(255,255,255,0.82)', textTransform: 'uppercase', margin: '0 0 4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{entry.visitorName}</p>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '4px' }}>
+                          <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.14em', color: 'rgba(255,255,255,0.82)', textTransform: 'uppercase', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{entry.visitorName}</p>
+                          {entry.visitCount > 1 && (
+                            <span style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.16em', color: 'rgba(201,168,76,0.72)', textTransform: 'uppercase' }}>
+                              {entry.visitCount}x
+                            </span>
+                          )}
+                        </div>
                         <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '12px', color: 'rgba(255,255,255,0.45)', margin: 0 }}>looked in for a moment</p>
                       </div>
                     </div>

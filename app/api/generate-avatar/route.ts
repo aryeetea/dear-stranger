@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import OpenAI from 'openai'
-import { toFile } from 'openai/uploads'
 import { createClient } from '@supabase/supabase-js'
 
 export const maxDuration = 120
@@ -305,41 +304,48 @@ ${accuracyGuard}
 `.trim()
 }
 
-function buildReimaginePrompt(feedback: string, identityDescription?: string, styleKey?: string) {
+function buildVisionAnchoredEditPrompt(currentAvatarSummary: string, feedback: string, identityDescription?: string, styleKey?: string) {
   const normalizedFeedback = softenPromptForImageSafety(normalizeFeedback(feedback))
   const normalizedIdentity = softenPromptForImageSafety(normalizeDetail(identityDescription || ''))
-  const beautyPolishInstruction = buildBeautyPolishInstruction(`${normalizedIdentity} ${normalizedFeedback}`, styleKey)
+  const normalizedSummary = softenPromptForImageSafety(normalizeDetail(currentAvatarSummary))
+  const combinedDetails = [normalizedIdentity, normalizedSummary, normalizedFeedback].filter(Boolean).join(' ')
+  const artStyleInstruction = buildArtStyleInstruction(combinedDetails, styleKey)
+  const beautyPolishInstruction = buildBeautyPolishInstruction(combinedDetails, styleKey)
+  const accuracyGuard = buildAccuracyGuard(combinedDetails)
+
   return `
 TASK:
-Edit the provided avatar image while preserving the same core person and identity.
+Create an updated version of the same avatar character while preserving the same core identity.
 
-IDENTITY TO PRESERVE:
-Preserve the current avatar image as the primary source of truth.
-Keep the same person, same species, same race, same skin tone, same face, same overall styling direction, same companion, and same recognizable character identity unless the user explicitly asked to change a specific detail.
-${normalizedIdentity ? `Secondary reference from the user’s original description: ${normalizedIdentity}` : ''}
+CURRENT AVATAR IDENTITY:
+${normalizedSummary}
+
+ORIGINAL USER DESCRIPTION:
+${normalizedIdentity || 'Use the current avatar image summary as the identity source of truth.'}
+
+EDIT GOAL:
+${normalizedFeedback || 'Refine the avatar while preserving the same character.'}
+
+RULES:
+This is an edit, not a new person.
+Preserve the same person, same face identity, same species, same skin tone, same hairstyle, same body type, same overall styling direction, and same magical/fantasy role unless the user explicitly asked to change one of those things.
+Do not drift into a different ethnicity, a different species, a different hairstyle, or unrelated fashion.
+Keep the result recognizably the same avatar.
+If the user asked to add or restore a companion, the companion is required and must be clearly visible.
+If the user asked for the companion to feel like it is flying, circling, fluttering, or orbiting, show that motion clearly and intentionally.
+Do not omit the companion when it was requested.
 
 STYLE:
-Keep the result cinematic, polished, and artistically stylized.
+${artStyleInstruction}
 
 BEAUTY AND POLISH:
 ${beautyPolishInstruction}
 
 COMPOSITION:
-Keep it vertical, upright, and full body by default unless the user explicitly asked for another crop.
+Keep it vertical, full body, upright, and clearly readable unless the user explicitly asked for another crop.
 
-COMPANION:
-If the current avatar or the user's description includes a companion, it must stay clearly visible and intentional in the edit.
-If the user asked for the companion to feel like it is flying, circling, fluttering, or moving around the character, show that motion clearly.
-
-LOCKS:
-Do not change race, skin tone, hairstyle, hair color, face identity, outfit category, companion, or key props unless the user explicitly asked to change them.
-Do not add random accessories or remove required ones.
-Do not borrow traits or aesthetics from prior examples, other users, or hidden references.
-Do not improve the image by changing the user’s fashion direction. Improve it by executing their described style better.
-If the current avatar already has a recognizable companion, species identity, body type, or styling direction, preserve those by default.
-
-EDIT INSTRUCTIONS:
-${normalizedFeedback || 'Refine visuals only while preserving the same character.'}
+NON-NEGOTIABLE ACCURACY CHECK:
+${accuracyGuard}
 `.trim()
 }
 
@@ -350,49 +356,33 @@ function sanitizeAnswers(raw: Record<string, unknown>): string[] {
     .filter(Boolean)
 }
 
-async function loadReferenceImageAsSquarePngFile(previousImageUrl: string) {
-  async function loadBufferFromUrl(url: string) {
-    const response = await fetch(url, { cache: 'no-store' })
-    if (!response.ok) throw new Error('Could not load the current avatar for reimagine.')
-    const arrayBuffer = await response.arrayBuffer()
-    const buffer = Buffer.from(arrayBuffer)
-    if (!buffer.byteLength) throw new Error('Could not load the current avatar for reimagine.')
-    return buffer
+async function describeCurrentAvatarWithVision(openai: OpenAI, previousImageUrl: string, identityDescription?: string) {
+  const prompt = [
+    'Describe this avatar so it can be regenerated as the same character after a requested edit.',
+    'Focus on identity-preserving details only: visible skin tone, face identity, species/fantasy identity, hairstyle, hair color, body type/proportions, outfit category, distinctive features, tattoos, wings/ears/horns, companion presence, and overall vibe.',
+    'Do not invent missing details.',
+    'Keep it concise but specific.',
+    identityDescription ? `Original user description for reference: ${softenPromptForImageSafety(normalizeDetail(identityDescription))}` : '',
+  ].filter(Boolean).join('\n')
+
+  const response = await openai.responses.create({
+    model: 'gpt-4o-mini',
+    input: [
+      {
+        role: 'user',
+        content: [
+          { type: 'input_text', text: prompt },
+          { type: 'input_image', image_url: previousImageUrl, detail: 'high' },
+        ],
+      },
+    ],
+  })
+
+  const summary = normalizeDetail(response.output_text || '')
+  if (!summary) {
+    throw new Error('Could not read the current avatar well enough to edit it.')
   }
-
-  async function toSquarePng(buffer: Buffer) {
-    const { default: sharp } = await import('sharp')
-    return sharp(buffer)
-      .resize(1024, 1024, {
-        fit: 'contain',
-        background: { r: 0, g: 0, b: 0, alpha: 0 },
-      })
-      .png()
-      .toBuffer()
-  }
-
-  if (previousImageUrl.startsWith('data:')) {
-    const buffer = await loadBufferFromUrl(previousImageUrl)
-    const squarePng = await toSquarePng(buffer)
-    return toFile(squarePng, 'avatar-reference.png')
-  }
-
-  const candidateUrls = Array.from(new Set([
-    previousImageUrl,
-    previousImageUrl.split('?')[0],
-  ].filter(Boolean)))
-
-  for (const url of candidateUrls) {
-    try {
-      const buffer = await loadBufferFromUrl(url)
-      const squarePng = await toSquarePng(buffer)
-      return await toFile(squarePng, 'avatar-reference.png')
-    } catch {
-      continue
-    }
-  }
-
-  throw new Error('Could not load the current avatar for reimagine.')
+  return summary
 }
 
 export async function POST(req: Request) {
@@ -478,17 +468,23 @@ export async function POST(req: Request) {
 
     let response
     if (shouldEditExisting) {
-      const imageFile = await loadReferenceImageAsSquarePngFile(previousImageUrl)
+      const currentAvatarSummary = await describeCurrentAvatarWithVision(
+        openai,
+        previousImageUrl,
+        normalizedIdentityDescription || undefined,
+      )
 
-      response = await openai.images.edit({
-        model: 'dall-e-2',
-        image: imageFile,
-        prompt: buildReimaginePrompt(
+      response = await openai.images.generate({
+        model: 'gpt-image-1',
+        prompt: buildVisionAnchoredEditPrompt(
+          currentAvatarSummary,
           sanitizedFeedback,
           normalizedIdentityDescription || undefined,
           typeof style === 'string' ? style : undefined,
         ),
-        size: '1024x1024',
+        size: '1024x1536',
+        quality: 'high',
+        output_format: 'png',
         user: user.id,
       })
     } else {
