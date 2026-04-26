@@ -34,7 +34,7 @@ import {
   setHubOnlineStatus,
   verifyEmailCode,
 } from './lib/auth'
-import { playChime, startAmbient, stopAmbient, setAmbientMuted } from '../lib/sounds'
+import { playChime, stopAmbient } from '../lib/sounds'
 import { AnimatePresence } from 'framer-motion'
 
 type Screen =
@@ -505,7 +505,6 @@ export default function Home() {
   const [pagesOpen, setPagesOpen] = useState(false)
   const [driftOpen, setDriftOpen] = useState(false)
   const [navResetSignal, setNavResetSignal] = useState(0)
-  const [ambientMuted, setAmbientMutedState] = useState(false)
   const [isGuest, setIsGuest] = useState(false)
   const [currentUserId, setCurrentUserId] = useState('')
   const [loadingTookLong, setLoadingTookLong] = useState(false)
@@ -529,11 +528,6 @@ export default function Home() {
 
   const screenRef = useRef<Screen>('loading')
   const onboardingInFlightRef = useRef(false)
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    setAmbientMutedState(localStorage.getItem('ds_ambient_muted') === '1')
-  }, [])
 
   const getSavedOverlay = useCallback((): UniverseOverlay => {
     if (typeof window === 'undefined') return null
@@ -665,23 +659,10 @@ export default function Home() {
     setSavedOverlay(activeOverlay)
   }, [driftOpen, observatoryOpen, pagesOpen, profileOpen, screen, setSavedOverlay])
 
-  // Start/stop cosmic ambient based on screen
   useEffect(() => {
-    if (screen === 'universe') {
-      startAmbient(ambientMuted)
-    } else {
-      stopAmbient()
-    }
+    stopAmbient()
     return () => { if (screen === 'universe') stopAmbient() }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [screen])
-
-  function toggleAmbient() {
-    const next = !ambientMuted
-    setAmbientMutedState(next)
-    setAmbientMuted(next)
-    if (typeof window !== 'undefined') localStorage.setItem('ds_ambient_muted', next ? '1' : '0')
-  }
 
   // Poll for newly arrived letters every 60s while on universe screen
   const knownArrivedCountRef = useRef<number | null>(null)
@@ -1563,23 +1544,6 @@ export default function Home() {
       {screen === 'universe' && <NotificationBanner />}
 
       {['landing', 'entry', 'universe'].includes(screen) && <FeedbackButton />}
-
-      {screen === 'universe' && (
-        <button
-          onClick={toggleAmbient}
-          title={ambientMuted ? 'Unmute ambient' : 'Mute ambient'}
-          style={{
-            position: 'fixed', top: '24px', left: '24px', zIndex: 60,
-            background: 'rgba(8,10,28,0.7)', border: '1px solid rgba(255,255,255,0.12)',
-            borderRadius: '50%', width: '34px', height: '34px', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            backdropFilter: 'blur(10px)', color: ambientMuted ? 'rgba(255,255,255,0.3)' : 'rgba(201,168,76,0.8)',
-            fontSize: '14px', transition: 'color 0.3s, border-color 0.3s',
-          }}
-        >
-          {ambientMuted ? '🔇' : '🔊'}
-        </button>
-      )}
 
       {screen === 'universe' && avatarGenerating && (
         <div style={{

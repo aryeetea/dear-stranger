@@ -23,7 +23,7 @@ let ambientNodes: AmbientNodes | null = null
  *  - Low, warm suspended pad
  *  - Very faint air texture
  *  - Rare, delicate shimmer accents
- * Calm and unobtrusive. Total output ≈ 0.035 amplitude.
+ * Calm and unobtrusive. Total output ≈ 0.02 amplitude.
  */
 export function startAmbient(muted = false): void {
   if (ambientNodes) return // already running
@@ -33,7 +33,7 @@ export function startAmbient(muted = false): void {
   const master = ctx.createGain()
   master.gain.setValueAtTime(0, ctx.currentTime)
   if (!muted) {
-    master.gain.linearRampToValueAtTime(0.035, ctx.currentTime + 3) // fade in over 3s
+    master.gain.linearRampToValueAtTime(0.02, ctx.currentTime + 3) // fade in over 3s
   }
   master.connect(ctx.destination)
 
@@ -152,7 +152,7 @@ export function setAmbientMuted(muted: boolean): void {
   const now = ctx.currentTime
   ambientNodes.masterGain.gain.cancelScheduledValues(now)
   ambientNodes.masterGain.gain.setValueAtTime(ambientNodes.masterGain.gain.value, now)
-  ambientNodes.masterGain.gain.linearRampToValueAtTime(muted ? 0 : 0.035, now + 0.8)
+  ambientNodes.masterGain.gain.linearRampToValueAtTime(muted ? 0 : 0.02, now + 0.8)
 }
 
 export function isAmbientRunning(): boolean {

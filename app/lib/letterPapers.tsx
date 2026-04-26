@@ -42,6 +42,9 @@ export const PAPER_INK: Record<string, { main: string; secondary: string; accent
   blueprint:        { main: '#c8e4ff', secondary: 'rgba(180,220,255,0.78)', accent: '#80c0ff' },
   'midnight-scroll':{ main: '#e8deff', secondary: 'rgba(220,210,255,0.78)', accent: '#c0a0ff' },
   'rice-paper':     { main: '#1c1408', secondary: 'rgba(38,26,10,0.72)', accent: '#7a5820' },
+  'celestial-map':  { main: '#24160a', secondary: 'rgba(55,36,12,0.74)', accent: '#9b7420' },
+  'pressed-flowers':{ main: '#1f140e', secondary: 'rgba(56,38,28,0.72)', accent: '#8b5b58' },
+  dossier:          { main: '#181614', secondary: 'rgba(48,42,36,0.74)', accent: '#78634c' },
 }
 
 export function OrnateStationery({ children, paperBg }: { children: React.ReactNode; paperBg?: string }) {
@@ -374,6 +377,65 @@ export function RicePaper({ children, paperBg }: { children: React.ReactNode; pa
   )
 }
 
+export function CelestialMap({ children, paperBg }: { children: React.ReactNode; paperBg?: string }) {
+  return (
+    <div style={{ position:'relative', background: paperBg || 'linear-gradient(160deg, #f2e5b8 0%, #dbc689 100%)', boxShadow:'0 20px 80px rgba(0,0,0,0.62)', overflow:'hidden' }}>
+      <div style={{ position:'absolute', inset:0, pointerEvents:'none', zIndex:1 }}>
+        <svg width="100%" height="100%" style={{ position:'absolute', inset:0 }}>
+          <circle cx="22%" cy="28%" r="70" fill="none" stroke="rgba(120,86,30,0.18)" strokeWidth="1.2"/>
+          <circle cx="76%" cy="64%" r="88" fill="none" stroke="rgba(120,86,30,0.14)" strokeWidth="1"/>
+          <path d="M18 70 Q110 30 210 92 T398 120" fill="none" stroke="rgba(120,86,30,0.22)" strokeWidth="1.4" strokeDasharray="4 5"/>
+          <path d="M40 220 Q150 170 248 202 T430 188" fill="none" stroke="rgba(120,86,30,0.16)" strokeWidth="1.1" strokeDasharray="3 5"/>
+          {[[70,60],[120,80],[160,54],[210,96],[280,62],[330,88],[370,54],[110,210],[180,182],[250,222],[320,196]].map(([cx,cy],i)=><circle key={i} cx={cx} cy={cy} r={i%4===0?2:1.3} fill="rgba(120,86,30,0.48)"/>)}
+        </svg>
+      </div>
+      {[...Array(18)].map((_,i)=><div key={i} style={{ position:'absolute', left:'40px', right:'40px', top:`${64+i*30}px`, height:'1px', background:'rgba(120,86,30,0.08)' }}/>)}
+      <div style={{ position:'absolute', inset:'14px', border:'1px solid rgba(120,86,30,0.22)', pointerEvents:'none', zIndex:2 }}/>
+      <div style={{ padding:'40px', position:'relative', zIndex:3 }}>{children}</div>
+    </div>
+  )
+}
+
+export function PressedFlowers({ children, paperBg }: { children: React.ReactNode; paperBg?: string }) {
+  return (
+    <div style={{ position:'relative', background: paperBg || 'linear-gradient(160deg, #f7f3ea 0%, #ede1d0 100%)', boxShadow:'0 20px 80px rgba(0,0,0,0.5)', overflow:'hidden' }}>
+      <div style={{ position:'absolute', inset:0, pointerEvents:'none', zIndex:1 }}>
+        <svg width="100%" height="100%" style={{ position:'absolute', inset:0 }}>
+          {[
+            { x: 38, y: 66, petal: 'rgba(188,137,106,0.34)', stem: 'rgba(98,116,66,0.42)' },
+            { x: 350, y: 112, petal: 'rgba(164,132,174,0.3)', stem: 'rgba(98,116,66,0.38)' },
+            { x: 86, y: 330, petal: 'rgba(210,169,90,0.28)', stem: 'rgba(98,116,66,0.34)' },
+          ].map((f,i)=>(
+            <g key={i} transform={`translate(${f.x} ${f.y}) rotate(${i===1 ? 18 : -10})`}>
+              <line x1="0" y1="0" x2="18" y2="66" stroke={f.stem} strokeWidth="1.2"/>
+              <ellipse cx="-6" cy="-6" rx="10" ry="5" fill={f.petal}/>
+              <ellipse cx="6" cy="-8" rx="10" ry="5" fill={f.petal}/>
+              <ellipse cx="0" cy="4" rx="9" ry="5" fill={f.petal}/>
+            </g>
+          ))}
+        </svg>
+      </div>
+      {[...Array(18)].map((_,i)=><div key={i} style={{ position:'absolute', left:'44px', right:'44px', top:`${70+i*29}px`, height:'1px', background:'rgba(150,120,90,0.09)' }}/>)}
+      <div style={{ position:'absolute', inset:'14px', border:'1px solid rgba(170,145,115,0.18)', pointerEvents:'none', zIndex:2 }}/>
+      <div style={{ padding:'40px 46px', position:'relative', zIndex:3 }}>{children}</div>
+    </div>
+  )
+}
+
+export function DossierPaper({ children, paperBg }: { children: React.ReactNode; paperBg?: string }) {
+  return (
+    <div style={{ position:'relative', background: paperBg || 'linear-gradient(160deg, #ece7dd 0%, #dcd4c6 100%)', boxShadow:'0 20px 80px rgba(0,0,0,0.56)', overflow:'hidden' }}>
+      <div style={{ position:'absolute', inset:0, pointerEvents:'none', zIndex:1 }}>
+        {[...Array(18)].map((_,i)=><div key={i} style={{ position:'absolute', left:'36px', right:'36px', top:`${66+i*28}px`, height:'1px', background:'rgba(100,88,72,0.11)' }}/>)}
+        <div style={{ position:'absolute', left:'34px', top:'54px', bottom:'36px', width:'2px', background:'rgba(160,60,60,0.2)' }}/>
+        <div style={{ position:'absolute', top:'18px', left:'26px', transform:'rotate(-7deg)', padding:'6px 10px', border:'1px solid rgba(130,70,50,0.36)', color:'rgba(130,70,50,0.66)', fontSize:'10px', letterSpacing:'0.25em', textTransform:'uppercase', fontFamily:"'Cinzel', serif" }}>Archive</div>
+        <div style={{ position:'absolute', top:'18px', right:'28px', transform:'rotate(5deg)', padding:'6px 10px', border:'1px solid rgba(70,90,120,0.34)', color:'rgba(70,90,120,0.62)', fontSize:'9px', letterSpacing:'0.22em', textTransform:'uppercase', fontFamily:"'Cinzel', serif" }}>Filed</div>
+      </div>
+      <div style={{ padding:'44px 40px 40px 56px', position:'relative', zIndex:2 }}>{children}</div>
+    </div>
+  )
+}
+
 export function renderLetterPaper(
   paperId: string,
   paperBg: string | undefined,
@@ -398,6 +460,9 @@ export function renderLetterPaper(
     case 'blueprint':       return <BlueprintPaper paperBg={paperBg}>{children}</BlueprintPaper>
     case 'midnight-scroll': return <MidnightScroll paperBg={paperBg}>{children}</MidnightScroll>
     case 'rice-paper':      return <RicePaper paperBg={paperBg}>{children}</RicePaper>
+    case 'celestial-map':   return <CelestialMap paperBg={paperBg}>{children}</CelestialMap>
+    case 'pressed-flowers': return <PressedFlowers paperBg={paperBg}>{children}</PressedFlowers>
+    case 'dossier':         return <DossierPaper paperBg={paperBg}>{children}</DossierPaper>
     default:                return <OrnateStationery paperBg={paperBg}>{children}</OrnateStationery>
   }
 }
