@@ -389,7 +389,7 @@ export default function Profile({
       onUpdateHub?.({ avatarUrl: freshUrl })
     } catch (err) {
       console.error('Regen failed:', err)
-      setRegenError('Something went wrong. Your attempt was not used — try again.')
+      setRegenError(err instanceof Error ? err.message : 'Something went wrong. Your attempt was not used — try again.')
       setRegenLoading(false)
     }
   }

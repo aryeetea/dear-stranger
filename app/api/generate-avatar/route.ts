@@ -73,6 +73,35 @@ function buildIdentityInstruction(details: string): string {
   return 'Preserve the gender and identity words the user provided. Never swap roles or identity markers.'
 }
 
+function buildCompanionRules(details: string): string[] {
+  const lower = details.toLowerCase()
+  const hasCompanion =
+    /\bpokemon-style\b|\bcompanion\b|\bcreature\b|\bfamiliar\b|\bpet\b/.test(lower)
+
+  if (!hasCompanion) return []
+
+  const rules = [
+    'The companion is a required part of the character design, not optional background decoration.',
+    'The companion must be clearly visible, readable, and intentionally placed in the composition.',
+    'Keep the companion cute, magical, expressive, and emotionally bonded to the character if that was described.',
+  ]
+
+  if (/\bshoulder\b/.test(lower)) {
+    rules.push('Keep the companion on or very near the shoulder if that was described.')
+  }
+  if (/\bfly\b|\bflying\b|\bflutter\b|\bfluttering\b|\borbit\b|\borbiting\b|\bcircling\b|\baround her\b|\baround him\b|\baround them\b/.test(lower)) {
+    rules.push('If the companion was described as flying, fluttering, circling, or orbiting, show that sense of motion clearly.')
+  }
+  if (/\bglow\b|\bglowing\b|\bluminous\b|\bmagical energy\b/.test(lower)) {
+    rules.push('Preserve the companion’s magical glow or luminous energy if it was described.')
+  }
+  if (/\bcolor\b|\bpalette\b|\bvibe\b/.test(lower)) {
+    rules.push('If the companion’s colors were described as matching the character’s vibe or palette, keep that harmony.')
+  }
+
+  return rules
+}
+
 function buildPreservationClauses(details: string): string[] {
   const lower = details.toLowerCase()
   const rules: string[] = []
@@ -103,9 +132,6 @@ function buildPreservationClauses(details: string): string[] {
   if (/\bcompanion\b|\bcreature\b|\bfamiliar\b|\bpet\b|\bpokemon-style\b/.test(lower)) {
     rules.push('Do not remove the companion if it was described.')
   }
-  if (/\bshoulder\b/.test(lower) && /\bcompanion\b|\bcreature\b|\bfamiliar\b|\bpet\b|\bpokemon-style\b/.test(lower)) {
-    rules.push('Keep the companion on or very near the shoulder if that was described.')
-  }
   if (/\bstaff\b|\bsword\b|\bweapon\b|\bwand\b|\bbook\b|\borb\b/.test(lower)) {
     rules.push('Do not remove the described prop or object if it was described.')
   }
@@ -119,7 +145,7 @@ function buildPreservationClauses(details: string): string[] {
     rules.push('Do not crop the body if full-body framing was described.')
   }
 
-  return rules
+  return [...rules, ...buildCompanionRules(details)]
 }
 
 function buildAccuracyGuard(details: string): string {
@@ -263,6 +289,7 @@ Avoid halos, magic circles, random signage, UI, labels, or unrelated accessories
 
 COMPANION:
 If a companion, pet, familiar, or creature was described, it is required in the image and must be clearly visible.
+If a companion was described as flying, fluttering, circling, or orbiting, show that motion clearly instead of placing it like a static prop.
 
 NON-NEGOTIABLE ACCURACY CHECK:
 ${accuracyGuard}
@@ -291,6 +318,10 @@ ${beautyPolishInstruction}
 COMPOSITION:
 Keep it vertical, upright, and full body by default unless the user explicitly asked for another crop.
 
+COMPANION:
+If the current avatar or the user's description includes a companion, it must stay clearly visible and intentional in the edit.
+If the user asked for the companion to feel like it is flying, circling, fluttering, or moving around the character, show that motion clearly.
+
 LOCKS:
 Do not change race, skin tone, hairstyle, hair color, face identity, outfit category, companion, or key props unless the user explicitly asked to change them.
 Do not add random accessories or remove required ones.
@@ -311,11 +342,22 @@ function sanitizeAnswers(raw: Record<string, unknown>): string[] {
 }
 
 async function loadReferenceImageAsFile(previousImageUrl: string) {
+  function filenameFrom(url: string, contentType?: string | null) {
+    const cleanUrl = url.split('?')[0]
+    const pathPart = cleanUrl.split('/').pop() || 'avatar-reference'
+    const hasKnownExtension = /\.(png|jpe?g|webp)$/i.test(pathPart)
+    if (hasKnownExtension) return pathPart
+    if (contentType?.includes('png')) return `${pathPart}.png`
+    if (contentType?.includes('webp')) return `${pathPart}.webp`
+    if (contentType?.includes('jpeg') || contentType?.includes('jpg')) return `${pathPart}.jpg`
+    return `${pathPart}.png`
+  }
+
   if (previousImageUrl.startsWith('data:')) {
     const response = await fetch(previousImageUrl)
     if (!response.ok) throw new Error('Could not load the current avatar for reimagine.')
     const blob = await response.blob()
-    return toFile(blob, 'avatar-reference.png')
+    return toFile(blob, filenameFrom('avatar-reference', blob.type))
   }
 
   const candidateUrls = Array.from(new Set([
@@ -329,7 +371,7 @@ async function loadReferenceImageAsFile(previousImageUrl: string) {
       if (!response.ok) continue
       const blob = await response.blob()
       if (!blob.size) continue
-      return await toFile(blob, 'avatar-reference.png')
+      return await toFile(blob, filenameFrom(url, blob.type))
     } catch {
       continue
     }
@@ -459,8 +501,14 @@ export async function POST(req: Request) {
     })
   } catch (error: unknown) {
     console.error('Generation Error:', error)
+    const errorMessage =
+      error instanceof OpenAI.APIError
+        ? error.message
+        : error instanceof Error
+          ? error.message
+          : 'Failed to generate.'
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to generate.' },
+      { error: errorMessage },
       { status: 500 },
     )
   }
