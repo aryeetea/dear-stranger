@@ -464,7 +464,7 @@ export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: (
             lineHeight: 1.75,
             margin: '0 0 22px',
           }}>
-            This is a guided tour of Dear Stranger. Click the buttons below to learn how each part of the world works before you step inside.
+            Welcome to Dear Stranger, a quiet world of anonymous hubs, drifting letters, and unexpected connection. This guided tour will show you how each part of the universe works before you step inside.
           </p>
 
           <div
