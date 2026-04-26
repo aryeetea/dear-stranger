@@ -17,11 +17,20 @@ type SanctumPanel = 'appearance' | 'visitors' | 'settings' | 'share'
 const CYCLE_DAYS = 90
 const DAY_MS = 1000 * 60 * 60 * 24
 const DEFAULT_WELCOME_URL = 'https://dear-stranger.vercel.app/?welcome=1'
+const MAX_AVATAR_HISTORY = 8
 
 function getWelcomeUrl(origin: string) {
   const url = new URL(origin)
   url.searchParams.set('welcome', '1')
   return url.toString()
+}
+
+function makeAvatarHistoryKey(userId: string) {
+  return `ds_avatar_history_${userId}`
+}
+
+function normalizeAvatarHistory(urls: string[]) {
+  return Array.from(new Set(urls.filter(Boolean))).slice(0, MAX_AVATAR_HISTORY)
 }
 
 function getLocalDayIndex(date: Date) {
@@ -90,6 +99,9 @@ export default function Profile({
   const [showRegenInput, setShowRegenInput] = useState(false)
   const [forceNewAvatar, setForceNewAvatar] = useState(false)
   const [regenError, setRegenError] = useState('')
+  const [userId, setUserId] = useState('')
+  const [avatarHistory, setAvatarHistory] = useState<string[]>([])
+  const [restoringAvatar, setRestoringAvatar] = useState('')
 
   const [editingHub, setEditingHub] = useState(false)
   const [editingBio, setEditingBio] = useState(false)
@@ -143,6 +155,18 @@ export default function Profile({
   const [deleteStep, setDeleteStep] = useState<DeleteStep>('idle')
   const [exportedText, setExportedText] = useState('')
   const [deleteError, setDeleteError] = useState('')
+
+  function persistAvatarHistory(nextHistory: string[]) {
+    const normalized = normalizeAvatarHistory(nextHistory)
+    setAvatarHistory(normalized)
+    if (userId && typeof window !== 'undefined') {
+      localStorage.setItem(makeAvatarHistoryKey(userId), JSON.stringify(normalized))
+    }
+  }
+
+  function rememberAvatar(url?: string, extras: string[] = []) {
+    persistAvatarHistory([url || '', ...extras, ...avatarHistory])
+  }
 
   useEffect(() => {
     // Only update local state if the prop actually changed (not just on every mount)

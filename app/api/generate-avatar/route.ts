@@ -96,6 +96,9 @@ Render every clothing item, hairstyle, hair color, and accessory EXACTLY as the 
 Do not substitute, reimagine, upgrade, or replace any described item with a thematic alternative.
 Do not let the chosen background style or mood override what the user is wearing or how their hair looks.
 Preserve every specific detail — fabric, fit, color, cut, and style — precisely as described.
+If the user described modern clothes, streetwear, casualwear, or layered everyday clothing, keep that exact outfit category.
+Do not change casual clothes into gowns, robes, strapless dresses, fantasy costumes, armor, formalwear, or generic "pretty" styling.
+If the user described braids, locs, curls, or any specific hairstyle, keep that hairstyle exactly. Never replace it with a bun, loose waves, or straight hair.
 
 SKIN TONE — CRITICAL:
 Render the character's skin tone EXACTLY as described. Never lighten, darken, or approximate it.
@@ -110,6 +113,7 @@ COMPOSITION:
 Vertical portrait (taller than wide). Full body visible from head to toe. Character upright, facing viewer.
 Head must be at the top of the frame and feet at the bottom. Never rotate sideways or 90 degrees.
 Never produce a landscape, reference sheet, collage, split layout, or sideways composition.
+Do not crop into a bust portrait unless the user explicitly asked for that.
 
 BACKGROUND:
 ${backgroundMood}
@@ -117,6 +121,7 @@ The background must be coherent, specific, and match the character's vibe.
 Prefer a distinct place with depth and environmental detail, not a generic glowing backdrop.
 Avoid mystical halos, magic circles, portal rings, spotlight auras, abstract voids, centered sigils, random glitter, empty gradients, or unrelated particles unless the user explicitly asked for them.
 Different characters should feel like they belong in different places rather than the same default background treatment.
+Do not add visible signs, words, logos, storefront text, UI elements, or readable lettering anywhere in the image.
 
 COMPANIONS:
 If the user mentioned a pet, animal, familiar, mount, spirit creature, or companion, it is REQUIRED in the image.
@@ -128,6 +133,7 @@ FINAL CHECK:
 One upright full-body character. Exact clothing and hair as described.
 If a companion was described, it must also be visible in the final image.
 No text, no labels, no UI chrome.
+If the output would contradict the user's race, skin tone, hairstyle, or outfit, regenerate internally and correct it before finalizing.
 `.trim()
 }
 
@@ -255,11 +261,11 @@ export async function POST(req: Request) {
     } else {
       const finalPrompt = buildAvatarPrompt(orderedAnswers, sanitizedStyle)
       response = await openai.images.generate({
-        model: 'dall-e-3',
+        model: 'gpt-image-1',
         prompt: finalPrompt,
-        size: '1024x1792',
-        quality: 'hd',
-        response_format: 'b64_json',
+        size: '1024x1536',
+        quality: 'high',
+        output_format: 'png',
         user: user.id,
       })
     }
