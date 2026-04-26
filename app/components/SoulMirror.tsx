@@ -19,7 +19,7 @@ const MIRROR_VOICES = [
 
 const STYLE_OPTIONS = [
   { id: 'fantasy', label: 'Fantasy', desc: 'magical, ethereal, mythical, otherworldly' },
-  { id: 'modern', label: 'Modern', desc: 'clean, stylish, current, realistic' },
+  { id: 'modern', label: 'Modern', desc: 'clean, stylish, current, polished' },
   { id: 'fantasy-modern', label: 'Fantasy Modern', desc: 'a mix of magical and modern style' },
   { id: 'celestial', label: 'Celestial', desc: 'stars, moonlight, cosmic beauty, divine energy' },
   { id: 'royal', label: 'Royal', desc: 'elegant, luxurious, noble, powerful' },

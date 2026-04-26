@@ -187,7 +187,14 @@ function buildAccuracyGuard(details: string): string {
 
 function buildArtStyleInstruction(details: string, styleKey?: string): string {
   // Force all avatars to use Arcane 3D style, regardless of user input or styleKey
-  return 'High-end cinematic stylized 3D fantasy illustration with painterly lighting, sharp character design, rich atmospheric depth, and prestige animated energy in the spirit of Arcane. Not photoreal. Not flat cartoon.'
+  return [
+    'High-end cinematic stylized 3D character illustration with painterly surfaces, sculpted forms, rich atmospheric depth, and prestige animated energy in the spirit of Arcane.',
+    'The image must read clearly as stylized 3D fantasy art, not photography, not semi-realistic portrait art, and not a live-action person.',
+    'Use hand-painted texture treatment, graphic shape language, intentional stylization, expressive features, and art-directed lighting.',
+    'Avoid photo-like skin texture, hyper-real pores, naturalistic camera realism, generic beauty-retouch realism, or soft semi-real portrait rendering.',
+    'Keep facial structure, skin rendering, hair rendering, and costume rendering visibly stylized and illustrative while still polished, dimensional, and high-end.',
+    'Not photoreal. Not semi-realistic. Not flat cartoon.',
+  ].join('\n')
 }
 
 function buildBeautyPolishInstruction(details: string, styleKey?: string): string {
@@ -254,6 +261,7 @@ Do not borrow traits, species, outfits, colors, companions, or aesthetics from p
 
 ART STYLE:
 ${artStyleInstruction}
+Lean toward bold stylization over realism in every part of the rendering.
 No watermarks. No text. No labels.
 
 BEAUTY AND POLISH:
@@ -315,6 +323,7 @@ Do not omit the companion when it was requested.
 
 STYLE:
 ${artStyleInstruction}
+Lean toward bold stylization over realism in every part of the rendering.
 
 BEAUTY AND POLISH:
 ${beautyPolishInstruction}
