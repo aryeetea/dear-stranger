@@ -73,45 +73,81 @@ function buildIdentityInstruction(details: string): string {
   return 'Preserve the gender and identity words the user provided. Never swap roles or identity markers.'
 }
 
-function buildAccuracyGuard(details: string): string {
+function buildPreservationClauses(details: string): string[] {
   const lower = details.toLowerCase()
   const rules: string[] = []
 
-  if (/\bblack\b/.test(lower)) {
-    rules.push('If the user described a Black person, the character must visibly read as Black. Never change them to another ethnicity.')
+  const speciesMatch = lower.match(/\b(pixie|fairy|elf|angel|mermaid|vampire|witch|mage|sorcerer|warrior|princess|queen|goddess|demon|android|cyborg)\b/)
+  if (speciesMatch) {
+    rules.push(`Do not remove or replace the ${speciesMatch[1]} identity if it was described.`)
   }
-  if (/\bdark skin\b|\bdark-skinned\b|\bdeep brown skin\b|\bbrown skin\b/.test(lower)) {
-    rules.push('Keep the skin tone richly dark/deep brown if that was described. Never lighten it.')
+
+  if (/\bblack\b|\bwhite\b|\basian\b|\blatina\b|\blatino\b|\bbrown\b|\bdark skin\b|\bdark-skinned\b|\bdeep brown skin\b|\bice blue skin\b|\bblue skin\b/.test(lower)) {
+    rules.push('Do not change the described race, ethnicity, species skin color, complexion, or skin tone.')
   }
-  if (/\bblue skin\b|\bice blue skin\b/.test(lower)) {
-    rules.push('If blue or ice-blue skin was described, keep that exact fantasy skin color. Never replace it with natural human skin tones.')
+  if (/\bhair\b|\bbraid|\bbraids|\blocs\b|\bdreads\b|\bcurls\b|\bafro\b|\bponytail\b|\bbangs\b/.test(lower)) {
+    rules.push('Do not remove or replace the described hairstyle, hair length, or hair color.')
   }
-  if (/\bblue\b/.test(lower) && /\bbraid|\bbraids|\bgoddess braids|\bplaits?/.test(lower)) {
-    rules.push('If blue braids were described, the hair must stay long blue braids. Never swap to another hairstyle or color.')
-  }
-  if (/\bwhite hair\b|\blong straight white hair\b/.test(lower)) {
-    rules.push('If long straight white hair was described, keep that exact hair color and style.')
+  if (/\beyes?\b/.test(lower)) {
+    rules.push('Do not change the described eye color or eye emphasis.')
   }
   if (/\bglasses\b/.test(lower)) {
-    rules.push('If glasses were described, glasses are required in the image.')
+    rules.push('Do not remove the glasses if they were described.')
   }
-  if (/\bhoodie\b|\bcargo pants?\b|\bstreetwear\b|\bvest\b/.test(lower)) {
-    rules.push('If the outfit was described as streetwear, hoodie, vest, or cargo pants, keep it as casual streetwear separates. Never turn it into robes, gowns, dresses, armor, or formalwear.')
+  if (/\btattoo|\btattoos\b/.test(lower)) {
+    rules.push('Do not remove the tattoos if they were described.')
   }
-  if (/\bgown\b|\bmullet-style gown\b/.test(lower)) {
-    rules.push('If a gown was described, keep it as a dramatic gown in that exact fashion category. Never replace it with casualwear.')
+  if (/\bwings?\b|\belf ears?\b|\bpointed ears?\b|\bhorns?\b|\btail\b/.test(lower)) {
+    rules.push('Do not remove the described fantasy body features if they were described.')
   }
-  if (/\bheels\b|\bhigh heels\b/.test(lower)) {
-    rules.push('If heels were described, heels must be visible at the bottom of the full-body portrait.')
+  if (/\bcompanion\b|\bcreature\b|\bfamiliar\b|\bpet\b|\bpokemon-style\b/.test(lower)) {
+    rules.push('Do not remove the companion if it was described.')
   }
-  if (/\bstaff\b/.test(lower)) {
-    rules.push('If a magical staff was described, it must be present and visibly held in hand.')
+  if (/\bshoulder\b/.test(lower) && /\bcompanion\b|\bcreature\b|\bfamiliar\b|\bpet\b|\bpokemon-style\b/.test(lower)) {
+    rules.push('Keep the companion on or very near the shoulder if that was described.')
+  }
+  if (/\bstaff\b|\bsword\b|\bweapon\b|\bwand\b|\bbook\b|\borb\b/.test(lower)) {
+    rules.push('Do not remove the described prop or object if it was described.')
+  }
+  if (/\bhoodie\b|\bcargo pants?\b|\bstreetwear\b|\bvest\b|\bgown\b|\bdress\b|\brobes?\b|\barmor\b|\bheels\b|\bboots\b/.test(lower)) {
+    rules.push('Do not replace the described outfit category, styling, or footwear.')
+  }
+  if (/\boutfit\b|\bfashion\b|\bwearing\b|\bdressed\b|\bstyle\b/.test(lower)) {
+    rules.push('Preserve the fashion direction exactly as described. The user’s clothing and styling choices take priority over default beauty, fantasy, or mood cues.')
+  }
+  if (/\bfull body\b|\bhead to toe\b|\bheels visible\b|\bfeet visible\b/.test(lower)) {
+    rules.push('Do not crop the body if full-body framing was described.')
+  }
+
+  return rules
+}
+
+function buildAccuracyGuard(details: string): string {
+  const lower = details.toLowerCase()
+  const rules: string[] = buildPreservationClauses(details)
+  const hasExplicitSkinDescription =
+    /\bblack\b|\bwhite\b|\basian\b|\blatina\b|\blatino\b|\bbrown skin\b|\bdark skin\b|\bdark-skinned\b|\bdeep brown skin\b|\blight skin\b|\bfair skin\b|\bpale skin\b|\btan skin\b|\bolive skin\b|\bblue skin\b|\bice blue skin\b|\bgolden skin\b/.test(lower)
+
+  if (/\bblack\b/.test(lower)) {
+    rules.push('If the user described a Black person, the character must visibly read as Black.')
+  }
+  if (/\bdark skin\b|\bdark-skinned\b|\bdeep brown skin\b|\bbrown skin\b/.test(lower)) {
+    rules.push('Keep the described dark or deep-brown skin tone true to the user’s description.')
+  }
+  if (/\bblue skin\b|\bice blue skin\b/.test(lower)) {
+    rules.push('Keep the described fantasy skin color exactly as written.')
+  }
+  if (/\bglasses\b/.test(lower)) {
+    rules.push('Glasses are required if they were described.')
   }
   if (/\bpokemon-style\b|\bcompanion\b|\bcreature\b|\bfamiliar\b|\bpet\b/.test(lower)) {
-    rules.push('If a small companion creature was described, it must be clearly visible. Never omit it.')
+    rules.push('A companion is required in the image if it was described.')
   }
-  if (/\bshoulder\b/.test(lower) && /\bcompanion\b|\bcreature\b|\bpokemon-style\b/.test(lower)) {
-    rules.push('If the companion was described on the shoulder, keep it on or very near the shoulder.')
+  if (/\bstaff\b|\bsword\b|\bweapon\b|\bwand\b|\bbook\b|\borb\b/.test(lower)) {
+    rules.push('The described prop or object must be visibly present if it was described.')
+  }
+  if (!hasExplicitSkinDescription) {
+    rules.push('If the user did not specify a skin tone or complexion, choose one intentionally for this specific character and keep it natural to the concept. Do not default to the same complexion across different users.')
   }
 
   rules.push('Do not drift toward a generic pretty portrait or a nearby approximation. Match the user description specifically.')
@@ -122,7 +158,7 @@ function buildArtStyleInstruction(details: string, styleKey?: string): string {
   const lower = details.toLowerCase()
   const normalizedStyle = normalizeStyleKey(styleKey)
   if (/\barcane\b/.test(lower) || /\barcane animated series\b/.test(lower) || /\b3d cinematic\b/.test(lower)) {
-    return 'High-end cinematic stylized 3D fantasy illustration with painterly lighting, sharp design, rich atmospheric depth, and prestige-animated energy in the spirit of Arcane. Not photoreal. Not flat cartoon.'
+    return 'High-end cinematic stylized 3D fantasy illustration with painterly lighting, sharp character design, rich atmospheric depth, and prestige animated energy in the spirit of Arcane. Not photoreal. Not flat cartoon.'
   }
   if (normalizedStyle === 'modern' || normalizedStyle === 'streetwear') {
     return 'Cinematic stylized contemporary illustration with believable anatomy, polished editorial styling, rich atmosphere, and strong visual design. Not a photograph, not hyperreal, not flat cartoon.'
@@ -210,13 +246,15 @@ No watermarks. No text. No labels.
 
 BEAUTY AND POLISH:
 ${beautyPolishInstruction}
+Beautify the character through better execution of the user’s own fashion and identity, not by changing their outfit category or replacing their styling with a generic pretty look.
 
 COMPOSITION:
-Vertical portrait, full body, upright, facing forward.
+Vertical portrait, always full body, upright, facing forward by default.
 Head at top of frame, feet at bottom of frame.
 Show the entire figure head to toe with visible shoes or feet.
 Never crop into a bust, half body, or beauty shot unless explicitly requested.
 Never rotate the figure sideways.
+Full-body head-to-toe visibility is the default rule for avatar generation.
 
 BACKGROUND:
 ${backgroundMood}
@@ -249,12 +287,13 @@ BEAUTY AND POLISH:
 ${beautyPolishInstruction}
 
 COMPOSITION:
-Keep it vertical, upright, and full body unless the user explicitly asked for another crop.
+Keep it vertical, upright, and full body by default unless the user explicitly asked for another crop.
 
 LOCKS:
 Do not change race, skin tone, hairstyle, hair color, face identity, outfit category, companion, or key props unless the user explicitly asked to change them.
 Do not add random accessories or remove required ones.
 Do not borrow traits or aesthetics from prior examples, other users, or hidden references.
+Do not improve the image by changing the user’s fashion direction. Improve it by executing their described style better.
 
 EDIT INSTRUCTIONS:
 ${normalizedFeedback || 'Refine visuals only while preserving the same character.'}
