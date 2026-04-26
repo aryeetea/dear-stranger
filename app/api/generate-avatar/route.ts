@@ -65,9 +65,34 @@ function buildIdentityInstruction(details: string): string {
   return 'GENDER: Preserve the gender, role, and identity words the user provided. Never swap roles (e.g. princess → prince).'
 }
 
+function buildAccuracyGuard(details: string): string {
+  const lower = details.toLowerCase()
+  const rules: string[] = []
+
+  if (/\bblack\b/.test(lower)) {
+    rules.push('If the user described a Black person, the character must visibly read as Black. Never change them to East Asian, white, racially ambiguous, or a different ethnicity.')
+  }
+  if (/\bdark skin\b|\bdark-skinned\b|\bdeep brown skin\b|\bbrown skin\b/.test(lower)) {
+    rules.push('Keep the skin tone richly dark/deep brown if that was described. Never lighten it.')
+  }
+  if (/\bblue\b/.test(lower) && /\bbraid|\bbraids|\bgoddess braids|\bplaits?/.test(lower)) {
+    rules.push('If blue braids were described, the hair must stay long blue braids. Never swap to black hair, buns, loose waves, or straight hair.')
+  }
+  if (/\bhoodie\b/.test(lower) || /\bcargo pants?\b/.test(lower) || /\bstreetwear\b/.test(lower)) {
+    rules.push('If the outfit was described as streetwear, hoodie, vest, or cargo pants, keep it as casual streetwear separates. Never turn it into fantasy robes, gowns, dresses, armor, or formalwear.')
+  }
+  if (/\bpokemon-style\b|\bcompanion\b|\bcreature\b|\bfamiliar\b|\bpet\b/.test(lower)) {
+    rules.push('If a small companion creature was described, it must be clearly visible beside the character. Never omit it.')
+  }
+
+  rules.push('Do not drift toward a generic default pretty portrait. The result must match the user description specifically, not a nearby approximation.')
+  return rules.join('\n')
+}
+
 function buildAvatarPrompt(answers: string[], styleKey?: string): string {
   const details = answers.map((a) => normalizeDetail(a)).filter(Boolean).join(', ')
   const identityInstruction = buildIdentityInstruction(details)
+  const accuracyGuard = buildAccuracyGuard(details)
   const normalizedStyle = normalizeStyleKey(styleKey)
   const customStyle = normalizeDetail(styleKey || '')
   const backgroundMood =
@@ -123,6 +148,9 @@ Do not omit it. Do not replace it with a different animal or creature.
 Keep the companion visually present with the character, clearly readable in the portrait, and consistent with the user's description.
 Treat the companion as part of the avatar identity, not as background decoration.
 
+NON-NEGOTIABLE ACCURACY CHECK:
+${accuracyGuard}
+
 FINAL REMINDER — HIGHEST PRIORITY:
 The character must look EXACTLY like this: ${details || 'a mysterious figure'}
 This overrides all style, background, and mood instructions above.
@@ -132,8 +160,12 @@ If the output would contradict the user's race, skin tone, hairstyle, or outfit,
 `.trim()
 }
 
-function buildReimaginePrompt(feedback: string) {
+function buildReimaginePrompt(feedback: string, identityDescription?: string) {
   const normalizedFeedback = normalizeFeedback(feedback)
+  const normalizedIdentity = normalizeDetail(identityDescription || '')
+  const identityInstruction = normalizedIdentity
+    ? `ORIGINAL DESCRIPTION TO PRESERVE:\n${normalizedIdentity}\n\nTreat those identity details as non-negotiable unless the user explicitly asked to change them.`
+    : 'ORIGINAL DESCRIPTION TO PRESERVE:\nPreserve the existing avatar identity exactly unless the user explicitly asked to change a specific detail.'
   return `
 TASK:
 Edit the provided avatar image. Preserve the same person, same identity, same face, same hairstyle, same general character design, and same overall vibe.
@@ -147,10 +179,18 @@ STYLE:
 Semi-realistic cinematic illustration. Believable anatomy and lighting, but still clearly stylized and artistic.
 Painterly finish, not photoreal, not plastic 3D, not cartoon.
 
+${identityInstruction}
+
 COMPOSITION:
 Keep it vertical portrait orientation and upright. Never rotate the character sideways.
 Preserve or improve full-body framing. Do not crop the character into a half-body, bust, or close-up portrait.
 Head-to-toe visibility is required unless the user explicitly asked for a different crop.
+
+IDENTITY LOCKS:
+Never change race, ethnicity, or skin tone.
+Never change the hair color, hairstyle, or outfit category unless the user explicitly asked for that exact change.
+If the original description says Black, dark-skinned, blue braids, hoodie, vest, cargo pants, or companion creature, keep those details unless the user explicitly requested a different version of them.
+Do not add headphones, random accessories, or unrelated styling not requested by the user.
 
 EDIT INSTRUCTIONS:
 ${normalizedFeedback || 'Do a gentle reimagination only: improve polish, styling, atmosphere, and coherence while preserving the character.'}
@@ -198,9 +238,10 @@ export async function POST(req: Request) {
       mode?: 'create' | 'reimagine'
       previousImageUrl?: string
       forceNewAvatar?: boolean
+      identityDescription?: string
     }
 
-    const { answers, style, feedback, mode, previousImageUrl, forceNewAvatar } = body
+    const { answers, style, feedback, mode, previousImageUrl, forceNewAvatar, identityDescription } = body
 
     if (!answers || typeof answers !== 'object' || Array.isArray(answers)) {
       return NextResponse.json({ error: 'Invalid answers payload.' }, { status: 400 })
@@ -238,7 +279,7 @@ export async function POST(req: Request) {
       response = await openai.images.edit({
         model: 'gpt-image-1',
         image: imageFile,
-        prompt: buildReimaginePrompt(sanitizedFeedback),
+        prompt: buildReimaginePrompt(sanitizedFeedback, typeof identityDescription === 'string' ? identityDescription : undefined),
         size: '1024x1536',
         quality: 'high',
         input_fidelity: 'high',

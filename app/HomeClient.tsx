@@ -1105,7 +1105,7 @@ export default function Home() {
             const permanentUrl = await uploadAvatarToStorage(avatarUrl, userId)
             setHubAvatarUrl(permanentUrl)
             setHubAvatarPending(null)
-            await updateHub({ avatar_url: permanentUrl, avatar_prompt_pending: null })
+            await updateHub({ avatar_url: permanentUrl, avatar_prompt_pending: avatarDescription })
           } catch (avatarError) {
             console.error('Avatar generation failed after hub creation:', avatarError)
             // Save the user's description so we can retry it automatically

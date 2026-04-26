@@ -162,7 +162,7 @@ Conversation context for Dear Stranger's Soul Mirror.
 
 The selected avatar style is: ${style || 'unspecified'}.
 Style description: ${styleDescription || 'none provided'}.
-This person is ${isReturning ? 'returning after 90 days' : 'new to the mirror'}.
+This person is ${isReturning ? 'returning after their mirror reopened' : 'new to the mirror'}.
 Completed exchanges so far: ${exchangeNumber}.
 
 Collected user answers:
@@ -262,7 +262,7 @@ Your role: You are the Soul Mirror for Dear Stranger. You help someone describe 
 
 ${styleHint}
 
-${isReturning ? 'This person is returning after 90 days. If it is the opening turn, greet them like someone familiar before asking the question.' : ''}
+${isReturning ? 'This person is returning after their mirror reopened. If it is the opening turn, greet them like someone familiar before asking the question.' : ''}
 
 ${isFirstTurn
   ? `Opening turn rules:

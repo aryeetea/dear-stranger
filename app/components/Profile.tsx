@@ -7,10 +7,10 @@ import { updateHub, signOut, deleteAccount, exportMyLetters, uploadAvatarToStora
 import { supabase } from '../../lib/supabase'
 import { HUB_COLOR_THEMES, HUB_STYLES, HUB_DECORATIONS, HUB_GLOW_LEVELS, type HubColor, type HubStyle, type HubDecoration, type HubGlowIntensity } from './UniverseMap'
 
-const MAX_REGEN_ATTEMPTS = 1
+const MAX_REGEN_ATTEMPTS = 2
 type DeleteStep = 'idle' | 'exporting' | 'exported' | 'deleting' | 'deleted'
 type SanctumPanel = 'appearance' | 'visitors' | 'settings' | 'share'
-const CYCLE_DAYS = 7
+const CYCLE_DAYS = 20
 const DAY_MS = 1000 * 60 * 60 * 24
 const DEFAULT_WELCOME_URL = 'https://dear-stranger.vercel.app/?welcome=1'
 const MAX_AVATAR_HISTORY = 8
@@ -41,9 +41,9 @@ function getLocalDayProgress(nowMs: number) {
 }
 
 function getReimagineCycle(createdAt?: string, nowMs = Date.now()) {
-  if (!createdAt) return { cycleNumber: 0, daysLeft: CYCLE_DAYS, hoursLeft: 0 }
+  if (!createdAt) return { cycleNumber: 0, daysLeft: CYCLE_DAYS, hoursLeft: 0, refreshProgress: 0 }
   const createdDate = new Date(createdAt)
-  if (!Number.isFinite(createdDate.getTime())) return { cycleNumber: 0, daysLeft: CYCLE_DAYS, hoursLeft: 0 }
+  if (!Number.isFinite(createdDate.getTime())) return { cycleNumber: 0, daysLeft: CYCLE_DAYS, hoursLeft: 0, refreshProgress: 0 }
 
   const nowDate = new Date(nowMs)
   const localDaysSinceCreation = Math.max(0, getLocalDayIndex(nowDate) - getLocalDayIndex(createdDate))
@@ -56,6 +56,7 @@ function getReimagineCycle(createdAt?: string, nowMs = Date.now()) {
     cycleNumber,
     daysLeft: Math.floor(totalHoursLeft / 24),
     hoursLeft: totalHoursLeft % 24,
+    refreshProgress: Math.min(100, ((daysInCycle + dayProgress) / CYCLE_DAYS) * 100),
   }
 }
 
@@ -260,7 +261,7 @@ export default function Profile({
 
   const localRegenCount = regenCount % 10
   const attemptsLeft = Math.max(0, MAX_REGEN_ATTEMPTS - localRegenCount)
-  const { cycleNumber, daysLeft, hoursLeft } = getReimagineCycle(hubCreatedAt, cycleNow)
+  const { cycleNumber, daysLeft, hoursLeft, refreshProgress } = getReimagineCycle(hubCreatedAt, cycleNow)
 
   function handleLeavePrompt() {
     setLeaveError('')
@@ -331,8 +332,8 @@ export default function Profile({
       // If there's no existing avatar but we have the original description, generate fresh
       const hasExistingAvatar = Boolean(currentAvatarUrl)
       const requestBody = !hasExistingAvatar && avatarPromptPending
-        ? { answers: { 0: avatarPromptPending }, feedback: regenFeedback || undefined, mode: 'create' }
-        : { answers: { 0: bioState, 1: askState }, feedback: regenFeedback, mode: 'reimagine', previousImageUrl: currentAvatarUrl || undefined, forceNewAvatar }
+        ? { answers: { 0: avatarPromptPending }, feedback: regenFeedback || undefined, mode: 'create', identityDescription: avatarPromptPending || undefined }
+        : { answers: { 0: bioState, 1: askState }, feedback: regenFeedback, mode: 'reimagine', previousImageUrl: currentAvatarUrl || undefined, forceNewAvatar, identityDescription: avatarPromptPending || undefined }
       let avatarToken: string | undefined
       try {
         const { data, error } = await supabase.auth.refreshSession()
@@ -371,7 +372,7 @@ export default function Profile({
       const freshUrl = `${permanentUrl}?t=${Date.now()}`
       // Keep showing the fresh base64 locally — don't swap to the same-path URL
       // (browser would serve cached old image). Update DB + parent with busted URL.
-      await updateHub({ avatar_url: freshUrl, regen_count: newCount, avatar_prompt_pending: null })
+      await updateHub({ avatar_url: freshUrl, regen_count: newCount })
       rememberAvatar(freshUrl)
       onUpdateHub?.({ avatarUrl: freshUrl })
     } catch (err) {
@@ -646,6 +647,39 @@ export default function Profile({
             )}
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '14px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ position: 'relative', width: '44px', height: '44px', filter: 'drop-shadow(0 0 12px #fffbe6), drop-shadow(0 0 18px #ffe07a), drop-shadow(0 0 24px #00ffe7)' }}>
+                  <svg width="44" height="44" viewBox="0 0 44 44" style={{ transform: 'rotate(-90deg)' }}>
+                    <defs>
+                      <linearGradient id="soul-neon" x1="0" y1="0" x2="1" y2="1">
+                        <stop offset="0%" stopColor="#fffbe6" />
+                        <stop offset="60%" stopColor="#ffe07a" />
+                        <stop offset="100%" stopColor="#00ffe7" />
+                      </linearGradient>
+                    </defs>
+                    <circle cx="22" cy="22" r="18" fill="none" stroke="rgba(255,255,255,0.13)" strokeWidth="4" />
+                    <circle
+                      cx="22"
+                      cy="22"
+                      r="18"
+                      fill="none"
+                      stroke="url(#soul-neon)"
+                      strokeWidth="5"
+                      strokeDasharray={`${2 * Math.PI * 18}`}
+                      strokeDashoffset={`${2 * Math.PI * 18 * (1 - refreshProgress / 100)}`}
+                      strokeLinecap="round"
+                      style={{ filter: 'drop-shadow(0 0 10px #ffe07a), drop-shadow(0 0 18px #00ffe7)', opacity: 1 }}
+                    />
+                  </svg>
+                  <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+                    <span style={{ fontFamily: "'Cinzel', serif", fontSize: '12px', fontWeight: 800, color: '#fffbe6', lineHeight: 1, textShadow: '0 0 10px #ffe07a, 0 0 18px #00ffe7, 0 1px 0 #fff8' }}>{daysLeft}d</span>
+                    <span style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', fontWeight: 800, color: '#00ffe7', letterSpacing: '0.04em', textTransform: 'uppercase', marginTop: '1px', lineHeight: 1, textShadow: '0 0 8px #00ffe7' }}>{hoursLeft}h</span>
+                  </div>
+                </div>
+                <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.25em', color: '#00ffe7', textTransform: 'uppercase', textShadow: '0 0 10px #ffe07a, 0 0 18px #00ffe7, 0 1px 0 #fff8' }}>
+                  Soul Cycle
+                </p>
+              </div>
               <button onClick={() => setShowRegenInput(v => !v)} disabled={regenLoading || attemptsLeft <= 0}
                 style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.2em', color: attemptsLeft > 0 ? 'rgba(201,168,76,0.7)' : 'rgba(255,255,255,0.28)', padding: '6px 12px', border: `1px solid ${attemptsLeft > 0 ? 'rgba(201,168,76,0.25)' : 'rgba(255,255,255,0.12)'}`, background: 'transparent', cursor: attemptsLeft > 0 ? 'pointer' : 'default', textTransform: 'uppercase', borderRadius: '4px' }}
                 onMouseEnter={e => {
@@ -661,11 +695,11 @@ export default function Profile({
               </button>
               {attemptsLeft > 0 ? (
                 <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(255,255,255,0.46)' }}>
-                  You get 1 reimagine every 7 days. Switching back to a past avatar below is always free.
+                  You get 2 reimagines every 20 days. Switching back to a past avatar below is always free.
                 </p>
               ) : (
                 <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(255,255,255,0.46)' }}>
-                  Your weekly reimagine is used. The next one opens in {daysLeft}d {hoursLeft}h. You can still restore any past avatar below for free.
+                  Your 20-day reimagines are used. The next one opens in {daysLeft}d {hoursLeft}h. You can still restore any past avatar below for free.
                 </p>
               )}
             </div>
