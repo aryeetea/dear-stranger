@@ -151,6 +151,14 @@ const FONT_COLORS = [
   { id: 'slate',     label: 'Slate',          color: '#161620', desc: 'Cool blue-grey'      },
   { id: 'teak',      label: 'Teak',           color: '#3a1c06', desc: 'Warm teak wood'      },
   { id: 'navy',      label: 'Navy',           color: '#060a28', desc: 'Deep navy blue'      },
+  { id: 'royal',     label: 'Royal Blue',     color: '#1c3fd1', desc: 'Bright sapphire blue' },
+  { id: 'teal-glow', label: 'Teal Glow',      color: '#006f73', desc: 'Bright lagoon teal'   },
+  { id: 'emerald',   label: 'Emerald',        color: '#0f7a43', desc: 'Lively emerald green' },
+  { id: 'sunset',    label: 'Sunset Coral',   color: '#c94a35', desc: 'Warm coral orange'    },
+  { id: 'orchid',    label: 'Orchid',         color: '#8e3bbf', desc: 'Bright floral violet' },
+  { id: 'raspberry', label: 'Raspberry',      color: '#a61d52', desc: 'Bold berry pink'      },
+  { id: 'goldenrod', label: 'Goldenrod',      color: '#9a6400', desc: 'Honeyed golden ink'   },
+  { id: 'cerulean',  label: 'Cerulean',       color: '#0067a7', desc: 'Clear sky blue'       },
 ]
 
 function hexToRgba(hex: string, alpha: number): string {
@@ -1042,7 +1050,6 @@ export default function Scribe({ recipientName, senderName, draftOwnerId, letter
 
         {view==='fonts' && (
           <motion.div key="fonts" initial={{ opacity:0, y:16 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0 }} style={{ width:'min(560px, 95vw)', zIndex:2 }}>
-            {renderPickerHeader('Script', `Writing in ${selectedFont.label}`, 'The selected script is already active, so you can return as soon as it feels right.', `Use ${selectedFont.label}`)}
             <div style={{ textAlign:'center', marginBottom:'24px' }}>
               <p style={{ fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.5em', color:'#e6c76e', textTransform:'uppercase', marginBottom:'5px' }}>Choose Your Script</p>
               <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'13px', color:'rgba(255,255,255,0.8)' }}>The hand your words are written in</p>
@@ -1105,7 +1112,6 @@ export default function Scribe({ recipientName, senderName, draftOwnerId, letter
 
         {view==='colors' && (
           <motion.div key="colors" initial={{ opacity:0, y:16 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0 }} style={{ width:'min(560px, 95vw)', zIndex:2 }}>
-            {renderPickerHeader('Ink', selectedColor ? `Ink set to ${FONT_COLORS.find(c => c.id === selectedColor)?.label ?? 'custom'}` : 'Using paper default ink', 'Try colors freely, then return to the draft from here whenever you are ready.', selectedColor ? `Use ${FONT_COLORS.find(c => c.id === selectedColor)?.label ?? 'this ink'}` : 'Use default ink')}
             <div style={{ textAlign:'center', marginBottom:'24px' }}>
               <p style={{ fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.5em', color:'#e6c76e', textTransform:'uppercase', marginBottom:'5px' }}>Choose Your Ink</p>
               <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'13px', color:'rgba(255,255,255,0.8)' }}>The colour your words are written in</p>
@@ -1146,7 +1152,6 @@ export default function Scribe({ recipientName, senderName, draftOwnerId, letter
 
         {view==='paper-color' && (
           <motion.div key="paper-color" initial={{ opacity:0, y:16 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0 }} style={{ width:'min(560px, 95vw)', zIndex:2 }}>
-            {renderPickerHeader('Paper Tone', selectedPaperColor ? `Paper tone set to ${PAPER_TONES.find(t => t.id === selectedPaperColor)?.label ?? 'custom'}` : 'Using the paper’s natural tone', 'Your choice applies immediately, so you can head back without the long scroll.', selectedPaperColor ? `Use ${PAPER_TONES.find(t => t.id === selectedPaperColor)?.label ?? 'this tone'}` : 'Use default tone')}
             <div style={{ textAlign:'center', marginBottom:'24px' }}>
               <p style={{ fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.5em', color:'#e6c76e', textTransform:'uppercase', marginBottom:'5px' }}>Choose Your Paper Tone</p>
               <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'13px', color:'rgba(255,255,255,0.8)' }}>The colour of the paper you write on</p>
@@ -1185,7 +1190,6 @@ export default function Scribe({ recipientName, senderName, draftOwnerId, letter
 
         {view==='envelopes' && !sent && (
           <motion.div key="envelopes" initial={{ opacity:0, y:16 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0 }} style={{ width:'min(680px, 95vw)', zIndex:2 }}>
-            {renderPickerHeader('Envelope', `Carried in ${ENVELOPES.find(e => e.id === selectedEnvelope)?.label ?? 'Classic'}`, 'Pick a vessel, then return to your draft from the same spot.', `Use ${ENVELOPES.find(e => e.id === selectedEnvelope)?.label ?? 'Classic'}`)}
             <div style={{ textAlign:'center', marginBottom:'24px' }}>
               <p style={{ fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.5em', color:'#e6c76e', textTransform:'uppercase', marginBottom:'5px' }}>Choose Your Envelope</p>
               <p style={{ fontFamily:"'IM Fell English', serif", fontStyle:'italic', fontSize:'13px', color:'rgba(255,255,255,0.8)' }}>The vessel that carries your words</p>

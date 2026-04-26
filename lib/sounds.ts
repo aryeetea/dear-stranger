@@ -19,12 +19,11 @@ interface AmbientNodes {
 let ambientNodes: AmbientNodes | null = null
 
 /**
- * Playful cosmic ambient soundscape:
- *  - Warm floating chord pad (C major, mid-range, slow tremolo)
- *  - Airy high-pass sparkle noise (very faint, like stardust)
- *  - Frequent music-box pentatonic twinkles (every 2-5s)
- *  - Occasional long resonant bell pings
- * Fun, whimsical, not ominous. Total output ≈ 0.08 amplitude.
+ * Soft ambient bed:
+ *  - Low, warm suspended pad
+ *  - Very faint air texture
+ *  - Rare, delicate shimmer accents
+ * Calm and unobtrusive. Total output ≈ 0.035 amplitude.
  */
 export function startAmbient(muted = false): void {
   if (ambientNodes) return // already running
@@ -34,22 +33,21 @@ export function startAmbient(muted = false): void {
   const master = ctx.createGain()
   master.gain.setValueAtTime(0, ctx.currentTime)
   if (!muted) {
-    master.gain.linearRampToValueAtTime(0.08, ctx.currentTime + 3) // fade in over 3s
+    master.gain.linearRampToValueAtTime(0.035, ctx.currentTime + 3) // fade in over 3s
   }
   master.connect(ctx.destination)
 
   const stopFns: (() => void)[] = []
 
-  // 1. Warm floating chord pad — C major (C4, E4, G4, C5) with slow tremolo
+  // 1. Warm floating suspended pad — lower register, gentle motion only
   const chordNotes = [
-    { freq: 261.63, gVal: 0.28 },  // C4
-    { freq: 329.63, gVal: 0.20 },  // E4
-    { freq: 392.00, gVal: 0.16 },  // G4
-    { freq: 523.25, gVal: 0.12 },  // C5
+    { freq: 196.0, gVal: 0.2 },   // G3
+    { freq: 261.63, gVal: 0.13 }, // C4
+    { freq: 293.66, gVal: 0.09 }, // D4
+    { freq: 392.0, gVal: 0.05 },  // G4
   ]
   chordNotes.forEach(({ freq, gVal }, i) => {
-    // Two slightly detuned oscillators per note for warmth
-    ;[-3, 3].forEach((detuneCents) => {
+    ;[-2, 2].forEach((detuneCents) => {
       const osc = ctx.createOscillator()
       const oscGain = ctx.createGain()
       osc.type = 'sine'
@@ -57,12 +55,12 @@ export function startAmbient(muted = false): void {
       osc.detune.value = detuneCents
       oscGain.gain.value = gVal * 0.5
 
-      // Gentle tremolo LFO per note
+      // Extra-slow shimmer rather than audible tremolo
       const lfo = ctx.createOscillator()
       const lfoGain = ctx.createGain()
       lfo.type = 'sine'
-      lfo.frequency.value = 0.18 + i * 0.04
-      lfoGain.gain.value = gVal * 0.1
+      lfo.frequency.value = 0.06 + i * 0.015
+      lfoGain.gain.value = gVal * 0.045
       lfo.connect(lfoGain)
       lfoGain.connect(oscGain.gain)
 
@@ -74,7 +72,7 @@ export function startAmbient(muted = false): void {
     })
   })
 
-  // 2. Airy sparkle noise — high-pass filtered, sounds like stardust
+  // 2. Very faint air texture
   const noiseBufferSize = ctx.sampleRate * 4
   const noiseBuffer = ctx.createBuffer(1, noiseBufferSize, ctx.sampleRate)
   const noiseData = noiseBuffer.getChannelData(0)
@@ -84,86 +82,56 @@ export function startAmbient(muted = false): void {
   noiseSrc.loop = true
   const noiseHp = ctx.createBiquadFilter()
   noiseHp.type = 'highpass'
-  noiseHp.frequency.value = 5000
+  noiseHp.frequency.value = 6800
   const noiseGain = ctx.createGain()
-  noiseGain.gain.value = 0.05
+  noiseGain.gain.value = 0.011
   noiseSrc.connect(noiseHp)
   noiseHp.connect(noiseGain)
   noiseGain.connect(master)
   noiseSrc.start()
   stopFns.push(() => { try { noiseSrc.stop() } catch { /* already stopped */ } })
 
-  // 3. Playful music-box twinkles — pentatonic notes, quick attack, bell-like decay
-  // C5 D5 E5 G5 A5 C6 D6 E6 G6 A6
-  const pentatonic = [523.25, 587.33, 659.25, 783.99, 880, 1046.5, 1174.66, 1318.5, 1567.98, 1760]
+  // 3. Sparse shimmer accents
+  const pentatonic = [392.0, 440.0, 523.25, 587.33, 659.25, 783.99]
   const ambCtx = ctx
   let twinkleTimer: ReturnType<typeof setTimeout>
-  let pingTimer: ReturnType<typeof setTimeout>
 
   function playTwinkle() {
     if (!ambientNodes) return
     const now = ambCtx.currentTime
-    const noteCount = Math.floor(Math.random() * 3) + 1  // 1–3 notes
-    const startIdx = Math.floor(Math.random() * (pentatonic.length - noteCount - 1))
-    const ascending = Math.random() > 0.4
+    const freq = pentatonic[Math.floor(Math.random() * pentatonic.length)]
+    const t = now + Math.random() * 0.08
 
-    for (let n = 0; n < noteCount; n++) {
-      const idx = ascending ? startIdx + n : startIdx + noteCount - 1 - n
-      const freq = pentatonic[idx]
-      const t = now + n * 0.11 + Math.random() * 0.04
-
-      // Fundamental
-      const osc = ambCtx.createOscillator()
-      const g = ambCtx.createGain()
-      osc.type = 'sine'
-      osc.frequency.value = freq
-      g.gain.setValueAtTime(0, t)
-      g.gain.linearRampToValueAtTime(0.13, t + 0.018)
-      g.gain.exponentialRampToValueAtTime(0.001, t + 1.4)
-      osc.connect(g); g.connect(master)
-      osc.start(t); osc.stop(t + 1.6)
-
-      // Bright overtone (×2) for music-box sparkle
-      const osc2 = ambCtx.createOscillator()
-      const g2 = ambCtx.createGain()
-      osc2.type = 'sine'
-      osc2.frequency.value = freq * 2
-      g2.gain.setValueAtTime(0, t)
-      g2.gain.linearRampToValueAtTime(0.05, t + 0.015)
-      g2.gain.exponentialRampToValueAtTime(0.001, t + 0.5)
-      osc2.connect(g2); g2.connect(master)
-      osc2.start(t); osc2.stop(t + 0.7)
-    }
-
-    const nextDelay = 1600 + Math.random() * 3200  // every 1.6–4.8s
-    twinkleTimer = setTimeout(playTwinkle, nextDelay)
-  }
-
-  // 4. Occasional resonant bell ping — single low pentatonic note, long ring
-  function schedulePing() {
-    if (!ambientNodes) return
-    const now = ambCtx.currentTime
-    const freq = pentatonic[Math.floor(Math.random() * 5)]  // lower half
     const osc = ambCtx.createOscillator()
     const g = ambCtx.createGain()
     osc.type = 'sine'
     osc.frequency.value = freq
-    g.gain.setValueAtTime(0, now)
-    g.gain.linearRampToValueAtTime(0.07, now + 0.025)
-    g.gain.exponentialRampToValueAtTime(0.001, now + 4.5)
+    g.gain.setValueAtTime(0, t)
+    g.gain.linearRampToValueAtTime(0.03, t + 0.04)
+    g.gain.exponentialRampToValueAtTime(0.001, t + 2.2)
     osc.connect(g); g.connect(master)
-    osc.start(now); osc.stop(now + 5)
-    pingTimer = setTimeout(schedulePing, 5000 + Math.random() * 9000)
+    osc.start(t); osc.stop(t + 2.4)
+
+    const osc2 = ambCtx.createOscillator()
+    const g2 = ambCtx.createGain()
+    osc2.type = 'triangle'
+    osc2.frequency.value = freq * 2
+    g2.gain.setValueAtTime(0, t)
+    g2.gain.linearRampToValueAtTime(0.009, t + 0.03)
+    g2.gain.exponentialRampToValueAtTime(0.001, t + 0.8)
+    osc2.connect(g2); g2.connect(master)
+    osc2.start(t); osc2.stop(t + 1)
+
+    const nextDelay = 12000 + Math.random() * 14000  // every 12–26s
+    twinkleTimer = setTimeout(playTwinkle, nextDelay)
   }
 
-  setTimeout(() => playTwinkle(), 1500)
-  setTimeout(() => schedulePing(), 3500)
+  setTimeout(() => playTwinkle(), 9000)
 
   ambientNodes = {
     masterGain: master,
     stop: () => {
       clearTimeout(twinkleTimer)
-      clearTimeout(pingTimer)
       stopFns.forEach(fn => { try { fn() } catch { /* already stopped */ } })
       master.gain.setValueAtTime(master.gain.value, ctx.currentTime)
       master.gain.linearRampToValueAtTime(0, ctx.currentTime + 2)
@@ -184,7 +152,7 @@ export function setAmbientMuted(muted: boolean): void {
   const now = ctx.currentTime
   ambientNodes.masterGain.gain.cancelScheduledValues(now)
   ambientNodes.masterGain.gain.setValueAtTime(ambientNodes.masterGain.gain.value, now)
-  ambientNodes.masterGain.gain.linearRampToValueAtTime(muted ? 0 : 0.08, now + 0.8)
+  ambientNodes.masterGain.gain.linearRampToValueAtTime(muted ? 0 : 0.035, now + 0.8)
 }
 
 export function isAmbientRunning(): boolean {

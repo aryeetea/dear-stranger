@@ -13,6 +13,14 @@ export const PAPER_TONES = [
   { id: 'gold',      label: 'Golden',       bg: 'linear-gradient(160deg, #fef8e0, #faecc8)', desc: 'Warm gold'     },
   { id: 'lilac',     label: 'Lilac',        bg: 'linear-gradient(160deg, #faf0fc, #f2e0f8)', desc: 'Soft lilac'    },
   { id: 'mint',      label: 'Mint',         bg: 'linear-gradient(160deg, #f0faf6, #e4f4ec)', desc: 'Cool mint'     },
+  { id: 'butter',    label: 'Buttercream',  bg: 'linear-gradient(160deg, #fff8d9, #fff0ba)', desc: 'Sunny cream'   },
+  { id: 'apricot',   label: 'Apricot',      bg: 'linear-gradient(160deg, #fff2df, #ffdcbc)', desc: 'Soft apricot'  },
+  { id: 'aqua',      label: 'Aqua',         bg: 'linear-gradient(160deg, #eafcff, #d5f4fb)', desc: 'Bright aqua'   },
+  { id: 'periwinkle',label: 'Periwinkle',   bg: 'linear-gradient(160deg, #f0f2ff, #dde3ff)', desc: 'Airy blue-violet' },
+  { id: 'melon',     label: 'Melon',        bg: 'linear-gradient(160deg, #fff0eb, #ffd3c6)', desc: 'Fresh coral wash' },
+  { id: 'shell',     label: 'Shell Pink',   bg: 'linear-gradient(160deg, #fff6f7, #ffe4ea)', desc: 'Pearly pink'   },
+  { id: 'meadow',    label: 'Meadow',       bg: 'linear-gradient(160deg, #f3ffe9, #ddf4c7)', desc: 'Sunlit green'  },
+  { id: 'dawn',      label: 'Dawn',         bg: 'linear-gradient(160deg, #fff7ef, #f7e8ff 52%, #e8f3ff 100%)', desc: 'Blush sunrise' },
 ]
 
 export const PAPER_INK: Record<string, { main: string; secondary: string; accent: string }> = {
