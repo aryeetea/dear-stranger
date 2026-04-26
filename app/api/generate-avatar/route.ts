@@ -374,3 +374,225 @@ function buildVisionAnchoredEditPrompt(
   prompt += `\nEdit the avatar image to address the feedback while preserving the core identity and style. Ensure all changes are visually clear and faithful to the user's intent.`;
   return prompt;
 }
+
+type GenerateAvatarBody = {
+  answers?: unknown;
+  feedback?: unknown;
+  mode?: unknown;
+  previousImageUrl?: unknown;
+  editCurrentAvatar?: unknown;
+  forceNewAvatar?: unknown;
+  identityDescription?: unknown;
+  style?: unknown;
+  userId?: unknown;
+};
+
+function normalizeAnswerList(answers: unknown): string[] {
+  if (Array.isArray(answers)) {
+    return answers
+      .map((value) => normalizeDetail(String(value || "")))
+      .filter(Boolean)
+      .slice(0, 12);
+  }
+
+  if (answers && typeof answers === "object") {
+    return Object.entries(answers as Record<string, unknown>)
+      .sort(([a], [b]) => Number(a) - Number(b))
+      .map(([, value]) => normalizeDetail(String(value || "")))
+      .filter(Boolean)
+      .slice(0, 12);
+  }
+
+  return [];
+}
+
+function buildCurrentAvatarSummary(
+  answers: string[],
+  identityDescription?: string
+): string {
+  const parts = [
+    normalizeDetail(identityDescription || ""),
+    ...answers.map((answer) => normalizeDetail(answer)),
+  ].filter(Boolean);
+
+  return parts.join(", ") || "A stylized full-body avatar";
+}
+
+function toDataUrl(b64: string, format: string = "png"): string {
+  return `data:image/${format};base64,${b64}`;
+}
+
+async function fetchImageAsFile(imageUrl: string): Promise<File> {
+  const response = await fetch(imageUrl);
+  if (!response.ok) {
+    throw new Error(`Could not fetch previous avatar image (${response.status})`);
+  }
+
+  const blob = await response.blob();
+  const mimeType = blob.type || "image/png";
+  const extension = mimeType.split("/")[1] || "png";
+
+  return new File([blob], `avatar-source.${extension}`, { type: mimeType });
+}
+
+function getOpenAIKey(): string | null {
+  return process.env.OPENAI_API_KEY || process.env.SHORTAPI_KEY || null;
+}
+
+export async function POST(req: Request) {
+  try {
+    const authHeader = req.headers.get("authorization");
+    const token = authHeader?.startsWith("Bearer ")
+      ? authHeader.slice(7)
+      : null;
+
+    if (!token) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+      return NextResponse.json(
+        { error: "Server misconfiguration" },
+        { status: 500 }
+      );
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser(token);
+
+    if (userError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const openaiKey = getOpenAIKey();
+    if (!openaiKey) {
+      return NextResponse.json(
+        { error: "Missing OPENAI_API_KEY or SHORTAPI_KEY" },
+        { status: 500 }
+      );
+    }
+
+    const body = (await req.json()) as GenerateAvatarBody;
+    const answers = normalizeAnswerList(body?.answers);
+    const feedback = normalizeFeedback(
+      typeof body?.feedback === "string" ? body.feedback : ""
+    );
+    const identityDescription =
+      typeof body?.identityDescription === "string"
+        ? normalizeDetail(body.identityDescription)
+        : "";
+    const style =
+      typeof body?.style === "string" ? normalizeDetail(body.style) : "";
+    const mode = typeof body?.mode === "string" ? body.mode : "create";
+    const previousImageUrl =
+      typeof body?.previousImageUrl === "string"
+        ? body.previousImageUrl.trim()
+        : "";
+    const editCurrentAvatar = Boolean(body?.editCurrentAvatar);
+    const forceNewAvatar = Boolean(body?.forceNewAvatar);
+
+    const detailInputs = [
+      ...answers,
+      identityDescription,
+      style ? `Style direction: ${style}` : "",
+      feedback && (mode === "create" || requestsWholeNewAvatar(feedback))
+        ? `Additional direction: ${feedback}`
+        : "",
+    ].filter(Boolean);
+
+    if (detailInputs.length === 0) {
+      return NextResponse.json(
+        { error: "No avatar details were provided." },
+        { status: 400 }
+      );
+    }
+
+    const openai = new OpenAI({ apiKey: openaiKey });
+    const shouldEditExisting =
+      mode === "reimagine" &&
+      editCurrentAvatar &&
+      !forceNewAvatar &&
+      !requestsWholeNewAvatar(feedback) &&
+      previousImageUrl;
+
+    if (shouldEditExisting) {
+      try {
+        const sourceImage = await fetchImageAsFile(previousImageUrl);
+        const editPrompt = buildVisionAnchoredEditPrompt(
+          buildCurrentAvatarSummary(answers, identityDescription),
+          feedback || "Refine the current avatar while preserving identity.",
+          identityDescription,
+          style
+        );
+
+        const edited = await openai.images.edit({
+          model: "gpt-image-1",
+          image: sourceImage,
+          prompt: `${editPrompt}\n\n${buildAvatarPrompt(detailInputs, style)}`,
+          quality: "high",
+          size: "1024x1536",
+        });
+
+        const editedImage = edited.data?.[0];
+        if (editedImage?.b64_json) {
+          return NextResponse.json({
+            imageUrl: toDataUrl(editedImage.b64_json),
+            modeUsed: "edit",
+          });
+        }
+        if (editedImage?.url) {
+          return NextResponse.json({
+            imageUrl: editedImage.url,
+            modeUsed: "edit",
+          });
+        }
+      } catch (error) {
+        console.error("Avatar edit failed, falling back to fresh generation:", error);
+      }
+    }
+
+    const prompt = buildAvatarPrompt(detailInputs, style);
+    const generated = await openai.images.generate({
+      model: "gpt-image-1",
+      prompt,
+      quality: "high",
+      size: "1024x1536",
+    });
+
+    const image = generated.data?.[0];
+    if (image?.b64_json) {
+      return NextResponse.json({
+        imageUrl: toDataUrl(image.b64_json),
+        modeUsed: "generate",
+      });
+    }
+    if (image?.url) {
+      return NextResponse.json({
+        imageUrl: image.url,
+        modeUsed: "generate",
+      });
+    }
+
+    return NextResponse.json(
+      { error: "Image generation returned no image data." },
+      { status: 502 }
+    );
+  } catch (error) {
+    console.error("Generate avatar route error:", error);
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to generate avatar.",
+      },
+      { status: 500 }
+    );
+  }
+}
