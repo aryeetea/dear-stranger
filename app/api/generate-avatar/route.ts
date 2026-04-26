@@ -72,6 +72,11 @@ function requestsWholeNewAvatar(feedback: string): boolean {
     || looksLikeFullAvatarDescription(feedback)
 }
 
+function requestsCompanionAddition(feedback: string): boolean {
+  const lower = feedback.toLowerCase()
+  return hasCompanionSignal(feedback) && /\b(add|include|with|give|has|have|put)\b/.test(lower)
+}
+
 function buildIdentityInstruction(details: string): string {
   const lower = details.toLowerCase()
   if (/\b(princess|queen|duchess|empress|goddess|girl|woman|lady|female|feminine|she\/her|she|her)\b/.test(lower)) {
@@ -271,6 +276,7 @@ function buildVisionAnchoredEditPrompt(currentAvatarSummary: string, feedback: s
   const combinedDetails = [normalizedIdentity, normalizedSummary, normalizedFeedback].filter(Boolean).join(' ')
   const artStyleInstruction = buildArtStyleInstruction(combinedDetails, styleKey)
   const accuracyGuard = buildAccuracyGuard(combinedDetails)
+  const addingCompanionOnly = requestsCompanionAddition(normalizedFeedback) && !requestsWholeNewAvatar(normalizedFeedback)
 
   return `
 TASK:
@@ -291,6 +297,7 @@ The original user description is the source of truth. If the current image and t
 Preserve the same person, same face identity, same species, same skin tone, same hairstyle, same body type, same overall styling direction, and same magical/fantasy role unless the user explicitly asked to change one of those things.
 Do not drift into a different ethnicity, a different species, a different hairstyle, or unrelated fashion.
 Keep the result recognizably the same avatar.
+Use the current avatar identity as a lock for the main character. Keep the face, body, outfit, wings, pose direction, and overall silhouette as close as possible to the current avatar unless the user explicitly asked to change one of them.
 If the original user description included a companion, familiar, pet, or creature, restore or preserve it even if the current avatar image under-emphasized it or omitted it.
 If the user asked to add or restore a companion, the companion is required and must be clearly visible.
 If the user asked for the companion to feel like it is flying, circling, fluttering, or orbiting, show that motion clearly and intentionally.
@@ -298,6 +305,7 @@ Do not omit the companion when it was requested.
 Treat a requested companion as a second subject in the composition, not a minor accessory.
 Reduce the character's scale slightly if needed so the companion is fully visible and readable.
 Do not invent extra accessories, props, hairstyles, makeup, tattoos, armor pieces, jewelry, companions, or design elements unless the user asked for them or the edit request explicitly adds them.
+${addingCompanionOnly ? 'If this edit request is adding a companion, then the companion is the only meaningful change. Do not redesign the main avatar. Do not change the face, body, skin tone, hairstyle, ears, wings, dress, colors, pose, or overall character styling beyond the minimal framing adjustment needed to fit the companion.' : ''}
 
 STYLE:
 ${artStyleInstruction}
