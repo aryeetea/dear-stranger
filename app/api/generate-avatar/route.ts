@@ -114,6 +114,9 @@ Vertical portrait (taller than wide). Full body visible from head to toe. Charac
 Head must be at the top of the frame and feet at the bottom. Never rotate sideways or 90 degrees.
 Never produce a landscape, reference sheet, collage, split layout, or sideways composition.
 Do not crop into a bust portrait unless the user explicitly asked for that.
+The entire figure must fit comfortably inside the frame with visible shoes or feet and some space around the body.
+Prefer slightly zoomed-out framing over any crop that cuts off legs, knees, arms, hair length, or companion.
+This must read as a full-body portrait first, not a beauty shot.
 
 BACKGROUND:
 ${backgroundMood}
@@ -154,6 +157,8 @@ Painterly finish, not photoreal, not plastic 3D, not cartoon.
 
 COMPOSITION:
 Keep it vertical portrait orientation and upright. Never rotate the character sideways.
+Preserve or improve full-body framing. Do not crop the character into a half-body, bust, or close-up portrait.
+Head-to-toe visibility is required unless the user explicitly asked for a different crop.
 
 EDIT INSTRUCTIONS:
 ${normalizedFeedback || 'Do a gentle reimagination only: improve polish, styling, atmosphere, and coherence while preserving the character.'}

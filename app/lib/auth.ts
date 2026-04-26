@@ -900,6 +900,29 @@ export async function saveAvatarHistoryEntry(imageUrl: string): Promise<void> {
   if (error) throw error
 }
 
+export async function getMyAvatarBucketImages(): Promise<string[]> {
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser()
+
+  if (userError) throw userError
+  if (!user) throw new Error('No user found')
+
+  const { data, error } = await supabase.storage
+    .from('avatars')
+    .list(`avatars/${user.id}`, {
+      limit: 20,
+      sortBy: { column: 'name', order: 'desc' },
+    })
+
+  if (error) throw error
+
+  return (data || [])
+    .filter((file) => file.name && !file.name.endsWith('/'))
+    .map((file) => supabase.storage.from('avatars').getPublicUrl(`avatars/${user.id}/${file.name}`).data.publicUrl)
+}
+
 export async function sendLetter(
   recipientId: string | null,
   body: string,
@@ -1171,11 +1194,11 @@ export async function uploadAvatarToStorage(
     byteArray[i] = byteCharacters.charCodeAt(i)
   }
 
-  const filePath = `avatars/${userId}.jpg`
+  const filePath = `avatars/${userId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`
 
   const { error } = await supabase.storage.from('avatars').upload(filePath, byteArray, {
     contentType: 'image/jpeg',
-    upsert: true,
+    upsert: false,
   })
 
   if (error) throw error

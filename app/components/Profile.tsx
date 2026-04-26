@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { QRCodeSVG } from 'qrcode.react'
-import { updateHub, signOut, deleteAccount, exportMyLetters, uploadAvatarToStorage, getVisitorBook, getMyAvatarHistory, saveAvatarHistoryEntry, type VisitorBookEntry } from '../lib/auth'
+import { updateHub, signOut, deleteAccount, exportMyLetters, uploadAvatarToStorage, getVisitorBook, getMyAvatarBucketImages, type VisitorBookEntry } from '../lib/auth'
 import { supabase } from '../../lib/supabase'
 import { HUB_COLOR_THEMES, HUB_STYLES, HUB_DECORATIONS, HUB_GLOW_LEVELS, type HubColor, type HubStyle, type HubDecoration, type HubGlowIntensity } from './UniverseMap'
 
@@ -197,14 +197,9 @@ export default function Profile({
     if (!userId) return
     async function loadAvatarHistory() {
       try {
-        const entries = await getMyAvatarHistory()
-        if (!entries.length) {
-          if (currentAvatarUrl) {
-            await saveAvatarHistoryEntry(currentAvatarUrl)
-          }
-          return
-        }
-        persistAvatarHistory([currentAvatarUrl, ...entries.map((entry) => entry.imageUrl)])
+        const bucketImages = await getMyAvatarBucketImages()
+        if (!bucketImages.length) return
+        persistAvatarHistory([currentAvatarUrl, ...bucketImages])
       } catch (err) {
         console.error('Failed to load avatar history:', err)
       }
@@ -384,7 +379,6 @@ export default function Profile({
       setForceNewAvatar(false)
       setRegenLoading(false)
       rememberAvatar(data.imageUrl, previousAvatar ? [previousAvatar] : [])
-      void saveAvatarHistoryEntry(data.imageUrl).catch((err) => console.error('Failed to save avatar history entry:', err))
 
       // ── Upload to Storage in the background ──
       const { data: { user } } = await supabase.auth.getUser()
@@ -396,7 +390,6 @@ export default function Profile({
       // (browser would serve cached old image). Update DB + parent with busted URL.
       await updateHub({ avatar_url: freshUrl, regen_count: newCount, avatar_prompt_pending: null })
       rememberAvatar(freshUrl)
-      await saveAvatarHistoryEntry(freshUrl)
       onUpdateHub?.({ avatarUrl: freshUrl })
     } catch (err) {
       console.error('Regen failed:', err)
@@ -417,7 +410,6 @@ export default function Profile({
       setCurrentAvatarUrl(url)
       await updateHub({ avatar_url: url })
       rememberAvatar(url)
-      await saveAvatarHistoryEntry(url)
       onUpdateHub?.({ avatarUrl: url })
     } catch (err) {
       console.error('Restore avatar failed:', err)
