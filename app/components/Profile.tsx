@@ -87,6 +87,7 @@ export default function Profile({
   const [regenLoading, setRegenLoading] = useState(false)
   const [regenFeedback, setRegenFeedback] = useState('')
   const [showRegenInput, setShowRegenInput] = useState(false)
+  const [editCurrentAvatar, setEditCurrentAvatar] = useState(true)
   const [forceNewAvatar, setForceNewAvatar] = useState(false)
   const [regenError, setRegenError] = useState('')
   const [userId, setUserId] = useState('')
@@ -335,7 +336,15 @@ export default function Profile({
       const hasExistingAvatar = Boolean(currentAvatarUrl)
       const requestBody = !hasExistingAvatar && avatarPromptPending
         ? { answers: { 0: avatarPromptPending }, feedback: regenFeedback || undefined, mode: 'create', identityDescription: avatarPromptPending || undefined }
-        : { answers: { 0: bioState, 1: askState }, feedback: regenFeedback, mode: 'reimagine', previousImageUrl: currentAvatarUrl || undefined, forceNewAvatar, identityDescription: avatarPromptPending || undefined }
+        : {
+            answers: { 0: bioState, 1: askState },
+            feedback: regenFeedback,
+            mode: 'reimagine',
+            previousImageUrl: currentAvatarUrl || undefined,
+            editCurrentAvatar: editCurrentAvatar && !forceNewAvatar,
+            forceNewAvatar,
+            identityDescription: avatarPromptPending || undefined,
+          }
       let avatarToken: string | undefined
       try {
         const { data, error } = await supabase.auth.refreshSession()
@@ -362,6 +371,7 @@ export default function Profile({
       setCurrentAvatarUrl(data.imageUrl)
       setRegenCount(newCount)
       setRegenFeedback('')
+      setEditCurrentAvatar(true)
       setForceNewAvatar(false)
       setRegenLoading(false)
       rememberAvatar(data.imageUrl, previousAvatar ? [previousAvatar] : [])
@@ -774,15 +784,35 @@ export default function Profile({
                     Reimagine ✦
                   </button>
                 </div>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '10px', color: 'rgba(255,255,255,0.62)', fontFamily: "'EB Garamond', serif", fontSize: '14px', cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={forceNewAvatar}
-                    onChange={e => setForceNewAvatar(e.target.checked)}
-                    style={{ accentColor: '#c9a84c' }}
-                  />
-                  Create a completely new avatar instead of editing this one
-                </label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'rgba(255,255,255,0.62)', fontFamily: "'EB Garamond', serif", fontSize: '14px', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={editCurrentAvatar}
+                      onChange={e => {
+                        const checked = e.target.checked
+                        setEditCurrentAvatar(checked)
+                        if (checked) setForceNewAvatar(false)
+                      }}
+                      style={{ accentColor: '#c9a84c' }}
+                    />
+                    Edit this avatar
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'rgba(255,255,255,0.62)', fontFamily: "'EB Garamond', serif", fontSize: '14px', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={forceNewAvatar}
+                      onChange={e => {
+                        const checked = e.target.checked
+                        setForceNewAvatar(checked)
+                        if (checked) setEditCurrentAvatar(false)
+                        if (!checked && !editCurrentAvatar) setEditCurrentAvatar(true)
+                      }}
+                      style={{ accentColor: '#c9a84c' }}
+                    />
+                    Create a completely new avatar
+                  </label>
+                </div>
                 {regenError && (
                   <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(220,100,100,0.85)', marginTop: '8px' }}>{regenError}</p>
                 )}

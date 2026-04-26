@@ -278,7 +278,9 @@ TASK:
 Edit the provided avatar image while preserving the same core person and identity.
 
 IDENTITY TO PRESERVE:
-${normalizedIdentity || 'Preserve the current avatar identity exactly unless the user explicitly asked to change a specific detail.'}
+Preserve the current avatar image as the primary source of truth.
+Keep the same person, same species, same race, same skin tone, same face, same overall styling direction, same companion, and same recognizable character identity unless the user explicitly asked to change a specific detail.
+${normalizedIdentity ? `Secondary reference from the user’s original description: ${normalizedIdentity}` : ''}
 
 STYLE:
 Keep the result cinematic, polished, and artistically stylized.
@@ -294,6 +296,7 @@ Do not change race, skin tone, hairstyle, hair color, face identity, outfit cate
 Do not add random accessories or remove required ones.
 Do not borrow traits or aesthetics from prior examples, other users, or hidden references.
 Do not improve the image by changing the user’s fashion direction. Improve it by executing their described style better.
+If the current avatar already has a recognizable companion, species identity, body type, or styling direction, preserve those by default.
 
 EDIT INSTRUCTIONS:
 ${normalizedFeedback || 'Refine visuals only while preserving the same character.'}
@@ -365,19 +368,33 @@ export async function POST(req: Request) {
       feedback?: string
       mode?: 'create' | 'reimagine'
       previousImageUrl?: string
+      editCurrentAvatar?: boolean
       forceNewAvatar?: boolean
       identityDescription?: string
     }
 
-    const { answers, style, feedback, mode = 'create', previousImageUrl, forceNewAvatar, identityDescription } = body
+    const {
+      answers,
+      style,
+      feedback,
+      mode = 'create',
+      previousImageUrl,
+      editCurrentAvatar,
+      forceNewAvatar,
+      identityDescription,
+    } = body
     const orderedAnswers =
       answers && typeof answers === 'object' && !Array.isArray(answers)
         ? sanitizeAnswers(answers)
         : []
 
     const sanitizedFeedback = typeof feedback === 'string' ? normalizeFeedback(feedback) : ''
-    const wantsFreshCharacter = forceNewAvatar === true || requestsWholeNewAvatar(sanitizedFeedback)
     const isReimagineMode = mode === 'reimagine'
+    const explicitlyEditCurrent = editCurrentAvatar === true
+    const explicitlyCreateNew = forceNewAvatar === true
+    const inferredFreshCharacter = requestsWholeNewAvatar(sanitizedFeedback)
+    const wantsFreshCharacter =
+      explicitlyCreateNew || (!explicitlyEditCurrent && inferredFreshCharacter)
 
     if (!isReimagineMode && orderedAnswers.length === 0) {
       return NextResponse.json({ error: 'No descriptions provided.' }, { status: 400 })
@@ -387,7 +404,7 @@ export async function POST(req: Request) {
       isReimagineMode &&
       typeof previousImageUrl === 'string' &&
       previousImageUrl.trim().length > 0 &&
-      !wantsFreshCharacter
+      (explicitlyEditCurrent || !wantsFreshCharacter)
 
     const promptAnswers =
       isReimagineMode && wantsFreshCharacter && sanitizedFeedback
@@ -404,38 +421,22 @@ export async function POST(req: Request) {
 
     let response
     if (shouldEditExisting) {
-      try {
-        const imageFile = await loadReferenceImageAsFile(previousImageUrl)
+      const imageFile = await loadReferenceImageAsFile(previousImageUrl)
 
-        response = await openai.images.edit({
-          model: 'gpt-image-1',
-          image: imageFile,
-          prompt: buildReimaginePrompt(
-            sanitizedFeedback,
-            normalizedIdentityDescription || undefined,
-            typeof style === 'string' ? style : undefined,
-          ),
-          size: '1024x1536',
-          quality: 'high',
-          input_fidelity: 'high',
-          output_format: 'png',
-          user: user.id,
-        })
-      } catch (editError) {
-        console.warn('Avatar edit fallback to generate:', editError)
-        const fallbackDescription = [
-          normalizedIdentityDescription || 'Preserve the same character and identity as the current avatar.',
-          sanitizedFeedback || 'Refine visuals only while preserving the same character.',
-        ]
-        response = await openai.images.generate({
-          model: 'gpt-image-1',
-          prompt: buildAvatarPrompt(fallbackDescription, typeof style === 'string' ? style : undefined),
-          size: '1024x1536',
-          quality: 'high',
-          output_format: 'png',
-          user: user.id,
-        })
-      }
+      response = await openai.images.edit({
+        model: 'gpt-image-1',
+        image: imageFile,
+        prompt: buildReimaginePrompt(
+          sanitizedFeedback,
+          normalizedIdentityDescription || undefined,
+          typeof style === 'string' ? style : undefined,
+        ),
+        size: '1024x1536',
+        quality: 'high',
+        input_fidelity: 'high',
+        output_format: 'png',
+        user: user.id,
+      })
     } else {
       response = await openai.images.generate({
         model: 'gpt-image-1',
