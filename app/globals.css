@@ -150,9 +150,9 @@ input::placeholder {
   display: flex;
   flex-direction: column;
 }
-@media (max-width: 767px) {
+@media (max-width: 1024px) {
   .profile-layout { flex-direction: column; }
-  .profile-avatar-col { width: 100%; height: min(50vw, 260px); }
+  .profile-avatar-col { width: 100%; height: min(72vw, 520px); }
   .profile-avatar-fill { min-height: 0; height: 100%; }
   .profile-info-col { padding: 28px 20px 60px; overflow-y: visible; }
 }

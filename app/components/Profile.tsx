@@ -379,10 +379,6 @@ export default function Profile({
       onUpdateHub?.({ avatarUrl: freshUrl })
     } catch (err) {
       console.error('Regen failed:', err)
-      try {
-        const pendingDescription = [bioState, askState, regenFeedback].filter(Boolean).join(' — ')
-        await updateHub({ avatar_prompt_pending: pendingDescription })
-      } catch {}
       setRegenError('Something went wrong. Your attempt was not used — try again.')
       setRegenLoading(false)
     }

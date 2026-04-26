@@ -307,6 +307,34 @@ function sanitizeAnswers(raw: Record<string, unknown>): string[] {
     .filter(Boolean)
 }
 
+async function loadReferenceImageAsFile(previousImageUrl: string) {
+  if (previousImageUrl.startsWith('data:')) {
+    const response = await fetch(previousImageUrl)
+    if (!response.ok) throw new Error('Could not load the current avatar for reimagine.')
+    const blob = await response.blob()
+    return toFile(blob, 'avatar-reference.png')
+  }
+
+  const candidateUrls = Array.from(new Set([
+    previousImageUrl,
+    previousImageUrl.split('?')[0],
+  ].filter(Boolean)))
+
+  for (const url of candidateUrls) {
+    try {
+      const response = await fetch(url, { cache: 'no-store' })
+      if (!response.ok) continue
+      const blob = await response.blob()
+      if (!blob.size) continue
+      return await toFile(blob, 'avatar-reference.png')
+    } catch {
+      continue
+    }
+  }
+
+  throw new Error('Could not load the current avatar for reimagine.')
+}
+
 export async function POST(req: Request) {
   try {
     const authHeader = req.headers.get('authorization')
@@ -365,6 +393,8 @@ export async function POST(req: Request) {
       isReimagineMode && wantsFreshCharacter && sanitizedFeedback
         ? [sanitizedFeedback]
         : orderedAnswers
+    const normalizedIdentityDescription =
+      typeof identityDescription === 'string' ? normalizeDetail(identityDescription) : ''
 
     if (!shouldEditExisting && promptAnswers.length === 0) {
       return NextResponse.json({ error: 'No avatar description provided.' }, { status: 400 })
@@ -374,27 +404,38 @@ export async function POST(req: Request) {
 
     let response
     if (shouldEditExisting) {
-      const imageResponse = await fetch(previousImageUrl)
-      if (!imageResponse.ok) {
-        return NextResponse.json({ error: 'Could not load the current avatar for reimagine.' }, { status: 400 })
-      }
-      const imageBlob = await imageResponse.blob()
-      const imageFile = await toFile(imageBlob, 'avatar-reference.png')
+      try {
+        const imageFile = await loadReferenceImageAsFile(previousImageUrl)
 
-      response = await openai.images.edit({
-        model: 'gpt-image-1',
-        image: imageFile,
-        prompt: buildReimaginePrompt(
-          sanitizedFeedback,
-          typeof identityDescription === 'string' ? identityDescription : undefined,
-          typeof style === 'string' ? style : undefined,
-        ),
-        size: '1024x1536',
-        quality: 'high',
-        input_fidelity: 'high',
-        output_format: 'png',
-        user: user.id,
-      })
+        response = await openai.images.edit({
+          model: 'gpt-image-1',
+          image: imageFile,
+          prompt: buildReimaginePrompt(
+            sanitizedFeedback,
+            normalizedIdentityDescription || undefined,
+            typeof style === 'string' ? style : undefined,
+          ),
+          size: '1024x1536',
+          quality: 'high',
+          input_fidelity: 'high',
+          output_format: 'png',
+          user: user.id,
+        })
+      } catch (editError) {
+        console.warn('Avatar edit fallback to generate:', editError)
+        const fallbackDescription = [
+          normalizedIdentityDescription || 'Preserve the same character and identity as the current avatar.',
+          sanitizedFeedback || 'Refine visuals only while preserving the same character.',
+        ]
+        response = await openai.images.generate({
+          model: 'gpt-image-1',
+          prompt: buildAvatarPrompt(fallbackDescription, typeof style === 'string' ? style : undefined),
+          size: '1024x1536',
+          quality: 'high',
+          output_format: 'png',
+          user: user.id,
+        })
+      }
     } else {
       response = await openai.images.generate({
         model: 'gpt-image-1',
