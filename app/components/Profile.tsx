@@ -262,8 +262,8 @@ export default function Profile({
   const localRegenCount = regenCount % 10
   const attemptsLeft = Math.max(0, MAX_REGEN_ATTEMPTS - localRegenCount)
   const { cycleNumber, daysLeft, hoursLeft, refreshProgress } = getReimagineCycle(hubCreatedAt, cycleNow)
-  const cycleBadgePrimary = attemptsLeft > 0 ? `${CYCLE_DAYS}d` : `${daysLeft}d`
-  const cycleBadgeSecondary = attemptsLeft > 0 ? `${MAX_REGEN_ATTEMPTS}x` : `${hoursLeft}h`
+  const cycleBadgePrimary = `${daysLeft}d`
+  const cycleBadgeSecondary = attemptsLeft > 0 ? `${attemptsLeft}x` : `${hoursLeft}h`
 
   function handleLeavePrompt() {
     setLeaveError('')
