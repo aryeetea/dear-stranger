@@ -705,12 +705,31 @@ export default function Profile({
             {showRegenInput && attemptsLeft > 0 && (
               <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} style={{ marginTop: '12px' }}>
                 <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(255,255,255,0.5)', marginBottom: '8px' }}>Tell the mirror what to change. It will edit your current avatar by default. Describe a completely new avatar only if you want a full replacement.</p>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <input value={regenFeedback} onChange={e => setRegenFeedback(e.target.value)} placeholder="e.g. softer lighting, different outfit, more confident..."
-                    style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(201,168,76,0.2)', borderRadius: '6px', color: 'rgba(255,255,255,0.85)', fontFamily: "'Cormorant Garamond', serif", fontSize: '14px', padding: '8px 12px', outline: 'none', caretColor: '#c9a84c' }}
-                    onKeyDown={e => { if (e.key === 'Enter') void regenerateAvatar() }} />
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '10px', alignItems: 'start' }}>
+                  <textarea
+                    value={regenFeedback}
+                    onChange={e => setRegenFeedback(e.target.value)}
+                    placeholder="Describe exactly what you want the mirror to create or change..."
+                    rows={5}
+                    style={{
+                      width: '100%',
+                      minHeight: '120px',
+                      background: 'rgba(255,255,255,0.06)',
+                      border: '1px solid rgba(201,168,76,0.24)',
+                      borderRadius: '10px',
+                      color: 'rgba(255,255,255,0.92)',
+                      fontFamily: "'Cormorant Garamond', serif",
+                      fontSize: '18px',
+                      lineHeight: 1.55,
+                      padding: '16px 18px',
+                      outline: 'none',
+                      caretColor: '#c9a84c',
+                      resize: 'vertical',
+                      boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03)',
+                    }}
+                  />
                   <button onClick={() => void regenerateAvatar()} disabled={regenLoading}
-                    style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.2em', color: '#c9a84c', padding: '8px 16px', border: '1px solid rgba(201,168,76,0.35)', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase', borderRadius: '6px', whiteSpace: 'nowrap' }}>
+                    style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.2em', color: '#c9a84c', padding: '14px 18px', border: '1px solid rgba(201,168,76,0.35)', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase', borderRadius: '10px', whiteSpace: 'nowrap', minHeight: '52px' }}>
                     Reimagine ✦
                   </button>
                 </div>
