@@ -41,6 +41,12 @@ function normalizeFeedback(value?: string): string {
   return normalizeDetail(value || '').slice(0, 1200)
 }
 
+function softenPromptForImageSafety(value: string): string {
+  return value
+    .replace(/\bpok[eé]mon-style\b/gi, 'cute magical creature-companion')
+    .replace(/\bpok[eé]mon\b/gi, 'whimsical creature-companion')
+}
+
 function looksLikeFullAvatarDescription(feedback: string): boolean {
   const lower = feedback.toLowerCase()
   const wordCount = lower.split(/\s+/).filter(Boolean).length
@@ -245,7 +251,10 @@ function buildBeautyPolishInstruction(details: string, styleKey?: string): strin
 }
 
 function buildAvatarPrompt(detailsInput: string[], styleKey?: string): string {
-  const details = detailsInput.map((a) => normalizeDetail(a)).filter(Boolean).join(', ')
+  const details = detailsInput
+    .map((a) => softenPromptForImageSafety(normalizeDetail(a)))
+    .filter(Boolean)
+    .join(', ')
   const normalizedStyle = normalizeStyleKey(styleKey)
   const backgroundMood = STYLE_DESCRIPTORS[normalizedStyle] || STYLE_DESCRIPTORS.default
   const identityInstruction = buildIdentityInstruction(details)
@@ -297,8 +306,8 @@ ${accuracyGuard}
 }
 
 function buildReimaginePrompt(feedback: string, identityDescription?: string, styleKey?: string) {
-  const normalizedFeedback = normalizeFeedback(feedback)
-  const normalizedIdentity = normalizeDetail(identityDescription || '')
+  const normalizedFeedback = softenPromptForImageSafety(normalizeFeedback(feedback))
+  const normalizedIdentity = softenPromptForImageSafety(normalizeDetail(identityDescription || ''))
   const beautyPolishInstruction = buildBeautyPolishInstruction(`${normalizedIdentity} ${normalizedFeedback}`, styleKey)
   return `
 TASK:
@@ -335,8 +344,8 @@ ${normalizedFeedback || 'Refine visuals only while preserving the same character
 }
 
 function buildPromptFallbackEditPrompt(feedback: string, identityDescription?: string, styleKey?: string) {
-  const normalizedFeedback = normalizeFeedback(feedback)
-  const normalizedIdentity = normalizeDetail(identityDescription || '')
+  const normalizedFeedback = softenPromptForImageSafety(normalizeFeedback(feedback))
+  const normalizedIdentity = softenPromptForImageSafety(normalizeDetail(identityDescription || ''))
   const baseDetails = [normalizedIdentity, normalizedFeedback].filter(Boolean)
   const artStyleInstruction = buildArtStyleInstruction(baseDetails.join(' '), styleKey)
   const beautyPolishInstruction = buildBeautyPolishInstruction(baseDetails.join(' '), styleKey)
