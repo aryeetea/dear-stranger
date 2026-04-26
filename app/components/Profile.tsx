@@ -3,7 +3,27 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { QRCodeSVG } from 'qrcode.react'
-import { updateHub, signOut, deleteAccount, exportMyLetters, uploadAvatarToStorage, getVisitorBook, getMyAvatarBucketImages, type VisitorBookEntry } from '../lib/auth'
+import { updateHub, signOut, deleteAccount, exportMyLetters, uploadAvatarToStorage, getVisitorBook, getMyAvatarBucketImages, deleteAvatarFromStorage, type VisitorBookEntry } from '../lib/auth'
+  // Delete an avatar from history and storage
+  async function handleDeleteAvatar(url: string) {
+    if (!url) return;
+    try {
+      // Remove from storage (if possible)
+      await deleteAvatarFromStorage?.(url);
+    } catch (err) {
+      // Ignore storage errors, still remove from UI
+      console.error('Failed to delete avatar from storage:', err);
+    }
+    // Remove from avatar history
+    const updated = avatarHistory.filter((u) => u !== url);
+    persistAvatarHistory(updated);
+    // If deleting current avatar, clear it
+    if (url === currentAvatarUrl) {
+      setCurrentAvatarUrl('');
+      await updateHub({ avatar_url: '' });
+      onUpdateHub?.({ avatarUrl: '' });
+    }
+  }
 import { supabase } from '../../lib/supabase'
 import { HUB_COLOR_THEMES, HUB_STYLES, HUB_DECORATIONS, HUB_GLOW_LEVELS, type HubColor, type HubStyle, type HubDecoration, type HubGlowIntensity } from './UniverseMap'
 
@@ -850,20 +870,17 @@ export default function Profile({
                 </p>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(84px, 1fr))', gap: '10px' }}>
                   {avatarHistory.map((url, index) => {
-                    const isCurrent = url === currentAvatarUrl
-                    const isBusy = Boolean(restoringAvatar)
+                    const isCurrent = url === currentAvatarUrl;
+                    const isBusy = Boolean(restoringAvatar);
                     return (
-                      <button
+                      <div
                         key={`${url}-${index}`}
-                        onClick={() => void restoreAvatar(url)}
-                        disabled={isCurrent || isBusy}
-                        title={isCurrent ? 'Current avatar' : 'Use this avatar'}
                         style={{
+                          position: 'relative',
                           background: isCurrent ? 'rgba(201,168,76,0.12)' : 'rgba(255,255,255,0.03)',
                           border: `1px solid ${isCurrent ? 'rgba(201,168,76,0.44)' : 'rgba(255,255,255,0.12)'}`,
                           borderRadius: '8px',
                           padding: '6px',
-                          cursor: isCurrent || isBusy ? 'default' : 'pointer',
                           textAlign: 'center',
                         }}
                       >
@@ -876,8 +893,35 @@ export default function Profile({
                         <span style={{ display: 'block', marginTop: '6px', fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.12em', color: isCurrent ? '#c9a84c' : 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>
                           {isCurrent ? 'Current' : restoringAvatar === url ? 'Switching...' : 'Use This'}
                         </span>
-                      </button>
-                    )
+                        {/* Delete button, top right */}
+                        <button
+                          onClick={() => handleDeleteAvatar(url)}
+                          title="Delete this avatar"
+                          disabled={isCurrent || isBusy}
+                          style={{
+                            position: 'absolute',
+                            top: 4,
+                            right: 4,
+                            background: 'rgba(32,28,12,0.82)',
+                            border: '1px solid rgba(201,168,76,0.22)',
+                            color: '#c9a84c',
+                            borderRadius: '50%',
+                            width: 22,
+                            height: 22,
+                            fontSize: 13,
+                            fontFamily: "'Cinzel', serif",
+                            cursor: isCurrent || isBusy ? 'not-allowed' : 'pointer',
+                            opacity: 0.82,
+                            transition: 'opacity 0.2s',
+                            zIndex: 2,
+                          }}
+                          onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
+                          onMouseLeave={e => (e.currentTarget.style.opacity = '0.82')}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    );
                   })}
                 </div>
               </div>

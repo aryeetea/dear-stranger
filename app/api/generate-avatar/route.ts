@@ -186,30 +186,8 @@ function buildAccuracyGuard(details: string): string {
 }
 
 function buildArtStyleInstruction(details: string, styleKey?: string): string {
-  const lower = details.toLowerCase()
-  const normalizedStyle = normalizeStyleKey(styleKey)
-  if (/\barcane\b/.test(lower) || /\barcane animated series\b/.test(lower) || /\b3d cinematic\b/.test(lower)) {
-    return 'High-end cinematic stylized 3D fantasy illustration with painterly lighting, sharp character design, rich atmospheric depth, and prestige animated energy in the spirit of Arcane. Not photoreal. Not flat cartoon.'
-  }
-  if (normalizedStyle === 'modern' || normalizedStyle === 'streetwear') {
-    return 'Cinematic stylized contemporary illustration with believable anatomy, polished editorial styling, rich atmosphere, and strong visual design. Not a photograph, not hyperreal, not flat cartoon.'
-  }
-  if (normalizedStyle === 'futuristic') {
-    return 'Cinematic stylized futuristic illustration with sleek design, believable lighting, strong atmosphere, and premium sci-fi polish. Not photoreal and not flat cartoon.'
-  }
-  if (normalizedStyle === 'royal') {
-    return 'Cinematic stylized regal illustration with luxurious detail, rich atmosphere, elegant character design, and painterly lighting. Not photoreal and not flat cartoon.'
-  }
-  if (normalizedStyle === 'celestial') {
-    return 'Cinematic stylized luminous illustration with airy atmosphere, refined magical elegance, painterly lighting, and rich depth. Not photoreal and not flat cartoon.'
-  }
-  if (normalizedStyle === 'nature') {
-    return 'Cinematic stylized nature-inspired illustration with organic beauty, atmospheric depth, painterly lighting, and grounded elegance. Not photoreal and not flat cartoon.'
-  }
-  if (/\b3d\b/.test(lower)) {
-    return 'Stylized cinematic 3D illustration with believable lighting, painterly atmosphere, and handcrafted polish. Not photoreal and not cheap plastic 3D.'
-  }
-  return 'Semi-realistic cinematic illustration with believable anatomy and lighting, painterly finish, and clear stylization. Not a photograph, not hyperreal, not cartoon.'
+  // Force all avatars to use Arcane 3D style, regardless of user input or styleKey
+  return 'High-end cinematic stylized 3D fantasy illustration with painterly lighting, sharp character design, rich atmospheric depth, and prestige animated energy in the spirit of Arcane. Not photoreal. Not flat cartoon.'
 }
 
 function buildBeautyPolishInstruction(details: string, styleKey?: string): string {

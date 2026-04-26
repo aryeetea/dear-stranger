@@ -1,3 +1,18 @@
+// Delete an avatar image from Supabase storage (avatars bucket)
+export async function deleteAvatarFromStorage(url: string): Promise<void> {
+  if (!url) return;
+  try {
+    // Extract the path after the storage public URL
+    const match = url.match(/\/storage\/v1\/object\/public\/avatars\/(.+)$/);
+    if (!match) return;
+    const path = match[1];
+    const { error } = await supabase.storage.from('avatars').remove([path]);
+    if (error) throw error;
+  } catch (err) {
+    // Log and ignore errors
+    console.error('deleteAvatarFromStorage failed:', err);
+  }
+}
 import { supabase } from '../../lib/supabase'
 import type { HandwritingStyle, EmbellishmentId } from '../lib/letterEnrichments'
 
