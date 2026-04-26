@@ -262,6 +262,8 @@ export default function Profile({
   const localRegenCount = regenCount % 10
   const attemptsLeft = Math.max(0, MAX_REGEN_ATTEMPTS - localRegenCount)
   const { cycleNumber, daysLeft, hoursLeft, refreshProgress } = getReimagineCycle(hubCreatedAt, cycleNow)
+  const cycleBadgePrimary = attemptsLeft > 0 ? `${CYCLE_DAYS}d` : `${daysLeft}d`
+  const cycleBadgeSecondary = attemptsLeft > 0 ? `${MAX_REGEN_ATTEMPTS}x` : `${hoursLeft}h`
 
   function handleLeavePrompt() {
     setLeaveError('')
@@ -672,8 +674,8 @@ export default function Profile({
                     />
                   </svg>
                   <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-                    <span style={{ fontFamily: "'Cinzel', serif", fontSize: '12px', fontWeight: 800, color: '#fffbe6', lineHeight: 1, textShadow: '0 0 10px #ffe07a, 0 0 18px #00ffe7, 0 1px 0 #fff8' }}>{daysLeft}d</span>
-                    <span style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', fontWeight: 800, color: '#00ffe7', letterSpacing: '0.04em', textTransform: 'uppercase', marginTop: '1px', lineHeight: 1, textShadow: '0 0 8px #00ffe7' }}>{hoursLeft}h</span>
+                    <span style={{ fontFamily: "'Cinzel', serif", fontSize: '12px', fontWeight: 800, color: '#fffbe6', lineHeight: 1, textShadow: '0 0 10px #ffe07a, 0 0 18px #00ffe7, 0 1px 0 #fff8' }}>{cycleBadgePrimary}</span>
+                    <span style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', fontWeight: 800, color: '#00ffe7', letterSpacing: '0.04em', textTransform: 'uppercase', marginTop: '1px', lineHeight: 1, textShadow: '0 0 8px #00ffe7' }}>{cycleBadgeSecondary}</span>
                   </div>
                 </div>
                 <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.25em', color: '#00ffe7', textTransform: 'uppercase', textShadow: '0 0 10px #ffe07a, 0 0 18px #00ffe7, 0 1px 0 #fff8' }}>
@@ -693,11 +695,7 @@ export default function Profile({
                 }}>
                 ✦ Reimagine{attemptsLeft > 0 ? ` · ${attemptsLeft} left` : ''}
               </button>
-              {attemptsLeft > 0 ? (
-                <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(255,255,255,0.46)' }}>
-                  You get 2 reimagines every 20 days. Switching back to a past avatar below is always free.
-                </p>
-              ) : (
+              {attemptsLeft <= 0 && (
                 <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(255,255,255,0.46)' }}>
                   Your 20-day reimagines are used. The next one opens in {daysLeft}d {hoursLeft}h. You can still restore any past avatar below for free.
                 </p>
