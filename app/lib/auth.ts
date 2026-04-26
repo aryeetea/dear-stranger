@@ -909,18 +909,27 @@ export async function getMyAvatarBucketImages(): Promise<string[]> {
   if (userError) throw userError
   if (!user) throw new Error('No user found')
 
-  const { data, error } = await supabase.storage
-    .from('avatars')
-    .list(`avatars/${user.id}`, {
-      limit: 20,
-      sortBy: { column: 'name', order: 'desc' },
-    })
+  async function listPrefix(prefix: string) {
+    const { data, error } = await supabase.storage
+      .from('avatars')
+      .list(prefix, {
+        limit: 20,
+        sortBy: { column: 'name', order: 'desc' },
+      })
 
-  if (error) throw error
+    if (error) throw error
 
-  return (data || [])
-    .filter((file) => file.name && !file.name.endsWith('/'))
-    .map((file) => supabase.storage.from('avatars').getPublicUrl(`avatars/${user.id}/${file.name}`).data.publicUrl)
+    return (data || [])
+      .filter((file) => file.name && !file.name.endsWith('/'))
+      .map((file) => supabase.storage.from('avatars').getPublicUrl(`${prefix}/${file.name}`).data.publicUrl)
+  }
+
+  const [rootImages, legacyImages] = await Promise.all([
+    listPrefix(user.id),
+    listPrefix(`avatars/${user.id}`),
+  ])
+
+  return Array.from(new Set([...rootImages, ...legacyImages]))
 }
 
 export async function sendLetter(
@@ -1194,7 +1203,7 @@ export async function uploadAvatarToStorage(
     byteArray[i] = byteCharacters.charCodeAt(i)
   }
 
-  const filePath = `avatars/${userId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`
+  const filePath = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`
 
   const { error } = await supabase.storage.from('avatars').upload(filePath, byteArray, {
     contentType: 'image/jpeg',
