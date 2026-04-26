@@ -4,26 +4,6 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties } from 're
 import { motion, AnimatePresence } from 'framer-motion'
 import { QRCodeSVG } from 'qrcode.react'
 import { updateHub, signOut, deleteAccount, exportMyLetters, uploadAvatarToStorage, getVisitorBook, getMyAvatarBucketImages, deleteAvatarFromStorage, type VisitorBookEntry } from '../lib/auth'
-  // Delete an avatar from history and storage
-  async function handleDeleteAvatar(url: string) {
-    if (!url) return;
-    try {
-      // Remove from storage (if possible)
-      await deleteAvatarFromStorage?.(url);
-    } catch (err) {
-      // Ignore storage errors, still remove from UI
-      console.error('Failed to delete avatar from storage:', err);
-    }
-    // Remove from avatar history
-    const updated = avatarHistory.filter((u) => u !== url);
-    persistAvatarHistory(updated);
-    // If deleting current avatar, clear it
-    if (url === currentAvatarUrl) {
-      setCurrentAvatarUrl('');
-      await updateHub({ avatar_url: '' });
-      onUpdateHub?.({ avatarUrl: '' });
-    }
-  }
 import { supabase } from '../../lib/supabase'
 import { HUB_COLOR_THEMES, HUB_STYLES, HUB_DECORATIONS, HUB_GLOW_LEVELS, type HubColor, type HubStyle, type HubDecoration, type HubGlowIntensity } from './UniverseMap'
 
@@ -177,6 +157,24 @@ export default function Profile({
 
   function rememberAvatar(url?: string, extras: string[] = []) {
     persistAvatarHistory([url || '', ...extras, ...avatarHistory])
+  }
+
+  async function handleDeleteAvatar(url: string) {
+    if (!url) return
+    try {
+      await deleteAvatarFromStorage?.(url)
+    } catch (err) {
+      console.error('Failed to delete avatar from storage:', err)
+    }
+
+    const updated = avatarHistory.filter((avatar) => avatar !== url)
+    persistAvatarHistory(updated)
+
+    if (url === currentAvatarUrl) {
+      setCurrentAvatarUrl('')
+      await updateHub({ avatar_url: '' })
+      onUpdateHub?.({ avatarUrl: '' })
+    }
   }
 
   useEffect(() => {
