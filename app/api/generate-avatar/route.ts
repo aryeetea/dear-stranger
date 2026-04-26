@@ -197,43 +197,6 @@ function buildArtStyleInstruction(details: string, styleKey?: string): string {
   ].join('\n')
 }
 
-function buildBeautyPolishInstruction(details: string, styleKey?: string): string {
-  const lower = details.toLowerCase()
-  const normalizedStyle = normalizeStyleKey(styleKey)
-  const lines = [
-    'Make the character feel like the most beautiful, visually striking, fully realized version of what the user described.',
-    'Elevate styling, fabric detail, color harmony, silhouette, lighting, and atmosphere without changing any explicitly requested traits.',
-    'Favor main-character energy, theme-appropriate polish, strong composition, and intentional beauty over bland or generic results.',
-    'Do not default to any repeated palette, signature accent color, or recurring lighting treatment across different users.',
-    'Only use colors that are explicitly described by the user or that naturally follow from the user’s own concept, setting, and mood.',
-    'If the user did not specify colors, choose a palette that fits their concept without relying on a fixed house palette.',
-  ]
-
-  if (normalizedStyle === 'fantasy' || normalizedStyle === 'fantasy-modern' || normalizedStyle === 'celestial' || normalizedStyle === 'royal' || normalizedStyle === 'nature' || /\bpixie\b|\bfairy\b|\belf\b|\bmage\b|\bqueen\b|\bprincess\b/.test(lower)) {
-    lines.push('If the concept is fantasy, render it as high-fantasy character design with glamorous, art-directed polish and magical elegance.')
-  }
-  if (normalizedStyle === 'modern' || normalizedStyle === 'streetwear' || /\bstreetwear\b|\bhoodie\b|\bcargo\b|\bmodern\b/.test(lower)) {
-    lines.push('If the concept is modern or streetwear, make it fashion-editorial, cool, and sharply styled rather than plain everyday clothing.')
-  }
-  if (normalizedStyle === 'futuristic') {
-    lines.push('If the concept is futuristic, make it sleek, intentional, high-design, and visually advanced rather than default fantasy.')
-  }
-  if (normalizedStyle === 'royal') {
-    lines.push('If the concept is royal, emphasize elegance, luxury, stature, and refined visual richness.')
-  }
-  if (normalizedStyle === 'nature') {
-    lines.push('If the concept is nature-inspired, keep it organic, graceful, grounded, and naturally beautiful rather than default arcane fantasy.')
-  }
-  if (/\bhappy\b|\bjoyful\b|\bpretty\b|\bsoft\b/.test(lower)) {
-    lines.push('If the user asked for a happy or gentle mood, keep the beauty soft and luminous without forcing any default color family.')
-  }
-  if (/\bdark\b|\bmysterious\b|\bseductive\b|\bsexy\b/.test(lower)) {
-    lines.push('If the user asked for a darker or more seductive mood, keep it moody and glamorous without forcing any default color family.')
-  }
-
-  return lines.join('\n')
-}
-
 function buildAvatarPrompt(detailsInput: string[], styleKey?: string): string {
   const details = detailsInput
     .map((a) => softenPromptForImageSafety(normalizeDetail(a)))
@@ -244,7 +207,6 @@ function buildAvatarPrompt(detailsInput: string[], styleKey?: string): string {
   const identityInstruction = buildIdentityInstruction(details)
   const accuracyGuard = buildAccuracyGuard(details)
   const artStyleInstruction = buildArtStyleInstruction(details, styleKey)
-  const beautyPolishInstruction = buildBeautyPolishInstruction(details, styleKey)
 
   return `
 SUBJECT:
@@ -252,21 +214,19 @@ Render this character exactly as described: ${details || 'a mysterious figure'}.
 
 IDENTITY:
 ${identityInstruction}
+The user description is the source of truth. If any later instruction conflicts with the user description, follow the user description.
 
 CLOTHING, HAIR, FEATURES:
 Render every clothing item, hairstyle, hair color, skin tone, glasses, shoes, companion, and held object exactly as described.
 Do not substitute, simplify, modernize, fantasy-wash, or pretty-wash away specific details.
 Do not let the background or style override the user's outfit, hair, skin, race, or companion description.
 Do not borrow traits, species, outfits, colors, companions, or aesthetics from prior examples, other users, or hidden references.
+Do not invent extra accessories, props, hairstyles, makeup, tattoos, armor pieces, jewelry, companions, or background story elements unless the user asked for them.
 
 ART STYLE:
 ${artStyleInstruction}
 Lean toward bold stylization over realism in every part of the rendering.
 No watermarks. No text. No labels.
-
-BEAUTY AND POLISH:
-${beautyPolishInstruction}
-Beautify the character through better execution of the user’s own fashion and identity, not by changing their outfit category or replacing their styling with a generic pretty look.
 
 COMPOSITION:
 Vertical portrait, always full body, upright, facing forward by default.
@@ -280,6 +240,7 @@ BACKGROUND:
 ${backgroundMood}
 Use a coherent place with environmental depth, not a generic glow field or abstract void.
 Avoid halos, magic circles, random signage, UI, labels, or unrelated accessories unless explicitly requested.
+If the user did not describe a background, keep the background supportive and secondary so the avatar itself stays faithful and readable.
 
 COMPANION:
 If a companion, pet, familiar, or creature was described, it is required in the image and must be clearly visible.
@@ -296,7 +257,6 @@ function buildVisionAnchoredEditPrompt(currentAvatarSummary: string, feedback: s
   const normalizedSummary = softenPromptForImageSafety(normalizeDetail(currentAvatarSummary))
   const combinedDetails = [normalizedIdentity, normalizedSummary, normalizedFeedback].filter(Boolean).join(' ')
   const artStyleInstruction = buildArtStyleInstruction(combinedDetails, styleKey)
-  const beautyPolishInstruction = buildBeautyPolishInstruction(combinedDetails, styleKey)
   const accuracyGuard = buildAccuracyGuard(combinedDetails)
 
   return `
@@ -314,19 +274,19 @@ ${normalizedFeedback || 'Refine the avatar while preserving the same character.'
 
 RULES:
 This is an edit, not a new person.
+The original user description is the source of truth. If the current image and the original description conflict, prefer the original user description unless the edit request explicitly changes it.
 Preserve the same person, same face identity, same species, same skin tone, same hairstyle, same body type, same overall styling direction, and same magical/fantasy role unless the user explicitly asked to change one of those things.
 Do not drift into a different ethnicity, a different species, a different hairstyle, or unrelated fashion.
 Keep the result recognizably the same avatar.
+If the original user description included a companion, familiar, pet, or creature, restore or preserve it even if the current avatar image under-emphasized it or omitted it.
 If the user asked to add or restore a companion, the companion is required and must be clearly visible.
 If the user asked for the companion to feel like it is flying, circling, fluttering, or orbiting, show that motion clearly and intentionally.
 Do not omit the companion when it was requested.
+Do not invent extra accessories, props, hairstyles, makeup, tattoos, armor pieces, jewelry, companions, or design elements unless the user asked for them or the edit request explicitly adds them.
 
 STYLE:
 ${artStyleInstruction}
 Lean toward bold stylization over realism in every part of the rendering.
-
-BEAUTY AND POLISH:
-${beautyPolishInstruction}
 
 COMPOSITION:
 Keep it vertical, full body, upright, and clearly readable unless the user explicitly asked for another crop.
@@ -440,12 +400,12 @@ export async function POST(req: Request) {
       previousImageUrl.trim().length > 0 &&
       (explicitlyEditCurrent || !wantsFreshCharacter)
 
-    const promptAnswers =
-      isReimagineMode && wantsFreshCharacter && sanitizedFeedback
-        ? [sanitizedFeedback]
-        : orderedAnswers
     const normalizedIdentityDescription =
       typeof identityDescription === 'string' ? normalizeDetail(identityDescription) : ''
+    const promptAnswers =
+      isReimagineMode && wantsFreshCharacter && sanitizedFeedback
+        ? [normalizedIdentityDescription, sanitizedFeedback].filter(Boolean)
+        : orderedAnswers
 
     if (!shouldEditExisting && promptAnswers.length === 0) {
       return NextResponse.json({ error: 'No avatar description provided.' }, { status: 400 })

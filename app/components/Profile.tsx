@@ -352,10 +352,13 @@ export default function Profile({
       setRegenLoading(true); setShowRegenInput(false)
       // If there's no existing avatar but we have the original description, generate fresh
       const hasExistingAvatar = Boolean(currentAvatarUrl)
+      const baseAnswers = avatarPromptPending
+        ? { 0: avatarPromptPending, 1: bioState, 2: askState }
+        : { 0: bioState, 1: askState }
       const requestBody = !hasExistingAvatar && avatarPromptPending
         ? { answers: { 0: avatarPromptPending }, feedback: regenFeedback || undefined, mode: 'create', identityDescription: avatarPromptPending || undefined }
         : {
-            answers: { 0: bioState, 1: askState },
+            answers: baseAnswers,
             feedback: regenFeedback,
             mode: 'reimagine',
             previousImageUrl: currentAvatarUrl || undefined,
@@ -873,6 +876,9 @@ export default function Profile({
                     return (
                       <div
                         key={`${url}-${index}`}
+                        onClick={() => {
+                          if (!isCurrent && !isBusy) void restoreAvatar(url)
+                        }}
                         style={{
                           position: 'relative',
                           background: isCurrent ? 'rgba(201,168,76,0.12)' : 'rgba(255,255,255,0.03)',
@@ -880,6 +886,16 @@ export default function Profile({
                           borderRadius: '8px',
                           padding: '6px',
                           textAlign: 'center',
+                          cursor: isCurrent || isBusy ? 'default' : 'pointer',
+                          transition: 'transform 0.18s ease, border-color 0.18s ease, background 0.18s ease',
+                        }}
+                        role="button"
+                        tabIndex={isCurrent || isBusy ? -1 : 0}
+                        onKeyDown={e => {
+                          if ((e.key === 'Enter' || e.key === ' ') && !isCurrent && !isBusy) {
+                            e.preventDefault()
+                            void restoreAvatar(url)
+                          }
                         }}
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -893,7 +909,10 @@ export default function Profile({
                         </span>
                         {/* Delete button, top right */}
                         <button
-                          onClick={() => handleDeleteAvatar(url)}
+                          onClick={e => {
+                            e.stopPropagation()
+                            void handleDeleteAvatar(url)
+                          }}
                           title="Delete this avatar"
                           disabled={isCurrent || isBusy}
                           style={{
