@@ -78,6 +78,19 @@ export type VisitorBookEntry = {
   visitedAt: string
 }
 
+type AvatarHistoryRow = {
+  id: string
+  user_id: string
+  image_url: string
+  created_at: string
+}
+
+export type AvatarHistoryEntry = {
+  id: string
+  imageUrl: string
+  createdAt: string
+}
+
 function normalizeHubName(hubName: string) {
   return hubName.trim().toLowerCase()
 }
@@ -831,6 +844,60 @@ export async function updateHub(updates: {
 
   if (error) throw error
   return data
+}
+
+export async function getMyAvatarHistory(): Promise<AvatarHistoryEntry[]> {
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser()
+
+  if (userError) throw userError
+  if (!user) throw new Error('No user found')
+
+  const { data, error } = await supabase
+    .from('avatar_history')
+    .select('id, image_url, created_at')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+    .limit(12)
+
+  if (error) throw error
+
+  return ((data || []) as AvatarHistoryRow[]).map((row) => ({
+    id: row.id,
+    imageUrl: row.image_url,
+    createdAt: row.created_at,
+  }))
+}
+
+export async function saveAvatarHistoryEntry(imageUrl: string): Promise<void> {
+  const cleanUrl = imageUrl.trim()
+  if (!cleanUrl) return
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser()
+
+  if (userError) throw userError
+  if (!user) throw new Error('No user found')
+
+  const { data: existing, error: existingError } = await supabase
+    .from('avatar_history')
+    .select('id')
+    .eq('user_id', user.id)
+    .eq('image_url', cleanUrl)
+    .maybeSingle()
+
+  if (existingError) throw existingError
+  if (existing) return
+
+  const { error } = await supabase
+    .from('avatar_history')
+    .insert({ user_id: user.id, image_url: cleanUrl })
+
+  if (error) throw error
 }
 
 export async function sendLetter(

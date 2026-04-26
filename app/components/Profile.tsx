@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { QRCodeSVG } from 'qrcode.react'
-import { updateHub, signOut, deleteAccount, exportMyLetters, uploadAvatarToStorage, getVisitorBook, type VisitorBookEntry } from '../lib/auth'
+import { updateHub, signOut, deleteAccount, exportMyLetters, uploadAvatarToStorage, getVisitorBook, getMyAvatarHistory, saveAvatarHistoryEntry, type VisitorBookEntry } from '../lib/auth'
 import { supabase } from '../../lib/supabase'
 import { HUB_COLOR_THEMES, HUB_STYLES, HUB_DECORATIONS, HUB_GLOW_LEVELS, type HubColor, type HubStyle, type HubDecoration, type HubGlowIntensity } from './UniverseMap'
 
@@ -156,30 +156,75 @@ export default function Profile({
   const [exportedText, setExportedText] = useState('')
   const [deleteError, setDeleteError] = useState('')
 
-  function persistAvatarHistory(nextHistory: string[]) {
+  const persistAvatarHistory = useCallback((nextHistory: string[]) => {
     const normalized = normalizeAvatarHistory(nextHistory)
     setAvatarHistory(normalized)
     if (userId && typeof window !== 'undefined') {
       localStorage.setItem(makeAvatarHistoryKey(userId), JSON.stringify(normalized))
     }
-  }
+  }, [userId])
 
   function rememberAvatar(url?: string, extras: string[] = []) {
     persistAvatarHistory([url || '', ...extras, ...avatarHistory])
   }
 
   useEffect(() => {
+    async function loadUser() {
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+        setUserId(user.id)
+      } catch {}
+    }
+    void loadUser()
+  }, [])
+
+  useEffect(() => {
+    if (!userId || typeof window === 'undefined') return
+    try {
+      const raw = localStorage.getItem(makeAvatarHistoryKey(userId))
+      const parsed = raw ? JSON.parse(raw) as unknown : []
+      const urls = Array.isArray(parsed)
+        ? normalizeAvatarHistory([currentAvatarUrl, ...parsed.filter((value): value is string => typeof value === 'string')])
+        : normalizeAvatarHistory([currentAvatarUrl])
+      setAvatarHistory(urls)
+    } catch {
+      setAvatarHistory(normalizeAvatarHistory([currentAvatarUrl]))
+    }
+  }, [userId, currentAvatarUrl])
+
+  useEffect(() => {
+    if (!userId) return
+    async function loadAvatarHistory() {
+      try {
+        const entries = await getMyAvatarHistory()
+        if (!entries.length) {
+          if (currentAvatarUrl) {
+            await saveAvatarHistoryEntry(currentAvatarUrl)
+          }
+          return
+        }
+        persistAvatarHistory([currentAvatarUrl, ...entries.map((entry) => entry.imageUrl)])
+      } catch (err) {
+        console.error('Failed to load avatar history:', err)
+      }
+    }
+    void loadAvatarHistory()
+  }, [userId, currentAvatarUrl, persistAvatarHistory])
+
+  useEffect(() => {
     // Only update local state if the prop actually changed (not just on every mount)
     if (initialAvatarUrl && initialAvatarUrl !== lastAvatarProp) {
       setCurrentAvatarUrl(initialAvatarUrl)
       setLastAvatarProp(initialAvatarUrl)
+      persistAvatarHistory([initialAvatarUrl, ...avatarHistory])
     }
     // If avatar is cleared (e.g. on onboarding), also clear local state
     if (!initialAvatarUrl && lastAvatarProp) {
       setCurrentAvatarUrl('')
       setLastAvatarProp('')
     }
-  }, [initialAvatarUrl, lastAvatarProp])
+  }, [initialAvatarUrl, lastAvatarProp, avatarHistory, userId, persistAvatarHistory])
 
   useEffect(() => {
     if (typeof window !== 'undefined') setAppUrl(getWelcomeUrl(window.location.origin))
@@ -332,11 +377,14 @@ export default function Profile({
       // ── Show the new image immediately — don't wait for storage upload ──
       // Encode: cycleNumber * 10 + (localRegenCount + 1)
       const newCount = cycleNumber * 10 + (localRegenCount + 1)
+      const previousAvatar = currentAvatarUrl
       setCurrentAvatarUrl(data.imageUrl)
       setRegenCount(newCount)
       setRegenFeedback('')
       setForceNewAvatar(false)
       setRegenLoading(false)
+      rememberAvatar(data.imageUrl, previousAvatar ? [previousAvatar] : [])
+      void saveAvatarHistoryEntry(data.imageUrl).catch((err) => console.error('Failed to save avatar history entry:', err))
 
       // ── Upload to Storage in the background ──
       const { data: { user } } = await supabase.auth.getUser()
@@ -347,6 +395,8 @@ export default function Profile({
       // Keep showing the fresh base64 locally — don't swap to the same-path URL
       // (browser would serve cached old image). Update DB + parent with busted URL.
       await updateHub({ avatar_url: freshUrl, regen_count: newCount, avatar_prompt_pending: null })
+      rememberAvatar(freshUrl)
+      await saveAvatarHistoryEntry(freshUrl)
       onUpdateHub?.({ avatarUrl: freshUrl })
     } catch (err) {
       console.error('Regen failed:', err)
@@ -356,6 +406,24 @@ export default function Profile({
       } catch {}
       setRegenError('Something went wrong. Your attempt was not used — try again.')
       setRegenLoading(false)
+    }
+  }
+
+  async function restoreAvatar(url: string) {
+    if (!url || url === currentAvatarUrl || restoringAvatar) return
+    try {
+      setRestoringAvatar(url)
+      setRegenError('')
+      setCurrentAvatarUrl(url)
+      await updateHub({ avatar_url: url })
+      rememberAvatar(url)
+      await saveAvatarHistoryEntry(url)
+      onUpdateHub?.({ avatarUrl: url })
+    } catch (err) {
+      console.error('Restore avatar failed:', err)
+      setRegenError('Could not switch back to that avatar right now.')
+    } finally {
+      setRestoringAvatar('')
     }
   }
 
@@ -663,6 +731,46 @@ export default function Profile({
                   <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(220,100,100,0.85)', marginTop: '8px' }}>{regenError}</p>
                 )}
               </motion.div>
+            )}
+
+            {avatarHistory.length > 1 && (
+              <div style={{ marginTop: '18px' }}>
+                <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.22em', color: 'rgba(255,255,255,0.34)', textTransform: 'uppercase', marginBottom: '10px' }}>
+                  Past Avatars
+                </p>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(84px, 1fr))', gap: '10px' }}>
+                  {avatarHistory.map((url, index) => {
+                    const isCurrent = url === currentAvatarUrl
+                    const isBusy = Boolean(restoringAvatar)
+                    return (
+                      <button
+                        key={`${url}-${index}`}
+                        onClick={() => void restoreAvatar(url)}
+                        disabled={isCurrent || isBusy}
+                        title={isCurrent ? 'Current avatar' : 'Use this avatar'}
+                        style={{
+                          background: isCurrent ? 'rgba(201,168,76,0.12)' : 'rgba(255,255,255,0.03)',
+                          border: `1px solid ${isCurrent ? 'rgba(201,168,76,0.44)' : 'rgba(255,255,255,0.12)'}`,
+                          borderRadius: '8px',
+                          padding: '6px',
+                          cursor: isCurrent || isBusy ? 'default' : 'pointer',
+                          textAlign: 'center',
+                        }}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={url}
+                          alt={isCurrent ? 'Current avatar' : `Saved avatar ${index + 1}`}
+                          style={{ width: '100%', aspectRatio: '3 / 4', objectFit: 'cover', borderRadius: '6px', display: 'block' }}
+                        />
+                        <span style={{ display: 'block', marginTop: '6px', fontFamily: "'Cinzel', serif", fontSize: '7px', letterSpacing: '0.12em', color: isCurrent ? '#c9a84c' : 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>
+                          {isCurrent ? 'Current' : restoringAvatar === url ? 'Switching...' : 'Use This'}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
             )}
           </div>
 
