@@ -5,9 +5,6 @@ import { createClient } from '@supabase/supabase-js'
 
 export const maxDuration = 120
 
-// ---------------------------------------------------------------------------
-// STYLE DESCRIPTORS — background/mood only, never override clothing or hair
-// ---------------------------------------------------------------------------
 const STYLE_DESCRIPTORS: Record<string, string> = {
   fantasy:
     'Background mood: a grounded fantasy environment with real setting detail such as a forest path, quiet courtyard, stone hall, cliffside, market lane, or camp at dusk. Rich atmosphere, but not abstract or mystical by default.',
@@ -27,9 +24,6 @@ const STYLE_DESCRIPTORS: Record<string, string> = {
     'Background mood: a natural environment with real landscape detail such as forest clearings, coastlines, gardens, mountains, rain-soaked paths, or golden-hour trees.',
 }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
 function normalizeDetail(value: string): string {
   return value.replace(/\s+/g, ' ').replace(/^[,.;:\s]+|[,.;:\s]+$/g, '').trim()
 }
@@ -71,9 +65,6 @@ function buildIdentityInstruction(details: string): string {
   return 'GENDER: Preserve the gender, role, and identity words the user provided. Never swap roles (e.g. princess → prince).'
 }
 
-// ---------------------------------------------------------------------------
-// Prompt builder — user description is ALWAYS first and most specific
-// ---------------------------------------------------------------------------
 function buildAvatarPrompt(answers: string[], styleKey?: string): string {
   const details = answers.map((a) => normalizeDetail(a)).filter(Boolean).join(', ')
   const identityInstruction = buildIdentityInstruction(details)
@@ -132,10 +123,11 @@ Do not omit it. Do not replace it with a different animal or creature.
 Keep the companion visually present with the character, clearly readable in the portrait, and consistent with the user's description.
 Treat the companion as part of the avatar identity, not as background decoration.
 
-FINAL CHECK:
-One upright full-body character. Exact clothing and hair as described.
-If a companion was described, it must also be visible in the final image.
-No text, no labels, no UI chrome.
+FINAL REMINDER — HIGHEST PRIORITY:
+The character must look EXACTLY like this: ${details || 'a mysterious figure'}
+This overrides all style, background, and mood instructions above.
+Skin tone, hair, clothing, and identity must match this description precisely.
+Do not substitute, reimagine, or stylize away from these specifics.
 If the output would contradict the user's race, skin tone, hairstyle, or outfit, regenerate internally and correct it before finalizing.
 `.trim()
 }
@@ -170,22 +162,15 @@ Do not drop an existing companion/pet unless the user explicitly asked for that 
 `.trim()
 }
 
-// ---------------------------------------------------------------------------
-// Validate and sanitize answers to prevent prompt injection and oversized input
-// ---------------------------------------------------------------------------
 function sanitizeAnswers(raw: Record<string, unknown>): string[] {
   return Object.entries(raw)
     .sort(([a], [b]) => Number(a) - Number(b))
-    .map(([, val]) => String(val).slice(0, 300)) // cap each answer at 300 chars
+    .map(([, val]) => String(val).slice(0, 300))
     .filter(Boolean)
 }
 
-// ---------------------------------------------------------------------------
-// Route handler
-// ---------------------------------------------------------------------------
 export async function POST(req: Request) {
   try {
-    // 1. Auth
     const authHeader = req.headers.get('authorization')
     const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null
     if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -206,7 +191,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // 2. Parse & validate body
     const body = (await req.json()) as {
       answers?: Record<string, unknown>
       style?: string
@@ -228,7 +212,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'No descriptions provided.' }, { status: 400 })
     }
 
-    // Sanitize style input
     const sanitizedStyle = typeof style === 'string' ? style.slice(0, 100) : undefined
     const sanitizedFeedback = typeof feedback === 'string' ? normalizeFeedback(feedback) : ''
     const shouldEditExisting =
@@ -238,7 +221,6 @@ export async function POST(req: Request) {
       forceNewAvatar !== true &&
       !requestsWholeNewAvatar(sanitizedFeedback)
 
-    // 3. Generate image
     const openaiKey = process.env.OPENAI_API_KEY
     if (!openaiKey) return NextResponse.json({ error: 'Missing API Key' }, { status: 500 })
 
@@ -277,7 +259,6 @@ export async function POST(req: Request) {
 
     const image = response.data?.[0]
 
-    // 5. Guard against empty response
     if (!image?.b64_json) {
       return NextResponse.json({ error: 'Image generation returned no data.' }, { status: 502 })
     }

@@ -7,14 +7,10 @@ import { updateHub, signOut, deleteAccount, exportMyLetters, uploadAvatarToStora
 import { supabase } from '../../lib/supabase'
 import { HUB_COLOR_THEMES, HUB_STYLES, HUB_DECORATIONS, HUB_GLOW_LEVELS, type HubColor, type HubStyle, type HubDecoration, type HubGlowIntensity } from './UniverseMap'
 
-const MAX_REGEN_ATTEMPTS = 2
-
+const MAX_REGEN_ATTEMPTS = 1
 type DeleteStep = 'idle' | 'exporting' | 'exported' | 'deleting' | 'deleted'
 type SanctumPanel = 'appearance' | 'visitors' | 'settings' | 'share'
-
-// regen_count is encoded as: cycleNumber * 10 + localRegenCount
-// This lets us detect which cycle the regens belong to using a single DB integer.
-const CYCLE_DAYS = 90
+const CYCLE_DAYS = 7
 const DAY_MS = 1000 * 60 * 60 * 24
 const DEFAULT_WELCOME_URL = 'https://dear-stranger.vercel.app/?welcome=1'
 const MAX_AVATAR_HISTORY = 8
@@ -44,28 +40,22 @@ function getLocalDayProgress(nowMs: number) {
   return (nowMs - startOfToday) / (startOfTomorrow - startOfToday)
 }
 
-function getMirrorCycle(createdAt?: string, nowMs = Date.now()) {
-  if (!createdAt) return { cycleNumber: 0, daysLeft: CYCLE_DAYS, hoursLeft: 0, refreshProgress: 0 }
+function getReimagineCycle(createdAt?: string, nowMs = Date.now()) {
+  if (!createdAt) return { cycleNumber: 0, daysLeft: CYCLE_DAYS, hoursLeft: 0 }
   const createdDate = new Date(createdAt)
-  if (!Number.isFinite(createdDate.getTime())) return { cycleNumber: 0, daysLeft: CYCLE_DAYS, hoursLeft: 0, refreshProgress: 0 }
+  if (!Number.isFinite(createdDate.getTime())) return { cycleNumber: 0, daysLeft: CYCLE_DAYS, hoursLeft: 0 }
 
   const nowDate = new Date(nowMs)
   const localDaysSinceCreation = Math.max(0, getLocalDayIndex(nowDate) - getLocalDayIndex(createdDate))
   const cycleNumber = Math.floor(localDaysSinceCreation / CYCLE_DAYS)
-  const daysInCycle = localDaysSinceCreation % CYCLE_DAYS
   const dayProgress = getLocalDayProgress(nowMs)
-  const nextCycleStart = new Date(
-    createdDate.getFullYear(),
-    createdDate.getMonth(),
-    createdDate.getDate() + (cycleNumber + 1) * CYCLE_DAYS,
-  ).getTime()
-  const totalHoursLeft = Math.max(1, Math.ceil((nextCycleStart - nowMs) / (1000 * 60 * 60)))
+  const daysInCycle = localDaysSinceCreation % CYCLE_DAYS
+  const totalHoursLeft = Math.max(1, Math.ceil(((CYCLE_DAYS - daysInCycle - dayProgress) * DAY_MS) / (1000 * 60 * 60)))
 
   return {
     cycleNumber,
     daysLeft: Math.floor(totalHoursLeft / 24),
     hoursLeft: totalHoursLeft % 24,
-    refreshProgress: Math.min(100, ((daysInCycle + dayProgress) / CYCLE_DAYS) * 100),
   }
 }
 
@@ -91,7 +81,6 @@ export default function Profile({
   const [currentAvatarUrl, setCurrentAvatarUrl] = useState(initialAvatarUrl || '')
   // Track last prop value to only update if it changes
   const [lastAvatarProp, setLastAvatarProp] = useState(initialAvatarUrl || '')
-  // regen_count is encoded: cycleNumber*10 + localRegenCount
   const [regenCount, setRegenCount] = useState(initialRegenCount ?? 0)
   const [cycleNow, setCycleNow] = useState(() => Date.now())
   const [regenLoading, setRegenLoading] = useState(false)
@@ -256,12 +245,11 @@ export default function Profile({
     loadRegenCount()
   }, [])
 
-  // ── Auto-reset regen count when a new 90-day cycle begins ──
   useEffect(() => {
     if (!hubCreatedAt) return
-    const local = regenCount % 10
-    if (local < MAX_REGEN_ATTEMPTS) return // still have attempts, nothing to reset
-    const cycle = getMirrorCycle(hubCreatedAt, cycleNow).cycleNumber
+    const localCount = regenCount % 10
+    if (localCount < MAX_REGEN_ATTEMPTS) return
+    const cycle = getReimagineCycle(hubCreatedAt, cycleNow).cycleNumber
     const storedCycle = Math.floor(regenCount / 10)
     if (cycle > storedCycle) {
       const newCount = cycle * 10
@@ -270,12 +258,9 @@ export default function Profile({
     }
   }, [cycleNow, hubCreatedAt, regenCount])
 
-  // Decode the encoded regen_count
   const localRegenCount = regenCount % 10
-  const attemptsLeft = MAX_REGEN_ATTEMPTS - localRegenCount
-
-  // Compute real cycle info from hub creation date
-  const { cycleNumber, daysLeft, hoursLeft, refreshProgress } = getMirrorCycle(hubCreatedAt, cycleNow)
+  const attemptsLeft = Math.max(0, MAX_REGEN_ATTEMPTS - localRegenCount)
+  const { cycleNumber, daysLeft, hoursLeft } = getReimagineCycle(hubCreatedAt, cycleNow)
 
   function handleLeavePrompt() {
     setLeaveError('')
@@ -339,7 +324,7 @@ export default function Profile({
   }
 
   async function regenerateAvatar() {
-    if (localRegenCount >= MAX_REGEN_ATTEMPTS || regenLoading) return
+    if (regenLoading || attemptsLeft <= 0) return
     setRegenError('')
     try {
       setRegenLoading(true); setShowRegenInput(false)
@@ -369,8 +354,6 @@ export default function Profile({
       if (!res.ok || data.error) throw new Error(data.error || 'Failed')
       if (!data.imageUrl) throw new Error('No avatar image came back from the mirror.')
 
-      // ── Show the new image immediately — don't wait for storage upload ──
-      // Encode: cycleNumber * 10 + (localRegenCount + 1)
       const newCount = cycleNumber * 10 + (localRegenCount + 1)
       const previousAvatar = currentAvatarUrl
       setCurrentAvatarUrl(data.imageUrl)
@@ -662,39 +645,28 @@ export default function Profile({
               <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(235,140,140,0.9)', marginTop: '10px' }}>{saveError}</p>
             )}
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '14px', flexWrap: 'wrap' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{ position: 'relative', width: '44px', height: '44px', filter: 'drop-shadow(0 0 12px #fffbe6), drop-shadow(0 0 18px #ffe07a), drop-shadow(0 0 24px #00ffe7)' }}>
-                  <svg width="44" height="44" viewBox="0 0 44 44" style={{ transform: 'rotate(-90deg)' }}>
-                    <defs>
-                      <linearGradient id="soul-neon" x1="0" y1="0" x2="1" y2="1">
-                        <stop offset="0%" stopColor="#fffbe6" />
-                        <stop offset="60%" stopColor="#ffe07a" />
-                        <stop offset="100%" stopColor="#00ffe7" />
-                      </linearGradient>
-                    </defs>
-                    <circle cx="22" cy="22" r="18" fill="none" stroke="rgba(255,255,255,0.13)" strokeWidth="4" />
-                    <circle cx="22" cy="22" r="18" fill="none" stroke="url(#soul-neon)" strokeWidth="5"
-                      strokeDasharray={`${2 * Math.PI * 18}`}
-                      strokeDashoffset={`${2 * Math.PI * 18 * (1 - refreshProgress / 100)}`}
-                      strokeLinecap="round" style={{ filter: 'drop-shadow(0 0 10px #ffe07a), drop-shadow(0 0 18px #00ffe7)', opacity: 1 }} />
-                  </svg>
-                  <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-                    <span style={{ fontFamily: "'Cinzel', serif", fontSize: '12px', fontWeight: 800, color: '#fffbe6', lineHeight: 1, textShadow: '0 0 10px #ffe07a, 0 0 18px #00ffe7, 0 1px 0 #fff8' }}>{daysLeft}d</span>
-                    <span style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', fontWeight: 800, color: '#00ffe7', letterSpacing: '0.04em', textTransform: 'uppercase', marginTop: '1px', lineHeight: 1, textShadow: '0 0 8px #00ffe7' }}>{hoursLeft}h</span>
-                  </div>
-                </div>
-                <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.25em', color: '#00ffe7', textTransform: 'uppercase', textShadow: '0 0 10px #ffe07a, 0 0 18px #00ffe7, 0 1px 0 #fff8' }}>Soul Cycle</p>
-              </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '14px', flexWrap: 'wrap' }}>
+              <button onClick={() => setShowRegenInput(v => !v)} disabled={regenLoading || attemptsLeft <= 0}
+                style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.2em', color: attemptsLeft > 0 ? 'rgba(201,168,76,0.7)' : 'rgba(255,255,255,0.28)', padding: '6px 12px', border: `1px solid ${attemptsLeft > 0 ? 'rgba(201,168,76,0.25)' : 'rgba(255,255,255,0.12)'}`, background: 'transparent', cursor: attemptsLeft > 0 ? 'pointer' : 'default', textTransform: 'uppercase', borderRadius: '4px' }}
+                onMouseEnter={e => {
+                  if (attemptsLeft <= 0) return
+                  e.currentTarget.style.color = '#c9a84c'
+                  e.currentTarget.style.borderColor = 'rgba(201,168,76,0.5)'
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.color = attemptsLeft > 0 ? 'rgba(201,168,76,0.7)' : 'rgba(255,255,255,0.28)'
+                  e.currentTarget.style.borderColor = attemptsLeft > 0 ? 'rgba(201,168,76,0.25)' : 'rgba(255,255,255,0.12)'
+                }}>
+                ✦ Reimagine{attemptsLeft > 0 ? ` · ${attemptsLeft} left` : ''}
+              </button>
               {attemptsLeft > 0 ? (
-                <button onClick={() => setShowRegenInput(v => !v)} disabled={regenLoading}
-                  style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.2em', color: 'rgba(201,168,76,0.7)', padding: '6px 12px', border: '1px solid rgba(201,168,76,0.25)', background: 'transparent', cursor: 'pointer', textTransform: 'uppercase', borderRadius: '4px' }}
-                  onMouseEnter={e => { e.currentTarget.style.color = '#c9a84c'; e.currentTarget.style.borderColor = 'rgba(201,168,76,0.5)' }}
-                  onMouseLeave={e => { e.currentTarget.style.color = 'rgba(201,168,76,0.7)'; e.currentTarget.style.borderColor = 'rgba(201,168,76,0.25)' }}>
-                  ✦ Reimagine · {attemptsLeft} left
-                </button>
+                <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(255,255,255,0.46)' }}>
+                  You get 1 reimagine every 7 days. Switching back to a past avatar below is always free.
+                </p>
               ) : (
-                <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.15em', color: 'rgba(255,255,255,0.25)', textTransform: 'uppercase' }}>Your form is sealed · {daysLeft}d {hoursLeft}h until the mirror opens</p>
+                <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(255,255,255,0.46)' }}>
+                  Your weekly reimagine is used. The next one opens in {daysLeft}d {hoursLeft}h. You can still restore any past avatar below for free.
+                </p>
               )}
             </div>
 
