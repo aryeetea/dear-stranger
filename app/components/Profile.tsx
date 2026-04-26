@@ -555,9 +555,54 @@ export default function Profile({
                   position: 'absolute', top: 0, left: 0, right: 0,
                   height: '100%', width: '100%',
                   objectFit: 'contain', objectPosition: 'top center',
-                  filter: `brightness(1.02) saturate(1.02) drop-shadow(0 12px 28px rgba(0,0,0,0.28))`,
+                  filter: `brightness(1.06) saturate(0.92) drop-shadow(0 0 20px rgba(${hubGlowRgb},0.28)) drop-shadow(0 0 8px rgba(0,190,255,0.18)) drop-shadow(0 12px 28px rgba(0,0,0,0.28))`,
+                  animation: 'holo-flicker 7s ease-in-out infinite',
                 }}
               />
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  zIndex: 3,
+                  pointerEvents: 'none',
+                  background: 'repeating-linear-gradient(to bottom, transparent 0px, transparent 3px, rgba(0,200,255,0.018) 3px, rgba(0,200,255,0.018) 4px)',
+                  mixBlendMode: 'screen',
+                  opacity: 0.45,
+                  animation: 'holo-scan 10s linear infinite',
+                }}
+              />
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  zIndex: 3,
+                  pointerEvents: 'none',
+                  background: `linear-gradient(180deg, rgba(255,255,255,0.05) 0%, transparent 18%, transparent 72%, rgba(${hubGlowRgb},0.06) 100%), linear-gradient(90deg, rgba(0,210,255,0.08) 0%, transparent 24%, transparent 78%, rgba(${hubGlowRgb},0.08) 100%)`,
+                }}
+              />
+              <motion.div
+                animate={{ opacity: [0.74, 1, 0.74] }}
+                transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
+                style={{ position: 'absolute', bottom: '14%', left: '50%', transform: 'translateX(-50%)', width: '74%', zIndex: 4, pointerEvents: 'none' }}
+              >
+                <svg width="100%" viewBox="0 0 200 58" overflow="visible" style={{ display: 'block' }}>
+                  <defs>
+                    <filter id="php-live-glow-wide" x="-70%" y="-70%" width="240%" height="240%">
+                      <feGaussianBlur in="SourceGraphic" stdDeviation="7" />
+                    </filter>
+                    <filter id="php-live-glow-soft" x="-40%" y="-40%" width="180%" height="180%">
+                      <feGaussianBlur in="SourceGraphic" stdDeviation="3" />
+                    </filter>
+                  </defs>
+                  <ellipse cx="100" cy="29" rx="95" ry="22" fill="none" stroke={`rgba(${hubGlowRgb},0.42)`} strokeWidth="10" filter="url(#php-live-glow-wide)" />
+                  <ellipse cx="100" cy="29" rx="95" ry="22" fill="none" stroke="rgba(0,210,255,0.28)" strokeWidth="5" filter="url(#php-live-glow-soft)" />
+                  <ellipse cx="100" cy="29" rx="94" ry="21" fill="none" stroke={`rgba(${hubGlowRgb},0.86)`} strokeWidth="1.2" />
+                  <ellipse cx="100" cy="29" rx="79" ry="17" fill="none" stroke={`rgba(${hubGlowRgb},0.32)`} strokeWidth="0.9" strokeDasharray="5 3.5">
+                    <animateTransform attributeName="transform" type="rotate" from="0 100 29" to="360 100 29" dur="20s" repeatCount="indefinite" />
+                  </ellipse>
+                  <ellipse cx="100" cy="29" rx="94" ry="21" fill={`rgba(${hubGlowRgb},0.045)`} />
+                </svg>
+              </motion.div>
             </>
           ) : (
             <>

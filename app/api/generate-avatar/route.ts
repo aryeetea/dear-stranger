@@ -22,6 +22,8 @@ const STYLE_DESCRIPTORS: Record<string, string> = {
     'Background mood: sleek futuristic environments such as transit hubs, observation decks, city streets, or interior corridors.',
   nature:
     'Background mood: a natural environment with real landscape detail such as forest clearings, coastlines, gardens, mountains, or rain-soaked paths.',
+  default:
+    'Background mood: a coherent environment with real depth and scene detail that fits the user’s chosen theme and character concept.',
 }
 
 function normalizeDetail(value: string): string {
@@ -116,10 +118,26 @@ function buildAccuracyGuard(details: string): string {
   return rules.join('\n')
 }
 
-function buildArtStyleInstruction(details: string): string {
+function buildArtStyleInstruction(details: string, styleKey?: string): string {
   const lower = details.toLowerCase()
+  const normalizedStyle = normalizeStyleKey(styleKey)
   if (/\barcane\b/.test(lower) || /\barcane animated series\b/.test(lower) || /\b3d cinematic\b/.test(lower)) {
     return 'High-end cinematic stylized 3D fantasy illustration with painterly lighting, sharp design, rich atmospheric depth, and prestige-animated energy in the spirit of Arcane. Not photoreal. Not flat cartoon.'
+  }
+  if (normalizedStyle === 'modern' || normalizedStyle === 'streetwear') {
+    return 'Cinematic stylized contemporary illustration with believable anatomy, polished editorial styling, rich atmosphere, and strong visual design. Not a photograph, not hyperreal, not flat cartoon.'
+  }
+  if (normalizedStyle === 'futuristic') {
+    return 'Cinematic stylized futuristic illustration with sleek design, believable lighting, strong atmosphere, and premium sci-fi polish. Not photoreal and not flat cartoon.'
+  }
+  if (normalizedStyle === 'royal') {
+    return 'Cinematic stylized regal illustration with luxurious detail, rich atmosphere, elegant character design, and painterly lighting. Not photoreal and not flat cartoon.'
+  }
+  if (normalizedStyle === 'celestial') {
+    return 'Cinematic stylized luminous illustration with airy atmosphere, refined magical elegance, painterly lighting, and rich depth. Not photoreal and not flat cartoon.'
+  }
+  if (normalizedStyle === 'nature') {
+    return 'Cinematic stylized nature-inspired illustration with organic beauty, atmospheric depth, painterly lighting, and grounded elegance. Not photoreal and not flat cartoon.'
   }
   if (/\b3d\b/.test(lower)) {
     return 'Stylized cinematic 3D illustration with believable lighting, painterly atmosphere, and handcrafted polish. Not photoreal and not cheap plastic 3D.'
@@ -127,25 +145,38 @@ function buildArtStyleInstruction(details: string): string {
   return 'Semi-realistic cinematic illustration with believable anatomy and lighting, painterly finish, and clear stylization. Not a photograph, not hyperreal, not cartoon.'
 }
 
-function buildBeautyPolishInstruction(details: string): string {
+function buildBeautyPolishInstruction(details: string, styleKey?: string): string {
   const lower = details.toLowerCase()
+  const normalizedStyle = normalizeStyleKey(styleKey)
   const lines = [
     'Make the character feel like the most beautiful, visually striking, fully realized version of what the user described.',
     'Elevate styling, fabric detail, color harmony, silhouette, lighting, and atmosphere without changing any explicitly requested traits.',
-    'Favor main-character energy, polished fantasy design, strong composition, and intentional beauty over bland or generic results.',
+    'Favor main-character energy, theme-appropriate polish, strong composition, and intentional beauty over bland or generic results.',
+    'Do not default to any repeated palette, signature accent color, or recurring lighting treatment across different users.',
+    'Only use colors that are explicitly described by the user or that naturally follow from the user’s own concept, setting, and mood.',
+    'If the user did not specify colors, choose a palette that fits their concept without relying on a fixed house palette.',
   ]
 
-  if (/\bpixie\b|\bfairy\b|\belf\b|\bmage\b|\bqueen\b|\bprincess\b/.test(lower)) {
+  if (normalizedStyle === 'fantasy' || normalizedStyle === 'fantasy-modern' || normalizedStyle === 'celestial' || normalizedStyle === 'royal' || normalizedStyle === 'nature' || /\bpixie\b|\bfairy\b|\belf\b|\bmage\b|\bqueen\b|\bprincess\b/.test(lower)) {
     lines.push('If the concept is fantasy, render it as high-fantasy character design with glamorous, art-directed polish and magical elegance.')
   }
-  if (/\bstreetwear\b|\bhoodie\b|\bcargo\b|\bmodern\b/.test(lower)) {
+  if (normalizedStyle === 'modern' || normalizedStyle === 'streetwear' || /\bstreetwear\b|\bhoodie\b|\bcargo\b|\bmodern\b/.test(lower)) {
     lines.push('If the concept is modern or streetwear, make it fashion-editorial, cool, and sharply styled rather than plain everyday clothing.')
   }
+  if (normalizedStyle === 'futuristic') {
+    lines.push('If the concept is futuristic, make it sleek, intentional, high-design, and visually advanced rather than default fantasy.')
+  }
+  if (normalizedStyle === 'royal') {
+    lines.push('If the concept is royal, emphasize elegance, luxury, stature, and refined visual richness.')
+  }
+  if (normalizedStyle === 'nature') {
+    lines.push('If the concept is nature-inspired, keep it organic, graceful, grounded, and naturally beautiful rather than default arcane fantasy.')
+  }
   if (/\bhappy\b|\bjoyful\b|\bpretty\b|\bsoft\b/.test(lower)) {
-    lines.push('Keep the beauty soft, radiant, and warm if the user asked for a happy or gentle mood.')
+    lines.push('If the user asked for a happy or gentle mood, keep the beauty soft and luminous without forcing any default color family.')
   }
   if (/\bdark\b|\bmysterious\b|\bseductive\b|\bsexy\b/.test(lower)) {
-    lines.push('Keep the beauty moody, glamorous, and atmospheric if the user asked for a darker or more seductive mood.')
+    lines.push('If the user asked for a darker or more seductive mood, keep it moody and glamorous without forcing any default color family.')
   }
 
   return lines.join('\n')
@@ -154,11 +185,11 @@ function buildBeautyPolishInstruction(details: string): string {
 function buildAvatarPrompt(detailsInput: string[], styleKey?: string): string {
   const details = detailsInput.map((a) => normalizeDetail(a)).filter(Boolean).join(', ')
   const normalizedStyle = normalizeStyleKey(styleKey)
-  const backgroundMood = STYLE_DESCRIPTORS[normalizedStyle] || STYLE_DESCRIPTORS.fantasy
+  const backgroundMood = STYLE_DESCRIPTORS[normalizedStyle] || STYLE_DESCRIPTORS.default
   const identityInstruction = buildIdentityInstruction(details)
   const accuracyGuard = buildAccuracyGuard(details)
-  const artStyleInstruction = buildArtStyleInstruction(details)
-  const beautyPolishInstruction = buildBeautyPolishInstruction(details)
+  const artStyleInstruction = buildArtStyleInstruction(details, styleKey)
+  const beautyPolishInstruction = buildBeautyPolishInstruction(details, styleKey)
 
   return `
 SUBJECT:
@@ -200,10 +231,10 @@ ${accuracyGuard}
 `.trim()
 }
 
-function buildReimaginePrompt(feedback: string, identityDescription?: string): string {
+function buildReimaginePrompt(feedback: string, identityDescription?: string, styleKey?: string) {
   const normalizedFeedback = normalizeFeedback(feedback)
   const normalizedIdentity = normalizeDetail(identityDescription || '')
-  const beautyPolishInstruction = buildBeautyPolishInstruction(`${normalizedIdentity} ${normalizedFeedback}`)
+  const beautyPolishInstruction = buildBeautyPolishInstruction(`${normalizedIdentity} ${normalizedFeedback}`, styleKey)
   return `
 TASK:
 Edit the provided avatar image while preserving the same core person and identity.
@@ -314,7 +345,11 @@ export async function POST(req: Request) {
       response = await openai.images.edit({
         model: 'gpt-image-1',
         image: imageFile,
-        prompt: buildReimaginePrompt(sanitizedFeedback, typeof identityDescription === 'string' ? identityDescription : undefined),
+        prompt: buildReimaginePrompt(
+          sanitizedFeedback,
+          typeof identityDescription === 'string' ? identityDescription : undefined,
+          typeof style === 'string' ? style : undefined,
+        ),
         size: '1024x1536',
         quality: 'high',
         input_fidelity: 'high',
