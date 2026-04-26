@@ -343,53 +343,6 @@ ${normalizedFeedback || 'Refine visuals only while preserving the same character
 `.trim()
 }
 
-function buildPromptFallbackEditPrompt(feedback: string, identityDescription?: string, styleKey?: string) {
-  const normalizedFeedback = softenPromptForImageSafety(normalizeFeedback(feedback))
-  const normalizedIdentity = softenPromptForImageSafety(normalizeDetail(identityDescription || ''))
-  const baseDetails = [normalizedIdentity, normalizedFeedback].filter(Boolean)
-  const artStyleInstruction = buildArtStyleInstruction(baseDetails.join(' '), styleKey)
-  const beautyPolishInstruction = buildBeautyPolishInstruction(baseDetails.join(' '), styleKey)
-  const accuracyGuard = buildAccuracyGuard(baseDetails.join(' '))
-
-  return `
-TASK:
-Create an updated version of the same avatar character while preserving the same core identity.
-
-SOURCE IDENTITY:
-${normalizedIdentity || 'Preserve the existing avatar’s same person, same identity, and same overall character design.'}
-
-EDIT GOAL:
-${normalizedFeedback || 'Refine the existing avatar while keeping the same character.'}
-
-RULES:
-This is an edit-style regeneration, not a completely new person.
-Keep the same person, same species, same race, same skin tone, same face identity, same fashion direction, same body type, and same companion unless the user explicitly asked to change one of those things.
-Do not drift into a different person, different ethnicity, different species, or unrelated styling.
-Keep the character recognizable as the same avatar.
-
-STYLE:
-${artStyleInstruction}
-
-BEAUTY AND POLISH:
-${beautyPolishInstruction}
-
-COMPOSITION:
-Keep it vertical, full body, upright, and clearly readable unless the user explicitly asked for another crop.
-
-NON-NEGOTIABLE ACCURACY CHECK:
-${accuracyGuard}
-`.trim()
-}
-
-function shouldFallbackFromEditApi(error: unknown) {
-  if (!(error instanceof OpenAI.APIError)) return false
-  const message = error.message.toLowerCase()
-  return message.includes("value must be 'dall-e-2'")
-    || message.includes("unknown parameter: 'quality'")
-    || message.includes("unknown parameter: 'input_fidelity'")
-    || message.includes("unknown parameter: 'output_format'")
-}
-
 function sanitizeAnswers(raw: Record<string, unknown>): string[] {
   return Object.entries(raw)
     .sort(([a], [b]) => Number(a) - Number(b))
@@ -397,23 +350,31 @@ function sanitizeAnswers(raw: Record<string, unknown>): string[] {
     .filter(Boolean)
 }
 
-async function loadReferenceImageAsFile(previousImageUrl: string) {
-  function filenameFrom(url: string, contentType?: string | null) {
-    const cleanUrl = url.split('?')[0]
-    const pathPart = cleanUrl.split('/').pop() || 'avatar-reference'
-    const hasKnownExtension = /\.(png|jpe?g|webp)$/i.test(pathPart)
-    if (hasKnownExtension) return pathPart
-    if (contentType?.includes('png')) return `${pathPart}.png`
-    if (contentType?.includes('webp')) return `${pathPart}.webp`
-    if (contentType?.includes('jpeg') || contentType?.includes('jpg')) return `${pathPart}.jpg`
-    return `${pathPart}.png`
+async function loadReferenceImageAsSquarePngFile(previousImageUrl: string) {
+  async function loadBufferFromUrl(url: string) {
+    const response = await fetch(url, { cache: 'no-store' })
+    if (!response.ok) throw new Error('Could not load the current avatar for reimagine.')
+    const arrayBuffer = await response.arrayBuffer()
+    const buffer = Buffer.from(arrayBuffer)
+    if (!buffer.byteLength) throw new Error('Could not load the current avatar for reimagine.')
+    return buffer
+  }
+
+  async function toSquarePng(buffer: Buffer) {
+    const { default: sharp } = await import('sharp')
+    return sharp(buffer)
+      .resize(1024, 1024, {
+        fit: 'contain',
+        background: { r: 0, g: 0, b: 0, alpha: 0 },
+      })
+      .png()
+      .toBuffer()
   }
 
   if (previousImageUrl.startsWith('data:')) {
-    const response = await fetch(previousImageUrl)
-    if (!response.ok) throw new Error('Could not load the current avatar for reimagine.')
-    const blob = await response.blob()
-    return toFile(blob, filenameFrom('avatar-reference', blob.type))
+    const buffer = await loadBufferFromUrl(previousImageUrl)
+    const squarePng = await toSquarePng(buffer)
+    return toFile(squarePng, 'avatar-reference.png')
   }
 
   const candidateUrls = Array.from(new Set([
@@ -423,11 +384,9 @@ async function loadReferenceImageAsFile(previousImageUrl: string) {
 
   for (const url of candidateUrls) {
     try {
-      const response = await fetch(url, { cache: 'no-store' })
-      if (!response.ok) continue
-      const blob = await response.blob()
-      if (!blob.size) continue
-      return await toFile(blob, filenameFrom(url, blob.type))
+      const buffer = await loadBufferFromUrl(url)
+      const squarePng = await toSquarePng(buffer)
+      return await toFile(squarePng, 'avatar-reference.png')
     } catch {
       continue
     }
@@ -519,38 +478,19 @@ export async function POST(req: Request) {
 
     let response
     if (shouldEditExisting) {
-      const imageFile = await loadReferenceImageAsFile(previousImageUrl)
+      const imageFile = await loadReferenceImageAsSquarePngFile(previousImageUrl)
 
-      try {
-        // Keep the edit payload minimal. The live edit endpoint has been stricter
-        // than the generation endpoint about optional parameters.
-        response = await openai.images.edit({
-          model: 'gpt-image-1',
-          image: imageFile,
-          prompt: buildReimaginePrompt(
-            sanitizedFeedback,
-            normalizedIdentityDescription || undefined,
-            typeof style === 'string' ? style : undefined,
-          ),
-          size: '1024x1536',
-          user: user.id,
-        })
-      } catch (error: unknown) {
-        if (!shouldFallbackFromEditApi(error)) throw error
-
-        response = await openai.images.generate({
-          model: 'gpt-image-1',
-          prompt: buildPromptFallbackEditPrompt(
-            sanitizedFeedback,
-            normalizedIdentityDescription || undefined,
-            typeof style === 'string' ? style : undefined,
-          ),
-          size: '1024x1536',
-          quality: 'high',
-          output_format: 'png',
-          user: user.id,
-        })
-      }
+      response = await openai.images.edit({
+        model: 'dall-e-2',
+        image: imageFile,
+        prompt: buildReimaginePrompt(
+          sanitizedFeedback,
+          normalizedIdentityDescription || undefined,
+          typeof style === 'string' ? style : undefined,
+        ),
+        size: '1024x1024',
+        user: user.id,
+      })
     } else {
       response = await openai.images.generate({
         model: 'gpt-image-1',
