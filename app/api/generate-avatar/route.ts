@@ -465,6 +465,8 @@ export async function POST(req: Request) {
     if (shouldEditExisting) {
       const imageFile = await loadReferenceImageAsFile(previousImageUrl)
 
+      // Keep the edit payload minimal. The live edit endpoint has been stricter
+      // than the generation endpoint about optional parameters.
       response = await openai.images.edit({
         model: 'gpt-image-1',
         image: imageFile,
@@ -474,7 +476,6 @@ export async function POST(req: Request) {
           typeof style === 'string' ? style : undefined,
         ),
         size: '1024x1536',
-        output_format: 'png',
         user: user.id,
       })
     } else {
