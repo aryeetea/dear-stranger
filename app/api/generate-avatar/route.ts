@@ -474,7 +474,6 @@ export async function POST(req: Request) {
           typeof style === 'string' ? style : undefined,
         ),
         size: '1024x1536',
-        input_fidelity: 'high',
         output_format: 'png',
         user: user.id,
       })
