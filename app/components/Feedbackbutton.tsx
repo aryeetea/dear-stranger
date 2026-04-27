@@ -22,6 +22,14 @@ export default function FeedbackButton() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
+  function shouldRetryWithLegacyPayload(err: unknown) {
+    if (!err || typeof err !== 'object') return false
+    const message = 'message' in err && typeof err.message === 'string' ? err.message.toLowerCase() : ''
+    const details = 'details' in err && typeof err.details === 'string' ? err.details.toLowerCase() : ''
+    const combined = `${message} ${details}`
+    return ['user_id', 'page_url', 'user_agent'].some((field) => combined.includes(field))
+  }
+
   async function handleSubmit() {
     if (!category || !message.trim()) {
       setError('Please choose a category and write your message.')
@@ -31,14 +39,29 @@ export default function FeedbackButton() {
     setError('')
     try {
       const { data: { user } } = await supabase.auth.getUser()
-      const { error: dbError } = await supabase.from('feedback').insert([{
+      const feedbackPayload = {
         user_id: user?.id ?? null,
         category,
         message: message.trim(),
         contact_email: email.trim() || null,
         page_url: typeof window !== 'undefined' ? window.location.href : null,
         user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
-      }])
+        created_at: new Date().toISOString(),
+      }
+
+      let { error: dbError } = await supabase.from('feedback').insert([feedbackPayload])
+
+      if (dbError && shouldRetryWithLegacyPayload(dbError)) {
+        const legacyPayload = {
+          category,
+          message: message.trim(),
+          contact_email: email.trim() || null,
+          created_at: new Date().toISOString(),
+        }
+        const retry = await supabase.from('feedback').insert([legacyPayload])
+        dbError = retry.error
+      }
+
       if (dbError) throw dbError
       setSubmitted(true)
       setTimeout(() => {
@@ -50,7 +73,7 @@ export default function FeedbackButton() {
       }, 3000)
     } catch (err) {
       console.error('Feedback submit failed:', err)
-      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
+      setError('Something went wrong. Please try again.')
     } finally {
       setSubmitting(false)
     }
