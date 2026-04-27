@@ -38,15 +38,15 @@ export default function FeedbackButton() {
     setSubmitting(true)
     setError('')
     try {
-      let userId: string | null = null
+      let user: { id: string } | null = null
       try {
         const { data: { session } } = await supabase.auth.getSession()
-        userId = session?.user?.id ?? null
+        user = session?.user ? { id: session.user.id } : null
       } catch (sessionError) {
         console.warn('Feedback submit could not read session, continuing anonymously:', sessionError)
       }
       const feedbackPayload = {
-        user_id: userId,
+        user_id: user?.id ?? null,
         category,
         message: message.trim(),
         contact_email: email.trim() || null,
@@ -55,7 +55,7 @@ export default function FeedbackButton() {
         created_at: new Date().toISOString(),
       }
 
-      let { error: dbError } = await supabase.from('feedback').insert([feedbackPayload])
+      let { error: dbError } = await supabase.from('feedback').insert(feedbackPayload)
 
       if (dbError && shouldRetryWithLegacyPayload(dbError)) {
         const legacyPayload = {
@@ -64,7 +64,7 @@ export default function FeedbackButton() {
           contact_email: email.trim() || null,
           created_at: new Date().toISOString(),
         }
-        const retry = await supabase.from('feedback').insert([legacyPayload])
+        const retry = await supabase.from('feedback').insert(legacyPayload)
         dbError = retry.error
       }
 
