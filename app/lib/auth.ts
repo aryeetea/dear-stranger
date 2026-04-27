@@ -223,6 +223,19 @@ export async function signInWithDiscord() {
   if (typeof window !== 'undefined' && data.url) window.location.assign(data.url)
 }
 
+export async function linkGuestIdentity(provider: 'google' | 'discord') {
+  const { data, error } = await supabase.auth.linkIdentity({
+    provider,
+    options: {
+      redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined,
+      skipBrowserRedirect: true,
+      ...(provider === 'google' ? { queryParams: { prompt: 'select_account' } } : {}),
+    },
+  })
+  if (error) throw error
+  if (typeof window !== 'undefined' && data?.url) window.location.assign(data.url)
+}
+
 export async function sendEmailCode(email: string, shouldCreateUser = false) {
   const { error } = await supabase.auth.signInWithOtp({
     email,
@@ -506,7 +519,7 @@ export async function resonatePage(id: string) {
 
 const DRIFT_PAPER_IDS = ['void-parchment','nebula-leaf','starworn','moondust','ember-glow','tide-glass','rose-ash','gilded-dark']
 const DRIFT_PAPER_FILTER = `("${DRIFT_PAPER_IDS.join('","')}")`
-const UNIVERSE_LETTER_TTL_DAYS = 7
+const UNIVERSE_LETTER_TTL_DAYS = 30
 
 export async function getUniverseLetters() {
   try {
@@ -1172,6 +1185,17 @@ export async function isGuestUser(): Promise<boolean> {
 
 export async function upgradeGuestAccount(email: string, password: string): Promise<void> {
   const { error } = await supabase.auth.updateUser({ email, password })
+  if (error) throw error
+}
+
+export async function upgradeGuestEmail(email: string): Promise<void> {
+  const { error } = await supabase.auth.updateUser(
+    { email },
+    {
+      emailRedirectTo:
+        typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined,
+    },
+  )
   if (error) throw error
 }
 

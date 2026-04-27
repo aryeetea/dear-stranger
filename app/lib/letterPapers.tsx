@@ -21,6 +21,10 @@ export const PAPER_TONES = [
   { id: 'shell',     label: 'Shell Pink',   bg: 'linear-gradient(160deg, #fff6f7, #ffe4ea)', desc: 'Pearly pink'   },
   { id: 'meadow',    label: 'Meadow',       bg: 'linear-gradient(160deg, #f3ffe9, #ddf4c7)', desc: 'Sunlit green'  },
   { id: 'dawn',      label: 'Dawn',         bg: 'linear-gradient(160deg, #fff7ef, #f7e8ff 52%, #e8f3ff 100%)', desc: 'Blush sunrise' },
+  { id: 'storm',     label: 'Storm Glass',  bg: 'linear-gradient(160deg, #eef3f8, #d9e4ef)', desc: 'Cool rainlit blue' },
+  { id: 'ember',     label: 'Ember',        bg: 'linear-gradient(160deg, #fff1e8, #f6d7c4)', desc: 'Smoked apricot' },
+  { id: 'nocturne',  label: 'Nocturne',     bg: 'linear-gradient(160deg, #ede8ff, #d7d1f7)', desc: 'Dusky violet haze' },
+  { id: 'seafoam',   label: 'Seafoam',      bg: 'linear-gradient(160deg, #effdf8, #d4f2ea)', desc: 'Cool coastal mint' },
 ]
 
 export const PAPER_INK: Record<string, { main: string; secondary: string; accent: string }> = {
@@ -45,6 +49,10 @@ export const PAPER_INK: Record<string, { main: string; secondary: string; accent
   'celestial-map':  { main: '#24160a', secondary: 'rgba(55,36,12,0.74)', accent: '#9b7420' },
   'pressed-flowers':{ main: '#1f140e', secondary: 'rgba(56,38,28,0.72)', accent: '#8b5b58' },
   dossier:          { main: '#181614', secondary: 'rgba(48,42,36,0.74)', accent: '#78634c' },
+  'moonlit-velvet': { main: '#f1ebff', secondary: 'rgba(230,224,255,0.8)', accent: '#b992ff' },
+  'sunset-airmail': { main: '#3a1608', secondary: 'rgba(90,44,24,0.72)', accent: '#d86b52' },
+  herbarium:        { main: '#1b1610', secondary: 'rgba(64,54,36,0.72)', accent: '#748f56' },
+  'opal-dream':     { main: '#1d1830', secondary: 'rgba(68,56,110,0.72)', accent: '#6fbec4' },
 }
 
 export function OrnateStationery({ children, paperBg }: { children: React.ReactNode; paperBg?: string }) {
@@ -436,6 +444,101 @@ export function DossierPaper({ children, paperBg }: { children: React.ReactNode;
   )
 }
 
+export function MoonlitVelvet({ children, paperBg }: { children: React.ReactNode; paperBg?: string }) {
+  return (
+    <div style={{ position:'relative', background: paperBg || 'linear-gradient(165deg, #11091f 0%, #20103a 48%, #140a26 100%)', boxShadow:'0 22px 90px rgba(0,0,0,0.9)', overflow:'hidden' }}>
+      <div style={{ position:'absolute', inset:0, pointerEvents:'none', zIndex:1 }}>
+        <svg width="100%" height="100%" style={{ position:'absolute', inset:0 }}>
+          <defs>
+            <radialGradient id="mv-glow" cx="50%" cy="0%" r="70%">
+              <stop offset="0%" stopColor="rgba(190,150,255,0.28)" />
+              <stop offset="100%" stopColor="rgba(0,0,0,0)" />
+            </radialGradient>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#mv-glow)" />
+          <path d="M24 34 C70 16 118 24 154 52" fill="none" stroke="rgba(190,150,255,0.26)" strokeWidth="1.2" />
+          <path d="M446 38 C506 18 548 24 582 56" fill="none" stroke="rgba(190,150,255,0.24)" strokeWidth="1.2" />
+          <circle cx="86" cy="72" r="20" fill="none" stroke="rgba(190,150,255,0.18)" strokeWidth="1.1" />
+          <circle cx="514" cy="82" r="24" fill="none" stroke="rgba(190,150,255,0.16)" strokeWidth="1.1" />
+        </svg>
+      </div>
+      <div style={{ position:'absolute', inset:'16px', border:'1px solid rgba(186,146,255,0.26)', pointerEvents:'none', zIndex:2 }}/>
+      <div style={{ position:'absolute', inset:'26px', border:'1px solid rgba(186,146,255,0.1)', pointerEvents:'none', zIndex:2 }}/>
+      {[...Array(18)].map((_,i)=><div key={i} style={{ position:'absolute', left:'44px', right:'44px', top:`${92+i*30}px`, height:'1px', background:'rgba(186,146,255,0.08)' }}/>)}
+      <div style={{ textAlign:'center', paddingTop:'44px', position:'relative', zIndex:3 }}>
+        <p style={{ fontFamily:"'Cinzel', serif", fontSize:'9px', letterSpacing:'0.5em', color:'rgba(215,196,255,0.72)', textTransform:'uppercase' }}>Moonlit Correspondence</p>
+      </div>
+      <div style={{ padding:'20px 52px 50px', position:'relative', zIndex:3 }}>{children}</div>
+    </div>
+  )
+}
+
+export function SunsetAirmail({ children, paperBg }: { children: React.ReactNode; paperBg?: string }) {
+  return (
+    <div style={{ position:'relative', background: paperBg || 'linear-gradient(160deg, #fff0e7 0%, #f9dcc8 60%, #f3cdbf 100%)', boxShadow:'0 20px 80px rgba(0,0,0,0.62)', overflow:'hidden' }}>
+      <div style={{ position:'absolute', inset:0, pointerEvents:'none', zIndex:1 }}>
+        <div style={{ position:'absolute', inset:'8px', border:'2px dashed rgba(214,98,82,0.42)' }} />
+        <div style={{ position:'absolute', inset:'18px', border:'2px dashed rgba(88,120,190,0.28)' }} />
+        <svg width="100%" height="100%" style={{ position:'absolute', inset:0 }}>
+          <path d="M14 82 C102 42 188 102 290 74 C390 48 470 98 586 56" fill="none" stroke="rgba(214,98,82,0.2)" strokeWidth="2.4" strokeDasharray="6 8" />
+          <path d="M30 118 C142 138 228 94 332 116 C430 138 508 108 572 128" fill="none" stroke="rgba(88,120,190,0.16)" strokeWidth="1.8" strokeDasharray="5 7" />
+        </svg>
+      </div>
+      {[...Array(18)].map((_,i)=><div key={i} style={{ position:'absolute', left:'40px', right:'40px', top:`${86+i*28}px`, height:'1px', background:'rgba(160,88,72,0.1)' }}/>)}
+      <div style={{ textAlign:'center', paddingTop:'42px', position:'relative', zIndex:2 }}>
+        <p style={{ fontFamily:"'Cinzel', serif", fontSize:'8px', letterSpacing:'0.42em', color:'rgba(162,82,62,0.72)', textTransform:'uppercase' }}>By Sunset Post</p>
+      </div>
+      <div style={{ padding:'20px 46px 44px', position:'relative', zIndex:2 }}>{children}</div>
+    </div>
+  )
+}
+
+export function HerbariumSheet({ children, paperBg }: { children: React.ReactNode; paperBg?: string }) {
+  return (
+    <div style={{ position:'relative', background: paperBg || 'linear-gradient(160deg, #f6f2e7 0%, #e7dcc4 100%)', boxShadow:'0 20px 80px rgba(0,0,0,0.56)', overflow:'hidden' }}>
+      <div style={{ position:'absolute', inset:0, pointerEvents:'none', zIndex:1 }}>
+        <svg width="100%" height="100%" style={{ position:'absolute', inset:0 }}>
+          <g transform="translate(54 86) rotate(-8)">
+            <line x1="0" y1="0" x2="22" y2="120" stroke="rgba(102,122,66,0.42)" strokeWidth="1.4" />
+            <ellipse cx="-8" cy="24" rx="11" ry="5" fill="rgba(120,150,86,0.22)" transform="rotate(-24 -8 24)" />
+            <ellipse cx="10" cy="48" rx="12" ry="5.4" fill="rgba(120,150,86,0.22)" transform="rotate(18 10 48)" />
+            <ellipse cx="-4" cy="76" rx="10" ry="5" fill="rgba(120,150,86,0.18)" transform="rotate(-20 -4 76)" />
+          </g>
+          <g transform="translate(506 520) rotate(14)">
+            <line x1="0" y1="0" x2="-18" y2="108" stroke="rgba(118,106,72,0.36)" strokeWidth="1.2" />
+            <ellipse cx="8" cy="18" rx="10" ry="4.5" fill="rgba(176,130,90,0.18)" transform="rotate(28 8 18)" />
+            <ellipse cx="-10" cy="42" rx="12" ry="5.4" fill="rgba(176,130,90,0.18)" transform="rotate(-18 -10 42)" />
+          </g>
+        </svg>
+      </div>
+      <div style={{ position:'absolute', inset:'16px', border:'1px solid rgba(124,118,92,0.22)', pointerEvents:'none', zIndex:2 }}/>
+      {[...Array(19)].map((_,i)=><div key={i} style={{ position:'absolute', left:'44px', right:'44px', top:`${74+i*29}px`, height:'1px', background:'rgba(118,110,82,0.09)' }}/>)}
+      <div style={{ padding:'38px 50px 44px', position:'relative', zIndex:3 }}>{children}</div>
+    </div>
+  )
+}
+
+export function OpalDream({ children, paperBg }: { children: React.ReactNode; paperBg?: string }) {
+  return (
+    <div style={{ position:'relative', background: paperBg || 'linear-gradient(165deg, #f5efff 0%, #dff5f4 52%, #ffe7ef 100%)', boxShadow:'0 20px 80px rgba(0,0,0,0.58)', overflow:'hidden' }}>
+      <div style={{ position:'absolute', inset:0, pointerEvents:'none', zIndex:1 }}>
+        <svg width="100%" height="100%" style={{ position:'absolute', inset:0 }}>
+          <defs>
+            <filter id="opal-blur"><feGaussianBlur stdDeviation="18" /></filter>
+          </defs>
+          <ellipse cx="92" cy="118" rx="86" ry="42" fill="rgba(145,216,220,0.28)" filter="url(#opal-blur)" />
+          <ellipse cx="472" cy="126" rx="110" ry="46" fill="rgba(186,158,255,0.24)" filter="url(#opal-blur)" />
+          <ellipse cx="300" cy="626" rx="150" ry="54" fill="rgba(255,166,190,0.16)" filter="url(#opal-blur)" />
+          <path d="M36 88 C116 118 182 62 270 100 C352 136 446 62 560 92" fill="none" stroke="rgba(255,255,255,0.34)" strokeWidth="3.2" />
+        </svg>
+      </div>
+      <div style={{ position:'absolute', inset:'14px', border:'1px solid rgba(118,180,186,0.2)', pointerEvents:'none', zIndex:2 }}/>
+      {[...Array(19)].map((_,i)=><div key={i} style={{ position:'absolute', left:'42px', right:'42px', top:`${78+i*29}px`, height:'1px', background:'rgba(112,170,176,0.08)' }}/>)}
+      <div style={{ padding:'42px 46px 44px', position:'relative', zIndex:3 }}>{children}</div>
+    </div>
+  )
+}
+
 export function renderLetterPaper(
   paperId: string,
   paperBg: string | undefined,
@@ -463,6 +566,10 @@ export function renderLetterPaper(
     case 'celestial-map':   return <CelestialMap paperBg={paperBg}>{children}</CelestialMap>
     case 'pressed-flowers': return <PressedFlowers paperBg={paperBg}>{children}</PressedFlowers>
     case 'dossier':         return <DossierPaper paperBg={paperBg}>{children}</DossierPaper>
+    case 'moonlit-velvet':  return <MoonlitVelvet paperBg={paperBg}>{children}</MoonlitVelvet>
+    case 'sunset-airmail':  return <SunsetAirmail paperBg={paperBg}>{children}</SunsetAirmail>
+    case 'herbarium':       return <HerbariumSheet paperBg={paperBg}>{children}</HerbariumSheet>
+    case 'opal-dream':      return <OpalDream paperBg={paperBg}>{children}</OpalDream>
     default:                return <OrnateStationery paperBg={paperBg}>{children}</OrnateStationery>
   }
 }

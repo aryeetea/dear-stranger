@@ -246,8 +246,9 @@ function WarpFlash({ screenKey }: { screenKey: string }) {
 }
 
 // ── Guest banner ─────────────────────────────────────────────
-function GuestBanner({ onCreateHub, onSignIn, onDismiss }: {
+function GuestBanner({ onCreateHub, onKeepAccount, onSignIn, onDismiss }: {
   onCreateHub: () => void
+  onKeepAccount: () => void
   onSignIn: () => void
   onDismiss: () => void
 }) {
@@ -266,9 +267,23 @@ function GuestBanner({ onCreateHub, onSignIn, onDismiss }: {
         fontSize: '13px', color: 'rgba(255,255,255,0.45)',
         letterSpacing: '0.04em',
       }}>
-        You&apos;re exploring as a guest
+        You&apos;re exploring as a guest. Keep this account to save your hub, letters, and history.
       </span>
       <span style={{ color: 'rgba(201,168,76,0.3)', fontSize: '10px' }}>✦</span>
+      <button
+        onClick={onKeepAccount}
+        style={{
+          fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.26em',
+          textTransform: 'uppercase', color: '#f5edd8',
+          background: 'linear-gradient(135deg, #7a5a18 0%, #c9a84c 48%, #7a5a18 100%)',
+          border: 'none', borderRadius: '2px', padding: '6px 14px', cursor: 'pointer',
+          transition: 'opacity 0.2s',
+        }}
+        onMouseEnter={e => { e.currentTarget.style.opacity = '0.88' }}
+        onMouseLeave={e => { e.currentTarget.style.opacity = '1' }}
+      >
+        Keep This Account
+      </button>
       <button
         onClick={onCreateHub}
         style={{
@@ -316,8 +331,9 @@ function GuestBanner({ onCreateHub, onSignIn, onDismiss }: {
 }
 
 // ── Guest nudge overlay (when guest tries a members-only action) ─
-function GuestNudge({ onCreateHub, onSignIn, onClose }: {
+function GuestNudge({ onCreateHub, onKeepAccount, onSignIn, onClose }: {
   onCreateHub: () => void
+  onKeepAccount: () => void
   onSignIn: () => void
   onClose: () => void
 }) {
@@ -341,11 +357,11 @@ function GuestNudge({ onCreateHub, onSignIn, onClose }: {
         <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.4em', color: 'rgba(201,168,76,0.5)', textTransform: 'uppercase', marginBottom: '16px' }}>Dear Stranger</p>
         <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '22px', color: 'rgba(255,255,255,0.85)', marginBottom: '10px', letterSpacing: '0.04em' }}>This is for hub owners</p>
         <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(255,255,255,0.38)', marginBottom: '32px', lineHeight: 1.7 }}>
-          To send letters and make your mark in the universe, you&apos;ll need a hub of your own.
+          To send letters and make your mark in the universe, you&apos;ll need a hub of your own. If you already started as a guest, you can keep this account and save everything.
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <button
-            onClick={onCreateHub}
+            onClick={onKeepAccount}
             style={{
               fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.3em',
               textTransform: 'uppercase', color: '#f5edd8',
@@ -355,6 +371,20 @@ function GuestNudge({ onCreateHub, onSignIn, onClose }: {
             }}
             onMouseEnter={e => { e.currentTarget.style.opacity = '0.88' }}
             onMouseLeave={e => { e.currentTarget.style.opacity = '1' }}
+          >
+            Keep This Guest Account ✦
+          </button>
+          <button
+            onClick={onCreateHub}
+            style={{
+              fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.3em',
+              textTransform: 'uppercase', color: '#c9a84c',
+              background: 'rgba(201,168,76,0.08)', border: '1px solid rgba(201,168,76,0.28)',
+              padding: '14px 24px', cursor: 'pointer',
+              borderRadius: '2px', transition: 'all 0.2s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(201,168,76,0.16)'; e.currentTarget.style.borderColor = 'rgba(201,168,76,0.48)' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(201,168,76,0.08)'; e.currentTarget.style.borderColor = 'rgba(201,168,76,0.28)' }}
           >
             Create a Hub ✦
           </button>
@@ -1483,6 +1513,11 @@ export default function Home() {
             setOnboardingError('')
             router.push('/signup')
           }}
+          onKeepAccount={() => {
+            setGuestBannerDismissed(false)
+            setOnboardingError('')
+            router.push('/signup')
+          }}
           onSignIn={() => {
             setIsGuest(false)
             setGuestBannerDismissed(false)
@@ -1498,6 +1533,12 @@ export default function Home() {
           onCreateHub={() => {
             setGuestNudgeOpen(false)
             setIsGuest(false)
+            setGuestBannerDismissed(false)
+            setOnboardingError('')
+            router.push('/signup')
+          }}
+          onKeepAccount={() => {
+            setGuestNudgeOpen(false)
             setGuestBannerDismissed(false)
             setOnboardingError('')
             router.push('/signup')

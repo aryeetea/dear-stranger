@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { signInWithGoogle, signInWithDiscord, sendEmailCode, verifyEmailCode, signOut } from '../lib/auth'
+import { signInWithGoogle, signInWithDiscord, sendEmailCode, verifyEmailCode, signOut, linkGuestIdentity, upgradeGuestEmail } from '../lib/auth'
 import { supabase } from '../../lib/supabase'
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -409,9 +409,11 @@ export function LoginScreen({
 export function SignupScreen({
   onSuccess,
   setPendingCredentials,
+  guestUpgradeMode = false,
 }: {
   onSuccess: () => void
   setPendingCredentials: (creds: { email: string; password: string } | null) => void
+  guestUpgradeMode?: boolean
 }) {
   const [error, setError] = useState('')
   const [googleLoading, setGoogleLoading] = useState(false)
@@ -420,6 +422,7 @@ export function SignupScreen({
   const [emailCode, setEmailCode] = useState('')
   const [emailLoading, setEmailLoading] = useState(false)
   const [codeSent, setCodeSent] = useState(false)
+  const [upgradeEmailSent, setUpgradeEmailSent] = useState(false)
 
   useEffect(() => {
     setGoogleLoading(false)
@@ -450,10 +453,14 @@ export function SignupScreen({
   async function handleGoogle() {
     setGoogleLoading(true); setError('')
     try {
-      await signOut()
-      rememberOnboardingIntent()
-      setPendingCredentials(null)
-      await signInWithGoogle()
+      if (guestUpgradeMode) {
+        await linkGuestIdentity('google')
+      } else {
+        await signOut()
+        rememberOnboardingIntent()
+        setPendingCredentials(null)
+        await signInWithGoogle()
+      }
     } catch (err: unknown) {
       setError(getErrorMessage(err, 'Google sign-in failed.'))
       setGoogleLoading(false)
@@ -463,10 +470,14 @@ export function SignupScreen({
   async function handleDiscord() {
     setDiscordLoading(true); setError('')
     try {
-      await signOut()
-      rememberOnboardingIntent()
-      setPendingCredentials(null)
-      await signInWithDiscord()
+      if (guestUpgradeMode) {
+        await linkGuestIdentity('discord')
+      } else {
+        await signOut()
+        rememberOnboardingIntent()
+        setPendingCredentials(null)
+        await signInWithDiscord()
+      }
     } catch (err: unknown) {
       setError(getErrorMessage(err, 'Discord sign-in failed.'))
       setDiscordLoading(false)
@@ -477,9 +488,14 @@ export function SignupScreen({
     if (!email.trim()) { setError('Enter your email address.'); return }
     setEmailLoading(true); setError('')
     try {
-      rememberOnboardingIntent()
-      await sendEmailCode(email.trim(), true)
-      setCodeSent(true)
+      if (guestUpgradeMode) {
+        await upgradeGuestEmail(email.trim())
+        setUpgradeEmailSent(true)
+      } else {
+        rememberOnboardingIntent()
+        await sendEmailCode(email.trim(), true)
+        setCodeSent(true)
+      }
     } catch (err: unknown) {
       setError(getErrorMessage(err, 'Could not send code.'))
     } finally {
@@ -523,6 +539,36 @@ export function SignupScreen({
     )
   }
 
+  if (guestUpgradeMode && upgradeEmailSent) {
+    return (
+      <>
+        <InAppBrowserBanner />
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }}
+          style={{ width: 'min(420px, 92vw)', zIndex: 2, textAlign: 'center' }}>
+          <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.5em', color: 'rgba(201,168,76,0.6)', textTransform: 'uppercase', marginBottom: '12px' }}>Dear Stranger</p>
+          <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '24px', color: 'rgba(255,255,255,0.88)', letterSpacing: '0.06em', marginBottom: '12px' }}>Check your email</p>
+          <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(255,255,255,0.5)', lineHeight: 1.6, marginBottom: '24px' }}>
+            We sent a confirmation link to<br />
+            <span style={{ color: 'rgba(201,168,76,0.8)' }}>{email}</span><br />
+            Open it to secure this guest account without losing your hub, letters, or history.
+          </p>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            <button
+              onClick={() => { setUpgradeEmailSent(false); setEmail(''); setError('') }}
+              style={{ background: 'none', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.5)', fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.2em', textTransform: 'uppercase', padding: '10px 22px', cursor: 'pointer', borderRadius: '4px' }}>
+              Use a different email
+            </button>
+            <button
+              onClick={() => void handleSendCode()}
+              style={{ background: 'none', border: '1px solid rgba(201,168,76,0.2)', color: 'rgba(201,168,76,0.75)', fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.2em', textTransform: 'uppercase', padding: '10px 22px', cursor: 'pointer', borderRadius: '4px' }}>
+              Resend link
+            </button>
+          </div>
+        </motion.div>
+      </>
+    )
+  }
+
   return (
     <>
       <InAppBrowserBanner />
@@ -530,8 +576,14 @@ export function SignupScreen({
         style={{ width: 'min(420px, 92vw)', zIndex: 2 }}>
         <div style={{ textAlign: 'center', marginBottom: '36px' }}>
           <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.5em', color: 'rgba(201,168,76,0.6)', textTransform: 'uppercase', marginBottom: '8px' }}>Dear Stranger</p>
-          <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '28px', color: 'rgba(255,255,255,0.88)', letterSpacing: '0.06em', marginBottom: '8px' }}>Join the universe</p>
-          <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(255,255,255,0.38)' }}>A hub will be built for you</p>
+          <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '28px', color: 'rgba(255,255,255,0.88)', letterSpacing: '0.06em', marginBottom: '8px' }}>
+            {guestUpgradeMode ? 'Keep this universe' : 'Join the universe'}
+          </p>
+          <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(255,255,255,0.38)' }}>
+            {guestUpgradeMode
+              ? 'Link this guest account so your hub, letters, avatar, and history stay with you'
+              : 'A hub will be built for you'}
+          </p>
         </div>
 
         <EmailCodePanel
@@ -542,7 +594,7 @@ export function SignupScreen({
           loading={anyLoading}
           error={error}
           sent={false}
-          sendLabel="Send code"
+          sendLabel={guestUpgradeMode ? 'Send link' : 'Send code'}
           verifyLabel="Verify code"
           sentTitle=""
           sentBody={null}
@@ -562,7 +614,7 @@ export function SignupScreen({
           onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.22)' }}
           onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)' }}>
           <GoogleIcon />
-          {googleLoading ? 'Connecting...' : 'Continue with Google'}
+          {googleLoading ? 'Connecting...' : guestUpgradeMode ? 'Link Google to this guest' : 'Continue with Google'}
         </button>
 
         <button onClick={handleDiscord} disabled={anyLoading}
@@ -570,7 +622,7 @@ export function SignupScreen({
           onMouseEnter={e => { e.currentTarget.style.background = 'rgba(88,101,242,0.2)'; e.currentTarget.style.borderColor = 'rgba(88,101,242,0.6)' }}
           onMouseLeave={e => { e.currentTarget.style.background = 'rgba(88,101,242,0.1)'; e.currentTarget.style.borderColor = 'rgba(88,101,242,0.35)' }}>
           <DiscordIcon />
-          {discordLoading ? 'Connecting...' : 'Continue with Discord'}
+          {discordLoading ? 'Connecting...' : guestUpgradeMode ? 'Link Discord to this guest' : 'Continue with Discord'}
         </button>
 
         <button

@@ -44,6 +44,10 @@ const PAPERS = [
   { id: 'celestial-map',  label: 'Celestial Map',    sublabel: 'Old chart and star routes', unlocksAt: 16, swatch: 'linear-gradient(135deg, #efe2b6, #d9c28a)' },
   { id: 'pressed-flowers',label: 'Pressed Flowers',  sublabel: 'Botanical keepsake page', unlocksAt: 9, swatch: 'linear-gradient(135deg, #f7f2e8, #eadfce)' },
   { id: 'dossier',        label: 'Dossier Sheet',    sublabel: 'Stamped archive notes', unlocksAt: 18, swatch: 'linear-gradient(135deg, #ebe7db, #d9d2c2)' },
+  { id: 'moonlit-velvet', label: 'Moonlit Velvet',   sublabel: 'Midnight violet with lunar trim', unlocksAt: 21, swatch: 'linear-gradient(135deg, #11091f, #20103a 58%, #140a26)' },
+  { id: 'sunset-airmail', label: 'Sunset Airmail',   sublabel: 'Travel stripes in a fading sky', unlocksAt: 13, swatch: 'linear-gradient(135deg, #fff0e7, #f5d4c3 58%, #f1c7b8)' },
+  { id: 'herbarium',      label: 'Herbarium Sheet',  sublabel: 'Pressed field notes and stems', unlocksAt: 15, swatch: 'linear-gradient(135deg, #f6f2e7, #e7dcc4)' },
+  { id: 'opal-dream',     label: 'Opal Dream',       sublabel: 'Iridescent pastel haze', unlocksAt: 24, swatch: 'linear-gradient(135deg, #f5efff, #dff5f4 55%, #ffe7ef)' },
 ]
 
 const STAMPS = [
@@ -175,6 +179,15 @@ function hexToRgba(hex: string, alpha: number): string {
   return `rgba(${r},${g},${b},${alpha})`
 }
 
+function resolveScribeInkColor(fontColor: string | undefined, fallback: string): string {
+  if (!fontColor) return fallback
+  const matched = FONT_COLORS.find(c => c.id === fontColor)?.color
+  if (matched) return matched
+  if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(fontColor)) return fontColor
+  if (/^(rgb|rgba|hsl|hsla)\(/i.test(fontColor)) return fontColor
+  return fallback
+}
+
 function StampSVG({ id, size = 60 }: { id: string; size?: number }) {
   const s = size
   if (id === 'moon-seal') return <svg width={s} height={s} viewBox="0 0 60 60"><circle cx="30" cy="30" r="28" fill="#8b1a1a"/><circle cx="30" cy="30" r="24" fill="#9a2020"/><path d="M22 20 Q30 14 38 20 Q32 22 30 30 Q24 22 22 20Z" fill="rgba(255,220,200,0.7)"/><text x="30" y="45" textAnchor="middle" fontSize="8" fontFamily="serif" fill="rgba(255,200,180,0.7)" letterSpacing="1">SEALED</text></svg>
@@ -251,6 +264,7 @@ const PAPER_ENVELOPE_COLOR: Record<string, string> = {
   'blue-ruled': '#a0c4e0', kraft: '#c0924a',
   watercolor: '#b0a0d8', graph: '#8ab0d8', blueprint: '#2050a0',
   'midnight-scroll': '#6040a8', 'rice-paper': '#c0a870',
+  'moonlit-velvet': '#7d5ed6', 'sunset-airmail': '#d48466', herbarium: '#839c63', 'opal-dream': '#7abec4',
 }
 
 function LetterContent({ fontFamily, ink, recipient, senderName, date, body, setBody, textareaRef, onKeyDown }: {
@@ -298,6 +312,88 @@ const DAILY_PROMPTS = [
   'Write to everything you’re holding at once',
   'Write to the sound of a place that no longer exists',
   'Write to the truth you’ve been circling around',
+  'Write to the version of you that chose differently',
+  'Write to a stranger who would understand this immediately',
+  'Write to the first person who ever saw through you',
+  'Write to a life you sometimes grieve without admitting it',
+  'Write to the room where you changed your mind',
+  'Write to the question you keep asking in different forms',
+  'Write to a future self who made it through this',
+  'Write to a stranger you hope exists somewhere',
+  'Write to the tenderness you hide behind humor',
+  'Write to a choice that still echoes',
+  'Write to the part of childhood you can still reach',
+  'Write to the road you did not take',
+  'Write to the person you were trying to impress',
+  'Write to the version of you that finally rested',
+  'Write to a love that changed shape but never fully left',
+  'Write to a secret you are tired of carrying alone',
+  'Write to the city that made you lonelier and wiser',
+  'Write to the day you realized you had changed',
+  'Write to a stranger on the same edge as you',
+  'Write to the ache beneath your ambition',
+  'Write to the future home you have not found yet',
+  'Write to the apology you never received',
+  'Write to the one memory that still feels warm',
+  'Write to the version of yourself that stayed',
+  'Write to someone you miss in a language you never learned',
+  'Write to the person you become when no one is watching',
+  'Write to the season of your life you are in right now',
+  'Write to a stranger who needed to hear your exact story',
+  'Write to the smallest thing that kept you alive',
+  'Write to the last time you felt completely certain',
+  'Write to the version of you that ran instead of stayed',
+  'Write to a future relationship you want to protect',
+  'Write to the dream you stopped saying out loud',
+  'Write to the anger that was covering grief',
+  'Write to the friend you outgrew with love',
+  'Write to the person you hope forgives you',
+  'Write to the softness you are reclaiming',
+  'Write to your life as if it were listening back',
+  'Write to the lesson you had to learn twice',
+  'Write to the part of you that still believes in magic',
+  'Write to a stranger who carries the same wound differently',
+  'Write to the version of you who never left that town',
+  'Write to the face you make when you are trying not to cry',
+  'Write to the silence after devastating news',
+  'Write to the thing you know but keep postponing',
+  'Write to the self-respect you had to rebuild',
+  'Write to the version of you who chose joy on purpose',
+  'Write to a future child, real or imagined',
+  'Write to the old habit that still knows your name',
+  'Write to the first morning after everything changed',
+  'Write to the person who caught you before you fell apart',
+  'Write to the life you are slowly growing into',
+  'Write to the jealousy that taught you what you wanted',
+  'Write to the stranger sitting alone at the edge of a party',
+  'Write to a version of home that exists only in memory',
+  'Write to the exact moment you knew it was over',
+  'Write to the hope you keep pretending not to have',
+  'Write to the oldest version of yourself you can imagine',
+  'Write to the courage it took to become unreadable to some people',
+  'Write to the one thing you wish someone had told you sooner',
+  'Write to the loneliness that made you more honest',
+  'Write to someone who loved you at the wrong time',
+  'Write to the version of you that never learned to apologize',
+  'Write to the future where this all makes sense',
+  'Write to the person who only exists in your almosts',
+  'Write to the grief that arrived late',
+  'Write to a stranger who would keep your secret safely',
+  'Write to the day you stopped asking for less',
+  'Write to your body like it survived a war for you',
+  'Write to the part of you that wants to begin again',
+  'Write to the one conversation you rehearse but never have',
+  'Write to a stranger from your parallel universe',
+  'Write to the feeling of walking away and meaning it',
+  'Write to the beauty in your life that you keep forgetting',
+  'Write to the version of you who told the truth sooner',
+  'Write to the future stranger who will find this at the right time',
+  'Write to the moment you almost gave up but did not',
+  'Write to the love you are finally ready for',
+  'Write to a version of yourself that lives more bravely',
+  'Write to the guilt that no longer gets to lead',
+  'Write to the stranger you might have become under different weather',
+  'Write to the life that is trying to meet you halfway',
 ]
 
 const VOICE_EFFECT_OPTIONS: { id: VoiceEffect; label: string; desc: string }[] = [
@@ -726,7 +822,7 @@ export default function Scribe({ recipientName, senderName, draftOwnerId, letter
     const originalPaperId = replyContext.paperId || 'ornate'
     const originalPaperBg = replyContext.paperColor ? (PAPER_TONES.find(t => t.id === replyContext.paperColor)?.bg ?? undefined) : undefined
     const originalInkBase = PAPER_INK[originalPaperId] || PAPER_INK.ornate
-    const originalFontColor = replyContext.fontColor ? (FONT_COLORS.find(c => c.id === replyContext.fontColor)?.color ?? originalInkBase.main) : originalInkBase.main
+    const originalFontColor = resolveScribeInkColor(replyContext.fontColor, originalInkBase.main)
     const originalInk = { ...originalInkBase, main: originalFontColor, secondary: hexToRgba(originalFontColor, 0.72) }
     const originalFontFamily = FONTS.find(f => f.id === replyContext.fontId)?.family || "'Cormorant Garamond', serif"
     const originalDate = replyContext.sentAt

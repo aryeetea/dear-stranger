@@ -68,6 +68,17 @@ const FONT_COLOR_MAP: Record<string, string> = {
   'burgundy': '#380614', 'amethyst': '#260c38', 'sepia': '#4a2a08',
   'midnight': '#08081c', 'jade': '#0a2820', 'crimson': '#420808',
   'slate': '#161620', 'teak': '#3a1c06', 'navy': '#060a28',
+  royal: '#1c3fd1', 'teal-glow': '#006f73', emerald: '#0f7a43',
+  sunset: '#c94a35', orchid: '#8e3bbf', raspberry: '#a61d52',
+  goldenrod: '#9a6400', cerulean: '#0067a7',
+}
+
+function resolveFontColor(fontColor?: string): string | undefined {
+  if (!fontColor) return undefined
+  if (FONT_COLOR_MAP[fontColor]) return FONT_COLOR_MAP[fontColor]
+  if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(fontColor)) return fontColor
+  if (/^(rgb|rgba|hsl|hsla)\(/i.test(fontColor)) return fontColor
+  return undefined
 }
 
 function hexToRgbString(hex: string) {
@@ -841,7 +852,7 @@ function LetterModal({ letter, onClose, onReply, onPin, onBurn, onDeleteForEvery
   const bodyFont = (letter.fontId && FONT_FAMILIES[letter.fontId]) || "'Cormorant Garamond', serif"
   const paperBg = letter.paperColor ? (PAPER_TONES.find(t => t.id === letter.paperColor)?.bg ?? undefined) : undefined
   const defaultInk = PAPER_INK[letter.paperId]?.main ?? '#180e04'
-  const bodyColor = (letter.fontColor && FONT_COLOR_MAP[letter.fontColor]) ? FONT_COLOR_MAP[letter.fontColor] : defaultInk
+  const bodyColor = resolveFontColor(letter.fontColor) || defaultInk
   const writingStyle = getHandwritingStyleStyles(letter.handwritingStyle || 'typed')
   const isReceivedLetter = letter.direction === 'received' && (letter.status === 'arrived' || letter.status === 'pinned')
   const isBurnReceived = isReceivedLetter && !!letter.burnAfterReading

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { SignupScreen } from '../components/AuthScreens'
 import { getSession } from '../lib/auth'
@@ -47,18 +47,26 @@ function AuthBackground() {
 
 export default function SignupPage() {
   const router = useRouter()
+  const [guestUpgradeMode, setGuestUpgradeMode] = useState(false)
 
   // If already authenticated, let the root page route them correctly
   useEffect(() => {
     getSession().then((session) => {
-      if (session) router.replace('/')
+      const isGuest = (session?.user as { is_anonymous?: boolean } | undefined)?.is_anonymous === true
+      if (session && !isGuest) {
+        router.replace('/')
+        return
+      }
+      setGuestUpgradeMode(isGuest)
     })
 
     // Handle OAuth redirects (Discord/Google): after the provider redirects back,
     // Supabase exchanges the code asynchronously and fires SIGNED_IN — without this
     // listener the user would be stuck on the signup screen until a manual refresh.
-    const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_IN') {
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      const isGuest = (session?.user as { is_anonymous?: boolean } | undefined)?.is_anonymous === true
+      setGuestUpgradeMode(isGuest)
+      if ((event === 'SIGNED_IN' || event === 'USER_UPDATED') && !isGuest) {
         router.replace('/')
       }
     })
@@ -81,6 +89,7 @@ export default function SignupPage() {
     >
       <AuthBackground />
       <SignupScreen
+        guestUpgradeMode={guestUpgradeMode}
         onSuccess={() => {
           // Signal to the root page that it should show onboarding, not landing
           if (typeof sessionStorage !== 'undefined') {

@@ -50,6 +50,15 @@ const DRIFT_INKS = [
   { id: 'crimson-drift', label: 'Crimson Drift', color: 'rgba(240,110,130,0.9)', desc: 'Blood-red dusk' },
 ]
 
+function resolveDriftInk(fontColor: string | undefined, fallback: string) {
+  if (!fontColor) return fallback
+  const inkEntry = DRIFT_INKS.find(d => d.id === fontColor)
+  if (inkEntry) return inkEntry.color
+  if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(fontColor)) return fontColor
+  if (/^(rgb|rgba|hsl|hsla)\(/i.test(fontColor)) return fontColor
+  return fallback
+}
+
 // ─── Envelope visuals for floating display ────────────────────────────────────
 const ENV_STYLES = [
   { bg: 'linear-gradient(145deg, #1a1030, #2a1848)', flap: '#3a2268', border: 'rgba(160,120,240,0.4)', label: 'rgba(200,180,255,0.7)' },
@@ -243,8 +252,7 @@ function OpenLetterModal({ open, onClose, onBlocked }: {
 }) {
   const p = DRIFT_PAPERS.find(d => d.id === open.paperId) ?? DRIFT_PAPERS[0]
   const f = DRIFT_FONTS.find(d => d.id === open.fontId) ?? DRIFT_FONTS[0]
-  const inkEntry = DRIFT_INKS.find(d => d.id === open.fontColor)
-  const resolvedInk = inkEntry ? inkEntry.color : p.text
+  const resolvedInk = resolveDriftInk(open.fontColor, p.text)
   const writingStyle = getHandwritingStyleStyles(open.handwritingStyle || 'typed')
 
   const [blocking, setBlocking] = useState(false)
