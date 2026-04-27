@@ -1450,13 +1450,13 @@ function ShootingStarLetterModal({
 export default function UniverseMap({
   hubName, hubBio, hubAskAbout, hubAvatarUrl, hubStyle = 'portal', hubColor = 'gold',
   hubDecoration = 'none', hubGlowIntensity = 'normal', currentUserId = '',
-  onWriteLetter, onObservatory, onProfile, onDriftstream, navResetSignal = 0, avatarGenerating = false,
+  onWriteLetter, onObservatory, onProfile, onDriftstream, navResetSignal = 0, avatarGenerating = false, lettersRefreshSignal = 0,
 }: {
   hubName?: string; hubBio?: string; hubAskAbout?: string; hubAvatarUrl?: string; hubStyle?: HubStyle; hubColor?: HubColor
   hubDecoration?: HubDecoration; hubGlowIntensity?: HubGlowIntensity; currentUserId?: string
   onWriteLetter?: (recipientName?: string) => void
   onObservatory?: () => void; onProfile?: () => void; onDriftstream?: () => void
-  navResetSignal?: number; avatarGenerating?: boolean
+  navResetSignal?: number; avatarGenerating?: boolean; lettersRefreshSignal?: number
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const hubsRef = useRef<Hub[]>([])
@@ -1473,6 +1473,8 @@ export default function UniverseMap({
   const lastPinchDistRef = useRef<number | null>(null)
   const hoveredHubRef = useRef<Hub | null>(null)
   const mouseRef = useRef({ x: 0, y: 0 })
+  const refreshUniverseLettersRef = useRef<(() => Promise<void>) | null>(null)
+  const spawnRealStarRef = useRef<(() => void) | null>(null)
 
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
   const [profile, setProfile] = useState<ProfileState | null>(null)
@@ -1653,9 +1655,11 @@ export default function UniverseMap({
       try {
         const letters = await getUniverseLetters()
         if (!cancelled) {
-          universeLetters = letters
-            .filter(letter => letter.body.trim().length > 0)
-            .filter(letter => !currentUserId || letter.senderId !== currentUserId)
+          const readableLetters = letters.filter(letter => letter.body.trim().length > 0)
+          const strangerLetters = readableLetters.filter(
+            letter => !currentUserId || letter.senderId !== currentUserId
+          )
+          universeLetters = strangerLetters.length > 0 ? strangerLetters : readableLetters
         }
       } catch (error) {
         console.error('Failed to refresh shooting star letters:', error)
@@ -1678,6 +1682,9 @@ export default function UniverseMap({
       spawnShootingStar(letter)
     }
 
+    refreshUniverseLettersRef.current = refreshUniverseLetters
+    spawnRealStarRef.current = spawnRealStar
+
     async function refreshAndSpawn() {
       await refreshUniverseLetters()
       if (!cancelled) spawnRealStar()
@@ -1693,10 +1700,30 @@ export default function UniverseMap({
 
     return () => {
       cancelled = true
+      refreshUniverseLettersRef.current = null
+      spawnRealStarRef.current = null
       window.clearInterval(interval)
       window.clearTimeout(initial)
     }
   }, [currentUserId])
+
+  useEffect(() => {
+    if (lettersRefreshSignal <= 0) return
+
+    const timeout = window.setTimeout(() => {
+      const refresh = refreshUniverseLettersRef.current
+      const spawn = spawnRealStarRef.current
+      if (!refresh || !spawn) return
+
+      void refresh().then(() => {
+        spawn()
+      })
+    }, 350)
+
+    return () => {
+      window.clearTimeout(timeout)
+    }
+  }, [lettersRefreshSignal])
 
   useEffect(() => {
     let resizeHandler: (() => void) | undefined

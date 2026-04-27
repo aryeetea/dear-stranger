@@ -1579,6 +1579,7 @@ export default function Home() {
           }}
           onDriftstream={() => setDriftOpen(true)}
           navResetSignal={navResetSignal}
+          lettersRefreshSignal={lettersRefreshSignal}
         />
       )}
 
