@@ -11,6 +11,8 @@ create table if not exists public.feedback (
 
 alter table public.feedback enable row level security;
 
+grant insert on table public.feedback to anon, authenticated;
+
 do $$
 begin
   if not exists (

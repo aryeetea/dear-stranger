@@ -60,6 +60,8 @@ const LAST_OVERLAY_KEY = 'ds_last_overlay'
 const SESSION_TIMEOUT_MS = 8000
 const HUB_FETCH_TIMEOUT_MS = 7000
 const APP_LOADING_SLOW_MS = 3500
+const PENDING_AVATAR_RETRY_INITIAL_DELAY_MS = 15000
+const PENDING_AVATAR_RETRY_INTERVAL_MS = 5 * 60 * 1000
 
 function shouldShowWelcomePage() {
   if (typeof window === 'undefined') return false
@@ -558,6 +560,7 @@ export default function Home() {
 
   const screenRef = useRef<Screen>('loading')
   const onboardingInFlightRef = useRef(false)
+  const pendingAvatarRetryInFlightRef = useRef(false)
 
   const getSavedOverlay = useCallback((): UniverseOverlay => {
     if (typeof window === 'undefined') return null
@@ -693,6 +696,54 @@ export default function Home() {
     stopAmbient()
     return () => { if (screen === 'universe') stopAmbient() }
   }, [screen])
+
+  useEffect(() => {
+    if (
+      screen !== 'universe' ||
+      isGuest ||
+      !currentUserId ||
+      !hubAvatarPending ||
+      Boolean(hubAvatarUrl) ||
+      avatarGenerating
+    ) {
+      return
+    }
+
+    let cancelled = false
+    const pendingPrompt = hubAvatarPending
+
+    async function retryPendingAvatar() {
+      if (cancelled || pendingAvatarRetryInFlightRef.current) return
+      pendingAvatarRetryInFlightRef.current = true
+      try {
+        const avatarUrl = await requestAvatarImage({ 0: pendingPrompt }, currentUserId)
+        if (!avatarUrl || cancelled) return
+        const permanentUrl = await uploadAvatarToStorage(avatarUrl, currentUserId)
+        if (cancelled) return
+        setHubAvatarUrl(permanentUrl)
+        setHubAvatarPending(null)
+        await updateHub({ avatar_url: permanentUrl, avatar_prompt_pending: null })
+      } catch (error) {
+        console.error('Background avatar retry failed:', error)
+      } finally {
+        pendingAvatarRetryInFlightRef.current = false
+      }
+    }
+
+    const initial = window.setTimeout(() => {
+      void retryPendingAvatar()
+    }, PENDING_AVATAR_RETRY_INITIAL_DELAY_MS)
+
+    const interval = window.setInterval(() => {
+      void retryPendingAvatar()
+    }, PENDING_AVATAR_RETRY_INTERVAL_MS)
+
+    return () => {
+      cancelled = true
+      window.clearTimeout(initial)
+      window.clearInterval(interval)
+    }
+  }, [avatarGenerating, currentUserId, hubAvatarPending, hubAvatarUrl, isGuest, screen])
 
   // Poll for newly arrived letters every 60s while on universe screen
   const knownArrivedCountRef = useRef<number | null>(null)
@@ -1138,7 +1189,8 @@ export default function Home() {
             await updateHub({ avatar_url: permanentUrl, avatar_prompt_pending: avatarDescription })
           } catch (avatarError) {
             console.error('Avatar generation failed after hub creation:', avatarError)
-            // Save the user's description so we can retry it automatically
+            // Preserve the user's original description so Home can retry it quietly
+            // in the background and Profile can still use it later if needed.
             if (avatarDescription) {
               try {
                 setHubAvatarPending(avatarDescription)
