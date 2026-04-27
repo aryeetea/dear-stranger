@@ -38,9 +38,15 @@ export default function FeedbackButton() {
     setSubmitting(true)
     setError('')
     try {
-      const { data: { user } } = await supabase.auth.getUser()
+      let userId: string | null = null
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        userId = session?.user?.id ?? null
+      } catch (sessionError) {
+        console.warn('Feedback submit could not read session, continuing anonymously:', sessionError)
+      }
       const feedbackPayload = {
-        user_id: user?.id ?? null,
+        user_id: userId,
         category,
         message: message.trim(),
         contact_email: email.trim() || null,
