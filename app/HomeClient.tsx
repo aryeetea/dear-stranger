@@ -55,7 +55,7 @@ const STARS = Array.from({ length: 30 }, (_, i) => ({
   opacity: (i % 5) * 0.06 + 0.04,
 }))
 
-const HUB_COLOR_IDS: HubColor[] = ['gold', 'sage', 'rose', 'azure', 'amber', 'violet', 'teal', 'sand']
+const HUB_COLOR_IDS: HubColor[] = ['gold', 'sage', 'rose', 'azure', 'amber', 'violet', 'teal', 'sand', 'steel', 'crimson', 'forest', 'pearl', 'obsidian', 'coral', 'sky']
 const LAST_OVERLAY_KEY = 'ds_last_overlay'
 const SESSION_TIMEOUT_MS = 8000
 const HUB_FETCH_TIMEOUT_MS = 7000

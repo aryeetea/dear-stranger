@@ -30,11 +30,13 @@ export default function FeedbackButton() {
     setSubmitting(true)
     setError('')
     try {
+      const { data: { user } } = await supabase.auth.getUser()
       const { error: dbError } = await supabase.from('feedback').insert([{
+        user_id: user?.id ?? null,
         category,
         message: message.trim(),
         contact_email: email.trim() || null,
-        created_at: new Date().toISOString(),
+        page_url: typeof window !== 'undefined' ? window.location.href : null,
         user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
       }])
       if (dbError) throw dbError
@@ -48,7 +50,7 @@ export default function FeedbackButton() {
       }, 3000)
     } catch (err) {
       console.error('Feedback submit failed:', err)
-      setError('Something went wrong. Please try again.')
+      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
     } finally {
       setSubmitting(false)
     }
