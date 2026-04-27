@@ -1219,7 +1219,6 @@ function drawDecoration(ctx: CanvasRenderingContext2D, cx: number, cy: number, s
   }
 
   if (decoration === 'rings') {
-    // Back half of ring (drawn before hub, but we draw all here and rely on paint order)
     ctx.beginPath(); ctx.ellipse(cx, cy, r * 1.6, r * 0.4, -0.2, Math.PI, Math.PI * 2)
     ctx.strokeStyle = `rgba(${colors.glow},0.35)`; ctx.lineWidth = 2.5 * s; ctx.stroke()
     ctx.beginPath(); ctx.ellipse(cx, cy, r * 1.6, r * 0.4, -0.2, 0, Math.PI)
@@ -1232,7 +1231,6 @@ function drawDecoration(ctx: CanvasRenderingContext2D, cx: number, cy: number, s
       const d = r * (1.1 + 0.5 * Math.abs(Math.sin(t * 0.35 + i * 0.7)))
       const fx = cx + Math.cos(a) * d; const fy = cy + Math.sin(a) * d
       const fa = 0.4 + 0.55 * Math.abs(Math.sin(t * 1.2 + i))
-      // glow halo
       const fg = ctx.createRadialGradient(fx, fy, 0, fx, fy, 5 * s)
       fg.addColorStop(0, `rgba(180,255,150,${fa})`)
       fg.addColorStop(1, `rgba(100,220,80,0)`)
@@ -1276,7 +1274,6 @@ function drawDecoration(ctx: CanvasRenderingContext2D, cx: number, cy: number, s
   if (decoration === 'comet') {
     const a = t * 0.55
     const cx2 = cx + Math.cos(a) * r * 1.55; const cy2 = cy + Math.sin(a) * r * 1.55
-    // Tail
     for (let i = 0; i < 10; i++) {
       const ta = a - (i / 10) * 0.9
       const tx = cx + Math.cos(ta) * r * (1.55 - i * 0.04)
@@ -1284,7 +1281,6 @@ function drawDecoration(ctx: CanvasRenderingContext2D, cx: number, cy: number, s
       ctx.beginPath(); ctx.arc(tx, ty, (1.8 - i * 0.15) * s, 0, Math.PI * 2)
       ctx.fillStyle = `rgba(${colors.glow},${(1 - i / 10) * 0.5})`; ctx.fill()
     }
-    // Head
     const cg = ctx.createRadialGradient(cx2, cy2, 0, cx2, cy2, 5 * s)
     cg.addColorStop(0, `rgba(255,255,220,0.95)`)
     cg.addColorStop(1, `rgba(${colors.glow},0)`)
@@ -1301,7 +1297,6 @@ function drawHub(ctx: CanvasRenderingContext2D, hub: Hub, sx: number, sy: number
 
   ctx.save()
 
-  // Blazing: extra wide aura behind everything
   if (hub.glowIntensity === 'blazing') {
     const blazeR = 52 * s * (0.9 + 0.1 * Math.sin(t * 0.8))
     const blaze = ctx.createRadialGradient(sx, sy, 0, sx, sy, blazeR)
@@ -1312,10 +1307,8 @@ function drawHub(ctx: CanvasRenderingContext2D, hub: Hub, sx: number, sy: number
     ctx.fillStyle = blaze; ctx.fill()
   }
 
-  // Dim: fade the whole hub
   if (hub.glowIntensity === 'dim') ctx.globalAlpha = glowMult
 
-  // Decoration (behind hub)
   if (hub.decoration !== 'none' && hub.decoration !== 'rings') {
     drawDecoration(ctx, sx, sy, s, colors, t, hub.decoration)
   }
@@ -1337,19 +1330,16 @@ function drawHub(ctx: CanvasRenderingContext2D, hub: Hub, sx: number, sy: number
     default: drawPortal(ctx, sx, sy, s, colors, t, hub.online, !!hub.isMe, hub.avatarImage)
   }
 
-  // Rings drawn after hub (so front half overlaps hub)
   if (hub.decoration === 'rings') {
     drawDecoration(ctx, sx, sy, s, colors, t, hub.decoration)
   }
 
   ctx.globalAlpha = 1
 
-  // Hub name label
   ctx.font = `${Math.max(9, 10 * s)}px Cinzel, serif`
   ctx.fillStyle = `rgba(255,255,255,${hub.isMe ? 0.9 : 0.65})`
   ctx.textAlign = 'center'; ctx.textBaseline = 'top'
   ctx.fillText(hub.name, sx, sy + 34 * s)
-  // Visiting-hours: tiny envelope icon below name for hubs open to letters
   if (hub.askAbout && !hub.isMe) {
     ctx.font = `${Math.max(7, 8 * s)}px sans-serif`
     ctx.fillStyle = `rgba(126,207,180,0.55)`
@@ -1673,8 +1663,15 @@ export default function UniverseMap({
     }
 
     function spawnRealStar() {
-      // Only one star in flight at a time
-      if (shootingStarsRef.current.length > 0) return
+      // ── FIX: only block if a star is still actively travelling (progress < 1).
+      // Previously this checked shootingStarsRef.current.length > 0, which blocked
+      // new spawns for the entire fade-out phase (up to maxAge + 60 frames ≈ several
+      // seconds), causing the 30-second interval to tick with no star appearing.
+      const hasActiveStar = shootingStarsRef.current.some(
+        star => star.progress < 1 && !star.clicked
+      )
+      if (hasActiveStar) return
+
       const available = universeLetters.filter(l => !dismissedLetterIdsRef.current.has(l.id))
       if (available.length === 0) return
       const letter = available[Math.floor(Math.random() * available.length)]
@@ -1757,7 +1754,6 @@ export default function UniverseMap({
           } as Hub
         }))
 
-        // Spread hubs so they don't cluster or overlap — treat my hub at (0,0) as a fixed anchor
         const allPositions = [{ x: 0, y: 0 }, ...otherHubs]
         separateHubs(allPositions)
         otherHubs.forEach((hub, i) => { hub.x = allPositions[i + 1].x; hub.y = allPositions[i + 1].y })
@@ -1878,7 +1874,7 @@ export default function UniverseMap({
           ctx.fill()
         }
 
-        // Draw return paths (faint glowing connections between hubs that exchanged letters)
+        // Draw return paths
         returnPathsRef.current.forEach(({ hubA, hubB }) => {
           const hA = hubsRef.current.find(h => h.name === hubA)
           const hB = hubsRef.current.find(h => h.name === hubB)
@@ -1895,7 +1891,6 @@ export default function UniverseMap({
           ctx.save()
           ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by)
           ctx.strokeStyle = grad; ctx.lineWidth = 1.2; ctx.stroke()
-          // Traveling pulse bead
           const pulsePos = ((t * 0.25 + (hubA.charCodeAt(0) * 0.07)) % 1)
           const px = ax + (bx - ax) * pulsePos
           const py = ay + (by - ay) * pulsePos
@@ -1912,7 +1907,6 @@ export default function UniverseMap({
           const floatY = Math.sin(t * hub.floatSpeed + hub.floatOffset) * 4
           const s = hub.size * scale
 
-          // Feature 6: heartbeat ripple rings for online hubs
           if (hub.online && !hub.isMe) {
             const hubColors = getColor(hub.colorTheme)
             const baseR = 32 * s
@@ -1933,7 +1927,7 @@ export default function UniverseMap({
 
         nebulaClouds.filter(cloud => cloud.front).forEach(cloud => drawNebulaCloud(cloud, hoverFocus, t))
 
-        // Feature 5: constellation line from myHub to selected hub
+        // Constellation line from myHub to selected hub
         const selProfile = profileRef.current
         if (selProfile) {
           const myHub = hubsRef.current.find(h => h.isMe)
@@ -1998,7 +1992,7 @@ export default function UniverseMap({
     return () => { cancelAnimationFrame(animFrameRef.current); if (resizeHandler) window.removeEventListener('resize', resizeHandler) }
   }, [hubName, hubStyle, hubColor, hubDecoration, hubGlowIntensity, hubAvatarUrl, hubBio, hubAskAbout])
 
-  // ── Patch avatar in-place when it changes without re-running full init ──
+  // Patch avatar in-place when it changes without re-running full init
   useEffect(() => {
     if (!hubAvatarUrl) return
     loadImage(hubAvatarUrl).then(img => {
@@ -2009,7 +2003,7 @@ export default function UniverseMap({
     })
   }, [hubAvatarUrl])
 
-  // ── Patch decoration/glow in-place ──
+  // Patch decoration/glow in-place
   useEffect(() => {
     if (hubsRef.current.length > 0 && hubsRef.current[0].isMe) {
       hubsRef.current[0].decoration = hubDecoration
@@ -2017,7 +2011,7 @@ export default function UniverseMap({
     }
   }, [hubDecoration, hubGlowIntensity])
 
-  // ── Patch bio/askAbout in-place when they change ──
+  // Patch bio/askAbout in-place when they change
   useEffect(() => {
     if (hubsRef.current.length > 0 && hubsRef.current[0].isMe) {
       hubsRef.current[0].bio = hubBio || 'This is your place in the universe.'
@@ -2049,7 +2043,7 @@ export default function UniverseMap({
     }
   }, [])
 
-  // ── Touch events (non-passive) for mobile pan + pinch-zoom ──
+  // Touch events (non-passive) for mobile pan + pinch-zoom
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -2146,7 +2140,6 @@ export default function UniverseMap({
 
   const handleMouseUp = (e: React.MouseEvent) => {
     if (!hasDraggedRef.current) {
-      // Check shooting star click first
       const star = getStarAt(e.clientX, e.clientY)
       if (star) { star.clicked = true; setStarPreview(star); playShootingStarCatch(); isDraggingRef.current = false; return }
       const hub = getHubAt(e.clientX, e.clientY)
@@ -2216,7 +2209,7 @@ export default function UniverseMap({
         )}
       </AnimatePresence>
 
-      {/* Hub Profile Card — Telescope gets zoom effect */}
+      {/* Hub Profile Card */}
       <AnimatePresence>
         {profile && (
           <motion.div key="profile"
@@ -2229,24 +2222,20 @@ export default function UniverseMap({
             <motion.div onClick={e => e.stopPropagation()}
               className="universe-hub-card"
               style={{ background: 'rgba(8,10,28,0.95)', border: '1px solid rgba(230,199,110,0.22)', borderRadius: '16px', width: 'min(780px, 95vw)', minHeight: '380px', display: 'flex', overflow: 'hidden', boxShadow: '0 0 80px rgba(0,0,0,0.9)', backdropFilter: 'blur(20px)', position: 'relative' }}>
-              {/* Avatar panel — holographic portal */}
+              {/* Avatar panel */}
               {(() => {
                 const cardGlowRgb = HUB_COLOR_THEMES.find(t => t.id === profile.hub.colorTheme)?.glow || '201,168,76'
                 return (
                   <div className="universe-hub-avatar-col" style={{ width: '42%', minHeight: '380px', background: 'linear-gradient(180deg, rgba(4,6,18,0.97), rgba(8,12,28,0.98))', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden', flexShrink: 0 }}>
                     {profile.hub.avatarUrl ? (
                       <>
-                        {/* Projection cone — rises from ring at bottom */}
                         <div style={{ position: 'absolute', bottom: '10%', left: '50%', transform: 'translateX(-50%)', width: '120%', height: '75%', background: `radial-gradient(ellipse at 50% 100%, rgba(${cardGlowRgb},0.18) 0%, rgba(0,170,255,0.08) 22%, transparent 62%)`, pointerEvents: 'none', zIndex: 2, mixBlendMode: 'screen' }} />
                         <motion.div animate={{ opacity: [0.35, 0.68, 0.35] }} transition={{ duration: 4.5, repeat: Infinity, ease: 'easeInOut' }}
                           style={{ position: 'absolute', bottom: '10%', left: '50%', transform: 'translateX(-50%)', width: '75%', height: '58%', background: 'radial-gradient(ellipse at 50% 100%, rgba(0,160,255,0.14) 0%, transparent 70%)', pointerEvents: 'none', zIndex: 2, mixBlendMode: 'screen', filter: 'blur(5px)' }} />
-                        {/* Avatar occupies top 85% — feet stay above the ring */}
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={profile.hub.avatarUrl} alt="Avatar"
                           style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '85%', width: '100%', objectFit: 'contain', objectPosition: 'top center', filter: `brightness(1.08) saturate(0.82) drop-shadow(0 0 20px rgba(${cardGlowRgb},0.4)) drop-shadow(0 0 8px rgba(0,190,255,0.25))`, animation: 'holo-flicker 7s ease-in-out infinite' }} />
-                        {/* Scanlines */}
                         <div style={{ position: 'absolute', inset: 0, zIndex: 3, pointerEvents: 'none', background: 'repeating-linear-gradient(to bottom, transparent 0px, transparent 3px, rgba(0,200,255,0.018) 3px, rgba(0,200,255,0.018) 4px)', animation: 'holo-scan 10s linear infinite' }} />
-                        {/* Portal ring — sits at ground level below the feet */}
                         <motion.div animate={{ opacity: [0.7, 1, 0.7] }} transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
                           style={{ position: 'absolute', bottom: '4%', left: '50%', transform: 'translateX(-50%)', width: '78%', zIndex: 5, pointerEvents: 'none' }}>
                           <svg width="100%" viewBox="0 0 200 58" overflow="visible" style={{ display: 'block' }}>
