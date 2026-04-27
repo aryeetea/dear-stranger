@@ -111,6 +111,9 @@ const FONT_COLOR_MAP: Record<string, string> = {
   cerulean: '#0067a7',
 }
 
+const SHOOTING_STAR_INITIAL_DELAY_MS = 3000
+const SHOOTING_STAR_INTERVAL_MS = 30000
+
 function resolveFontColor(fontColor?: string): string | undefined {
   if (!fontColor) return undefined
   if (FONT_COLOR_MAP[fontColor]) return FONT_COLOR_MAP[fontColor]
@@ -1657,11 +1660,15 @@ export default function UniverseMap({
     let universeLetters: NonNullable<Parameters<typeof spawnShootingStar>[0]>[] = []
 
     async function refreshUniverseLetters() {
-      const letters = await getUniverseLetters()
-      if (!cancelled) {
-        universeLetters = letters
-          .filter(letter => letter.body.trim().length > 0)
-          .filter(letter => !currentUserId || letter.senderId !== currentUserId)
+      try {
+        const letters = await getUniverseLetters()
+        if (!cancelled) {
+          universeLetters = letters
+            .filter(letter => letter.body.trim().length > 0)
+            .filter(letter => !currentUserId || letter.senderId !== currentUserId)
+        }
+      } catch (error) {
+        console.error('Failed to refresh shooting star letters:', error)
       }
     }
 
@@ -1674,20 +1681,25 @@ export default function UniverseMap({
       spawnShootingStar(letter)
     }
 
-    const initial = setTimeout(() => {
-      void refreshUniverseLetters().then(spawnRealStar)
-    }, 3000)
+    async function refreshAndSpawn() {
+      await refreshUniverseLetters()
+      if (!cancelled) spawnRealStar()
+    }
 
-    const interval = setInterval(() => {
-      void refreshUniverseLetters().then(spawnRealStar)
-    }, 20000)
+    const initial = window.setTimeout(() => {
+      void refreshAndSpawn()
+    }, SHOOTING_STAR_INITIAL_DELAY_MS)
+
+    const interval = window.setInterval(() => {
+      void refreshAndSpawn()
+    }, SHOOTING_STAR_INTERVAL_MS)
 
     return () => {
       cancelled = true
-      clearInterval(interval)
-      clearTimeout(initial)
+      window.clearInterval(interval)
+      window.clearTimeout(initial)
     }
-  }, [])
+  }, [currentUserId])
 
   useEffect(() => {
     let resizeHandler: (() => void) | undefined
