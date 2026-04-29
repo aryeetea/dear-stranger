@@ -1712,10 +1712,10 @@ function ShootingStarLetterModal({
 export default function UniverseMap({
   hubName, hubBio, hubAskAbout, hubAvatarUrl, hubStyle = 'portal', hubColor = 'gold',
   hubDecoration = 'none', hubGlowIntensity = 'normal', currentUserId = '',
-  onWriteLetter, onObservatory, onProfile, onDriftstream, navResetSignal = 0, avatarGenerating = false, lettersRefreshSignal = 0,
+  isGuestExplorer = false, onWriteLetter, onObservatory, onProfile, onDriftstream, navResetSignal = 0, avatarGenerating = false, lettersRefreshSignal = 0,
 }: {
   hubName?: string; hubBio?: string; hubAskAbout?: string; hubAvatarUrl?: string; hubStyle?: HubStyle; hubColor?: HubColor
-  hubDecoration?: HubDecoration; hubGlowIntensity?: HubGlowIntensity; currentUserId?: string
+  hubDecoration?: HubDecoration; hubGlowIntensity?: HubGlowIntensity; currentUserId?: string; isGuestExplorer?: boolean
   onWriteLetter?: (recipientName?: string) => void
   onObservatory?: () => void; onProfile?: () => void; onDriftstream?: () => void
   navResetSignal?: number; avatarGenerating?: boolean; lettersRefreshSignal?: number
@@ -2001,17 +2001,21 @@ export default function UniverseMap({
       resizeHandler()
       window.addEventListener('resize', resizeHandler)
 
-      hubsRef.current = [{
-        id: 'me', x: 0, y: 0, name: hubName || 'Your Hub',
-        bio: hubBio || 'This is your place in the universe.',
-        askAbout: hubAskAbout || '',
-        avatarUrl: hubAvatarUrl || '', avatarImage: undefined,
-        online: true, pulse: 0, size: 1.1, isMe: true,
-        floatOffset: 0, floatSpeed: 0.5, colorTheme: hubColor, hubStyle,
-        decoration: hubDecoration, glowIntensity: hubGlowIntensity, visitorBookEnabled: true,
-      }]
+      const myHub = isGuestExplorer
+        ? null
+        : {
+            id: 'me', x: 0, y: 0, name: hubName || 'Your Hub',
+            bio: hubBio || 'This is your place in the universe.',
+            askAbout: hubAskAbout || '',
+            avatarUrl: hubAvatarUrl || '', avatarImage: undefined,
+            online: true, pulse: 0, size: 1.1, isMe: true,
+            floatOffset: 0, floatSpeed: 0.5, colorTheme: hubColor, hubStyle,
+            decoration: hubDecoration, glowIntensity: hubGlowIntensity, visitorBookEnabled: true,
+          } satisfies Hub
 
-      if (hubAvatarUrl) {
+      hubsRef.current = myHub ? [myHub] : []
+
+      if (myHub && hubAvatarUrl) {
         void loadImage(hubAvatarUrl).then(img => {
           if (hubsRef.current.length > 0 && hubsRef.current[0].isMe) {
             hubsRef.current[0].avatarImage = img
@@ -2043,11 +2047,11 @@ export default function UniverseMap({
           } as Hub
         }))
 
-        const allPositions = [{ x: 0, y: 0 }, ...otherHubs]
+        const allPositions = [myHub ? { x: 0, y: 0 } : { x: 0, y: 0 }, ...otherHubs]
         separateHubs(allPositions)
         otherHubs.forEach((hub, i) => { hub.x = allPositions[i + 1].x; hub.y = allPositions[i + 1].y })
 
-        hubsRef.current = [hubsRef.current[0], ...otherHubs]
+        hubsRef.current = myHub ? [myHub, ...otherHubs] : otherHubs
       } catch (error) {
         console.error('Failed to load universe hubs:', error)
       }
@@ -2279,34 +2283,34 @@ export default function UniverseMap({
     }
     void init()
     return () => { cancelAnimationFrame(animFrameRef.current); if (resizeHandler) window.removeEventListener('resize', resizeHandler) }
-  }, [hubName, hubStyle, hubColor, hubDecoration, hubGlowIntensity, hubAvatarUrl, hubBio, hubAskAbout])
+  }, [hubName, hubStyle, hubColor, hubDecoration, hubGlowIntensity, hubAvatarUrl, hubBio, hubAskAbout, isGuestExplorer])
 
   // Patch avatar in-place when it changes without re-running full init
   useEffect(() => {
-    if (!hubAvatarUrl) return
+    if (isGuestExplorer || !hubAvatarUrl) return
     loadImage(hubAvatarUrl).then(img => {
       if (hubsRef.current.length > 0 && hubsRef.current[0].isMe) {
         hubsRef.current[0].avatarUrl = hubAvatarUrl
         hubsRef.current[0].avatarImage = img
       }
     })
-  }, [hubAvatarUrl])
+  }, [hubAvatarUrl, isGuestExplorer])
 
   // Patch decoration/glow in-place
   useEffect(() => {
-    if (hubsRef.current.length > 0 && hubsRef.current[0].isMe) {
+    if (!isGuestExplorer && hubsRef.current.length > 0 && hubsRef.current[0].isMe) {
       hubsRef.current[0].decoration = hubDecoration
       hubsRef.current[0].glowIntensity = hubGlowIntensity
     }
-  }, [hubDecoration, hubGlowIntensity])
+  }, [hubDecoration, hubGlowIntensity, isGuestExplorer])
 
   // Patch bio/askAbout in-place when they change
   useEffect(() => {
-    if (hubsRef.current.length > 0 && hubsRef.current[0].isMe) {
+    if (!isGuestExplorer && hubsRef.current.length > 0 && hubsRef.current[0].isMe) {
       hubsRef.current[0].bio = hubBio || 'This is your place in the universe.'
       hubsRef.current[0].askAbout = hubAskAbout || ''
     }
-  }, [hubBio, hubAskAbout])
+  }, [hubBio, hubAskAbout, isGuestExplorer])
 
   const getHubAt = useCallback((mx: number, my: number): Hub | null => {
     const scale = scaleRef.current; const offset = offsetRef.current
@@ -2450,7 +2454,7 @@ export default function UniverseMap({
     { label: 'Scribe', icon: '✒' },
     { label: 'Observatory', icon: '⟡' },
     { label: 'Drift', icon: '✍' },
-    { label: 'Sanctum', icon: '◎' },
+    ...(!isGuestExplorer ? [{ label: 'Sanctum', icon: '◎' }] : []),
   ]
 
   return (
@@ -2621,7 +2625,14 @@ export default function UniverseMap({
         {navItems.map((item, i) => (
           <button key={item.label}
             className="universe-nav-btn"
-            onClick={() => { playClick(); setActiveNav(i); if (i === 1) onWriteLetter?.(); if (i === 2) onObservatory?.(); if (i === 3) onDriftstream?.(); if (i === 4) onProfile?.() }}
+            onClick={() => {
+              playClick()
+              setActiveNav(i)
+              if (i === 1) onWriteLetter?.()
+              if (i === 2) onObservatory?.()
+              if (i === 3) onDriftstream?.()
+              if (!isGuestExplorer && i === 4) onProfile?.()
+            }}
             onMouseEnter={() => setHoveredNav(i)} onMouseLeave={() => setHoveredNav(null)}
             style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px', padding: '10px 18px', background: 'transparent', border: 'none', borderRadius: '10px', cursor: 'pointer', minWidth: '64px' }}>
             {activeNav === i && (

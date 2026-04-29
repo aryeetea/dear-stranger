@@ -818,10 +818,15 @@ export async function getAllHubs(): Promise<HubRecord[]> {
       data: { user },
     } = await supabase.auth.getUser()
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('hubs')
       .select('*')
-      .neq('id', user?.id || '')
+
+    if (user?.id) {
+      query = query.neq('id', user.id)
+    }
+
+    const { data, error } = await query
 
     if (error) return []
     return (data || []) as HubRecord[]
