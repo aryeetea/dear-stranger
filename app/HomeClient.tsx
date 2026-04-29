@@ -629,6 +629,15 @@ export default function Home() {
     setLoadingTookLong(false)
   }, [])
 
+  const enterGuestMode = useCallback(() => {
+    clearHubState()
+    setSavedOverlay(null)
+    setIsGuest(true)
+    setGuestBannerDismissed(false)
+    finishAuthRoute()
+    setScreen('universe')
+  }, [clearHubState, finishAuthRoute, setSavedOverlay])
+
   const showConfirmEmailScreen = useCallback((email: string, resumeState: SoulMirrorResumeState) => {
     setConfirmEmail(email)
     setConfirmCode('')
@@ -915,6 +924,11 @@ export default function Home() {
     let ignore = false;
     async function checkSession() {
       try {
+        if (screen === 'universe' && isGuest) {
+          finishAuthRoute()
+          return
+        }
+
         // Only auto-route if not restoring from localStorage
         if (screen === 'loading') {
           await routeFromSession()
@@ -996,7 +1010,7 @@ export default function Home() {
       ignore = true
       authListener.subscription.unsubscribe()
     }
-  }, [applyHubState, authRouteRetryKey, clearHubState, finishAuthRoute, requestAuthRouteRetry, restoreUniverseOverlay, routeFromSession, screen, setSavedOverlay])
+  }, [applyHubState, authRouteRetryKey, clearHubState, finishAuthRoute, isGuest, requestAuthRouteRetry, restoreUniverseOverlay, routeFromSession, screen, setSavedOverlay])
 
   // Prevent browser back button from escaping the SPA when user is authenticated
   useEffect(() => {
@@ -1523,11 +1537,7 @@ export default function Home() {
             setOnboardingError('')
             router.push('/login')
           }}
-          onGuest={() => {
-            setIsGuest(true)
-            setGuestBannerDismissed(false)
-            setScreen('universe')
-          }}
+          onGuest={enterGuestMode}
         />
       )}
 
@@ -1541,11 +1551,7 @@ export default function Home() {
             setOnboardingError('')
             router.push('/login')
           }}
-          onGuest={() => {
-            setIsGuest(true)
-            setGuestBannerDismissed(false)
-            setScreen('universe')
-          }}
+          onGuest={enterGuestMode}
         />
       )}
 
