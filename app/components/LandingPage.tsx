@@ -110,11 +110,11 @@ export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: (
   const [showUniverseChoices, setShowUniverseChoices] = useState(false)
   useEffect(() => {
     const timers = [
-      setTimeout(() => setTitleOut(true), 2200),
-      setTimeout(() => setPhase(1), 2700),
-      setTimeout(() => setPhase(2), 3600),
-      setTimeout(() => setPhase(3), 4400),
-      setTimeout(() => setPhase(4), 5400),
+      setTimeout(() => setTitleOut(true), 40000),
+      setTimeout(() => setPhase(1), 40500),
+      setTimeout(() => setPhase(2), 41400),
+      setTimeout(() => setPhase(3), 42200),
+      setTimeout(() => setPhase(4), 43200),
     ]
     return () => timers.forEach(clearTimeout)
   }, [])
@@ -343,11 +343,11 @@ export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: (
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.8, delay: 0.3 + i * 0.12, ease: [0.16, 1, 0.3, 1] }}
                   style={{
-                    fontFamily: "'Cormorant Garamond', serif",
-                    fontSize: 'clamp(52px, 10vw, 96px)',
-                    fontWeight: 300,
+                    fontFamily: "'Dancing Script', cursive",
+                    fontSize: 'clamp(60px, 11vw, 116px)',
+                    fontWeight: 400,
                     color: 'rgba(245,230,190,0.92)',
-                    letterSpacing: '0.06em',
+                    letterSpacing: '0.02em',
                     lineHeight: 1,
                     display: 'inline-block',
                     textShadow: '0 0 60px rgba(201,168,76,0.45), 0 0 120px rgba(201,168,76,0.22)',
@@ -367,11 +367,11 @@ export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: (
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.8, delay: 0.9 + i * 0.11, ease: [0.16, 1, 0.3, 1] }}
                   style={{
-                    fontFamily: "'Cormorant Garamond', serif",
-                    fontSize: 'clamp(52px, 10vw, 96px)',
-                    fontWeight: 300,
+                    fontFamily: "'Dancing Script', cursive",
+                    fontSize: 'clamp(60px, 11vw, 116px)',
+                    fontWeight: 400,
                     color: 'rgba(245,230,190,0.92)',
-                    letterSpacing: '0.06em',
+                    letterSpacing: '0.02em',
                     lineHeight: 1,
                     display: 'inline-block',
                     textShadow: '0 0 60px rgba(201,168,76,0.45), 0 0 120px rgba(201,168,76,0.22)',
