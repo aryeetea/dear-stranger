@@ -29,6 +29,7 @@ function isIosSafari() {
 
 export default function AppInstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
+  const [showIosSteps, setShowIosSteps] = useState(false)
   const [dismissed, setDismissed] = useState(() => {
     if (typeof window === 'undefined') return false
     return localStorage.getItem('ds_install_prompt_dismissed') === '1'
@@ -68,7 +69,10 @@ export default function AppInstallPrompt() {
   if (!deferredPrompt && !showIosHint) return null
 
   async function install() {
-    if (!deferredPrompt) return
+    if (!deferredPrompt) {
+      setShowIosSteps(true)
+      return
+    }
 
     await deferredPrompt.prompt()
     const choice = await deferredPrompt.userChoice
@@ -91,15 +95,15 @@ export default function AppInstallPrompt() {
         <span>
           {deferredPrompt
             ? 'Install it for a full-screen, app-like experience.'
-            : 'In Safari, tap Share and choose Add to Home Screen.'}
+            : showIosSteps
+              ? 'Tap Share, then scroll and choose Add to Home Screen.'
+              : 'Add it to your home screen for a full-screen, app-like experience.'}
         </span>
       </div>
       <div className="app-install-actions">
-        {deferredPrompt ? (
-          <button type="button" className="app-install-primary" onClick={install}>
-            Install
-          </button>
-        ) : null}
+        <button type="button" className="app-install-primary" onClick={install}>
+          {deferredPrompt ? 'Install' : showIosSteps ? 'Share → Add to Home Screen' : 'Install'}
+        </button>
         <button type="button" className="app-install-dismiss" onClick={dismiss} aria-label="Dismiss install prompt">
           Not now
         </button>
