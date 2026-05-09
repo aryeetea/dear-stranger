@@ -2,24 +2,16 @@
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { QRCodeSVG } from 'qrcode.react'
 import { updateHub, signOut, deleteAccount, exportMyLetters, uploadAvatarToStorage, getVisitorBook, getMyAvatarBucketImages, deleteAvatarFromStorage, type VisitorBookEntry } from '../lib/auth'
 import { supabase } from '../../lib/supabase'
 import { HUB_COLOR_THEMES, HUB_STYLES, HUB_DECORATIONS, HUB_GLOW_LEVELS, type HubColor, type HubStyle, type HubDecoration, type HubGlowIntensity } from './UniverseMap'
 
 const MAX_REGEN_ATTEMPTS = 2
 type DeleteStep = 'idle' | 'exporting' | 'exported' | 'deleting' | 'deleted'
-type SanctumPanel = 'appearance' | 'visitors' | 'settings' | 'share'
+type SanctumPanel = 'appearance' | 'visitors' | 'settings'
 const CYCLE_DAYS = 20
 const DAY_MS = 1000 * 60 * 60 * 24
-const DEFAULT_WELCOME_URL = 'https://dear-stranger.vercel.app/?welcome=1'
 const MAX_AVATAR_HISTORY = 8
-
-function getWelcomeUrl(origin: string) {
-  const url = new URL(origin)
-  url.searchParams.set('welcome', '1')
-  return url.toString()
-}
 
 function makeAvatarHistoryKey(userId: string) {
   return `ds_avatar_history_${userId}`
@@ -131,15 +123,6 @@ export default function Profile({
     } finally { setAppearanceSaving(false) }
   }
 
-  function handleCopyUrl() {
-    void navigator.clipboard.writeText(appUrl)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
-
-  const [appUrl, setAppUrl] = useState(DEFAULT_WELCOME_URL)
-  const [copied, setCopied] = useState(false)
-
   const [leavingConfirm, setLeavingConfirm] = useState(false)
   const [leaving, setLeaving] = useState(false)
   const [leaveError, setLeaveError] = useState('')
@@ -229,10 +212,6 @@ export default function Profile({
       setLastAvatarProp('')
     }
   }, [initialAvatarUrl, lastAvatarProp, avatarHistory, userId, persistAvatarHistory])
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') setAppUrl(getWelcomeUrl(window.location.origin))
-  }, [])
 
   useEffect(() => {
     const timer = window.setInterval(() => setCycleNow(Date.now()), 60_000)
@@ -556,7 +535,6 @@ export default function Profile({
     { id: 'appearance', label: 'Appearance', glyph: '✦', line: 'Shape the light of your hub.' },
     { id: 'visitors', label: 'Visitors', glyph: '◌', line: 'See who has passed through quietly.' },
     { id: 'settings', label: 'Settings', glyph: '☽', line: 'Keep the rules of your space.' },
-    { id: 'share', label: 'Share', glyph: '⌁', line: 'Open a small door for someone else.' },
   ]
   const activePanel = sanctumPanels.find(panel => panel.id === activeSanctumPanel) || sanctumPanels[0]
 
@@ -1183,27 +1161,6 @@ export default function Profile({
                 { label: 'Show Online Status', desc: 'Let others see when your hub is glowing', enabled: true },
                 { label: 'Letter Travel Time', desc: 'Slow — letters arrive over 1 to 7 days', enabled: true },
               ].map((s, i) => <SettingRow key={i} label={s.label} desc={s.desc} enabled={s.enabled} />)}
-            </div>
-          </div>
-          )}
-
-          {activeSanctumPanel === 'share' && (
-          <div style={{ marginBottom: '32px' }}>
-            <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.4em', color: 'rgba(201,168,76,0.65)', textTransform: 'uppercase', marginBottom: '6px' }}>Share This App</p>
-            <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(255,255,255,0.45)', marginBottom: '20px' }}>Scan to open Dear Stranger on any device</p>
-            <div style={{ display: 'flex', gap: '28px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-              <div style={{ padding: '12px', background: '#fff', borderRadius: '6px', lineHeight: 0, flexShrink: 0 }}>
-                <QRCodeSVG value={appUrl} size={120} bgColor="#ffffff" fgColor="#0a0a14" level="M" />
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', justifyContent: 'center' }}>
-                <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '13px', color: 'rgba(255,255,255,0.5)', lineHeight: 1.6, maxWidth: '240px' }}>
-                  Point a phone camera at the code to visit the app — or add it to your home screen to install as a PWA.
-                </p>
-                <button onClick={handleCopyUrl}
-                  style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.25em', color: copied ? 'rgba(100,200,140,0.9)' : 'rgba(201,168,76,0.85)', padding: '8px 16px', border: `1px solid ${copied ? 'rgba(100,200,140,0.4)' : 'rgba(201,168,76,0.3)'}`, background: 'transparent', cursor: 'pointer', textTransform: 'uppercase', borderRadius: '2px', width: 'fit-content', transition: 'all 0.2s' }}>
-                  {copied ? '✓ Copied' : '⎘ Copy Link'}
-                </button>
-              </div>
             </div>
           </div>
           )}
