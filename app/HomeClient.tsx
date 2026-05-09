@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import type { Session } from '@supabase/supabase-js'
 import LandingPage from './components/LandingPage'
 import SoulMirror from './components/SoulMirror'
@@ -58,8 +58,52 @@ type Screen =
   | 'generating'
   | 'confirm_email'
 
+type UniverseRoute = 'starmap' | 'scribe' | 'observatory' | 'drift' | 'sanctum' | 'pages'
+
+const UNIVERSE_PATHS: Record<UniverseRoute, string> = {
+  starmap: '/starmap',
+  scribe: '/scribe',
+  observatory: '/observatory',
+  drift: '/drift',
+  sanctum: '/sanctum',
+  pages: '/pages',
+}
+
 const HUB_COLOR_IDS: HubColor[] = ['gold', 'sage', 'rose', 'azure', 'amber', 'violet', 'teal', 'sand', 'steel', 'crimson', 'forest', 'pearl', 'obsidian', 'coral', 'sky']
 const logger = createLogger('HomeClient')
+
+function getUniverseRoute(pathname: string | null): UniverseRoute | null {
+  if (!pathname || pathname === '/' || pathname === UNIVERSE_PATHS.starmap) return 'starmap'
+  if (pathname === UNIVERSE_PATHS.scribe) return 'scribe'
+  if (pathname === UNIVERSE_PATHS.observatory) return 'observatory'
+  if (pathname === UNIVERSE_PATHS.drift) return 'drift'
+  if (pathname === UNIVERSE_PATHS.sanctum) return 'sanctum'
+  if (pathname === UNIVERSE_PATHS.pages) return 'pages'
+  return null
+}
+
+function getOverlayForUniverseRoute(route: UniverseRoute | null): UniverseOverlay {
+  if (route === 'observatory') return 'observatory'
+  if (route === 'sanctum') return 'profile'
+  if (route === 'drift') return 'drift'
+  if (route === 'pages') return 'pages'
+  return null
+}
+
+function getNavIndexForUniverseRoute(route: UniverseRoute | null, isGuest: boolean) {
+  switch (route) {
+    case 'scribe':
+      return 1
+    case 'observatory':
+      return 2
+    case 'drift':
+      return 3
+    case 'sanctum':
+      return isGuest ? 0 : 4
+    default:
+      return 0
+  }
+}
 
 function coerceHubColor(value?: string | null): HubColor {
   return HUB_COLOR_IDS.includes(value as HubColor) ? (value as HubColor) : 'gold'
@@ -571,6 +615,8 @@ function LetterDepartAnimation({ onDone }: { onDone: () => void }) {
 
 export default function Home() {
   const router = useRouter()
+  const pathname = usePathname()
+  const activeUniverseRoute = getUniverseRoute(pathname)
   const [screen, setScreen] = useState<Screen>('loading')
   const [hubName, setHubName] = useState('')
   const [hubBio, setHubBio] = useState('')
@@ -629,12 +675,21 @@ export default function Home() {
   }, [])
 
   const restoreUniverseOverlay = useCallback(() => {
-    const savedOverlay = getSavedOverlay()
+    const savedOverlay = getOverlayForUniverseRoute(activeUniverseRoute) || getSavedOverlay()
+    setScribeOpen(activeUniverseRoute === 'scribe')
     setObservatoryOpen(savedOverlay === 'observatory')
     setProfileOpen(savedOverlay === 'profile')
     setDriftOpen(savedOverlay === 'drift')
     setPagesOpen(savedOverlay === 'pages')
-  }, [getSavedOverlay])
+  }, [activeUniverseRoute, getSavedOverlay])
+
+  const navigateToUniverseRoute = useCallback((route: UniverseRoute) => {
+    router.push(UNIVERSE_PATHS[route])
+  }, [router])
+
+  const navigateToStarmap = useCallback(() => {
+    router.push(UNIVERSE_PATHS.starmap)
+  }, [router])
 
   const dismissFirstSteps = useCallback(() => {
     setFirstStepsDismissed(true)
@@ -716,7 +771,8 @@ export default function Home() {
     setGuestBannerDismissed(false)
     finishAuthRoute()
     setScreen('universe')
-  }, [clearHubState, finishAuthRoute, setSavedOverlay])
+    router.push(UNIVERSE_PATHS.starmap)
+  }, [clearHubState, finishAuthRoute, router, setSavedOverlay])
 
   const showConfirmEmailScreen = useCallback((email: string, resumeState: SoulMirrorResumeState) => {
     setConfirmEmail(email)
@@ -780,6 +836,16 @@ export default function Home() {
 
     setSavedOverlay(activeOverlay)
   }, [driftOpen, observatoryOpen, pagesOpen, profileOpen, screen, setSavedOverlay])
+
+  useEffect(() => {
+    if (screen !== 'universe') return
+
+    setScribeOpen(activeUniverseRoute === 'scribe')
+    setObservatoryOpen(activeUniverseRoute === 'observatory')
+    setDriftOpen(activeUniverseRoute === 'drift')
+    setProfileOpen(activeUniverseRoute === 'sanctum')
+    setPagesOpen(activeUniverseRoute === 'pages')
+  }, [activeUniverseRoute, screen])
 
   useEffect(() => {
     stopAmbient()
@@ -1063,6 +1129,7 @@ export default function Home() {
         setGuestBannerDismissed(false)
         setSavedOverlay(null)
         setScreen('landing')
+        router.push('/')
         return
       }
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
@@ -1076,7 +1143,7 @@ export default function Home() {
       ignore = true
       authListener.subscription.unsubscribe()
     }
-  }, [applyHubState, authRouteRetryKey, clearHubState, finishAuthRoute, isGuest, requestAuthRouteRetry, restoreUniverseOverlay, routeFromSession, screen, setSavedOverlay])
+  }, [applyHubState, authRouteRetryKey, clearHubState, finishAuthRoute, isGuest, requestAuthRouteRetry, restoreUniverseOverlay, routeFromSession, router, screen, setSavedOverlay])
 
   // Prevent browser back button from escaping the SPA when user is authenticated
   useEffect(() => {
@@ -1591,7 +1658,7 @@ export default function Home() {
       {sendFlashing && (
         <LetterDepartAnimation onDone={() => {
           setSendFlashing(false)
-          setScribeOpen(false)
+          navigateToStarmap()
           setNavResetSignal(s => s + 1)
           sendLocalNotification('Dear Stranger', 'Your letter is traveling across the universe ✦')
         }} />
@@ -1662,13 +1729,13 @@ export default function Home() {
           onExplore={dismissFirstSteps}
           onOpenProfile={() => {
             dismissFirstSteps()
-            setProfileOpen(true)
+            navigateToUniverseRoute('sanctum')
           }}
           onWriteUniverseLetter={() => {
             dismissFirstSteps()
             setScribeRecipient(undefined)
             setScribeReplyContext(undefined)
-            setScribeOpen(true)
+            navigateToUniverseRoute('scribe')
           }}
         />
       )}
@@ -1686,18 +1753,20 @@ export default function Home() {
           currentUserId={currentUserId}
           isGuestExplorer={isGuest}
           avatarGenerating={avatarGenerating}
+          activeNavIndex={getNavIndexForUniverseRoute(activeUniverseRoute, isGuest)}
+          onStarmap={navigateToStarmap}
           onWriteLetter={(name) => {
             if (isGuest) { setGuestNudgeOpen(true); return }
             setScribeRecipient(name)
             setScribeReplyContext(undefined)
-            setScribeOpen(true)
+            navigateToUniverseRoute('scribe')
           }}
-          onObservatory={() => setObservatoryOpen(true)}
+          onObservatory={() => navigateToUniverseRoute('observatory')}
           onProfile={() => {
             if (isGuest) { setGuestNudgeOpen(true); return }
-            setProfileOpen(true)
+            navigateToUniverseRoute('sanctum')
           }}
-          onDriftstream={() => setDriftOpen(true)}
+          onDriftstream={() => navigateToUniverseRoute('drift')}
           navResetSignal={navResetSignal}
           lettersRefreshSignal={lettersRefreshSignal}
         />
@@ -1754,7 +1823,7 @@ export default function Home() {
             draftOwnerId={currentUserId || hubName}
             lettersSent={lettersSent}
             replyContext={scribeReplyContext}
-            onClose={() => { setScribeOpen(false); setScribeReplyContext(undefined); setNavResetSignal(s => s + 1) }}
+            onClose={() => { setScribeReplyContext(undefined); navigateToStarmap(); setNavResetSignal(s => s + 1) }}
             onSend={async (letter) => {
               try {
                 const voiceNoteUrl = letter.voiceNoteBlob ? await uploadVoiceNote(letter.voiceNoteBlob) : undefined
@@ -1833,7 +1902,7 @@ export default function Home() {
         {pagesOpen && (
           <PagesAndInk
             key="pages"
-            onClose={() => { setPagesOpen(false); setNavResetSignal(s => s + 1) }}
+            onClose={() => { navigateToStarmap(); setNavResetSignal(s => s + 1) }}
           />
         )}
       </AnimatePresence>
@@ -1843,7 +1912,7 @@ export default function Home() {
           <DriftStream
             key="drift"
             senderName={hubName}
-            onClose={() => { setDriftOpen(false); setNavResetSignal(s => s + 1) }}
+            onClose={() => { navigateToStarmap(); setNavResetSignal(s => s + 1) }}
           />
         )}
       </AnimatePresence>
@@ -1853,12 +1922,11 @@ export default function Home() {
           <Observatory
             key="observatory"
             lettersRefreshSignal={lettersRefreshSignal}
-            onClose={() => { setObservatoryOpen(false); setNavResetSignal(s => s + 1) }}
+            onClose={() => { navigateToStarmap(); setNavResetSignal(s => s + 1) }}
             onWriteLetter={(name, replyContext) => {
-              setObservatoryOpen(false)
               setScribeRecipient(name)
               setScribeReplyContext(replyContext)
-              setScribeOpen(true)
+              navigateToUniverseRoute('scribe')
             }}
           />
         )}
@@ -1880,7 +1948,7 @@ export default function Home() {
             hubDecoration={hubDecoration}
             hubGlowIntensity={hubGlowIntensity}
             visitorBookEnabled={visitorBookEnabled}
-            onClose={() => { setProfileOpen(false); setNavResetSignal(s => s + 1) }}
+            onClose={() => { navigateToStarmap(); setNavResetSignal(s => s + 1) }}
             onUpdateHub={({ hubName: nextHubName, bio: nextBio, askAbout: nextAskAbout, avatarUrl: nextAvatarUrl, hubStyle: nextHubStyle, hubColor: nextHubColor, hubDecoration: nextHubDecoration, hubGlowIntensity: nextHubGlowIntensity, visitorBookEnabled: nextVisitorBookEnabled }) => {
               if (typeof nextHubName === 'string') setHubName(nextHubName)
               if (typeof nextBio === 'string') setHubBio(nextBio)

@@ -1712,13 +1712,14 @@ function ShootingStarLetterModal({
 export default function UniverseMap({
   hubName, hubBio, hubAskAbout, hubAvatarUrl, hubStyle = 'portal', hubColor = 'gold',
   hubDecoration = 'none', hubGlowIntensity = 'normal', currentUserId = '',
-  isGuestExplorer = false, onWriteLetter, onObservatory, onProfile, onDriftstream, navResetSignal = 0, avatarGenerating = false, lettersRefreshSignal = 0,
+  isGuestExplorer = false, onStarmap, onWriteLetter, onObservatory, onProfile, onDriftstream, navResetSignal = 0, avatarGenerating = false, lettersRefreshSignal = 0, activeNavIndex = 0,
 }: {
   hubName?: string; hubBio?: string; hubAskAbout?: string; hubAvatarUrl?: string; hubStyle?: HubStyle; hubColor?: HubColor
   hubDecoration?: HubDecoration; hubGlowIntensity?: HubGlowIntensity; currentUserId?: string; isGuestExplorer?: boolean
+  onStarmap?: () => void
   onWriteLetter?: (recipientName?: string) => void
   onObservatory?: () => void; onProfile?: () => void; onDriftstream?: () => void
-  navResetSignal?: number; avatarGenerating?: boolean; lettersRefreshSignal?: number
+  navResetSignal?: number; avatarGenerating?: boolean; lettersRefreshSignal?: number; activeNavIndex?: number
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const hubsRef = useRef<Hub[]>([])
@@ -1803,6 +1804,10 @@ export default function UniverseMap({
     const timer = window.setTimeout(() => setActiveNav(0), 0)
     return () => window.clearTimeout(timer)
   }, [navResetSignal])
+
+  useEffect(() => {
+    setActiveNav(activeNavIndex)
+  }, [activeNavIndex])
 
   useEffect(() => {
     let cancelled = false
@@ -2628,6 +2633,7 @@ export default function UniverseMap({
             onClick={() => {
               playClick()
               setActiveNav(i)
+              if (i === 0) onStarmap?.()
               if (i === 1) onWriteLetter?.()
               if (i === 2) onObservatory?.()
               if (i === 3) onDriftstream?.()
