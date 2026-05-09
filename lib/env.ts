@@ -1,6 +1,14 @@
 const missingEnv = new Set<string>()
 
-function readEnv(name: string) {
+function readEnvValue(name: string, value: string | undefined) {
+  const trimmed = value?.trim()
+  if (trimmed) return trimmed
+
+  missingEnv.add(name)
+  throw new Error(`Missing required environment variable: ${name}`)
+}
+
+function readServerEnv(name: string) {
   const value = process.env[name]?.trim()
   if (value) return value
 
@@ -9,11 +17,19 @@ function readEnv(name: string) {
 }
 
 export function getPublicEnv(name: `NEXT_PUBLIC_${string}`) {
-  return readEnv(name)
+  switch (name) {
+    case 'NEXT_PUBLIC_SUPABASE_URL':
+      return readEnvValue(name, process.env.NEXT_PUBLIC_SUPABASE_URL)
+    case 'NEXT_PUBLIC_SUPABASE_ANON_KEY':
+      return readEnvValue(name, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+    default:
+      missingEnv.add(name)
+      throw new Error(`Unknown public environment variable: ${name}`)
+  }
 }
 
 export function getServerEnv(name: string) {
-  return readEnv(name)
+  return readServerEnv(name)
 }
 
 export function listMissingEnv() {
