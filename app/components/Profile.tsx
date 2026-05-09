@@ -971,7 +971,7 @@ export default function Profile({
           <div style={{ marginBottom: '24px' }}>
             <p style={{ fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.42em', color: `rgba(${hubGlowRgb},0.62)`, textTransform: 'uppercase', marginBottom: '8px' }}>Sanctum</p>
             <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(255,255,255,0.46)', lineHeight: 1.6, marginBottom: '14px' }}>{activePanel.line}</p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '8px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${sanctumPanels.length}, minmax(0, 1fr))`, gap: '8px' }}>
             {sanctumPanels.map(tab => {
               const isSelected = activeSanctumPanel === tab.id
               return (
