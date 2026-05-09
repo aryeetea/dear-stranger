@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { getAllHubs, getUniverseLetters, getReturnPaths, recordHubVisit } from '../lib/auth'
+import { getAllHubs, getAvatarThumbnailUrl, getUniverseLetters, getReturnPaths, recordHubVisit } from '../lib/auth'
 import { playShootingStarCatch, playClick } from '../../lib/sounds'
 import { supabase } from '../../lib/supabase'
 import { PAPER_TONES, PAPER_INK, renderLetterPaper } from '../lib/letterPapers'
@@ -171,16 +171,6 @@ function loadImage(url: string): Promise<HTMLImageElement> {
     img.onload = () => { imageCache.set(url, img); resolve(img) }
     img.onerror = () => resolve(img)
     img.src = url
-  })
-}
-
-function loadImageWithTimeout(url: string, timeoutMs = 1800): Promise<HTMLImageElement | undefined> {
-  return new Promise(resolve => {
-    const timeout = window.setTimeout(() => resolve(undefined), timeoutMs)
-    loadImage(url).then((img) => {
-      window.clearTimeout(timeout)
-      resolve(img)
-    })
   })
 }
 
@@ -1994,6 +1984,7 @@ export default function UniverseMap({
 
   useEffect(() => {
     let resizeHandler: (() => void) | undefined
+    let cancelled = false
     async function init() {
       const canvas = canvasRef.current
       if (!canvas) return
@@ -2021,7 +2012,8 @@ export default function UniverseMap({
       hubsRef.current = myHub ? [myHub] : []
 
       if (myHub && hubAvatarUrl) {
-        void loadImage(hubAvatarUrl).then(img => {
+        const mapAvatarUrl = getAvatarThumbnailUrl(hubAvatarUrl)
+        void loadImage(mapAvatarUrl).then(img => {
           if (hubsRef.current.length > 0 && hubsRef.current[0].isMe) {
             hubsRef.current[0].avatarImage = img
           }
@@ -2030,16 +2022,15 @@ export default function UniverseMap({
 
       try {
         const realHubs = await getAllHubs()
-        const otherHubs = await Promise.all(realHubs.map(async (hub: UniverseHubRecord, i: number) => {
+        const otherHubs = realHubs.map((hub: UniverseHubRecord, i: number) => {
           const angle = (i / Math.max(realHubs.length, 1)) * Math.PI * 2 + 0.3
           const dist = 180 + (i * 73) % 320
-          const avatarImg = hub.avatar_url ? await loadImageWithTimeout(hub.avatar_url) : undefined
           const styles: HubStyle[] = ['portal', 'lantern', 'ruin', 'hourglass', 'telescope', 'greenhouse', 'lotus', 'cottage', 'forge', 'tower', 'ship', 'cathedral', 'oasis', 'astrolabe']
           return {
             id: hub.id,
             x: Math.cos(angle) * dist, y: Math.sin(angle) * dist,
             name: hub.hub_name, bio: hub.bio || '', askAbout: hub.ask_about || '',
-            avatarUrl: hub.avatar_url || '', avatarImage: avatarImg,
+            avatarUrl: hub.avatar_url || '', avatarImage: undefined,
             online: onlineUserIdsRef.current.has(hub.id), pulse: 0,
             size: 0.9 + (i * 17 % 10) / 30,
             floatOffset: (i * 137) % (Math.PI * 2),
@@ -2050,13 +2041,24 @@ export default function UniverseMap({
             glowIntensity: (hub.glow_intensity as HubGlowIntensity) || 'normal',
             visitorBookEnabled: hub.visitor_book_enabled !== false,
           } as Hub
-        }))
+        })
 
         const allPositions = [myHub ? { x: 0, y: 0 } : { x: 0, y: 0 }, ...otherHubs]
         separateHubs(allPositions)
         otherHubs.forEach((hub, i) => { hub.x = allPositions[i + 1].x; hub.y = allPositions[i + 1].y })
 
         hubsRef.current = myHub ? [myHub, ...otherHubs] : otherHubs
+
+        realHubs.forEach((hub) => {
+          if (!hub.avatar_url) return
+          void loadImage(getAvatarThumbnailUrl(hub.avatar_url)).then((img) => {
+            if (cancelled) return
+            const targetHub = hubsRef.current.find((current) => current.id === hub.id)
+            if (targetHub) {
+              targetHub.avatarImage = img
+            }
+          })
+        })
       } catch (error) {
         console.error('Failed to load universe hubs:', error)
       }
@@ -2287,13 +2289,17 @@ export default function UniverseMap({
       draw()
     }
     void init()
-    return () => { cancelAnimationFrame(animFrameRef.current); if (resizeHandler) window.removeEventListener('resize', resizeHandler) }
+    return () => {
+      cancelled = true
+      cancelAnimationFrame(animFrameRef.current)
+      if (resizeHandler) window.removeEventListener('resize', resizeHandler)
+    }
   }, [hubName, hubStyle, hubColor, hubDecoration, hubGlowIntensity, hubAvatarUrl, hubBio, hubAskAbout, isGuestExplorer])
 
   // Patch avatar in-place when it changes without re-running full init
   useEffect(() => {
     if (isGuestExplorer || !hubAvatarUrl) return
-    loadImage(hubAvatarUrl).then(img => {
+    loadImage(getAvatarThumbnailUrl(hubAvatarUrl)).then(img => {
       if (hubsRef.current.length > 0 && hubsRef.current[0].isMe) {
         hubsRef.current[0].avatarUrl = hubAvatarUrl
         hubsRef.current[0].avatarImage = img

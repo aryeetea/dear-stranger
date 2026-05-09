@@ -100,10 +100,47 @@ type AvatarHistoryRow = {
   created_at: string
 }
 
+const AVATAR_BUCKET = 'avatars'
+const STORAGE_PUBLIC_PATH = `/storage/v1/object/public/${AVATAR_BUCKET}/`
+const STORAGE_RENDER_PATH = `/storage/v1/render/image/public/${AVATAR_BUCKET}/`
+
 export type AvatarHistoryEntry = {
   id: string
   imageUrl: string
   createdAt: string
+}
+
+function getAvatarStoragePath(avatarUrl: string) {
+  try {
+    const parsed = new URL(avatarUrl)
+    const pathname = parsed.pathname
+    if (pathname.includes(STORAGE_RENDER_PATH)) {
+      return pathname.split(STORAGE_RENDER_PATH)[1] || ''
+    }
+    if (pathname.includes(STORAGE_PUBLIC_PATH)) {
+      return pathname.split(STORAGE_PUBLIC_PATH)[1] || ''
+    }
+    return ''
+  } catch {
+    return ''
+  }
+}
+
+export function getAvatarThumbnailUrl(avatarUrl: string, width = 160, height = 160) {
+  if (!avatarUrl || avatarUrl.startsWith('data:')) return avatarUrl
+  const filePath = getAvatarStoragePath(avatarUrl)
+  if (!filePath) return avatarUrl
+
+  const { data } = supabase.storage.from(AVATAR_BUCKET).getPublicUrl(filePath, {
+    transform: {
+      width,
+      height,
+      resize: 'cover',
+      quality: 70,
+    },
+  })
+
+  return data.publicUrl
 }
 
 function normalizeHubName(hubName: string) {
