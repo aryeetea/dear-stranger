@@ -342,6 +342,14 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
               title="Choose your path and visual style"
               sub="Start by picking how you want to describe yourself, then choose the world your portrait belongs in."
             />
+            <div style={{ marginBottom: '18px', padding: '14px 16px', borderRadius: '12px', border: '1px solid rgba(230,199,110,0.16)', background: 'rgba(255,255,255,0.025)' }}>
+              <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.22em', color: '#e6c76e', textTransform: 'uppercase', margin: '0 0 6px' }}>
+                1. Pick how you want to describe yourself
+              </p>
+              <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '15px', color: 'rgba(255,255,255,0.62)', lineHeight: 1.6, margin: 0 }}>
+                Choose <strong style={{ color: 'rgba(255,255,255,0.88)' }}>Guided Questions</strong> if you want help pulling details out. Choose <strong style={{ color: 'rgba(255,255,255,0.88)' }}>Write It Yourself</strong> if you already know exactly what you want to say.
+              </p>
+            </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(250px, 100%), 1fr))', gap: '12px', marginBottom: '20px' }}>
               <button
                 onClick={() => setAvatarMode('guided')}
@@ -354,6 +362,9 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
                   cursor: 'pointer',
                 }}
               >
+                <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.12em', color: avatarMode === 'guided' ? 'rgba(255,255,255,0.75)' : 'rgba(255,255,255,0.42)', textTransform: 'uppercase', margin: '0 0 8px' }}>
+                  Best if you want help
+                </p>
                 <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.18em', color: avatarMode === 'guided' ? '#e6c76e' : 'rgba(255,255,255,0.7)', textTransform: 'uppercase', margin: '0 0 8px' }}>Guided questions</p>
                 <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '15px', color: 'rgba(255,255,255,0.58)', lineHeight: 1.55, margin: 0 }}>The mirror asks a few short questions and helps pull out the details.</p>
               </button>
@@ -368,9 +379,20 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
                   cursor: 'pointer',
                 }}
               >
+                <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.12em', color: avatarMode === 'freeform' ? 'rgba(255,255,255,0.75)' : 'rgba(255,255,255,0.42)', textTransform: 'uppercase', margin: '0 0 8px' }}>
+                  Best if you know exactly what you want
+                </p>
                 <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.18em', color: avatarMode === 'freeform' ? '#e6c76e' : 'rgba(255,255,255,0.7)', textTransform: 'uppercase', margin: '0 0 8px' }}>Write it yourself</p>
                 <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '15px', color: 'rgba(255,255,255,0.58)', lineHeight: 1.55, margin: 0 }}>Describe yourself directly if you already know exactly what you want.</p>
               </button>
+            </div>
+            <div style={{ marginBottom: '18px', padding: '14px 16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.02)' }}>
+              <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.22em', color: '#e6c76e', textTransform: 'uppercase', margin: '0 0 6px' }}>
+                2. Choose the visual style of your portrait
+              </p>
+              <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '15px', color: 'rgba(255,255,255,0.62)', lineHeight: 1.6, margin: 0 }}>
+                This decides the aesthetic world your avatar belongs in. Your writing path above stays the same either way.
+              </p>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(210px, 100%), 1fr))', gap: '12px', marginBottom: '16px' }}>
               {STYLE_OPTIONS.map(style => (
