@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { getAllHubs, getAvatarThumbnailUrl, getUniverseLetters, getReturnPaths, recordHubVisit } from '../lib/auth'
+import { getAllHubs, getUniverseLetters, getReturnPaths, recordHubVisit } from '../lib/auth'
 import { playShootingStarCatch, playClick } from '../../lib/sounds'
 import { supabase } from '../../lib/supabase'
 import { PAPER_TONES, PAPER_INK, renderLetterPaper } from '../lib/letterPapers'
@@ -2012,8 +2012,7 @@ export default function UniverseMap({
       hubsRef.current = myHub ? [myHub] : []
 
       if (myHub && hubAvatarUrl) {
-        const mapAvatarUrl = getAvatarThumbnailUrl(hubAvatarUrl)
-        void loadImage(mapAvatarUrl).then(img => {
+        void loadImage(hubAvatarUrl).then(img => {
           if (hubsRef.current.length > 0 && hubsRef.current[0].isMe) {
             hubsRef.current[0].avatarImage = img
           }
@@ -2051,7 +2050,7 @@ export default function UniverseMap({
 
         realHubs.forEach((hub) => {
           if (!hub.avatar_url) return
-          void loadImage(getAvatarThumbnailUrl(hub.avatar_url)).then((img) => {
+          void loadImage(hub.avatar_url).then((img) => {
             if (cancelled) return
             const targetHub = hubsRef.current.find((current) => current.id === hub.id)
             if (targetHub) {
@@ -2299,7 +2298,7 @@ export default function UniverseMap({
   // Patch avatar in-place when it changes without re-running full init
   useEffect(() => {
     if (isGuestExplorer || !hubAvatarUrl) return
-    loadImage(getAvatarThumbnailUrl(hubAvatarUrl)).then(img => {
+    loadImage(hubAvatarUrl).then(img => {
       if (hubsRef.current.length > 0 && hubsRef.current[0].isMe) {
         hubsRef.current[0].avatarUrl = hubAvatarUrl
         hubsRef.current[0].avatarImage = img
