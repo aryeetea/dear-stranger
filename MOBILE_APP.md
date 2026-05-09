@@ -33,6 +33,11 @@ Use `npm run cap:sync` after any change to `capacitor.config.ts` or after adding
 6. Replace the default app icon and launch assets in `ios/App/App/Assets.xcassets`.
 7. Archive the app and upload it to App Store Connect.
 
+SDK requirement:
+
+- Apple currently requires uploads to be built with the iOS 26 SDK or later.
+- Run `npm run ios:check-sdk` before you archive to verify the local Xcode toolchain and the resolved project SDK.
+
 Before submission:
 
 - Test on a real iPhone.
