@@ -1,6 +1,6 @@
 'use client'
 import dynamic from 'next/dynamic'
-import { useEffect, useState } from 'react'
+import { useSyncExternalStore, useEffect, useState } from 'react'
 import { supabaseInitError } from '../lib/supabase'
 
 function LoadingFallback() {
@@ -29,7 +29,17 @@ const HomeClient = dynamic(() => import('./HomeClient'), {
   loading: () => <LoadingFallback />,
 })
 
+function subscribe() {
+  return () => {}
+}
+
 export default function ClientPage() {
+  const mounted = useSyncExternalStore(subscribe, () => true, () => false)
+
+  if (!mounted) {
+    return <LoadingFallback />
+  }
+
   if (supabaseInitError) {
     return (
       <div style={{ position: 'fixed', inset: 0, background: '#060a18', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px', textAlign: 'center' }}>
