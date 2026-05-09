@@ -34,6 +34,8 @@ const QUICK_START_RULES = [
   { icon: '✒', title: 'There are no likes. No followers. No feed.', desc: 'Dear Stranger has no metrics. Nobody sees how many letters you have sent or received unless you tell them. There is no algorithm deciding who matters. The only way to be known here is to write — and to mean it.' },
 ]
 
+const RULES_FONT_FAMILY = "'Comic Sans MS', 'Chalkboard SE', 'Comic Neue', cursive"
+
 const STYLE_BACKGROUNDS: Record<string, { base: string; gradient: string }> = {
   fantasy: {
     base: '#030008',
@@ -905,8 +907,8 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
                   style={{ display: 'flex', gap: '18px', alignItems: 'flex-start' }}>
                   <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'rgba(230,199,110,0.1)', border: '1px solid rgba(230,199,110,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', flexShrink: 0, marginTop: '2px' }}>{rule.icon}</div>
                   <div>
-                    <p style={{ fontFamily: "'Cinzel', serif", fontSize: '11px', letterSpacing: '0.22em', color: '#e6c76e', textTransform: 'uppercase', marginBottom: '6px' }}>{rule.title}</p>
-                    <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '16px', color: 'rgba(255,255,255,0.75)', lineHeight: 1.65 }}>{rule.desc}</p>
+                    <p style={{ fontFamily: RULES_FONT_FAMILY, fontSize: '18px', color: '#f2db95', marginBottom: '6px', lineHeight: 1.35 }}>{rule.title}</p>
+                    <p style={{ fontFamily: RULES_FONT_FAMILY, fontSize: '17px', color: 'rgba(255,255,255,0.82)', lineHeight: 1.7 }}>{rule.desc}</p>
                   </div>
                 </motion.div>
               ))}

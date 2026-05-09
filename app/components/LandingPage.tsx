@@ -110,11 +110,11 @@ export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: (
   const [showUniverseChoices, setShowUniverseChoices] = useState(false)
   useEffect(() => {
     const timers = [
-      setTimeout(() => setTitleOut(true), 1400),
-      setTimeout(() => setPhase(1), 1900),
-      setTimeout(() => setPhase(2), 2800),
-      setTimeout(() => setPhase(3), 3600),
-      setTimeout(() => setPhase(4), 4600),
+      setTimeout(() => setTitleOut(true), 2200),
+      setTimeout(() => setPhase(1), 2700),
+      setTimeout(() => setPhase(2), 3600),
+      setTimeout(() => setPhase(3), 4400),
+      setTimeout(() => setPhase(4), 5400),
     ]
     return () => timers.forEach(clearTimeout)
   }, [])
