@@ -410,10 +410,12 @@ export function SignupScreen({
   onSuccess,
   setPendingCredentials,
   guestUpgradeMode = false,
+  onGoToLogin,
 }: {
   onSuccess: () => void
   setPendingCredentials: (creds: { email: string; password: string } | null) => void
   guestUpgradeMode?: boolean
+  onGoToLogin: () => void
 }) {
   const [error, setError] = useState('')
   const [googleLoading, setGoogleLoading] = useState(false)
@@ -520,22 +522,30 @@ export function SignupScreen({
 
   if (codeSent) {
     return (
-      <EmailCodePanel
-        email={email}
-        setEmail={setEmail}
-        code={emailCode}
-        setCode={setEmailCode}
-        loading={anyLoading}
-        error={error}
-        sent={codeSent}
-        sendLabel="Send code"
-        verifyLabel="Verify code"
-        sentTitle="Check your email"
-        sentBody={<><span>A sign-up code has been sent to<br /><span style={{ color: 'rgba(201,168,76,0.8)' }}>{email}</span><br />Enter the 6-digit code to open your account.</span></>}
-        onSend={handleSendCode}
-        onVerify={handleVerifyCode}
-        onReset={() => { setCodeSent(false); setEmailCode(''); setEmail(''); setError('') }}
-      />
+      <>
+        <EmailCodePanel
+          email={email}
+          setEmail={setEmail}
+          code={emailCode}
+          setCode={setEmailCode}
+          loading={anyLoading}
+          error={error}
+          sent={codeSent}
+          sendLabel="Send code"
+          verifyLabel="Verify code"
+          sentTitle="Check your email"
+          sentBody={<><span>A sign-up code has been sent to<br /><span style={{ color: 'rgba(201,168,76,0.8)' }}>{email}</span><br />Enter the 6-digit code to open your account.</span></>}
+          onSend={handleSendCode}
+          onVerify={handleVerifyCode}
+          onReset={() => { setCodeSent(false); setEmailCode(''); setEmail(''); setError('') }}
+        />
+        <div style={{ textAlign: 'center', marginTop: '14px' }}>
+          <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(255,255,255,0.35)' }}>
+            Already have a hub?{' '}
+            <span onClick={onGoToLogin} style={{ color: 'rgba(201,168,76,0.7)', cursor: 'pointer', textDecoration: 'underline' }}>Sign in instead</span>
+          </p>
+        </div>
+      </>
     )
   }
 
@@ -649,6 +659,15 @@ export function SignupScreen({
         >
           ← Back to Main
         </button>
+
+        {!guestUpgradeMode && (
+          <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(255,255,255,0.35)' }}>
+              Already have a hub?{' '}
+              <span onClick={onGoToLogin} style={{ color: 'rgba(201,168,76,0.7)', cursor: 'pointer', textDecoration: 'underline' }}>Sign in instead</span>
+            </p>
+          </div>
+        )}
       </motion.div>
     </>
   )

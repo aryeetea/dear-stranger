@@ -97,6 +97,7 @@ export default function SignupPage() {
           }
           router.replace('/')
         }}
+        onGoToLogin={() => router.replace('/login')}
         setPendingCredentials={(creds) => {
           if (typeof sessionStorage === 'undefined') return
           if (creds) {
