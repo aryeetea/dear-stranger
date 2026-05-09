@@ -9,6 +9,9 @@ export const metadata: Metadata = {
   description: "A universe of slow letters",
   applicationName: "Dear Stranger",
   manifest: "/manifest.webmanifest",
+  formatDetection: {
+    telephone: false,
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
@@ -22,6 +25,7 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: "#06040e",
+  viewportFit: "cover",
 }
 
 export default function RootLayout({

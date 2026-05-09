@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Session } from '@supabase/supabase-js'
-import EntryScreen from './components/EntryScreen'
 import LandingPage from './components/LandingPage'
 import SoulMirror from './components/SoulMirror'
 import type { MirrorVoice, SoulMirrorResumeState, StyleOption } from './components/SoulMirror'
@@ -14,10 +13,10 @@ import Observatory from './components/Observatory'
 import Profile from './components/Profile'
 import PagesAndInk from './components/PagesAndInk'
 import DriftStream from './components/DriftStream'
-import { LoginScreen, SignupScreen } from './components/AuthScreens'
 import NotificationBanner, { sendLocalNotification } from './components/NotificationBanner'
 import FeedbackButton from './components/Feedbackbutton'
 import { supabase } from '../lib/supabase'
+import { createLogger } from '../lib/logger'
 import {
   signUpAndCreateHub,
   createHubForCurrentUser,
@@ -34,74 +33,36 @@ import {
   setHubOnlineStatus,
   verifyEmailCode,
 } from './lib/auth'
+import {
+  APP_SHELL_TIMEOUTS,
+  clearOnboardingIntent,
+  clearOnboardingDraft,
+  getAuthFlow,
+  hasSignupOnboardingIntent,
+  readOnboardingDraft,
+  readPendingCredentials,
+  readSavedOverlay,
+  shouldShowWelcomePage,
+  type UniverseOverlay,
+  writeOnboardingDraft,
+  writeSavedOverlay,
+} from './lib/appShell'
 import { playChime, stopAmbient } from '../lib/sounds'
 import { AnimatePresence } from 'framer-motion'
 
 type Screen =
   | 'landing'
-  | 'entry'
   | 'onboarding'
   | 'universe'
   | 'loading'
   | 'generating'
   | 'confirm_email'
 
-type UniverseOverlay = 'observatory' | 'profile' | 'drift' | 'pages' | null
-
-const STARS = Array.from({ length: 30 }, (_, i) => ({
-  left: `${((i * 37 + 11) % 100)}%`,
-  top: `${((i * 53 + 7) % 100)}%`,
-  width: `${(i % 3) * 0.6 + 0.3}px`,
-  opacity: (i % 5) * 0.06 + 0.04,
-}))
-
 const HUB_COLOR_IDS: HubColor[] = ['gold', 'sage', 'rose', 'azure', 'amber', 'violet', 'teal', 'sand', 'steel', 'crimson', 'forest', 'pearl', 'obsidian', 'coral', 'sky']
-const LAST_OVERLAY_KEY = 'ds_last_overlay'
-const SESSION_TIMEOUT_MS = 8000
-const HUB_FETCH_TIMEOUT_MS = 7000
-const APP_LOADING_SLOW_MS = 3500
-const PENDING_AVATAR_RETRY_INITIAL_DELAY_MS = 15000
-const PENDING_AVATAR_RETRY_INTERVAL_MS = 5 * 60 * 1000
-
-function shouldShowWelcomePage() {
-  if (typeof window === 'undefined') return false
-  return new URLSearchParams(window.location.search).get('welcome') === '1'
-}
+const logger = createLogger('HomeClient')
 
 function coerceHubColor(value?: string | null): HubColor {
   return HUB_COLOR_IDS.includes(value as HubColor) ? (value as HubColor) : 'gold'
-}
-
-function AuthBackground() {
-  return (
-    <>
-      <div
-        style={{
-          position: 'fixed',
-          inset: 0,
-          pointerEvents: 'none',
-          background:
-            'radial-gradient(ellipse 75% 60% at 50% 45%, rgba(90,20,180,0.60) 0%, rgba(15,45,155,0.35) 50%, transparent 80%), radial-gradient(ellipse 55% 45% at 80% 20%, rgba(0,120,180,0.28) 0%, transparent 65%), radial-gradient(ellipse 45% 40% at 20% 75%, rgba(170,20,90,0.22) 0%, transparent 65%)',
-        }}
-      />
-      <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none' }}>
-        {STARS.map((s, i) => (
-          <div
-            key={i}
-            style={{
-              position: 'absolute',
-              width: s.width,
-              height: s.width,
-              borderRadius: '50%',
-              background: `rgba(255,255,255,${s.opacity})`,
-              left: s.left,
-              top: s.top,
-            }}
-          />
-        ))}
-      </div>
-    </>
-  )
 }
 
 async function requestAvatarImage(
@@ -393,6 +354,132 @@ function GuestNudge({ onCreateHub, onSignIn, onClose }: {
   )
 }
 
+function FirstStepsPanel({
+  onClose,
+  onExplore,
+  onOpenProfile,
+  onWriteUniverseLetter,
+}: {
+  onClose: () => void
+  onExplore: () => void
+  onOpenProfile: () => void
+  onWriteUniverseLetter: () => void
+}) {
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        top: 'calc(28px + env(safe-area-inset-top, 0px))',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        zIndex: 240,
+        width: 'min(680px, calc(100vw - 24px))',
+        background: 'linear-gradient(180deg, rgba(10,8,28,0.96) 0%, rgba(7,5,18,0.94) 100%)',
+        border: '1px solid rgba(201,168,76,0.26)',
+        borderRadius: '18px',
+        padding: '18px 18px 16px',
+        boxShadow: '0 28px 90px rgba(0,0,0,0.42)',
+        backdropFilter: 'blur(16px)',
+      }}
+    >
+      <button
+        onClick={onClose}
+        style={{
+          position: 'absolute',
+          top: '12px',
+          right: '12px',
+          background: 'none',
+          border: 'none',
+          color: 'rgba(255,255,255,0.34)',
+          fontSize: '18px',
+          cursor: 'pointer',
+          lineHeight: 1,
+        }}
+      >
+        ×
+      </button>
+      <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.32em', color: 'rgba(201,168,76,0.64)', textTransform: 'uppercase', margin: '0 0 8px' }}>
+        Getting Started
+      </p>
+      <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '24px', color: 'rgba(255,255,255,0.92)', margin: '0 0 8px', letterSpacing: '0.03em' }}>
+        Your hub is live. Here&apos;s the fastest way to make this place feel real.
+      </p>
+      <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(255,255,255,0.55)', lineHeight: 1.65, margin: '0 0 16px' }}>
+        Send one letter, explore a few hubs, and shape your profile. After that, the universe starts giving back.
+      </p>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px', marginBottom: '14px' }}>
+        <button
+          onClick={onWriteUniverseLetter}
+          style={{
+            textAlign: 'left',
+            padding: '14px 14px 13px',
+            borderRadius: '14px',
+            border: '1px solid rgba(201,168,76,0.34)',
+            background: 'rgba(201,168,76,0.1)',
+            color: 'rgba(255,255,255,0.9)',
+            cursor: 'pointer',
+          }}
+        >
+          <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.18em', color: 'rgba(201,168,76,0.9)', textTransform: 'uppercase', margin: '0 0 6px' }}>1. Send a first letter</p>
+          <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '15px', color: 'rgba(255,255,255,0.68)', lineHeight: 1.45, margin: 0 }}>Release something into the universe right now.</p>
+        </button>
+        <button
+          onClick={onExplore}
+          style={{
+            textAlign: 'left',
+            padding: '14px 14px 13px',
+            borderRadius: '14px',
+            border: '1px solid rgba(255,255,255,0.14)',
+            background: 'rgba(255,255,255,0.04)',
+            color: 'rgba(255,255,255,0.9)',
+            cursor: 'pointer',
+          }}
+        >
+          <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.18em', color: 'rgba(255,255,255,0.76)', textTransform: 'uppercase', margin: '0 0 6px' }}>2. Explore the map</p>
+          <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '15px', color: 'rgba(255,255,255,0.62)', lineHeight: 1.45, margin: 0 }}>Click a few hubs and find someone worth writing to.</p>
+        </button>
+        <button
+          onClick={onOpenProfile}
+          style={{
+            textAlign: 'left',
+            padding: '14px 14px 13px',
+            borderRadius: '14px',
+            border: '1px solid rgba(255,255,255,0.14)',
+            background: 'rgba(255,255,255,0.04)',
+            color: 'rgba(255,255,255,0.9)',
+            cursor: 'pointer',
+          }}
+        >
+          <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.18em', color: 'rgba(255,255,255,0.76)', textTransform: 'uppercase', margin: '0 0 6px' }}>3. Shape your profile</p>
+          <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '15px', color: 'rgba(255,255,255,0.62)', lineHeight: 1.45, margin: 0 }}>Tighten your bio, ask-about, and avatar when you&apos;re ready.</p>
+        </button>
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+        <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(255,255,255,0.4)', margin: 0 }}>
+          Tip: the open universe letter from onboarding already gave you a first signal out into the world.
+        </p>
+        <button
+          onClick={onClose}
+          style={{
+            background: 'transparent',
+            border: '1px solid rgba(255,255,255,0.14)',
+            color: 'rgba(255,255,255,0.58)',
+            fontFamily: "'Cinzel', serif",
+            fontSize: '9px',
+            letterSpacing: '0.22em',
+            textTransform: 'uppercase',
+            padding: '10px 14px',
+            borderRadius: '999px',
+            cursor: 'pointer',
+          }}
+        >
+          Dismiss
+        </button>
+      </div>
+    </div>
+  )
+}
+
 type HubWithMeta = NonNullable<Awaited<ReturnType<typeof getMyHub>>>
 type ArrivedLetterSummary = { recipient_id?: string | null }
 
@@ -516,6 +603,7 @@ export default function Home() {
   const [authRouteRetryKey, setAuthRouteRetryKey] = useState(0)
   const [guestBannerDismissed, setGuestBannerDismissed] = useState(false)
   const [guestNudgeOpen, setGuestNudgeOpen] = useState(false)
+  const [firstStepsDismissed, setFirstStepsDismissed] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const [sendFlashing, setSendFlashing] = useState(false)
   const [pendingCredentials, setPendingCredentials] = useState<{
@@ -528,24 +616,16 @@ export default function Home() {
   const [confirmCodeError, setConfirmCodeError] = useState('')
   const [onboardingError, setOnboardingError] = useState('')
   const [onboardingResumeState, setOnboardingResumeState] =
-    useState<SoulMirrorResumeState | null>(null)
+    useState<SoulMirrorResumeState | null>(() => readOnboardingDraft<SoulMirrorResumeState>())
 
   const screenRef = useRef<Screen>('loading')
   const onboardingInFlightRef = useRef(false)
   const pendingAvatarRetryInFlightRef = useRef(false)
 
-  const getSavedOverlay = useCallback((): UniverseOverlay => {
-    if (typeof window === 'undefined') return null
-    const saved = localStorage.getItem(LAST_OVERLAY_KEY)
-    return saved === 'observatory' || saved === 'profile' || saved === 'drift' || saved === 'pages'
-      ? saved
-      : null
-  }, [])
+  const getSavedOverlay = useCallback((): UniverseOverlay => readSavedOverlay(), [])
 
   const setSavedOverlay = useCallback((overlay: UniverseOverlay) => {
-    if (typeof window === 'undefined') return
-    if (overlay) localStorage.setItem(LAST_OVERLAY_KEY, overlay)
-    else localStorage.removeItem(LAST_OVERLAY_KEY)
+    writeSavedOverlay(overlay)
   }, [])
 
   const restoreUniverseOverlay = useCallback(() => {
@@ -555,6 +635,34 @@ export default function Home() {
     setDriftOpen(savedOverlay === 'drift')
     setPagesOpen(savedOverlay === 'pages')
   }, [getSavedOverlay])
+
+  const dismissFirstSteps = useCallback(() => {
+    setFirstStepsDismissed(true)
+    if (!currentUserId) return
+
+    try {
+      localStorage.setItem(`ds_first_steps_dismissed_${currentUserId}`, '1')
+    } catch {}
+  }, [currentUserId])
+
+  useEffect(() => {
+    if (onboardingResumeState) writeOnboardingDraft(onboardingResumeState)
+    else clearOnboardingDraft()
+  }, [onboardingResumeState])
+
+  useEffect(() => {
+    if (!currentUserId || isGuest) {
+      setFirstStepsDismissed(false)
+      return
+    }
+
+    try {
+      const dismissed = localStorage.getItem(`ds_first_steps_dismissed_${currentUserId}`) === '1'
+      setFirstStepsDismissed(dismissed)
+    } catch {
+      setFirstStepsDismissed(false)
+    }
+  }, [currentUserId, isGuest])
 
   const clearHubState = useCallback((resetResume = true) => {
     setHubName('')
@@ -705,7 +813,7 @@ export default function Home() {
         setHubAvatarPending(null)
         await updateHub({ avatar_url: permanentUrl, avatar_prompt_pending: null })
       } catch (error) {
-        console.error('Background avatar retry failed:', error)
+        logger.error('Background avatar retry failed', error)
       } finally {
         pendingAvatarRetryInFlightRef.current = false
       }
@@ -713,11 +821,11 @@ export default function Home() {
 
     const initial = window.setTimeout(() => {
       void retryPendingAvatar()
-    }, PENDING_AVATAR_RETRY_INITIAL_DELAY_MS)
+    }, APP_SHELL_TIMEOUTS.pendingAvatarRetryInitialDelayMs)
 
     const interval = window.setInterval(() => {
       void retryPendingAvatar()
-    }, PENDING_AVATAR_RETRY_INTERVAL_MS)
+    }, APP_SHELL_TIMEOUTS.pendingAvatarRetryIntervalMs)
 
     return () => {
       cancelled = true
@@ -763,54 +871,42 @@ export default function Home() {
 
   const routeFromSession = useCallback(async (knownSession?: Session | null) => {
     try {
-      console.log('[routeFromSession] begin')
+      logger.debug('routeFromSession begin')
 
       if (shouldShowWelcomePage()) {
         finishAuthRoute()
         setSavedOverlay(null)
         setScreen('landing')
-        console.log('[routeFromSession] welcome link, go to landing')
+        logger.debug('welcome link detected, routing to landing')
         return
       }
 
-      const session = knownSession ?? await withTimeout(getSession(), SESSION_TIMEOUT_MS, 'Session check timed out.')
-      console.log('[routeFromSession] getSession result:', session)
+      const session = knownSession ?? await withTimeout(getSession(), APP_SHELL_TIMEOUTS.sessionTimeoutMs, 'Session check timed out.')
+      logger.debug('getSession result', session)
 
       if (!session) {
         // Soul Mirror now requires an authenticated session for its API requests.
         // If onboarding intent exists but auth has not completed yet, do not open
         // onboarding in a logged-out state or the mirror will immediately fail.
-        if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('ds_goto_onboarding') === '1') {
-          sessionStorage.removeItem('ds_goto_onboarding')
-          sessionStorage.removeItem('ds_pending_creds')
-          sessionStorage.removeItem('ds_auth_flow')
-          console.log('[routeFromSession] onboarding intent found without session; waiting for a completed sign-in')
+        if (getAuthFlow() || hasSignupOnboardingIntent()) {
+          clearOnboardingIntent()
+          logger.debug('onboarding intent found without session; waiting for completed sign-in')
         }
         clearHubState()
         finishAuthRoute()
         setSavedOverlay(null)
         setScreen('landing')
-        console.log('[routeFromSession] no session, go to landing')
+        logger.debug('no session, routing to landing')
         return
       }
 
-      const authFlow = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('ds_auth_flow') : null
-      const shouldRouteToOnboarding =
-        typeof sessionStorage !== 'undefined' &&
-        sessionStorage.getItem('ds_goto_onboarding') === '1' &&
-        authFlow === 'signup'
-
-      if (shouldRouteToOnboarding) {
-        sessionStorage.removeItem('ds_goto_onboarding')
-        sessionStorage.removeItem('ds_auth_flow')
-        const raw = sessionStorage.getItem('ds_pending_creds')
-        if (raw) {
-          try { setPendingCredentials(JSON.parse(raw)) } catch {}
-        }
+      if (hasSignupOnboardingIntent()) {
+        setPendingCredentials(readPendingCredentials())
+        clearOnboardingIntent()
         setOnboardingError('')
         finishAuthRoute()
         setScreen('onboarding')
-        console.log('[routeFromSession] signup flow, go to onboarding')
+        logger.debug('signup flow detected, routing to onboarding')
         return
       }
 
@@ -819,21 +915,21 @@ export default function Home() {
       let hub = null
       let hubLookupFailed = false
       try {
-        hub = await withTimeout(getMyHub(userId), HUB_FETCH_TIMEOUT_MS, 'Hub lookup timed out.')
-        console.log('[routeFromSession] getMyHub result:', hub)
+        hub = await withTimeout(getMyHub(userId), APP_SHELL_TIMEOUTS.hubFetchTimeoutMs, 'Hub lookup timed out.')
+        logger.debug('getMyHub result', hub)
       } catch (err) {
         hubLookupFailed = true
-        console.error('[routeFromSession] getMyHub error:', err)
+        logger.error('getMyHub error', err)
       }
 
       // Retry once if hub fetch failed — could be a transient network issue
       if (!hub) {
         try {
-          hub = await withTimeout(getMyHub(userId), HUB_FETCH_TIMEOUT_MS, 'Hub lookup retry timed out.')
-          console.log('[routeFromSession] getMyHub retry result:', hub)
+          hub = await withTimeout(getMyHub(userId), APP_SHELL_TIMEOUTS.hubFetchTimeoutMs, 'Hub lookup retry timed out.')
+          logger.debug('getMyHub retry result', hub)
         } catch (err) {
           hubLookupFailed = true
-          console.error('[routeFromSession] getMyHub retry error:', err)
+          logger.error('getMyHub retry error', err)
         }
       }
 
@@ -841,21 +937,19 @@ export default function Home() {
         applyHubState(hub as HubWithMeta, userId)
         setOnboardingError('')
         setOnboardingResumeState(null)
-        if (typeof sessionStorage !== 'undefined') {
-          sessionStorage.removeItem('ds_auth_flow')
-        }
+        clearOnboardingIntent()
 
         finishAuthRoute()
         setScreen('universe')
         restoreUniverseOverlay()
-        console.log('[routeFromSession] session+hub, go to universe')
+        logger.debug('session and hub found, routing to universe')
         return
       }
 
       if (hubLookupFailed) {
         setScreen('loading')
         requestAuthRouteRetry()
-        console.log('[routeFromSession] hub lookup failed, retrying before routing away')
+        logger.warn('hub lookup failed, keeping loading state for retry')
         return
       }
 
@@ -865,20 +959,20 @@ export default function Home() {
       finishAuthRoute()
       setSavedOverlay(null)
       setScreen('onboarding')
-      console.log('[routeFromSession] session+no hub, go to onboarding')
+      logger.debug('session found without hub, routing to onboarding')
     } catch (err) {
-      console.error('[routeFromSession] error:', err)
+      logger.error('routeFromSession error', err)
       if (isTimeoutError(err, 'Session check timed out.')) {
         setScreen('loading')
         requestAuthRouteRetry()
-        console.log('[routeFromSession] session check timed out, retrying')
+        logger.warn('session check timed out, retrying')
         return
       }
       clearHubState()
       finishAuthRoute()
       setSavedOverlay(null)
       setScreen('landing')
-      console.log('[routeFromSession] fallback to landing')
+      logger.warn('routing fallback to landing')
     }
   }, [applyHubState, clearHubState, finishAuthRoute, requestAuthRouteRetry, restoreUniverseOverlay, setSavedOverlay])
 
@@ -887,7 +981,7 @@ export default function Home() {
       setLoadingTookLong(false)
       return
     }
-    const timer = window.setTimeout(() => setLoadingTookLong(true), APP_LOADING_SLOW_MS)
+    const timer = window.setTimeout(() => setLoadingTookLong(true), APP_SHELL_TIMEOUTS.appLoadingSlowMs)
     return () => window.clearTimeout(timer)
   }, [screen])
 
@@ -908,7 +1002,7 @@ export default function Home() {
           // If restoring a screen that requires session/hub, check session first
           const authAwareScreens = ['universe', 'onboarding']
           if (authAwareScreens.includes(screen)) {
-            const session = await withTimeout(getSession(), SESSION_TIMEOUT_MS, 'Session check timed out.')
+            const session = await withTimeout(getSession(), APP_SHELL_TIMEOUTS.sessionTimeoutMs, 'Session check timed out.')
             if (!session) {
               finishAuthRoute()
               setScreen(screen === 'onboarding' ? 'onboarding' : 'landing')
@@ -919,7 +1013,7 @@ export default function Home() {
             let hub = null
             let hubCheckFailed = false
             try {
-              hub = await withTimeout(getMyHub(session.user?.id), HUB_FETCH_TIMEOUT_MS, 'Hub check timed out.')
+              hub = await withTimeout(getMyHub(session.user?.id), APP_SHELL_TIMEOUTS.hubFetchTimeoutMs, 'Hub check timed out.')
             } catch {
               hubCheckFailed = true
             }
@@ -941,17 +1035,17 @@ export default function Home() {
           }
         }
       } catch (err) {
-        console.error('checkSession failed:', err)
+        logger.error('checkSession failed', err)
         if (isTimeoutError(err, 'Session check timed out.')) {
           setScreen('loading')
           requestAuthRouteRetry()
-          console.log('[checkSession] session check timed out, retrying')
+          logger.warn('checkSession timed out, retrying')
           return
         }
         clearHubState()
         finishAuthRoute()
         setScreen('landing')
-        console.log('[checkSession] fallback to landing')
+        logger.warn('checkSession fallback to landing')
       }
     }
 
@@ -959,7 +1053,7 @@ export default function Home() {
 
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       if (ignore) return;
-      console.log('[authStateChange]', event)
+      logger.debug('authStateChange', event)
       if (event === 'SIGNED_OUT') {
         clearHubState()
         finishAuthRoute()
@@ -1122,7 +1216,10 @@ export default function Home() {
         } else if (session) {
           await createHubForCurrentUser(hubNameAnswer, chosenBio, chosenAskAbout, chosenHubStyle, chosenHubColor, chosenDecoration)
         } else {
-          setScreen('entry')
+          writeOnboardingDraft(resumeState)
+          setOnboardingResumeState(resumeState)
+          setGeneratingStatus('')
+          router.push('/signup')
           return
         }
 
@@ -1159,7 +1256,7 @@ export default function Home() {
 
         if (firstLetterBody?.trim()) {
           void sendLetter(null, firstLetterBody, 'parchment', true, 'A stranger has arrived')
-            .catch(err => console.error('Failed to release onboarding letter:', err))
+            .catch(err => logger.error('Failed to release onboarding letter', err))
         }
 
         void (async () => {
@@ -1174,7 +1271,7 @@ export default function Home() {
             setHubAvatarPending(null)
             await updateHub({ avatar_url: permanentUrl, avatar_prompt_pending: avatarDescription })
           } catch (avatarError) {
-            console.error('Avatar generation failed after hub creation:', avatarError)
+            logger.error('Avatar generation failed after hub creation', avatarError)
             // Preserve the user's original description so Home can retry it quietly
             // in the background and Profile can still use it later if needed.
             if (avatarDescription) {
@@ -1513,20 +1610,6 @@ export default function Home() {
         />
       )}
 
-      {screen === 'entry' && (
-        <EntryScreen
-          onEnter={() => {
-            setOnboardingError('')
-            router.push('/signup')
-          }}
-          onLogin={() => {
-            setOnboardingError('')
-            router.push('/login')
-          }}
-          onGuest={enterGuestMode}
-        />
-      )}
-
       {screen === 'onboarding' && (
         <SoulMirror
           onComplete={handleOnboardingComplete}
@@ -1573,6 +1656,23 @@ export default function Home() {
         />
       )}
 
+      {screen === 'universe' && !isGuest && lettersSent === 0 && !firstStepsDismissed && !scribeOpen && !observatoryOpen && !profileOpen && !driftOpen && !pagesOpen && (
+        <FirstStepsPanel
+          onClose={dismissFirstSteps}
+          onExplore={dismissFirstSteps}
+          onOpenProfile={() => {
+            dismissFirstSteps()
+            setProfileOpen(true)
+          }}
+          onWriteUniverseLetter={() => {
+            dismissFirstSteps()
+            setScribeRecipient(undefined)
+            setScribeReplyContext(undefined)
+            setScribeOpen(true)
+          }}
+        />
+      )}
+
       {screen === 'universe' && (
         <UniverseMap
           hubName={hubName}
@@ -1605,7 +1705,7 @@ export default function Home() {
 
       {screen === 'universe' && <NotificationBanner />}
 
-      {['landing', 'entry', 'universe'].includes(screen) && <FeedbackButton />}
+      {['landing', 'universe'].includes(screen) && <FeedbackButton />}
 
       {screen === 'universe' && avatarGenerating && (
         <div style={{
@@ -1717,11 +1817,11 @@ export default function Home() {
                 setSendFlashing(true);
                 setLettersRefreshSignal((sig) => {
                   const next = sig + 1;
-                  console.log('[HomeClient] lettersRefreshSignal incremented:', next);
+                  logger.debug('lettersRefreshSignal incremented', next)
                   return next;
                 });
               } catch (err) {
-                console.error('Failed to send letter:', err);
+                logger.error('Failed to send letter', err)
                 throw err;
               }
             }}

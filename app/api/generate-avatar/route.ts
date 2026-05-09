@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
 import { createClient } from "@supabase/supabase-js";
+import { env } from "../../../lib/env";
 
 export const maxDuration = 120;
 
@@ -365,12 +366,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    const openaiKey = process.env.OPENAI_API_KEY;
-    if (!supabaseUrl || !supabaseAnonKey || !openaiKey) {
-      return NextResponse.json({ error: "Server misconfiguration" }, { status: 500 });
-    }
+    const supabaseUrl = env.supabaseUrl();
+    const supabaseAnonKey = env.supabaseAnonKey();
+    const openaiKey = env.openAiApiKey();
 
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
     const {

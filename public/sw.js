@@ -1,5 +1,5 @@
-const CACHE_NAME = 'dear-stranger-v2'
-const STATIC_ASSETS = ['/', '/manifest.webmanifest']
+const CACHE_NAME = 'dear-stranger-v3'
+const STATIC_ASSETS = ['/', '/offline', '/manifest.webmanifest', '/icon?size=192', '/apple-icon']
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -51,7 +51,7 @@ self.addEventListener('fetch', (event) => {
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request).catch(() =>
-        caches.match('/').then((cached) => cached || new Response('Offline', { status: 503 }))
+        caches.match('/offline').then((cached) => cached || new Response('Offline', { status: 503 }))
       )
     )
   }

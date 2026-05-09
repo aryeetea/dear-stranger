@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import OpenAI from 'openai'
 import { createClient } from '@supabase/supabase-js'
+import { env } from '../../../lib/env'
 
 export const maxDuration = 60
 
@@ -189,11 +190,8 @@ export async function POST(req: Request) {
     if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    if (!supabaseUrl || !supabaseAnonKey) {
-      return NextResponse.json({ error: 'Server misconfiguration' }, { status: 500 })
-    }
+    const supabaseUrl = env.supabaseUrl()
+    const supabaseAnonKey = env.supabaseAnonKey()
     const supabase = createClient(supabaseUrl, supabaseAnonKey)
     const { data: { user }, error: userError } = await supabase.auth.getUser(token)
     if (userError || !user) {
@@ -218,9 +216,9 @@ export async function POST(req: Request) {
     const maxExchanges = Math.max(minExchanges, Number(body?.maxExchanges) || 29)
 
 
-    let openaiKey = process.env.OPENAI_API_KEY
+    let openaiKey = process.env.OPENAI_API_KEY?.trim()
     if (!openaiKey) {
-      openaiKey = process.env.SHORTAPI_KEY
+      openaiKey = process.env.SHORTAPI_KEY?.trim()
       if (!openaiKey) {
         console.error('Missing OPENAI_API_KEY and SHORTAPI_KEY')
         return NextResponse.json({ error: 'Missing OPENAI_API_KEY and SHORTAPI_KEY' }, { status: 500 })
