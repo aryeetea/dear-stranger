@@ -110,11 +110,11 @@ export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: (
   const [showUniverseChoices, setShowUniverseChoices] = useState(false)
   useEffect(() => {
     const timers = [
-      setTimeout(() => setTitleOut(true), 500),
-      setTimeout(() => setPhase(1), 500),
-      setTimeout(() => setPhase(2), 1400),
-      setTimeout(() => setPhase(3), 2200),
-      setTimeout(() => setPhase(4), 3200),
+      setTimeout(() => setTitleOut(true), 3000),
+      setTimeout(() => setPhase(1), 3300),
+      setTimeout(() => setPhase(2), 4200),
+      setTimeout(() => setPhase(3), 5000),
+      setTimeout(() => setPhase(4), 6000),
     ]
     return () => timers.forEach(clearTimeout)
   }, [])
@@ -325,8 +325,8 @@ export default function LandingPage({ onEnter, onLogin, onGuest }: { onEnter?: (
             key="title-splash"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            exit={{ opacity: 0, transition: { duration: 0.18, ease: 'easeIn' } }}
-            transition={{ duration: 0.18 }}
+            exit={{ opacity: 0, transition: { duration: 0.5, ease: 'easeIn' } }}
+            transition={{ duration: 0.5 }}
             style={{
               position: 'fixed', inset: 0, zIndex: 20,
               background: '#000000',
