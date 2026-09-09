@@ -109,6 +109,11 @@ function coerceHubColor(value?: string | null): HubColor {
   return HUB_COLOR_IDS.includes(value as HubColor) ? (value as HubColor) : 'gold'
 }
 
+function normalizeRecipientName(value?: string | null): string | undefined {
+  const normalized = typeof value === 'string' ? value.trim() : ''
+  return normalized ? normalized : undefined
+}
+
 async function requestAvatarImage(
   answers: Record<number, string>,
   userId?: string,
@@ -1733,6 +1738,7 @@ export default function Home() {
           }}
           onWriteUniverseLetter={() => {
             dismissFirstSteps()
+            setScribeOpen(true)
             setScribeRecipient(undefined)
             setScribeReplyContext(undefined)
             navigateToUniverseRoute('scribe')
@@ -1757,6 +1763,7 @@ export default function Home() {
           onStarmap={navigateToStarmap}
           onWriteLetter={(name) => {
             if (isGuest) { setGuestNudgeOpen(true); return }
+            setScribeOpen(true)
             setScribeRecipient(name)
             setScribeReplyContext(undefined)
             navigateToUniverseRoute('scribe')
@@ -1852,9 +1859,12 @@ export default function Home() {
                     handwrittenImageUrl,
                   )
                 } else {
-                  const allHubs = await getAllHubs();
-                  const recipient = allHubs.find((hub) => hub.hub_name === letter.to);
-                  const isUniverseLetter = !letter.to;
+                    const allHubs = await getAllHubs();
+                  const recipientName = normalizeRecipientName(letter.to)
+                  const recipient = recipientName
+                    ? allHubs.find((hub) => normalizeRecipientName(hub.hub_name) === recipientName)
+                    : null
+                  const isUniverseLetter = !recipientName
 
                   if (!isUniverseLetter && !recipient) {
                     throw new Error('Recipient not found');

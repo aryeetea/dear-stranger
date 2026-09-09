@@ -725,6 +725,7 @@ export default function Scribe({ recipientName, senderName, draftOwnerId, letter
       setTimeout(() => setSubjectError(false), 3500)
       return
     }
+    const normalizedRecipient = recipientName?.trim() || undefined
     setSubjectError(false)
     setView('wax-seal')
     playWaxSeal()
@@ -739,17 +740,17 @@ export default function Scribe({ recipientName, senderName, draftOwnerId, letter
       setTimeout(() => {
         void (async () => {
           try {
-            await onSend?.({ to: journalMode ? undefined : recipientName, body, paperId: selectedPaper.id, subject, fontId: selectedFont.id, colorId: selectedColor ?? undefined, paperColorId: selectedPaperColor ?? undefined, stampId: selectedStamp, envelopeId: selectedEnvelope, capsuleDays: journalMode ? capsuleDays : undefined, burnAfterReading: burnAfterReading || undefined, voiceNoteBlob: voiceNoteBlob ?? undefined, voiceEffect: voiceNoteBlob ? voiceEffect : undefined, handwritingStyle: selectedHandwriting, embellishmentId: selectedEmbellishment, handwrittenImageBlob: handwrittenImageBlob ?? undefined, anonymous: journalMode ? false : isAnonymous })
+            await onSend?.({ to: journalMode ? undefined : normalizedRecipient, body, paperId: selectedPaper.id, subject, fontId: selectedFont.id, colorId: selectedColor ?? undefined, paperColorId: selectedPaperColor ?? undefined, stampId: selectedStamp, envelopeId: selectedEnvelope, capsuleDays: journalMode ? capsuleDays : undefined, burnAfterReading: burnAfterReading || undefined, voiceNoteBlob: voiceNoteBlob ?? undefined, voiceEffect: voiceNoteBlob ? voiceEffect : undefined, handwritingStyle: selectedHandwriting, embellishmentId: selectedEmbellishment, handwrittenImageBlob: handwrittenImageBlob ?? undefined, anonymous: journalMode ? false : isAnonymous })
             clearDraft()
             onClose?.()
-          } catch (err) {
+          } catch {
             setSendError('Failed to send your letter. Please try again or check your connection.')
             setReleasing(false)
             setSent(false)
           }
         })()
       }, 900)
-    } catch (err) {
+    } catch {
       setSendError('Failed to send your letter. Please try again or check your connection.')
       setReleasing(false)
       setSent(false)
