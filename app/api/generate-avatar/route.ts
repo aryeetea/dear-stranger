@@ -404,6 +404,7 @@ export async function POST(req: Request) {
       editCurrentAvatar?: boolean;
       forceNewAvatar?: boolean;
       identityDescription?: string;
+      timeZone?: string;
     };
 
     const {
@@ -416,6 +417,7 @@ export async function POST(req: Request) {
       editCurrentAvatar,
       forceNewAvatar,
       identityDescription,
+      timeZone: requestedTimeZone,
     } = body;
 
     const orderedAnswers =
@@ -452,6 +454,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "No avatar description provided." }, { status: 400 });
     }
 
+    let reservedRegenCount: number | undefined;
     if (isReimagineMode) {
       const { data: hub, error: hubError } = await supabase
         .from("hubs")
@@ -464,8 +467,23 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Could not check your Soul Cycle. Please try again." }, { status: 503 });
       }
 
-      const now = new Date();
-      const cycleNumber = now.getUTCFullYear() * 12 + now.getUTCMonth();
+      let timeZone = "UTC";
+      if (typeof requestedTimeZone === "string" && requestedTimeZone.length <= 64) {
+        try {
+          new Intl.DateTimeFormat("en-US", { timeZone: requestedTimeZone }).format(new Date());
+          timeZone = requestedTimeZone;
+        } catch {
+          // Invalid time zone values fall back to UTC.
+        }
+      }
+      const monthParts = new Intl.DateTimeFormat("en-US", {
+        timeZone,
+        year: "numeric",
+        month: "numeric",
+      }).formatToParts(new Date());
+      const monthPart = Number(monthParts.find((part) => part.type === "month")?.value);
+      const yearPart = Number(monthParts.find((part) => part.type === "year")?.value);
+      const cycleNumber = yearPart * 12 + monthPart - 1;
       const storedCount = Number(hub.regen_count) || 0;
       const storedCycle = Math.floor(storedCount / 10);
       const attemptsUsed = storedCycle === cycleNumber ? storedCount % 10 : 0;
@@ -488,6 +506,7 @@ export async function POST(req: Request) {
       if (!reserved) {
         return NextResponse.json({ error: "Your Soul Cycle changed in another request. Please try again." }, { status: 409 });
       }
+      reservedRegenCount = nextCount;
 
       refundSoulCycleAttempt = async () => {
         const { data: current, error: currentError } = await supabase
@@ -579,6 +598,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       imageUrl: `data:image/png;base64,${image.b64_json}`,
       revisedPrompt: image.revised_prompt,
+      ...(reservedRegenCount !== undefined ? { regenCount: reservedRegenCount } : {}),
     });
   } catch (error: unknown) {
     await refundSoulCycleAttempt?.().catch((refundError) => console.error("Soul Cycle refund failed:", refundError));

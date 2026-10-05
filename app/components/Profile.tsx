@@ -19,11 +19,37 @@ function normalizeAvatarHistory(urls: string[]) {
   return Array.from(new Set(urls.filter(Boolean))).slice(0, MAX_AVATAR_HISTORY)
 }
 
-function getReimagineCycle(nowMs = Date.now()) {
-  const now = new Date(nowMs)
-  const monthStart = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)
-  const nextMonthStart = Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)
-  const cycleNumber = now.getUTCFullYear() * 12 + now.getUTCMonth()
+function getZonedDateParts(date: Date, timeZone: string) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: 'numeric',
+    second: 'numeric',
+    hourCycle: 'h23',
+  }).formatToParts(date)
+  return Object.fromEntries(parts.map(({ type, value }) => [type, Number(value)])) as Record<string, number>
+}
+
+function getZonedMonthStartUtc(year: number, month: number, timeZone: string) {
+  const targetUtc = Date.UTC(year, month - 1, 1)
+  let guessUtc = targetUtc
+  for (let i = 0; i < 3; i += 1) {
+    const parts = getZonedDateParts(new Date(guessUtc), timeZone)
+    const representedUtc = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second)
+    guessUtc += targetUtc - representedUtc
+  }
+  return guessUtc
+}
+
+function getReimagineCycle(nowMs = Date.now(), timeZone = 'UTC') {
+  const parts = getZonedDateParts(new Date(nowMs), timeZone)
+  const monthStart = getZonedMonthStartUtc(parts.year, parts.month, timeZone)
+  const nextMonth = parts.month === 12 ? { year: parts.year + 1, month: 1 } : { year: parts.year, month: parts.month + 1 }
+  const nextMonthStart = getZonedMonthStartUtc(nextMonth.year, nextMonth.month, timeZone)
+  const cycleNumber = parts.year * 12 + parts.month - 1
   const totalHoursLeft = Math.max(1, Math.ceil((nextMonthStart - nowMs) / (1000 * 60 * 60)))
 
   return {
@@ -56,6 +82,7 @@ export default function Profile({
   const [lastAvatarProp, setLastAvatarProp] = useState(initialAvatarUrl || '')
   const [regenCount, setRegenCount] = useState(initialRegenCount ?? 0)
   const [cycleNow, setCycleNow] = useState(() => Date.now())
+  const [timeZone, setTimeZone] = useState('UTC')
   const [regenLoading, setRegenLoading] = useState(false)
   const [regenFeedback, setRegenFeedback] = useState('')
   const [showRegenInput, setShowRegenInput] = useState(false)
@@ -199,6 +226,10 @@ export default function Profile({
   }, [])
 
   useEffect(() => {
+    setTimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC')
+  }, [])
+
+  useEffect(() => {
     setVisitorBookEnabledState(initialVisitorBookEnabled)
   }, [initialVisitorBookEnabled])
 
@@ -224,11 +255,11 @@ export default function Profile({
     loadRegenCount()
   }, [])
 
-  const localRegenCount = Math.floor(regenCount / 10) === getReimagineCycle(cycleNow).cycleNumber
+  const localRegenCount = Math.floor(regenCount / 10) === getReimagineCycle(cycleNow, timeZone).cycleNumber
     ? regenCount % 10
     : 0
   const attemptsLeft = Math.max(0, MAX_REGEN_ATTEMPTS - localRegenCount)
-  const { cycleNumber, daysLeft, hoursLeft, refreshProgress } = getReimagineCycle(cycleNow)
+  const { cycleNumber, daysLeft, hoursLeft, refreshProgress } = getReimagineCycle(cycleNow, timeZone)
   const cycleBadgePrimary = attemptsLeft > 0 ? `${attemptsLeft}x` : `${daysLeft}d`
   const cycleBadgeSecondary = attemptsLeft > 0 ? 'left' : `${hoursLeft}h`
 
@@ -303,7 +334,9 @@ export default function Profile({
       const baseAnswers = avatarPromptPending
         ? { 0: avatarPromptPending, 1: bioState, 2: askState }
         : { 0: bioState, 1: askState }
-      const requestBody = !hasExistingAvatar && avatarPromptPending
+      const requestTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+      const requestBody = {
+        ...(!hasExistingAvatar && avatarPromptPending
         ? { answers: { 0: avatarPromptPending }, feedback: regenFeedback || undefined, mode: 'reimagine', identityDescription: avatarPromptPending || undefined }
         : {
             answers: baseAnswers,
@@ -313,7 +346,9 @@ export default function Profile({
             editCurrentAvatar: editCurrentAvatar && !forceNewAvatar,
             forceNewAvatar,
             identityDescription: avatarPromptPending || undefined,
-          }
+          }),
+        timeZone: requestTimeZone,
+      }
       let avatarToken: string | undefined
       try {
         const { data, error } = await supabase.auth.refreshSession()
@@ -335,7 +370,9 @@ export default function Profile({
       if (!res.ok || data.error) throw new Error(data.error || 'Failed')
       if (!data.imageUrl) throw new Error('No avatar image came back from the mirror.')
 
-      const newCount = cycleNumber * 10 + (localRegenCount + 1)
+      const newCount = typeof data.regenCount === 'number'
+        ? data.regenCount
+        : cycleNumber * 10 + (localRegenCount + 1)
       const previousAvatar = currentAvatarUrl
       setCurrentAvatarUrl(data.imageUrl)
       setRegenCount(newCount)
