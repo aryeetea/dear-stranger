@@ -867,8 +867,8 @@ export default function Home() {
         const permanentUrl = await uploadAvatarToStorage(avatarUrl, currentUserId)
         if (cancelled) return
         setHubAvatarUrl(permanentUrl)
-        setHubAvatarPending(null)
-        await updateHub({ avatar_url: permanentUrl, avatar_prompt_pending: null })
+        setHubAvatarPending(pendingPrompt)
+        await updateHub({ avatar_url: permanentUrl, avatar_prompt_pending: pendingPrompt })
       } catch (error) {
         logger.error('Background avatar retry failed', error)
       } finally {
@@ -928,6 +928,9 @@ export default function Home() {
 
   const routeFromSession = useCallback(async (knownSession?: Session | null) => {
     try {
+      // Auth events can fire while sign-up is creating the hub. Do not let the
+      // session router race the active onboarding flow and send the user away.
+      if (onboardingInFlightRef.current) return
       logger.debug('routeFromSession begin')
 
       if (shouldShowWelcomePage()) {
@@ -1322,12 +1325,14 @@ export default function Home() {
             hub_style: chosenHubStyle,
             backdrop_id: chosenHubColor,
             decoration: chosenDecoration,
+            avatar_prompt_pending: avatarDescription || null,
           }),
           12000,
           'Saving your hub took too long. Please try again.',
         )
 
         setHubAvatarUrl('')
+        setHubAvatarPending(avatarDescription || null)
         setOnboardingResumeState(null)
         setScreen('universe')
 
@@ -1344,8 +1349,8 @@ export default function Home() {
             if (!avatarUrl) return
             const permanentUrl = await uploadAvatarToStorage(avatarUrl, userId)
             setHubAvatarUrl(permanentUrl)
-            setHubAvatarPending(null)
-            await updateHub({ avatar_url: permanentUrl, avatar_prompt_pending: avatarDescription })
+            setHubAvatarPending(avatarDescription || null)
+            await updateHub({ avatar_url: permanentUrl, avatar_prompt_pending: avatarDescription || null })
           } catch (avatarError) {
             logger.error('Avatar generation failed after hub creation', avatarError)
             // Preserve the user's original description so Home can retry it quietly
