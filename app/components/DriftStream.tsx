@@ -445,6 +445,7 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
   const lastTypeSoundRef = useRef<number>(0)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const driftCanvasRef = useRef<HandwritingCanvasRef>(null)
+  const driftRequestIdRef = useRef<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -495,6 +496,8 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
     await new Promise(r => setTimeout(r, 1800))
     setSendError('')
     try {
+      const requestId = driftRequestIdRef.current || crypto.randomUUID()
+      driftRequestIdRef.current = requestId
       let handwrittenImageUrl: string | undefined
       if (selectedHandwriting === 'handwritten') {
         const blob = await driftCanvasRef.current?.toBlob()
@@ -519,6 +522,7 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
         selectedEmbellishment,
         handwrittenImageUrl,
         isAnonymous,
+        requestId,
       )
       setSent(true)
     } catch (err) {

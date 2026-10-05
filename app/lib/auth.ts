@@ -952,6 +952,7 @@ export async function sendLetter(
   embellishmentId?: EmbellishmentId,
   handwrittenImageUrl?: string,
   isAnonymous?: boolean,
+  clientRequestId?: string,
 ) {
   const {
     data: { user },
@@ -965,6 +966,7 @@ export async function sendLetter(
   const trimmedBody = body.trim()
   if (!trimmedBody && handwritingStyle !== 'handwritten') throw new Error('Letter body cannot be empty')
   if (handwritingStyle === 'handwritten' && !handwrittenImageUrl) throw new Error('Handwritten image required')
+  const stableRequestId = clientRequestId || globalThis.crypto.randomUUID()
 
   const arrivesAt = customArrivesAt ? new Date(customArrivesAt.getTime()) : new Date()
   if (!customArrivesAt && !isUniverseLetter) {
@@ -1002,10 +1004,21 @@ export async function sendLetter(
         ...(embellishmentId && embellishmentId !== 'none' ? { embellishment_id: embellishmentId } : {}),
         ...(handwrittenImageUrl ? { handwritten_image_url: handwrittenImageUrl } : {}),
         is_anonymous: isAnonymous === true,
+        client_request_id: stableRequestId,
       },
     ])
     .select()
 
+  if (error?.code === '23505') {
+    const { data: existing, error: lookupError } = await supabase
+      .from('letters')
+      .select('*')
+      .eq('sender_id', user.id)
+      .eq('client_request_id', stableRequestId)
+      .maybeSingle()
+    if (lookupError) throw lookupError
+    if (existing) return [existing]
+  }
   if (error) throw error
   return data
 }

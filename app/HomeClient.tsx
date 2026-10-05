@@ -654,6 +654,7 @@ export default function Home() {
   // Signal to refresh Observatory letters
   const [lettersRefreshSignal, setLettersRefreshSignal] = useState(0)
   const [firstLetterRetryBody, setFirstLetterRetryBody] = useState('')
+  const [firstLetterRequestId, setFirstLetterRequestId] = useState('')
   const [firstLetterError, setFirstLetterError] = useState('')
   const [firstLetterSending, setFirstLetterSending] = useState(false)
   const [observatoryOpen, setObservatoryOpen] = useState(false)
@@ -752,6 +753,7 @@ export default function Home() {
     setHubRegenCount(0)
     setHubAvatarPending(null)
     setFirstLetterRetryBody('')
+    setFirstLetterRequestId('')
     setFirstLetterError('')
     setObservatoryOpen(false)
     setProfileOpen(false)
@@ -1154,12 +1156,15 @@ export default function Home() {
   }, [screen])
 
   async function releaseFirstLetter(body: string) {
+    const requestId = firstLetterRequestId || crypto.randomUUID()
+    setFirstLetterRequestId(requestId)
     setFirstLetterRetryBody(body)
     setFirstLetterError('')
     setFirstLetterSending(true)
     try {
-      await sendLetter(null, body, 'parchment', true, 'A stranger has arrived')
+      await sendLetter(null, body, 'parchment', true, 'A stranger has arrived', undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, requestId)
       setFirstLetterRetryBody('')
+      setFirstLetterRequestId('')
     } catch (error) {
       logger.error('Failed to release onboarding letter', error)
       setFirstLetterError('Your first letter could not be confirmed. You can retry it here.')
@@ -1868,6 +1873,8 @@ export default function Home() {
                     letter.handwritingStyle,
                     letter.embellishmentId,
                     handwrittenImageUrl,
+                    undefined,
+                    letter.idempotencyKey,
                   )
                 } else {
                   const recipientName = normalizeRecipientName(letter.to)
@@ -1901,6 +1908,7 @@ export default function Home() {
                     letter.embellishmentId,
                     handwrittenImageUrl,
                     letter.anonymous,
+                    letter.idempotencyKey,
                   );
                 }
 

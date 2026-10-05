@@ -458,7 +458,7 @@ export async function POST(req: Request) {
     if (isReimagineMode) {
       const { data: hub, error: hubError } = await supabase
         .from("hubs")
-        .select("regen_count")
+        .select("regen_count, time_zone")
         .eq("id", user.id)
         .single();
 
@@ -467,15 +467,18 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Could not check your Soul Cycle. Please try again." }, { status: 503 });
       }
 
-      let timeZone = "UTC";
-      if (typeof requestedTimeZone === "string" && requestedTimeZone.length <= 64) {
+      const validTimeZone = (value: unknown): value is string => {
+        if (typeof value !== "string" || value.length > 64) return false;
         try {
-          new Intl.DateTimeFormat("en-US", { timeZone: requestedTimeZone }).format(new Date());
-          timeZone = requestedTimeZone;
+          new Intl.DateTimeFormat("en-US", { timeZone: value }).format(new Date());
+          return true;
         } catch {
-          // Invalid time zone values fall back to UTC.
+          return false;
         }
-      }
+      };
+      const timeZone = validTimeZone(hub.time_zone)
+        ? hub.time_zone
+        : validTimeZone(requestedTimeZone) ? requestedTimeZone : "UTC";
       const monthParts = new Intl.DateTimeFormat("en-US", {
         timeZone,
         year: "numeric",
@@ -493,7 +496,7 @@ export async function POST(req: Request) {
       }
 
       const nextCount = cycleNumber * 10 + attemptsUsed + 1;
-      let reservation = supabase.from("hubs").update({ regen_count: nextCount }).eq("id", user.id);
+      let reservation = supabase.from("hubs").update({ regen_count: nextCount, time_zone: timeZone }).eq("id", user.id);
       reservation = hub.regen_count == null
         ? reservation.is("regen_count", null)
         : reservation.eq("regen_count", hub.regen_count);

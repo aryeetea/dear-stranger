@@ -249,8 +249,14 @@ export default function Profile({
       try {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
-        const { data } = await supabase.from('hubs').select('regen_count').eq('id', user.id).single()
+        const { data } = await supabase.from('hubs').select('regen_count, time_zone').eq('id', user.id).single()
         if (data?.regen_count !== undefined) setRegenCount(data.regen_count)
+        if (data?.time_zone) {
+          try {
+            new Intl.DateTimeFormat('en-US', { timeZone: data.time_zone }).format(new Date())
+            setTimeZone(data.time_zone)
+          } catch { /* Keep the device time zone if the stored value is invalid. */ }
+        }
       } catch {}
     }
     loadRegenCount()

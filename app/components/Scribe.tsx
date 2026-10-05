@@ -479,7 +479,7 @@ export default function Scribe({ recipientName, recipientId, senderName, draftOw
   draftOwnerId?: string
   replyContext?: ScribeReplyContext
   onClose?: () => void
-  onSend?: (letter: { to?: string; recipientId?: string; body: string; paperId: string; subject: string; fontId: string; colorId?: string; paperColorId?: string; stampId?: string; envelopeId?: string; capsuleDays?: number; burnAfterReading?: boolean; voiceNoteBlob?: Blob; voiceEffect?: VoiceEffect; handwritingStyle?: HandwritingStyle; embellishmentId?: EmbellishmentId; handwrittenImageBlob?: Blob; anonymous?: boolean }) => void | Promise<void>
+  onSend?: (letter: { to?: string; recipientId?: string; body: string; paperId: string; subject: string; fontId: string; colorId?: string; paperColorId?: string; stampId?: string; envelopeId?: string; capsuleDays?: number; burnAfterReading?: boolean; voiceNoteBlob?: Blob; voiceEffect?: VoiceEffect; handwritingStyle?: HandwritingStyle; embellishmentId?: EmbellishmentId; handwrittenImageBlob?: Blob; anonymous?: boolean; idempotencyKey?: string }) => void | Promise<void>
 }) {
   const unlockedPapers = PAPERS.filter(p => p.unlocksAt <= lettersSent)
   const [selectedPaper, setSelectedPaper] = useState(unlockedPapers[0])
@@ -514,6 +514,7 @@ export default function Scribe({ recipientName, recipientId, senderName, draftOw
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [sparkles, setSparkles] = useState<{ id: number; x: number; y: number; char: string }[]>([])
   const paperRef = useRef<HTMLDivElement>(null)
+  const releaseRequestIdRef = useRef<string | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const mediaStreamRef = useRef<MediaStream | null>(null)
   const recordingChunksRef = useRef<Blob[]>([])
@@ -725,6 +726,8 @@ export default function Scribe({ recipientName, recipientId, senderName, draftOw
       setTimeout(() => setSubjectError(false), 3500)
       return
     }
+    const idempotencyKey = releaseRequestIdRef.current || crypto.randomUUID()
+    releaseRequestIdRef.current = idempotencyKey
     const normalizedRecipient = recipientName?.trim() || undefined
     setSubjectError(false)
     setView('wax-seal')
@@ -740,7 +743,7 @@ export default function Scribe({ recipientName, recipientId, senderName, draftOw
       setTimeout(() => {
         void (async () => {
           try {
-            await onSend?.({ to: journalMode ? undefined : normalizedRecipient, recipientId: journalMode ? undefined : recipientId, body, paperId: selectedPaper.id, subject, fontId: selectedFont.id, colorId: selectedColor ?? undefined, paperColorId: selectedPaperColor ?? undefined, stampId: selectedStamp, envelopeId: selectedEnvelope, capsuleDays: journalMode ? capsuleDays : undefined, burnAfterReading: burnAfterReading || undefined, voiceNoteBlob: voiceNoteBlob ?? undefined, voiceEffect: voiceNoteBlob ? voiceEffect : undefined, handwritingStyle: selectedHandwriting, embellishmentId: selectedEmbellishment, handwrittenImageBlob: handwrittenImageBlob ?? undefined, anonymous: journalMode ? false : isAnonymous })
+            await onSend?.({ to: journalMode ? undefined : normalizedRecipient, recipientId: journalMode ? undefined : recipientId, body, paperId: selectedPaper.id, subject, fontId: selectedFont.id, colorId: selectedColor ?? undefined, paperColorId: selectedPaperColor ?? undefined, stampId: selectedStamp, envelopeId: selectedEnvelope, capsuleDays: journalMode ? capsuleDays : undefined, burnAfterReading: burnAfterReading || undefined, voiceNoteBlob: voiceNoteBlob ?? undefined, voiceEffect: voiceNoteBlob ? voiceEffect : undefined, handwritingStyle: selectedHandwriting, embellishmentId: selectedEmbellishment, handwrittenImageBlob: handwrittenImageBlob ?? undefined, anonymous: journalMode ? false : isAnonymous, idempotencyKey })
             clearDraft()
             onClose?.()
           } catch {
