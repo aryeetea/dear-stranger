@@ -10,7 +10,8 @@ export const APP_SHELL_KEYS = {
 
 export const APP_SHELL_TIMEOUTS = {
   appLoadingSlowMs: 3500,
-  hubFetchTimeoutMs: 7000,
+  hubFetchTimeoutMs: 20000,
+  hubFetchRetryDelayMs: 1000,
   pendingAvatarRetryInitialDelayMs: 15000,
   pendingAvatarRetryIntervalMs: 5 * 60 * 1000,
   sessionTimeoutMs: 8000,

@@ -164,6 +164,17 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: s
   }
 }
 
+function isRetryableHubError(error: unknown) {
+  if (error instanceof Error && (error.name === 'TimeoutError' || error.name === 'TypeError' || /timed out/i.test(error.message))) return true
+  if (!error || typeof error !== 'object') return false
+  const status = 'status' in error ? Number(error.status) : NaN
+  return Number.isFinite(status) && status >= 500
+}
+
+function delay(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms))
+}
+
 function isTimeoutError(error: unknown, message: string) {
   return error instanceof Error && error.message === message
 }
@@ -984,22 +995,23 @@ export default function Home() {
       const userId = session.user?.id
       setCurrentUserId(userId || '')
       let hub = null
-      let hubLookupFailed = false
+      let hubLookupError: unknown = null
       try {
         hub = await withTimeout(getMyHub(userId), APP_SHELL_TIMEOUTS.hubFetchTimeoutMs, 'Hub lookup timed out.')
         logger.debug('getMyHub result', hub)
       } catch (err) {
-        hubLookupFailed = true
+        hubLookupError = err
         logger.error('getMyHub error', err)
       }
 
-      // Retry once if hub fetch failed — could be a transient network issue
-      if (!hub) {
+      // Retry once after backoff for timeout, network, or server failures.
+      if (!hub && hubLookupError && isRetryableHubError(hubLookupError)) {
         try {
+          await delay(APP_SHELL_TIMEOUTS.hubFetchRetryDelayMs)
           hub = await withTimeout(getMyHub(userId), APP_SHELL_TIMEOUTS.hubFetchTimeoutMs, 'Hub lookup retry timed out.')
           logger.debug('getMyHub retry result', hub)
         } catch (err) {
-          hubLookupFailed = true
+          hubLookupError = err
           logger.error('getMyHub retry error', err)
         }
       }
@@ -1017,7 +1029,7 @@ export default function Home() {
         return
       }
 
-      if (hubLookupFailed) {
+      if (hubLookupError) {
         setScreen('loading')
         requestAuthRouteRetry()
         logger.warn('hub lookup failed, keeping loading state for retry')
@@ -1082,14 +1094,15 @@ export default function Home() {
             setCurrentUserId(session.user?.id || '')
             if (screen === 'onboarding') return
             let hub = null
-            let hubCheckFailed = false
+            let hubCheckError: unknown = null
             try {
               hub = await withTimeout(getMyHub(session.user?.id), APP_SHELL_TIMEOUTS.hubFetchTimeoutMs, 'Hub check timed out.')
-            } catch {
-              hubCheckFailed = true
+            } catch (err) {
+              hubCheckError = err
+              logger.error('getMyHub session check error', err)
             }
             if (!hub) {
-              if (hubCheckFailed) {
+              if (hubCheckError) {
                 requestAuthRouteRetry()
                 return
               }

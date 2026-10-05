@@ -786,30 +786,26 @@ export async function getSession() {
 
 // ── FIXED: removed aggressive signOut calls — transient errors no longer wipe the session ──
 export async function getMyHub(userId?: string) {
-  try {
-    let uid = userId
-    if (!uid) {
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser()
+  let uid = userId
+  if (!uid) {
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser()
 
-      if (userError) return null
-      if (!user) return null
-      uid = user.id
-    }
-
-    const { data, error } = await supabase
-      .from('hubs')
-      .select('*')
-      .eq('id', uid)
-      .maybeSingle()
-
-    if (error) return null
-    return data || null
-  } catch {
-    return null
+    if (userError) throw userError
+    if (!user) return null
+    uid = user.id
   }
+
+  const { data, error } = await supabase
+    .from('hubs')
+    .select('*')
+    .eq('id', uid)
+    .maybeSingle()
+
+  if (error) throw error
+  return data || null
 }
 
 export async function getAllHubs(): Promise<HubRecord[]> {
