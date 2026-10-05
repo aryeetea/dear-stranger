@@ -9,8 +9,6 @@ import { HUB_COLOR_THEMES, HUB_STYLES, HUB_DECORATIONS, HUB_GLOW_LEVELS, type Hu
 const MAX_REGEN_ATTEMPTS = 2
 type DeleteStep = 'idle' | 'exporting' | 'exported' | 'deleting' | 'deleted'
 type SanctumPanel = 'appearance' | 'visitors' | 'settings'
-const CYCLE_DAYS = 20
-const DAY_MS = 1000 * 60 * 60 * 24
 const MAX_AVATAR_HISTORY = 8
 
 function makeAvatarHistoryKey(userId: string) {
@@ -21,47 +19,29 @@ function normalizeAvatarHistory(urls: string[]) {
   return Array.from(new Set(urls.filter(Boolean))).slice(0, MAX_AVATAR_HISTORY)
 }
 
-function getLocalDayIndex(date: Date) {
-  return Math.floor(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / DAY_MS)
-}
-
-function getLocalDayProgress(nowMs: number) {
+function getReimagineCycle(nowMs = Date.now()) {
   const now = new Date(nowMs)
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
-  const startOfTomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getTime()
-  return (nowMs - startOfToday) / (startOfTomorrow - startOfToday)
-}
-
-function getReimagineCycle(createdAt?: string, nowMs = Date.now()) {
-  if (!createdAt) return { cycleNumber: 0, daysLeft: CYCLE_DAYS, hoursLeft: 0, refreshProgress: 0 }
-  const createdDate = new Date(createdAt)
-  if (!Number.isFinite(createdDate.getTime())) return { cycleNumber: 0, daysLeft: CYCLE_DAYS, hoursLeft: 0, refreshProgress: 0 }
-
-  const nowDate = new Date(nowMs)
-  const localDaysSinceCreation = Math.max(0, getLocalDayIndex(nowDate) - getLocalDayIndex(createdDate))
-  const cycleNumber = Math.floor(localDaysSinceCreation / CYCLE_DAYS)
-  const dayProgress = getLocalDayProgress(nowMs)
-  const daysInCycle = localDaysSinceCreation % CYCLE_DAYS
-  const totalHoursLeft = Math.max(1, Math.ceil(((CYCLE_DAYS - daysInCycle - dayProgress) * DAY_MS) / (1000 * 60 * 60)))
+  const monthStart = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)
+  const nextMonthStart = Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)
+  const cycleNumber = now.getUTCFullYear() * 12 + now.getUTCMonth()
+  const totalHoursLeft = Math.max(1, Math.ceil((nextMonthStart - nowMs) / (1000 * 60 * 60)))
 
   return {
     cycleNumber,
     daysLeft: Math.floor(totalHoursLeft / 24),
     hoursLeft: totalHoursLeft % 24,
-    refreshProgress: Math.min(100, ((daysInCycle + dayProgress) / CYCLE_DAYS) * 100),
+    refreshProgress: Math.min(100, ((nowMs - monthStart) / (nextMonthStart - monthStart)) * 100),
   }
 }
 
 export default function Profile({
   hubName, bio, askAbout, avatarUrl: initialAvatarUrl, avatarPromptPending, regenCount: initialRegenCount,
-  hubCreatedAt,
   visitorBookEnabled: initialVisitorBookEnabled = true,
   hubStyle: initialHubStyle = 'portal', hubColor: initialHubColor = 'gold',
   hubDecoration: initialHubDecoration = 'none', hubGlowIntensity: initialHubGlowIntensity = 'normal',
   onClose, onUpdateHub,
 }: {
   hubName?: string; bio?: string; askAbout?: string; avatarUrl?: string; avatarPromptPending?: string | null; regenCount?: number
-  hubCreatedAt?: string
   visitorBookEnabled?: boolean
   hubStyle?: HubStyle; hubColor?: HubColor
   hubDecoration?: HubDecoration; hubGlowIntensity?: HubGlowIntensity
@@ -244,22 +224,11 @@ export default function Profile({
     loadRegenCount()
   }, [])
 
-  useEffect(() => {
-    if (!hubCreatedAt) return
-    const localCount = regenCount % 10
-    if (localCount < MAX_REGEN_ATTEMPTS) return
-    const cycle = getReimagineCycle(hubCreatedAt, cycleNow).cycleNumber
-    const storedCycle = Math.floor(regenCount / 10)
-    if (cycle > storedCycle) {
-      const newCount = cycle * 10
-      setRegenCount(newCount)
-      void updateHub({ regen_count: newCount }).catch(() => {})
-    }
-  }, [cycleNow, hubCreatedAt, regenCount])
-
-  const localRegenCount = regenCount % 10
+  const localRegenCount = Math.floor(regenCount / 10) === getReimagineCycle(cycleNow).cycleNumber
+    ? regenCount % 10
+    : 0
   const attemptsLeft = Math.max(0, MAX_REGEN_ATTEMPTS - localRegenCount)
-  const { cycleNumber, daysLeft, hoursLeft, refreshProgress } = getReimagineCycle(hubCreatedAt, cycleNow)
+  const { cycleNumber, daysLeft, hoursLeft, refreshProgress } = getReimagineCycle(cycleNow)
   const cycleBadgePrimary = attemptsLeft > 0 ? `${attemptsLeft}x` : `${daysLeft}d`
   const cycleBadgeSecondary = attemptsLeft > 0 ? 'left' : `${hoursLeft}h`
 
@@ -335,7 +304,7 @@ export default function Profile({
         ? { 0: avatarPromptPending, 1: bioState, 2: askState }
         : { 0: bioState, 1: askState }
       const requestBody = !hasExistingAvatar && avatarPromptPending
-        ? { answers: { 0: avatarPromptPending }, feedback: regenFeedback || undefined, mode: 'create', identityDescription: avatarPromptPending || undefined }
+        ? { answers: { 0: avatarPromptPending }, feedback: regenFeedback || undefined, mode: 'reimagine', identityDescription: avatarPromptPending || undefined }
         : {
             answers: baseAnswers,
             feedback: regenFeedback,
@@ -771,7 +740,7 @@ export default function Profile({
               </button>
               {attemptsLeft <= 0 && (
                 <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(255,255,255,0.46)' }}>
-                  Your 20-day reimagines are used. The next one opens in {daysLeft}d {hoursLeft}h. You can still restore any past avatar below for free.
+                  Your two reimagines for this month are used. Your next two arrive in {daysLeft}d {hoursLeft}h. You can still restore any past avatar below for free.
                 </p>
               )}
             </div>

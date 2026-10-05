@@ -645,7 +645,6 @@ export default function Home() {
   const [hubGlowIntensity, setHubGlowIntensity] = useState<HubGlowIntensity>('normal')
   const [visitorBookEnabled, setVisitorBookEnabled] = useState(true)
   const [hubRegenCount, setHubRegenCount] = useState(0)
-  const [hubCreatedAt, setHubCreatedAt] = useState('')
   const [lettersSent, setLettersSent] = useState(0)
   const [generatingStatus, setGeneratingStatus] = useState('')
   const [avatarGenerating, setAvatarGenerating] = useState(false)
@@ -749,7 +748,6 @@ export default function Home() {
     setVisitorBookEnabled(true)
     setLettersSent(0)
     setHubRegenCount(0)
-    setHubCreatedAt('')
     setHubAvatarPending(null)
     setObservatoryOpen(false)
     setProfileOpen(false)
@@ -773,7 +771,6 @@ export default function Home() {
     setLettersSent(hub.letters_sent || 0)
     setVisitorBookEnabled(hub.visitor_book_enabled !== false)
     setHubRegenCount(hub.regen_count || 0)
-    setHubCreatedAt(hub.created_at || '')
   }, [])
 
   const finishAuthRoute = useCallback(() => {
@@ -1316,7 +1313,6 @@ export default function Home() {
         setHubBio(chosenBio)
         setHubAskAbout(chosenAskAbout)
         setVisitorBookEnabled(true)
-        setHubCreatedAt(new Date().toISOString())
 
         const userId = session?.user?.id
 
@@ -1971,7 +1967,6 @@ export default function Home() {
             avatarUrl={hubAvatarUrl}
             avatarPromptPending={hubAvatarPending}
             regenCount={hubRegenCount}
-            hubCreatedAt={hubCreatedAt}
             hubStyle={hubStyle}
             hubColor={hubColor}
             hubDecoration={hubDecoration}

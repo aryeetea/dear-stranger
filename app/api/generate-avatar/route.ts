@@ -4,6 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 import { env } from "../../../lib/env";
 
 export const maxDuration = 120;
+const SOUL_CYCLE_ATTEMPTS = 2;
 
 const STYLE_DESCRIPTORS: Record<string, string> = {
   fantasy:
@@ -359,6 +360,7 @@ async function describeCurrentAvatarWithVision(openai: OpenAI, previousImageUrl:
 }
 
 export async function POST(req: Request) {
+  let refundSoulCycleAttempt: (() => Promise<void>) | null = null;
   try {
     const authHeader = req.headers.get("authorization");
     const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
@@ -380,7 +382,9 @@ export async function POST(req: Request) {
       }, { status: 500 });
     }
 
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: `Bearer ${token}` } },
+    });
     const {
       data: { user },
       error: authError,
@@ -448,6 +452,61 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "No avatar description provided." }, { status: 400 });
     }
 
+    if (isReimagineMode) {
+      const { data: hub, error: hubError } = await supabase
+        .from("hubs")
+        .select("regen_count")
+        .eq("id", user.id)
+        .single();
+
+      if (hubError) {
+        console.error("Soul Cycle lookup failed:", hubError);
+        return NextResponse.json({ error: "Could not check your Soul Cycle. Please try again." }, { status: 503 });
+      }
+
+      const now = new Date();
+      const cycleNumber = now.getUTCFullYear() * 12 + now.getUTCMonth();
+      const storedCount = Number(hub.regen_count) || 0;
+      const storedCycle = Math.floor(storedCount / 10);
+      const attemptsUsed = storedCycle === cycleNumber ? storedCount % 10 : 0;
+
+      if (attemptsUsed >= SOUL_CYCLE_ATTEMPTS) {
+        return NextResponse.json({ error: "Your two reimagines for this month are used. Your next two arrive at the start of next month." }, { status: 429 });
+      }
+
+      const nextCount = cycleNumber * 10 + attemptsUsed + 1;
+      let reservation = supabase.from("hubs").update({ regen_count: nextCount }).eq("id", user.id);
+      reservation = hub.regen_count == null
+        ? reservation.is("regen_count", null)
+        : reservation.eq("regen_count", hub.regen_count);
+      const { data: reserved, error: reserveError } = await reservation.select("regen_count").maybeSingle();
+
+      if (reserveError) {
+        console.error("Soul Cycle reservation failed:", reserveError);
+        return NextResponse.json({ error: "Could not reserve your Soul Cycle attempt. Please try again." }, { status: 503 });
+      }
+      if (!reserved) {
+        return NextResponse.json({ error: "Your Soul Cycle changed in another request. Please try again." }, { status: 409 });
+      }
+
+      refundSoulCycleAttempt = async () => {
+        const { data: current, error: currentError } = await supabase
+          .from("hubs")
+          .select("regen_count")
+          .eq("id", user.id)
+          .single();
+        if (currentError) throw currentError;
+        const currentCount = Number(current.regen_count) || 0;
+        if (Math.floor(currentCount / 10) !== cycleNumber || currentCount % 10 === 0) return;
+        const { error } = await supabase
+          .from("hubs")
+          .update({ regen_count: currentCount - 1 })
+          .eq("id", user.id)
+          .eq("regen_count", currentCount);
+        if (error) throw error;
+      };
+    }
+
     const openai = new OpenAI({ apiKey: openaiKey });
 
     let response;
@@ -513,6 +572,7 @@ export async function POST(req: Request) {
 
     const image = response.data?.[0];
     if (!image?.b64_json) {
+      await refundSoulCycleAttempt?.().catch((error) => console.error("Soul Cycle refund failed:", error));
       return NextResponse.json({ error: "Image generation returned no data." }, { status: 502 });
     }
 
@@ -521,6 +581,7 @@ export async function POST(req: Request) {
       revisedPrompt: image.revised_prompt,
     });
   } catch (error: unknown) {
+    await refundSoulCycleAttempt?.().catch((refundError) => console.error("Soul Cycle refund failed:", refundError));
     console.error("Generation Error:", error);
     const errorMessage =
       error instanceof OpenAI.APIError
