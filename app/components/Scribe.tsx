@@ -474,12 +474,12 @@ function makeReplySubject(replyContext?: ScribeReplyContext) {
   return `Re: ${base}`
 }
 
-export default function Scribe({ recipientName, senderName, draftOwnerId, lettersSent = 0, replyContext, onClose, onSend }: {
-  recipientName?: string; senderName?: string; lettersSent?: number
+export default function Scribe({ recipientName, recipientId, senderName, draftOwnerId, lettersSent = 0, replyContext, onClose, onSend }: {
+  recipientName?: string; recipientId?: string; senderName?: string; lettersSent?: number
   draftOwnerId?: string
   replyContext?: ScribeReplyContext
   onClose?: () => void
-  onSend?: (letter: { to?: string; body: string; paperId: string; subject: string; fontId: string; colorId?: string; paperColorId?: string; stampId?: string; envelopeId?: string; capsuleDays?: number; burnAfterReading?: boolean; voiceNoteBlob?: Blob; voiceEffect?: VoiceEffect; handwritingStyle?: HandwritingStyle; embellishmentId?: EmbellishmentId; handwrittenImageBlob?: Blob; anonymous?: boolean }) => void | Promise<void>
+  onSend?: (letter: { to?: string; recipientId?: string; body: string; paperId: string; subject: string; fontId: string; colorId?: string; paperColorId?: string; stampId?: string; envelopeId?: string; capsuleDays?: number; burnAfterReading?: boolean; voiceNoteBlob?: Blob; voiceEffect?: VoiceEffect; handwritingStyle?: HandwritingStyle; embellishmentId?: EmbellishmentId; handwrittenImageBlob?: Blob; anonymous?: boolean }) => void | Promise<void>
 }) {
   const unlockedPapers = PAPERS.filter(p => p.unlocksAt <= lettersSent)
   const [selectedPaper, setSelectedPaper] = useState(unlockedPapers[0])
@@ -740,7 +740,7 @@ export default function Scribe({ recipientName, senderName, draftOwnerId, letter
       setTimeout(() => {
         void (async () => {
           try {
-            await onSend?.({ to: journalMode ? undefined : normalizedRecipient, body, paperId: selectedPaper.id, subject, fontId: selectedFont.id, colorId: selectedColor ?? undefined, paperColorId: selectedPaperColor ?? undefined, stampId: selectedStamp, envelopeId: selectedEnvelope, capsuleDays: journalMode ? capsuleDays : undefined, burnAfterReading: burnAfterReading || undefined, voiceNoteBlob: voiceNoteBlob ?? undefined, voiceEffect: voiceNoteBlob ? voiceEffect : undefined, handwritingStyle: selectedHandwriting, embellishmentId: selectedEmbellishment, handwrittenImageBlob: handwrittenImageBlob ?? undefined, anonymous: journalMode ? false : isAnonymous })
+            await onSend?.({ to: journalMode ? undefined : normalizedRecipient, recipientId: journalMode ? undefined : recipientId, body, paperId: selectedPaper.id, subject, fontId: selectedFont.id, colorId: selectedColor ?? undefined, paperColorId: selectedPaperColor ?? undefined, stampId: selectedStamp, envelopeId: selectedEnvelope, capsuleDays: journalMode ? capsuleDays : undefined, burnAfterReading: burnAfterReading || undefined, voiceNoteBlob: voiceNoteBlob ?? undefined, voiceEffect: voiceNoteBlob ? voiceEffect : undefined, handwritingStyle: selectedHandwriting, embellishmentId: selectedEmbellishment, handwrittenImageBlob: handwrittenImageBlob ?? undefined, anonymous: journalMode ? false : isAnonymous })
             clearDraft()
             onClose?.()
           } catch {

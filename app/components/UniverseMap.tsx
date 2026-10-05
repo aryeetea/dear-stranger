@@ -1707,7 +1707,7 @@ export default function UniverseMap({
   hubName?: string; hubBio?: string; hubAskAbout?: string; hubAvatarUrl?: string; hubStyle?: HubStyle; hubColor?: HubColor
   hubDecoration?: HubDecoration; hubGlowIntensity?: HubGlowIntensity; currentUserId?: string; isGuestExplorer?: boolean
   onStarmap?: () => void
-  onWriteLetter?: (recipientName?: string) => void
+  onWriteLetter?: (recipientName?: string, recipientId?: string) => void
   onObservatory?: () => void; onProfile?: () => void; onDriftstream?: () => void
   navResetSignal?: number; avatarGenerating?: boolean; lettersRefreshSignal?: number; activeNavIndex?: number
 }) {
@@ -2507,7 +2507,7 @@ export default function UniverseMap({
             onClose={() => setStarPreview(null)}
             onDismiss={() => { if (starPreview.letterId) dismissedLetterIdsRef.current.add(starPreview.letterId); setStarPreview(null) }}
             onReplyUniverse={() => { setStarPreview(null); onWriteLetter?.() }}
-            onReplySender={() => { setStarPreview(null); onWriteLetter?.(starPreview.senderName) }}
+            onReplySender={() => { setStarPreview(null); onWriteLetter?.(starPreview.senderName, starPreview.senderId) }}
           />
         )}
       </AnimatePresence>
@@ -2615,7 +2615,7 @@ export default function UniverseMap({
                     Dismiss
                   </button>
                   {!profile.hub.isMe && (
-                    <button onClick={() => { setProfile(null); onWriteLetter?.(profile.hub.name) }}
+                    <button onClick={() => { setProfile(null); onWriteLetter?.(profile.hub.name, profile.hub.id) }}
                       style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.25em', color: '#e6c76e', padding: '10px 18px', border: '1px solid rgba(230,199,110,0.4)', borderRadius: '4px', background: 'rgba(230,199,110,0.08)', cursor: 'pointer', textTransform: 'uppercase' }}>
                       ✦ Send a Letter
                     </button>

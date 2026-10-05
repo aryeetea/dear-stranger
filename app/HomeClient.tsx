@@ -651,6 +651,7 @@ export default function Home() {
   const [avatarGenerating, setAvatarGenerating] = useState(false)
   const [scribeOpen, setScribeOpen] = useState(false)
   const [scribeRecipient, setScribeRecipient] = useState<string | undefined>()
+  const [scribeRecipientId, setScribeRecipientId] = useState<string | undefined>()
   const [scribeReplyContext, setScribeReplyContext] = useState<ScribeReplyContext | undefined>()
   // Signal to refresh Observatory letters
   const [lettersRefreshSignal, setLettersRefreshSignal] = useState(0)
@@ -1753,6 +1754,7 @@ export default function Home() {
             dismissFirstSteps()
             setScribeOpen(true)
             setScribeRecipient(undefined)
+            setScribeRecipientId(undefined)
             setScribeReplyContext(undefined)
             navigateToUniverseRoute('scribe')
           }}
@@ -1774,10 +1776,11 @@ export default function Home() {
           avatarGenerating={avatarGenerating}
           activeNavIndex={getNavIndexForUniverseRoute(activeUniverseRoute, isGuest)}
           onStarmap={navigateToStarmap}
-          onWriteLetter={(name) => {
+          onWriteLetter={(name, recipientId) => {
             if (isGuest) { setGuestNudgeOpen(true); return }
             setScribeOpen(true)
             setScribeRecipient(name)
+            setScribeRecipientId(recipientId)
             setScribeReplyContext(undefined)
             navigateToUniverseRoute('scribe')
           }}
@@ -1839,6 +1842,7 @@ export default function Home() {
           <Scribe
             key="scribe"
             recipientName={scribeRecipient}
+            recipientId={scribeRecipientId}
             senderName={hubName}
             draftOwnerId={currentUserId || hubName}
             lettersSent={lettersSent}
@@ -1872,12 +1876,13 @@ export default function Home() {
                     handwrittenImageUrl,
                   )
                 } else {
-                    const allHubs = await getAllHubs();
                   const recipientName = normalizeRecipientName(letter.to)
-                  const recipient = recipientName
-                    ? allHubs.find((hub) => normalizeRecipientName(hub.hub_name) === recipientName)
-                    : null
-                  const isUniverseLetter = !recipientName
+                  let recipient = letter.recipientId ? { id: letter.recipientId } : null
+                  if (!recipient && recipientName) {
+                    const allHubs = await getAllHubs()
+                    recipient = allHubs.find((hub) => normalizeRecipientName(hub.hub_name) === recipientName) ?? null
+                  }
+                  const isUniverseLetter = !recipient && !recipientName
 
                   if (!isUniverseLetter && !recipient) {
                     throw new Error('Recipient not found');
@@ -1948,6 +1953,7 @@ export default function Home() {
             onClose={() => { navigateToStarmap(); setNavResetSignal(s => s + 1) }}
             onWriteLetter={(name, replyContext) => {
               setScribeRecipient(name)
+              setScribeRecipientId(undefined)
               setScribeReplyContext(replyContext)
               navigateToUniverseRoute('scribe')
             }}
