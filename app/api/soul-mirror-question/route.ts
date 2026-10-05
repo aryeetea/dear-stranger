@@ -220,8 +220,12 @@ export async function POST(req: Request) {
     if (!openaiKey) {
       openaiKey = process.env.SHORTAPI_KEY?.trim()
       if (!openaiKey) {
-        console.error('Missing OPENAI_API_KEY and SHORTAPI_KEY')
-        return NextResponse.json({ error: 'Missing OPENAI_API_KEY and SHORTAPI_KEY' }, { status: 500 })
+        const missingVars = ['OPENAI_API_KEY', 'SHORTAPI_KEY']
+        console.error(`Missing required AI configuration: ${missingVars.join(', ')}`)
+        return NextResponse.json({
+          error: 'Dear Stranger is not fully configured yet. Add OPENAI_API_KEY or SHORTAPI_KEY to your environment and restart the app.',
+          missing: missingVars,
+        }, { status: 500 })
       } else {
         console.warn('Falling back to SHORTAPI_KEY for OpenAI API access')
       }

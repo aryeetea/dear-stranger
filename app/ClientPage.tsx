@@ -1,6 +1,7 @@
 'use client'
 import dynamic from 'next/dynamic'
 import { useSyncExternalStore, useEffect, useState } from 'react'
+import { formatMissingEnvMessage } from '../lib/env'
 import { supabaseInitError } from '../lib/supabase'
 
 function LoadingFallback() {
@@ -41,23 +42,27 @@ export default function ClientPage() {
   }
 
   if (supabaseInitError) {
+    const envMessage = formatMissingEnvMessage()
     return (
       <div style={{ position: 'fixed', inset: 0, background: '#060a18', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px', textAlign: 'center' }}>
         <div style={{ width: 'min(560px, 100%)', border: '1px solid rgba(220,120,120,0.24)', borderRadius: '18px', background: 'rgba(10,8,28,0.94)', boxShadow: '0 24px 80px rgba(0,0,0,0.45)', padding: '28px 24px' }}>
           <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.32em', color: 'rgba(220,120,120,0.82)', textTransform: 'uppercase', margin: '0 0 10px' }}>
-            Configuration Needed
+            App setup required
           </p>
           <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '30px', color: 'rgba(255,255,255,0.94)', margin: '0 0 10px' }}>
             Dear Stranger cannot open yet.
           </p>
           <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '15px', color: 'rgba(255,255,255,0.64)', lineHeight: 1.7, margin: '0 0 16px' }}>
-            The deployment is missing required Supabase environment variables.
+            The app is missing required environment variables.
           </p>
-          <p style={{ fontFamily: "'Courier Prime', monospace", fontSize: '13px', color: 'rgba(255,255,255,0.88)', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: '12px 14px', margin: '0 0 16px', overflowWrap: 'anywhere' }}>
+          <p style={{ fontFamily: "'Courier Prime', monospace", fontSize: '13px', color: 'rgba(255,255,255,0.88)', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: '12px 14px', margin: '0 0 16px', overflowWrap: 'anywhere', textAlign: 'left' }}>
             {supabaseInitError.message}
           </p>
+          <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '16px', color: 'rgba(255,255,255,0.72)', lineHeight: 1.6, margin: '0 0 8px' }}>
+            {envMessage}
+          </p>
           <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '16px', color: 'rgba(255,255,255,0.72)', lineHeight: 1.6, margin: 0 }}>
-            Add <code>NEXT_PUBLIC_SUPABASE_URL</code> and <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code> in your Vercel project settings, then redeploy.
+            Set <code>NEXT_PUBLIC_SUPABASE_URL</code> and <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code> in your env file or deployment settings, then restart the app.
           </p>
         </div>
       </div>

@@ -368,7 +368,17 @@ export async function POST(req: Request) {
 
     const supabaseUrl = env.supabaseUrl();
     const supabaseAnonKey = env.supabaseAnonKey();
-    const openaiKey = env.openAiApiKey();
+
+    let openaiKey: string;
+    try {
+      openaiKey = env.openAiApiKey();
+    } catch (error) {
+      const missing = error instanceof Error ? error.message : 'OPENAI_API_KEY';
+      return NextResponse.json({
+        error: `Dear Stranger is not fully configured yet. ${missing}. Add OPENAI_API_KEY to your .env.local file or deployment settings and restart the app.`,
+        missing: ["OPENAI_API_KEY"],
+      }, { status: 500 });
+    }
 
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
     const {

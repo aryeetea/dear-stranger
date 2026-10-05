@@ -36,6 +36,13 @@ export function listMissingEnv() {
   return [...missingEnv]
 }
 
+export function formatMissingEnvMessage() {
+  const missing = [...missingEnv]
+  if (missing.length === 0) return 'No required environment variables are missing.'
+
+  return `Missing required environment variables: ${missing.join(', ')}. Add them to your .env.local file or deployment settings, then restart the app.`
+}
+
 export const env = {
   openAiApiKey: () => getServerEnv('OPENAI_API_KEY'),
   shortApiKey: () => getServerEnv('SHORTAPI_KEY'),
