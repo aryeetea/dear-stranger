@@ -2,11 +2,18 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { getAllHubs, getUniverseLetters, getReturnPaths, recordHubVisit } from '../lib/auth'
+import { getAllHubs, getHubVisitorBookSettings, getUniverseLetters, getReturnPaths, recordHubVisit } from '../lib/auth'
 import { playShootingStarCatch, playClick } from '../../lib/sounds'
 import { supabase } from '../../lib/supabase'
 import { PAPER_TONES, PAPER_INK, renderLetterPaper } from '../lib/letterPapers'
 import { getHandwritingStyleStyles, renderLetterEmbellishment, type EmbellishmentId, type HandwritingStyle } from '../lib/letterEnrichments'
+
+function stableHubSeed(id: string) {
+  let hash = 2166136261
+  for (let i = 0; i < id.length; i++) hash = Math.imul(hash ^ id.charCodeAt(i), 16777619)
+  return hash >>> 0
+}
+
 // ── HUB STYLE TYPES ──
 export type HubStyle = 'portal' | 'lantern' | 'ruin' | 'hourglass' | 'telescope' | 'greenhouse' | 'lotus' | 'cottage' | 'forge' | 'tower' | 'ship' | 'cathedral' | 'oasis' | 'astrolabe' | 'archive' | 'harbor' | 'crown'
 export type HubColor = 'gold' | 'sage' | 'rose' | 'azure' | 'amber' | 'violet' | 'teal' | 'sand' | 'steel' | 'crimson' | 'forest' | 'pearl' | 'obsidian' | 'coral' | 'sky'
@@ -1779,11 +1786,27 @@ export default function UniverseMap({
 
     channel.subscribe((status) => {
       if (cancelled || status !== 'SUBSCRIBED' || !currentUserId) return
-      void channel.track({ user_id: currentUserId, online_at: new Date().toISOString() })
+      if (document.visibilityState === 'visible') {
+        void channel.track({ user_id: currentUserId, online_at: new Date().toISOString() })
+      }
     })
+
+    const syncVisibility = () => {
+      if (!currentUserId) return
+      if (document.visibilityState === 'visible') {
+        void channel.track({ user_id: currentUserId, online_at: new Date().toISOString() })
+      } else {
+        void channel.untrack()
+      }
+    }
+    const markAway = () => { void channel.untrack() }
+    document.addEventListener('visibilitychange', syncVisibility)
+    window.addEventListener('pagehide', markAway)
 
     return () => {
       cancelled = true
+      document.removeEventListener('visibilitychange', syncVisibility)
+      window.removeEventListener('pagehide', markAway)
       void channel.untrack()
       void supabase.removeChannel(channel)
     }
@@ -1804,8 +1827,8 @@ export default function UniverseMap({
 
     async function refreshHubPresence() {
       try {
-        const realHubs = await getAllHubs()
-        if (cancelled || realHubs.length === 0) return
+        const realHubs = await getHubVisitorBookSettings()
+        if (cancelled) return
 
         const hubsById = new Map(realHubs.map((hub) => [hub.id, hub]))
         hubsRef.current = hubsRef.current.map((hub) => {
@@ -2021,9 +2044,10 @@ export default function UniverseMap({
 
       try {
         const realHubs = await getAllHubs()
-        const otherHubs = realHubs.map((hub: UniverseHubRecord, i: number) => {
-          const angle = (i / Math.max(realHubs.length, 1)) * Math.PI * 2 + 0.3
-          const dist = 180 + (i * 73) % 320
+        const otherHubs = realHubs.map((hub: UniverseHubRecord) => {
+          const seed = stableHubSeed(hub.id)
+          const angle = (seed / 0x100000000) * Math.PI * 2
+          const dist = 180 + ((seed >>> 8) % 320)
           const styles: HubStyle[] = ['portal', 'lantern', 'ruin', 'hourglass', 'telescope', 'greenhouse', 'lotus', 'cottage', 'forge', 'tower', 'ship', 'cathedral', 'oasis', 'astrolabe']
           return {
             id: hub.id,
@@ -2031,11 +2055,11 @@ export default function UniverseMap({
             name: hub.hub_name, bio: hub.bio || '', askAbout: hub.ask_about || '',
             avatarUrl: hub.avatar_url || '', avatarImage: undefined,
             online: onlineUserIdsRef.current.has(hub.id), pulse: 0,
-            size: 0.9 + (i * 17 % 10) / 30,
-            floatOffset: (i * 137) % (Math.PI * 2),
-            floatSpeed: 0.4 + (i * 23 % 10) / 30,
-            colorTheme: (HUB_COLOR_THEMES.find(theme => theme.id === hub.backdrop_id)?.id || HUB_COLOR_THEMES[i % HUB_COLOR_THEMES.length].id),
-            hubStyle: (hub.hub_style as HubStyle) || styles[i % styles.length],
+            size: 0.9 + ((seed >>> 16) % 10) / 30,
+            floatOffset: ((seed >>> 4) % 1000) / 1000 * (Math.PI * 2),
+            floatSpeed: 0.4 + ((seed >>> 12) % 10) / 30,
+            colorTheme: (HUB_COLOR_THEMES.find(theme => theme.id === hub.backdrop_id)?.id || HUB_COLOR_THEMES[seed % HUB_COLOR_THEMES.length].id),
+            hubStyle: (hub.hub_style as HubStyle) || styles[seed % styles.length],
             decoration: (hub.decoration as HubDecoration) || 'none',
             glowIntensity: (hub.glow_intensity as HubGlowIntensity) || 'normal',
             visitorBookEnabled: hub.visitor_book_enabled !== false,

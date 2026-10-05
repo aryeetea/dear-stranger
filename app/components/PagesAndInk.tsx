@@ -29,6 +29,10 @@ export default function PagesAndInk({ onClose }: { onClose?: () => void }) {
   const [tab, setTab] = useState<Tab>('read')
   const [pages, setPages] = useState<PageEntry[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadVersion, setLoadVersion] = useState(0)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(true)
+  const [moreError, setMoreError] = useState('')
   const [loadError, setLoadError] = useState('')
   const [filter, setFilter] = useState<'all' | 'entry' | 'poem'>('all')
   const [open, setOpen] = useState<PageEntry | null>(null)
@@ -37,6 +41,7 @@ export default function PagesAndInk({ onClose }: { onClose?: () => void }) {
   // write state
   const [writeType, setWriteType] = useState<WriteType>('entry')
   const [draft, setDraft] = useState('')
+  const [draftLoaded, setDraftLoaded] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [writeError, setWriteError] = useState('')
@@ -50,6 +55,7 @@ export default function PagesAndInk({ onClose }: { onClose?: () => void }) {
       .then((data) => {
         if (cancelled) return
         setPages(data as PageEntry[])
+        setHasMore(data.length === 60)
         setLoadError('')
       })
       .catch(() => {
@@ -60,17 +66,53 @@ export default function PagesAndInk({ onClose }: { onClose?: () => void }) {
         if (!cancelled) setLoading(false)
       })
     return () => { cancelled = true }
+  }, [loadVersion])
+
+  useEffect(() => {
+    try { setDraft(localStorage.getItem('ds_pages_ink_draft') || '') } catch {}
+    finally { setDraftLoaded(true) }
   }, [])
 
+  useEffect(() => {
+    if (!draftLoaded) return
+    try {
+      if (draft) localStorage.setItem('ds_pages_ink_draft', draft)
+      else localStorage.removeItem('ds_pages_ink_draft')
+    } catch {}
+  }, [draft, draftLoaded])
+
   const filtered = filter === 'all' ? pages : pages.filter(p => p.type === filter)
+
+  async function loadMorePages() {
+    if (loadingMore || !hasMore) return
+    setLoadingMore(true)
+    setMoreError('')
+    try {
+      const next = await getPages(60, pages.length) as PageEntry[]
+      setPages(prev => [...prev, ...next])
+      setHasMore(next.length === 60)
+    } catch (err) {
+      console.error('Failed to load more pages:', err)
+      setMoreError('More pages could not be loaded. Please try again.')
+    } finally {
+      setLoadingMore(false)
+    }
+  }
 
   async function handleResonate(e: React.MouseEvent, id: string) {
     e.stopPropagation()
     if (resonated.has(id)) return
+    const previousPage = pages.find(page => page.id === id)
+    if (!previousPage) return
     setResonated(prev => new Set(prev).add(id))
     setPages(prev => prev.map(p => p.id === id ? { ...p, resonance_count: p.resonance_count + 1 } : p))
     if (open?.id === id) setOpen(prev => prev ? { ...prev, resonance_count: prev.resonance_count + 1 } : prev)
-    try { await resonatePage(id) } catch { /* silent */ }
+    try { await resonatePage(id) } catch (err) {
+      console.error('Failed to resonate with page:', err)
+      setResonated(prev => { const next = new Set(prev); next.delete(id); return next })
+      setPages(prev => prev.map(p => p.id === id ? { ...p, resonance_count: previousPage.resonance_count } : p))
+      if (open?.id === id) setOpen(prev => prev ? { ...prev, resonance_count: previousPage.resonance_count } : prev)
+    }
   }
 
   async function handleSubmit() {
@@ -182,9 +224,10 @@ export default function PagesAndInk({ onClose }: { onClose?: () => void }) {
               </p>
             )}
             {!loading && loadError && (
-              <p style={{ textAlign: 'center', fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '17px', lineHeight: 1.6, color: 'rgba(255,255,255,0.38)', paddingTop: '60px' }}>
-                {loadError}
-              </p>
+              <div style={{ textAlign: 'center', paddingTop: '60px' }}>
+                <p role="alert" style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '17px', lineHeight: 1.6, color: 'rgba(255,255,255,0.38)' }}>{loadError}</p>
+                <button onClick={() => { setLoading(true); setLoadError(''); setLoadVersion(v => v + 1) }} style={{ background: 'none', border: '1px solid rgba(230,199,110,0.25)', color: '#e6c76e', padding: '9px 18px', cursor: 'pointer', fontFamily: "'Cinzel', serif", fontSize: '9px' }}>Try again</button>
+              </div>
             )}
             {!loading && !loadError && filtered.length === 0 && (
               <p style={{ textAlign: 'center', fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '17px', color: 'rgba(255,255,255,0.3)', paddingTop: '60px' }}>
@@ -267,6 +310,14 @@ export default function PagesAndInk({ onClose }: { onClose?: () => void }) {
                 </motion.div>
               ))}
             </div>
+            {!loading && !loadError && hasMore && pages.length > 0 && (
+              <div style={{ textAlign: 'center', marginTop: '24px' }}>
+                {moreError && <p role="alert" style={{ color: 'rgba(255,150,150,0.8)', fontFamily: "'IM Fell English', serif" }}>{moreError}</p>}
+                <button onClick={loadMorePages} disabled={loadingMore} style={{ background: 'none', border: '1px solid rgba(230,199,110,0.25)', color: '#e6c76e', padding: '10px 20px', cursor: loadingMore ? 'wait' : 'pointer', fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.2em' }}>
+                  {loadingMore ? 'Unfolding…' : moreError ? 'Try again' : 'Load more'}
+                </button>
+              </div>
+            )}
           </>
         )}
 
@@ -294,7 +345,7 @@ export default function PagesAndInk({ onClose }: { onClose?: () => void }) {
             }}>
               {writeType === 'poem'
                 ? 'Anonymous. No title required. Let form be whatever it needs to be.'
-                : 'Anonymous. No date shown. Just the words.'}
+                : 'Anonymous. The date is shown; your name is not. Just the words.'}
             </p>
 
             <textarea

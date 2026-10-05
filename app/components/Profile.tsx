@@ -92,6 +92,7 @@ export default function Profile({
   const [userId, setUserId] = useState('')
   const [avatarHistory, setAvatarHistory] = useState<string[]>([])
   const [restoringAvatar, setRestoringAvatar] = useState('')
+  const [savingGeneratedAvatar, setSavingGeneratedAvatar] = useState(false)
 
   const [editingHub, setEditingHub] = useState(false)
   const [editingBio, setEditingBio] = useState(false)
@@ -395,7 +396,7 @@ export default function Profile({
       onUpdateHub?.({ avatarUrl: freshUrl })
     } catch (err) {
       console.error('Regen failed:', err)
-      setRegenError(err instanceof Error ? err.message : 'Something went wrong. Your attempt was not used — try again.')
+      setRegenError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
       setRegenLoading(false)
     }
   }
@@ -414,6 +415,27 @@ export default function Profile({
       setRegenError('Could not switch back to that avatar right now.')
     } finally {
       setRestoringAvatar('')
+    }
+  }
+
+  async function saveGeneratedAvatar() {
+    if (!currentAvatarUrl.startsWith('data:') || savingGeneratedAvatar) return
+    setSavingGeneratedAvatar(true)
+    setRegenError('')
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Sign in again to save this avatar.')
+      const permanentUrl = await uploadAvatarToStorage(currentAvatarUrl, user.id)
+      const freshUrl = `${permanentUrl}?t=${Date.now()}`
+      await updateHub({ avatar_url: freshUrl, regen_count: regenCount })
+      rememberAvatar(freshUrl)
+      onUpdateHub?.({ avatarUrl: freshUrl })
+      setCurrentAvatarUrl(freshUrl)
+    } catch (err) {
+      console.error('Failed to save generated avatar:', err)
+      setRegenError(err instanceof Error ? err.message : 'Could not save the avatar. Try again.')
+    } finally {
+      setSavingGeneratedAvatar(false)
     }
   }
 
@@ -844,6 +866,11 @@ export default function Profile({
                 </div>
                 {regenError && (
                   <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(220,100,100,0.85)', marginTop: '8px' }}>{regenError}</p>
+                )}
+                {currentAvatarUrl.startsWith('data:') && (
+                  <button type="button" onClick={saveGeneratedAvatar} disabled={savingGeneratedAvatar} style={{ marginTop: '10px', background: 'none', border: '1px solid rgba(230,199,110,0.35)', color: '#e6c76e', padding: '8px 14px', cursor: savingGeneratedAvatar ? 'wait' : 'pointer', fontFamily: "'Cinzel', serif", fontSize: '8px', letterSpacing: '0.15em' }}>
+                    {savingGeneratedAvatar ? 'Saving avatar…' : 'Retry saving this avatar'}
+                  </button>
                 )}
               </motion.div>
             )}

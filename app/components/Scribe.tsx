@@ -456,9 +456,9 @@ type ScribeDraft = {
   embellishmentId?: EmbellishmentId
 }
 
-function makeDraftKey(owner: string | undefined, recipientName: string | undefined, replyContext: ScribeReplyContext | undefined) {
+function makeDraftKey(owner: string | undefined, recipientId: string | undefined, recipientName: string | undefined, replyContext: ScribeReplyContext | undefined) {
   const ownerPart = encodeURIComponent(owner || 'guest')
-  const target = replyContext?.letterId ? `reply:${replyContext.letterId}` : recipientName ? `to:${recipientName}` : 'universe'
+  const target = replyContext?.letterId ? `reply:${replyContext.letterId}` : recipientId ? `hub:${recipientId}` : recipientName ? `to:${recipientName}` : 'universe'
   return `${DRAFT_PREFIX}:${ownerPart}:${encodeURIComponent(target)}`
 }
 
@@ -523,7 +523,7 @@ export default function Scribe({ recipientName, recipientId, senderName, draftOw
   const [promptIdx, setPromptIdx] = useState(0)
   const [promptVisible, setPromptVisible] = useState(true)
   const todayPrompt = promptPool[promptIdx]
-  const draftKey = makeDraftKey(draftOwnerId || senderName, recipientName, replyContext)
+  const draftKey = makeDraftKey(draftOwnerId || senderName, recipientId, recipientName, replyContext)
   const [draftLoaded, setDraftLoaded] = useState(false)
   const [draftStatus, setDraftStatus] = useState('')
 

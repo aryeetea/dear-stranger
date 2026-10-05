@@ -202,9 +202,7 @@ export default function Observatory({ onClose, onWriteLetter, lettersRefreshSign
   const [loading, setLoading] = useState(true)
   const [currentUserId, setCurrentUserId] = useState('')
   const [currentTime, setCurrentTime] = useState(() => Date.now())
-  const [readIds, setReadIds] = useState<Set<string>>(() => {
-    try { return new Set(JSON.parse(localStorage.getItem('ds_read_letters') || '[]')) } catch { return new Set() }
-  })
+  const [readIds, setReadIds] = useState<Set<string>>(new Set())
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const [tooltip, setTooltip] = useState<{ letter: Letter; x: number; y: number } | null>(null)
   const [mousePos, setMousePos] = useState({ x: 0.5, y: 0.5 })
@@ -240,6 +238,10 @@ export default function Observatory({ onClose, onWriteLetter, lettersRefreshSign
         ])
         if (cancelled || requestId !== loadRequestRef.current) return
         const userId = data.userId
+        try {
+          const savedReadIds = JSON.parse(localStorage.getItem(`ds_read_letters_${userId}`) || '[]')
+          setReadIds(new Set(Array.isArray(savedReadIds) ? savedReadIds.filter((id): id is string => typeof id === 'string') : []))
+        } catch { setReadIds(new Set()) }
         const mapLetter = (l: LetterRow): Letter => {
           const createdAt = l.created_at || new Date().toISOString()
           const createdMs = new Date(createdAt).getTime()
@@ -392,7 +394,7 @@ export default function Observatory({ onClose, onWriteLetter, lettersRefreshSign
     setReadIds(prev => {
       const next = new Set(prev)
       next.add(letter.id)
-      try { localStorage.setItem('ds_read_letters', JSON.stringify([...next])) } catch {}
+      try { localStorage.setItem(`ds_read_letters_${currentUserId}`, JSON.stringify([...next])) } catch {}
       return next
     })
     setZoomTarget(letter)

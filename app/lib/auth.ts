@@ -351,25 +351,6 @@ export async function signInAndCreateHub(hubName: string, bio: string, askAbout:
 }
 
 export async function signOut() {
-  let hasSession = false
-
-  try {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession()
-    const user = session?.user
-    hasSession = Boolean(session)
-
-    if (user) {
-      const { error } = await supabase.from('hubs').update({ online: false }).eq('id', user.id)
-      if (error) console.warn('Failed to mark hub offline before sign out:', error)
-    }
-  } catch (err) {
-    console.warn('Unable to update hub before sign out:', err)
-  }
-
-  if (!hasSession) return
-
   const { error } = await supabase.auth.signOut()
   if (error) {
     const message = error.message.toLowerCase()
@@ -493,17 +474,18 @@ export async function exportMyLetters(): Promise<string> {
   }
 }
 
-export async function getPages(limit = 60) {
+export async function getPages(limit = 60, offset = 0) {
   try {
     const { data, error } = await supabase
       .from('pages')
       .select('id, body, type, resonance_count, created_at')
       .order('created_at', { ascending: false })
-      .limit(limit)
-    if (error) return []
+      .range(offset, offset + limit - 1)
+    if (error) throw new Error(error.message)
     return (data || []) as { id: string; body: string; type: 'entry' | 'poem'; resonance_count: number; created_at: string }[]
-  } catch {
-    return []
+  } catch (err) {
+    console.error('getPages failed:', err)
+    throw err
   }
 }
 
@@ -523,8 +505,9 @@ const UNIVERSE_LETTER_TTL_DAYS = 30
 
 export async function getUniverseLetters() {
   try {
+    const blockedIds = await getBlockedIds()
     const cutoff = new Date(Date.now() - UNIVERSE_LETTER_TTL_DAYS * 24 * 60 * 60 * 1000).toISOString()
-    const { data, error } = await supabase
+    let query = supabase
       .from('letters')
       .select('id, sender_id, body, subject, paper_id, font_id, font_color, paper_color, handwriting_style, handwritten_image_url, embellishment_id, is_anonymous, sender:sender_id(hub_name)')
       .eq('is_universe_letter', true)
@@ -533,8 +516,11 @@ export async function getUniverseLetters() {
       .not('paper_id', 'in', DRIFT_PAPER_FILTER)
       .order('created_at', { ascending: false })
       .limit(50)
+    if (blockedIds.length > 0) query = query.not('sender_id', 'in', `(${blockedIds.join(',')})`)
 
-    if (error) return []
+    const { data, error } = await query
+
+    if (error) throw error
 
     return ((data || []) as UniverseLetterRow[]).map((l) => ({
       id: l.id,
@@ -551,8 +537,9 @@ export async function getUniverseLetters() {
       handwrittenImageUrl: (l.handwritten_image_url as string) || undefined,
       embellishmentId: (l.embellishment_id as string) || 'none',
     }))
-  } catch {
-    return []
+  } catch (error) {
+    console.error('getUniverseLetters failed:', error)
+    throw error
   }
 }
 
@@ -573,7 +560,7 @@ export async function getDriftLetters() {
     }
 
     const { data, error } = await query
-    if (error) return []
+    if (error) throw error
 
     return ((data || []) as UniverseLetterRow[]).map((l) => ({
       id: l.id,
@@ -590,8 +577,9 @@ export async function getDriftLetters() {
       embellishmentId: (l.embellishment_id as string) || 'none',
       createdAt: (l.created_at as string) || undefined,
     }))
-  } catch {
-    return []
+  } catch (error) {
+    console.error('getDriftLetters failed:', error)
+    throw error
   }
 }
 
@@ -692,23 +680,6 @@ export async function getVisitorBook(limit = 18): Promise<VisitorBookEntry[]> {
   })
 }
 
-export async function setHubOnlineStatus(online: boolean) {
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser()
-
-  if (userError) throw userError
-  if (!user) return
-
-  const { error } = await supabase
-    .from('hubs')
-    .update({ online })
-    .eq('id', user.id)
-
-  if (error) throw error
-}
-
 export async function blockUser(blockedId: string) {
   const { data: { user }, error: userError } = await supabase.auth.getUser()
   if (userError) throw userError
@@ -734,18 +705,15 @@ export async function unblockUser(blockedId: string) {
 }
 
 export async function getBlockedIds(): Promise<string[]> {
-  try {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return []
-    const { data, error } = await supabase
-      .from('user_blocks')
-      .select('blocked_id')
-      .eq('blocker_id', user.id)
-    if (error) return []
-    return (data || []).map((r: { blocked_id: string }) => r.blocked_id)
-  } catch {
-    return []
-  }
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+  if (userError) throw userError
+  if (!user) return []
+  const { data, error } = await supabase
+    .from('user_blocks')
+    .select('blocked_id')
+    .eq('blocker_id', user.id)
+  if (error) throw error
+  return (data || []).map((r: { blocked_id: string }) => r.blocked_id)
 }
 
 export async function isBlocked(blockedId: string): Promise<boolean> {
@@ -809,26 +777,30 @@ export async function getMyHub(userId?: string) {
 }
 
 export async function getAllHubs(): Promise<HubRecord[]> {
-  try {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+  if (userError) console.warn('getAllHubs could not resolve current user:', userError.message)
 
-    let query = supabase
-      .from('hubs')
-      .select('*')
-
-    if (user?.id) {
-      query = query.neq('id', user.id)
-    }
-
+  const hubs: HubRecord[] = []
+  const pageSize = 500
+  for (let offset = 0; ; offset += pageSize) {
+    let query = supabase.from('hubs').select('*').order('id').range(offset, offset + pageSize - 1)
+    if (user?.id) query = query.neq('id', user.id)
     const { data, error } = await query
-
-    if (error) return []
-    return (data || []) as HubRecord[]
-  } catch {
-    return []
+    if (error) {
+      console.error('getAllHubs failed:', error)
+      throw error
+    }
+    hubs.push(...((data || []) as HubRecord[]))
+    if (!data || data.length < pageSize) return hubs
   }
+}
+
+export async function getHubVisitorBookSettings(): Promise<Array<{ id: string; visitor_book_enabled: boolean | null }>> {
+  const { data, error } = await supabase
+    .from('hubs')
+    .select('id, visitor_book_enabled')
+  if (error) throw error
+  return data || []
 }
 
 export async function updateHub(updates: {
@@ -1131,7 +1103,6 @@ export async function getMyLetters() {
   await Promise.allSettled([
     supabase.from('letters').update({ status: 'arrived' }).eq('recipient_id', user.id).eq('status', 'transit').lt('arrives_at', now),
     supabase.from('letters').update({ status: 'arrived' }).eq('sender_id', user.id).eq('status', 'transit').lt('arrives_at', now),
-    supabase.from('letters').update({ status: 'arrived' }).eq('is_universe_letter', true).eq('status', 'transit'),
   ])
 
   const { data, error } = await supabase

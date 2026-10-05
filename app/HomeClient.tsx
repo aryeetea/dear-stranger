@@ -30,7 +30,6 @@ import {
   signIn,
   uploadAvatarToStorage,
   getMyLetters,
-  setHubOnlineStatus,
   verifyEmailCode,
 } from './lib/auth'
 import {
@@ -654,6 +653,9 @@ export default function Home() {
   const [scribeReplyContext, setScribeReplyContext] = useState<ScribeReplyContext | undefined>()
   // Signal to refresh Observatory letters
   const [lettersRefreshSignal, setLettersRefreshSignal] = useState(0)
+  const [firstLetterRetryBody, setFirstLetterRetryBody] = useState('')
+  const [firstLetterError, setFirstLetterError] = useState('')
+  const [firstLetterSending, setFirstLetterSending] = useState(false)
   const [observatoryOpen, setObservatoryOpen] = useState(false)
   const [pagesOpen, setPagesOpen] = useState(false)
   const [driftOpen, setDriftOpen] = useState(false)
@@ -749,6 +751,8 @@ export default function Home() {
     setLettersSent(0)
     setHubRegenCount(0)
     setHubAvatarPending(null)
+    setFirstLetterRetryBody('')
+    setFirstLetterError('')
     setObservatoryOpen(false)
     setProfileOpen(false)
     setDriftOpen(false)
@@ -805,35 +809,6 @@ export default function Home() {
   useEffect(() => {
     screenRef.current = screen
   }, [screen])
-
-  useEffect(() => {
-    const shouldPublishPresence = Boolean(currentUserId && !isGuest && screen === 'universe')
-    if (!shouldPublishPresence) {
-      if (currentUserId && !isGuest) void setHubOnlineStatus(false).catch(() => {})
-      return
-    }
-
-    const markOnline = () => void setHubOnlineStatus(true).catch(() => {})
-    const markAway = () => void setHubOnlineStatus(false).catch(() => {})
-    const syncVisibility = () => {
-      if (document.visibilityState === 'visible') markOnline()
-      else markAway()
-    }
-
-    markOnline()
-    const heartbeat = window.setInterval(markOnline, 25000)
-    document.addEventListener('visibilitychange', syncVisibility)
-    window.addEventListener('pagehide', markAway)
-    window.addEventListener('beforeunload', markAway)
-
-    return () => {
-      window.clearInterval(heartbeat)
-      document.removeEventListener('visibilitychange', syncVisibility)
-      window.removeEventListener('pagehide', markAway)
-      window.removeEventListener('beforeunload', markAway)
-      markAway()
-    }
-  }, [currentUserId, isGuest, screen])
 
   useEffect(() => {
     if (screen !== 'universe') {
@@ -1178,6 +1153,21 @@ export default function Home() {
     return () => window.removeEventListener('popstate', handlePopState)
   }, [screen])
 
+  async function releaseFirstLetter(body: string) {
+    setFirstLetterRetryBody(body)
+    setFirstLetterError('')
+    setFirstLetterSending(true)
+    try {
+      await sendLetter(null, body, 'parchment', true, 'A stranger has arrived')
+      setFirstLetterRetryBody('')
+    } catch (error) {
+      logger.error('Failed to release onboarding letter', error)
+      setFirstLetterError('Your first letter could not be confirmed. You can retry it here.')
+    } finally {
+      setFirstLetterSending(false)
+    }
+  }
+
   async function handleOnboardingComplete(
     answers: Record<number, string>,
     selectedStyle?: StyleOption,
@@ -1337,8 +1327,7 @@ export default function Home() {
         setScreen('universe')
 
         if (firstLetterBody?.trim()) {
-          void sendLetter(null, firstLetterBody, 'parchment', true, 'A stranger has arrived')
-            .catch(err => logger.error('Failed to release onboarding letter', err))
+          void releaseFirstLetter(firstLetterBody)
         }
 
         void (async () => {
@@ -1792,6 +1781,15 @@ export default function Home() {
       )}
 
       {screen === 'universe' && <NotificationBanner />}
+
+      {screen === 'universe' && firstLetterError && firstLetterRetryBody && (
+        <div role="status" style={{ position: 'fixed', top: '76px', left: '50%', transform: 'translateX(-50%)', zIndex: 190, width: 'min(520px, calc(100vw - 32px))', padding: '14px 18px', borderRadius: '12px', background: 'rgba(12,8,24,0.96)', border: '1px solid rgba(230,199,110,0.35)', color: 'rgba(255,255,255,0.86)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', boxShadow: '0 12px 40px rgba(0,0,0,0.4)' }}>
+          <span style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px' }}>{firstLetterError}</span>
+          <button onClick={() => void releaseFirstLetter(firstLetterRetryBody)} disabled={firstLetterSending} style={{ background: 'transparent', border: '1px solid rgba(230,199,110,0.45)', color: '#e6c76e', borderRadius: '6px', padding: '7px 12px', whiteSpace: 'nowrap', cursor: firstLetterSending ? 'default' : 'pointer' }}>
+            {firstLetterSending ? 'Retrying…' : 'Retry'}
+          </button>
+        </div>
+      )}
 
       {['landing', 'universe'].includes(screen) && <FeedbackButton />}
 

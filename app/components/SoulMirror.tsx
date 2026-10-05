@@ -130,6 +130,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
   const [inputValue, setInputValue] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [retryRequest, setRetryRequest] = useState<{ history: typeof messages; answers: string[] } | null>(null)
   const [chatDone, setChatDone] = useState(Boolean(resumeState?.phase))
   const [hubName, setHubName] = useState(resumeState?.hubName || '')
   const [bio, setBio] = useState(resumeState?.bio || '')
@@ -152,7 +153,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
         ? { style: customStyle.trim(), styleDescription: customStyle.trim() }
         : undefined
     try {
-      setLoading(true); setError('')
+      setLoading(true); setError(''); setRetryRequest(null)
       const { data: { session } } = await supabase.auth.getSession()
       const token = session?.access_token
       const res = await fetch('/api/soul-mirror-question', {
@@ -181,6 +182,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
       setMessages(prev => [...prev, { role: 'ai', text: data.question ?? '', isClosing, chips }])
       if (isClosing) setChatDone(true)
     } catch (err) {
+      setRetryRequest({ history, answers })
       const msg = err instanceof Error ? err.message : ''
       if (msg === 'Unauthorized') {
         setError('Please sign in to continue.')
@@ -203,11 +205,16 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
 
   async function handleSend(text?: string) {
     const finalText = (text || inputValue).trim()
-    if (!finalText || loading || chatDone) return
+    if (!finalText || loading || chatDone || retryRequest) return
     const newMessages = [...messages, { role: 'user' as const, text: finalText }]
     const newAnswers = [...userAnswers, finalText]
     setMessages(newMessages); setUserAnswers(newAnswers); setInputValue('')
     await fetchAIMessage(newMessages, newAnswers)
+  }
+
+  function retryLastRequest() {
+    if (!retryRequest || loading) return
+    void fetchAIMessage(retryRequest.history, retryRequest.answers)
   }
 
   function buildAvatarDescription() {
@@ -522,7 +529,16 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
                   </div>
                 </motion.div>
               )}
-              {error && <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(235,140,140,0.85)', textAlign: 'center' }}>{error}</p>}
+              {error && (
+                <div style={{ textAlign: 'center' }}>
+                  <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(235,140,140,0.85)' }}>{error}</p>
+                  {retryRequest && (
+                    <button onClick={retryLastRequest} disabled={loading} style={{ marginTop: '8px', background: 'transparent', border: '1px solid rgba(230,199,110,0.4)', borderRadius: '6px', color: '#e6c76e', padding: '7px 14px', cursor: loading ? 'default' : 'pointer' }}>
+                      Retry last answer
+                    </button>
+                  )}
+                </div>
+              )}
               <div ref={bottomRef} />
             </div>
 
@@ -532,7 +548,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                   {currentChips.map((chip, i) => (
                     <motion.button key={`${messages.length}-${i}`} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.04 }}
-                      onClick={() => void handleSend(chip)} disabled={loading}
+                      onClick={() => void handleSend(chip)} disabled={loading || Boolean(retryRequest)}
                       style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '13px', color: 'rgba(230,199,110,0.88)', padding: '5px 12px', border: '1px solid rgba(230,199,110,0.28)', borderRadius: '20px', background: 'rgba(230,199,110,0.06)', cursor: 'pointer', whiteSpace: 'nowrap' }}
                       onMouseEnter={e => { e.currentTarget.style.background = 'rgba(230,199,110,0.14)'; e.currentTarget.style.color = '#e6c76e' }}
                       onMouseLeave={e => { e.currentTarget.style.background = 'rgba(230,199,110,0.06)'; e.currentTarget.style.color = 'rgba(230,199,110,0.88)' }}>
@@ -559,12 +575,12 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
                   <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
                     <textarea value={inputValue} onChange={e => setInputValue(e.target.value)}
                       placeholder="Describe yourself — your appearance, gender (if you wish), features, skin tone, hair, how you carry yourself, colors, textures..." rows={2}
-                      disabled={loading || chatDone}
+                      disabled={loading || chatDone || Boolean(retryRequest)}
                       onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void handleSend() } }}
                       style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', color: 'rgba(255,255,255,0.9)', fontFamily: "'Cormorant Garamond', serif", fontSize: '15px', lineHeight: 1.6, padding: '10px 14px', resize: 'none', outline: 'none', caretColor: '#e6c76e' }}
                       onFocus={e => { e.target.style.borderColor = 'rgba(230,199,110,0.4)' }}
                       onBlur={e => { e.target.style.borderColor = 'rgba(255,255,255,0.1)' }} />
-                    <button onClick={() => void handleSend()} disabled={!inputValue.trim() || loading}
+                    <button onClick={() => void handleSend()} disabled={!inputValue.trim() || loading || Boolean(retryRequest)}
                       style={{ width: '42px', height: '42px', borderRadius: '10px', background: inputValue.trim() ? 'rgba(230,199,110,0.18)' : 'rgba(255,255,255,0.04)', border: `1px solid ${inputValue.trim() ? 'rgba(230,199,110,0.45)' : 'rgba(255,255,255,0.08)'}`, color: inputValue.trim() ? '#e6c76e' : 'rgba(255,255,255,0.35)', fontSize: '16px', cursor: inputValue.trim() ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>✦</button>
                   </div>
                   <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.15em', color: 'rgba(255,255,255,0.3)', textAlign: 'center', marginTop: '8px', textTransform: 'uppercase' }}>Enter to send · Shift+Enter for new line</p>

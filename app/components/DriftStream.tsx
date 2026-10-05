@@ -421,6 +421,7 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
   const [tab, setTab] = useState<DriftView>('read')
   const [letters, setLetters] = useState<DriftLetter[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadVersion, setLoadVersion] = useState(0)
   const [loadError, setLoadError] = useState('')
   const [open, setOpen] = useState<DriftLetter | null>(null)
 
@@ -437,6 +438,7 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
   const [sending, setSending] = useState(false)
   const [waxing, setWaxing] = useState(false)
   const [sent, setSent] = useState(false)
+  const [sendError, setSendError] = useState('')
   const [isAnonymous, setIsAnonymous] = useState(false)
   const [hoveredLetterId, setHoveredLetterId] = useState<string | null>(null)
   const [openingLetterId, setOpeningLetterId] = useState<string | null>(null)
@@ -455,15 +457,16 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
         setLetters(data as DriftLetter[])
         setLoadError('')
       })
-      .catch(() => {
+      .catch((err: unknown) => {
         if (cancelled) return
-        setLoadError('The DriftStream is taking too long to answer. Please try again in a moment.')
+        console.error('Failed to load DriftStream:', err)
+        setLoadError(err instanceof Error ? err.message : 'The DriftStream could not be loaded. Please try again.')
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
       })
     return () => { cancelled = true }
-  }, [])
+  }, [loadVersion])
 
   const paper = selectedPaper
   const fontFamily = selectedFont.family
@@ -490,6 +493,7 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
     setSending(true)
     playLetterSend()
     await new Promise(r => setTimeout(r, 1800))
+    setSendError('')
     try {
       let handwrittenImageUrl: string | undefined
       if (selectedHandwriting === 'handwritten') {
@@ -516,8 +520,14 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
         handwrittenImageUrl,
         isAnonymous,
       )
-    } catch { /* silent */ }
-    setSent(true)
+      setSent(true)
+    } catch (err) {
+      console.error('Failed to release DriftStream letter:', err)
+      setSendError(err instanceof Error ? err.message : 'Your letter could not be released. Please try again.')
+    } finally {
+      setSending(false)
+      setWaxing(false)
+    }
   }
 
   const backLabel = tab === 'read' ? '← Return' : tab === 'write' ? '← Return' : '← Back'
@@ -612,7 +622,9 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
 
             {!loading && loadError && (
               <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', textAlign: 'center' }}>
-                <p style={{ maxWidth: '420px', fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '17px', lineHeight: 1.6, color: 'rgba(255,255,255,0.5)' }}>{loadError}</p>
+                <div><p role="alert" style={{ maxWidth: '420px', fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '17px', lineHeight: 1.6, color: 'rgba(255,255,255,0.5)' }}>{loadError}</p>
+                  <button onClick={() => { setLoading(true); setLoadVersion(v => v + 1) }} style={{ background: 'transparent', border: '1px solid rgba(230,199,110,0.35)', color: '#e6c76e', padding: '8px 14px', cursor: 'pointer', fontFamily: "'Cinzel', serif", fontSize: '9px' }}>Try again</button>
+                </div>
               </div>
             )}
 
@@ -873,6 +885,7 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
               <div style={{ height: '1px', background: paper.border, margin: '20px 0' }} />
 
               {/* send */}
+              {sendError && <p role="alert" style={{ flexBasis: '100%', color: '#a94d4d', fontFamily: "'EB Garamond', serif" }}>{sendError} Your letter is still here; try releasing it again.</p>}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                 <button
                   onClick={() => setIsAnonymous(a => !a)}
@@ -882,7 +895,7 @@ export default function DriftStream({ onClose, senderName }: { onClose?: () => v
                 <motion.button
                   whileTap={{ scale: 0.97 }}
                   onClick={handleSend}
-                  disabled={selectedHandwriting === 'typed' ? !body.trim() : false}
+                  disabled={sending || waxing || (selectedHandwriting === 'typed' ? !body.trim() : false)}
                   style={{
                     background: 'transparent', border: `1px solid ${(selectedHandwriting === 'typed' ? body.trim() : true) ? paper.accent : paper.border}`,
                     color: (selectedHandwriting === 'typed' ? body.trim() : true) ? paper.accent : paper.subtext, fontFamily: "'Cinzel', serif",
