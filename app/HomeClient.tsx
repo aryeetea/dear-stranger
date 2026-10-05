@@ -27,6 +27,8 @@ import {
   uploadVoiceNote,
   uploadHandwrittenImage,
   updateHub,
+  getMyAvatarSettings,
+  saveMyAvatarSettings,
   signIn,
   uploadAvatarToStorage,
   getMyLetters,
@@ -47,6 +49,7 @@ import {
   writeSavedOverlay,
 } from './lib/appShell'
 import { playChime, stopAmbient } from '../lib/sounds'
+import { buildAvatarAnswers } from './lib/avatar'
 import { AnimatePresence } from 'framer-motion'
 
 type Screen =
@@ -415,12 +418,14 @@ function GuestNudge({ onCreateHub, onSignIn, onClose }: {
 
 function FirstStepsPanel({
   onClose,
-  onExplore,
+  onFindPenpal,
+  onOpenInbox,
   onOpenProfile,
   onWriteUniverseLetter,
 }: {
   onClose: () => void
-  onExplore: () => void
+  onFindPenpal: () => void
+  onOpenInbox: () => void
   onOpenProfile: () => void
   onWriteUniverseLetter: () => void
 }) {
@@ -464,11 +469,11 @@ function FirstStepsPanel({
         Your hub is live. Here&apos;s the fastest way to make this place feel real.
       </p>
       <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(255,255,255,0.55)', lineHeight: 1.65, margin: '0 0 16px' }}>
-        Send one letter, explore a few hubs, and shape your profile. After that, the universe starts giving back.
+        Write to a hub directly, then return to your observatory to follow the letter and read replies.
       </p>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px', marginBottom: '14px' }}>
         <button
-          onClick={onWriteUniverseLetter}
+          onClick={onFindPenpal}
           style={{
             textAlign: 'left',
             padding: '14px 14px 13px',
@@ -479,11 +484,11 @@ function FirstStepsPanel({
             cursor: 'pointer',
           }}
         >
-          <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.18em', color: 'rgba(201,168,76,0.9)', textTransform: 'uppercase', margin: '0 0 6px' }}>1. Send a first letter</p>
-          <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '15px', color: 'rgba(255,255,255,0.68)', lineHeight: 1.45, margin: 0 }}>Release something into the universe right now.</p>
+          <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.18em', color: 'rgba(201,168,76,0.9)', textTransform: 'uppercase', margin: '0 0 6px' }}>1. Find a pen pal</p>
+          <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '15px', color: 'rgba(255,255,255,0.68)', lineHeight: 1.45, margin: 0 }}>Choose a hub on the map, open it, then write a private letter to that person.</p>
         </button>
         <button
-          onClick={onExplore}
+          onClick={onOpenInbox}
           style={{
             textAlign: 'left',
             padding: '14px 14px 13px',
@@ -494,8 +499,23 @@ function FirstStepsPanel({
             cursor: 'pointer',
           }}
         >
-          <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.18em', color: 'rgba(255,255,255,0.76)', textTransform: 'uppercase', margin: '0 0 6px' }}>2. Explore the map</p>
-          <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '15px', color: 'rgba(255,255,255,0.62)', lineHeight: 1.45, margin: 0 }}>Click a few hubs and find someone worth writing to.</p>
+          <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.18em', color: 'rgba(255,255,255,0.76)', textTransform: 'uppercase', margin: '0 0 6px' }}>2. Check your observatory</p>
+          <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '15px', color: 'rgba(255,255,255,0.62)', lineHeight: 1.45, margin: 0 }}>Track letters in transit and read the ones that have arrived.</p>
+        </button>
+        <button
+          onClick={onWriteUniverseLetter}
+          style={{
+            textAlign: 'left',
+            padding: '14px 14px 13px',
+            borderRadius: '14px',
+            border: '1px solid rgba(255,255,255,0.14)',
+            background: 'rgba(255,255,255,0.04)',
+            color: 'rgba(255,255,255,0.9)',
+            cursor: 'pointer',
+          }}
+        >
+          <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.18em', color: 'rgba(255,255,255,0.76)', textTransform: 'uppercase', margin: '0 0 6px' }}>3. Write to the universe</p>
+          <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '15px', color: 'rgba(255,255,255,0.62)', lineHeight: 1.45, margin: 0 }}>Send an open letter that any stranger may find.</p>
         </button>
         <button
           onClick={onOpenProfile}
@@ -509,7 +529,7 @@ function FirstStepsPanel({
             cursor: 'pointer',
           }}
         >
-          <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.18em', color: 'rgba(255,255,255,0.76)', textTransform: 'uppercase', margin: '0 0 6px' }}>3. Shape your profile</p>
+          <p style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '0.18em', color: 'rgba(255,255,255,0.76)', textTransform: 'uppercase', margin: '0 0 6px' }}>4. Shape your profile</p>
           <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '15px', color: 'rgba(255,255,255,0.62)', lineHeight: 1.45, margin: 0 }}>Tighten your bio, ask-about, and avatar when you&apos;re ready.</p>
         </button>
       </div>
@@ -638,6 +658,10 @@ export default function Home() {
   const [hubAskAbout, setHubAskAbout] = useState('')
   const [hubAvatarUrl, setHubAvatarUrl] = useState('')
   const [hubAvatarPending, setHubAvatarPending] = useState<string | null>(null)
+  const [hubAvatarPresentation, setHubAvatarPresentation] = useState('Use my description')
+  const [avatarSettingsLoaded, setAvatarSettingsLoaded] = useState(false)
+  const [avatarGenerationError, setAvatarGenerationError] = useState('')
+  const [avatarRetrySignal, setAvatarRetrySignal] = useState(0)
   const [hubStyle, setHubStyle] = useState<HubStyle>('portal')
   const [hubColor, setHubColor] = useState<HubColor>('gold')
   const [hubDecoration, setHubDecoration] = useState<HubDecoration>('none')
@@ -647,6 +671,7 @@ export default function Home() {
   const [lettersSent, setLettersSent] = useState(0)
   const [generatingStatus, setGeneratingStatus] = useState('')
   const [avatarGenerating, setAvatarGenerating] = useState(false)
+  const [avatarRetrying, setAvatarRetrying] = useState(false)
   const [scribeOpen, setScribeOpen] = useState(false)
   const [scribeRecipient, setScribeRecipient] = useState<string | undefined>()
   const [scribeRecipientId, setScribeRecipientId] = useState<string | undefined>()
@@ -686,6 +711,9 @@ export default function Home() {
   const screenRef = useRef<Screen>('loading')
   const onboardingInFlightRef = useRef(false)
   const pendingAvatarRetryInFlightRef = useRef(false)
+  const avatarSettingsLoadRef = useRef(0)
+  const knownArrivedCountRef = useRef<number | null>(null)
+  const refreshIncomingLettersRef = useRef<(() => void) | null>(null)
 
   const getSavedOverlay = useCallback((): UniverseOverlay => readSavedOverlay(), [])
 
@@ -743,6 +771,11 @@ export default function Home() {
     setHubBio('')
     setHubAskAbout('')
     setHubAvatarUrl('')
+    avatarSettingsLoadRef.current += 1
+    setHubAvatarPresentation('Use my description')
+    setHubAvatarPending(null)
+    setAvatarSettingsLoaded(false)
+    setAvatarGenerationError('')
     setCurrentUserId('')
     setHubStyle('portal')
     setHubColor('gold')
@@ -751,7 +784,6 @@ export default function Home() {
     setVisitorBookEnabled(true)
     setLettersSent(0)
     setHubRegenCount(0)
-    setHubAvatarPending(null)
     setFirstLetterRetryBody('')
     setFirstLetterRequestId('')
     setFirstLetterError('')
@@ -769,7 +801,19 @@ export default function Home() {
     setHubBio(hub.bio || '')
     setHubAskAbout(hub.ask_about || '')
     setHubAvatarUrl(hub.avatar_url || '')
-    setHubAvatarPending(hub.avatar_prompt_pending || null)
+    const settingsRequest = ++avatarSettingsLoadRef.current
+    setHubAvatarPending(null)
+    setHubAvatarPresentation('Use my description')
+    setAvatarSettingsLoaded(false)
+    void getMyAvatarSettings(userId || hub.id).then((settings) => {
+      if (avatarSettingsLoadRef.current !== settingsRequest) return
+      setHubAvatarPending(settings.description)
+      setHubAvatarPresentation(settings.presentation)
+      setAvatarSettingsLoaded(true)
+    }).catch((error) => {
+      logger.error('Failed to load private avatar settings', error)
+      if (avatarSettingsLoadRef.current === settingsRequest) setAvatarSettingsLoaded(true)
+    })
     setHubStyle((hub.hub_style as HubStyle) || 'portal')
     setHubColor(coerceHubColor(hub.backdrop_id))
     setHubDecoration((hub.decoration as HubDecoration) || 'none')
@@ -844,10 +888,32 @@ export default function Home() {
   }, [screen])
 
   useEffect(() => {
+    if (!currentUserId || isGuest) return
+
+    const inboxChannel = supabase
+      .channel(`inbox-letters-${currentUserId}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'letters',
+        filter: `recipient_id=eq.${currentUserId}`,
+      }, () => {
+        setLettersRefreshSignal((signal) => signal + 1)
+        refreshIncomingLettersRef.current?.()
+      })
+      .subscribe()
+
+    return () => {
+      void supabase.removeChannel(inboxChannel)
+    }
+  }, [currentUserId, isGuest])
+
+  useEffect(() => {
     if (
       screen !== 'universe' ||
       isGuest ||
       !currentUserId ||
+      !avatarSettingsLoaded ||
       !hubAvatarPending ||
       Boolean(hubAvatarUrl) ||
       avatarGenerating
@@ -861,24 +927,29 @@ export default function Home() {
     async function retryPendingAvatar() {
       if (cancelled || pendingAvatarRetryInFlightRef.current) return
       pendingAvatarRetryInFlightRef.current = true
+      setAvatarRetrying(true)
+      setAvatarGenerationError('')
       try {
-        const avatarUrl = await requestAvatarImage({ 0: pendingPrompt }, currentUserId)
+        const avatarUrl = await requestAvatarImage(buildAvatarAnswers(pendingPrompt, hubAvatarPresentation), currentUserId)
         if (!avatarUrl || cancelled) return
         const permanentUrl = await uploadAvatarToStorage(avatarUrl, currentUserId)
         if (cancelled) return
         setHubAvatarUrl(permanentUrl)
         setHubAvatarPending(pendingPrompt)
-        await updateHub({ avatar_url: permanentUrl, avatar_prompt_pending: pendingPrompt })
+        await updateHub({ avatar_url: permanentUrl })
+        setAvatarGenerationError('')
       } catch (error) {
         logger.error('Background avatar retry failed', error)
+        setAvatarGenerationError(error instanceof Error ? error.message : 'Avatar creation did not finish.')
       } finally {
+        setAvatarRetrying(false)
         pendingAvatarRetryInFlightRef.current = false
       }
     }
 
-    const initial = window.setTimeout(() => {
-      void retryPendingAvatar()
-    }, APP_SHELL_TIMEOUTS.pendingAvatarRetryInitialDelayMs)
+    const initial = avatarRetrySignal > 0
+      ? window.setTimeout(() => void retryPendingAvatar(), 0)
+      : window.setTimeout(() => void retryPendingAvatar(), APP_SHELL_TIMEOUTS.pendingAvatarRetryInitialDelayMs)
 
     const interval = window.setInterval(() => {
       void retryPendingAvatar()
@@ -889,10 +960,9 @@ export default function Home() {
       window.clearTimeout(initial)
       window.clearInterval(interval)
     }
-  }, [avatarGenerating, currentUserId, hubAvatarPending, hubAvatarUrl, isGuest, screen])
+  }, [avatarGenerating, avatarRetrySignal, avatarSettingsLoaded, currentUserId, hubAvatarPending, hubAvatarPresentation, hubAvatarUrl, isGuest, screen])
 
   // Poll for newly arrived letters every 60s while on universe screen
-  const knownArrivedCountRef = useRef<number | null>(null)
   useEffect(() => {
     if (screen !== 'universe') return
     async function checkArrivals() {
@@ -918,11 +988,13 @@ export default function Home() {
         }
       } catch { /* silent */ }
     }
+    refreshIncomingLettersRef.current = () => { void checkArrivals() }
     void checkArrivals()
     const interval = setInterval(() => void checkArrivals(), 60_000)
     return () => {
       clearInterval(interval)
       knownArrivedCountRef.current = null
+      refreshIncomingLettersRef.current = null
     }
   }, [screen])
 
@@ -1188,6 +1260,7 @@ export default function Home() {
     hubDecoration?: HubDecoration,
     avatarDescriptionInput?: string,
     firstLetterBody?: string,
+    avatarPresentationInput?: string,
   ) {
     setOnboardingError('')
 
@@ -1203,6 +1276,7 @@ export default function Home() {
       .map((key) => answers[key]?.trim())
       .filter(Boolean)
       .join('\n')
+    const avatarPresentation = avatarPresentationInput?.trim() || 'Use my description'
     const chosenHubStyle = selectedHubStyle || 'portal'
     const chosenHubColor = selectedHubColor || 'gold'
     const chosenDecoration: HubDecoration = hubDecoration || 'none'
@@ -1217,6 +1291,7 @@ export default function Home() {
       selectedVoice: mirrorVoice,
       userAnswers: keys.slice(0, -1).map((key) => answers[key]),
       avatarDescription,
+      avatarPresentation,
       hubName: hubNameAnswer,
       bio: chosenBio,
       askAbout: chosenAskAbout,
@@ -1325,14 +1400,20 @@ export default function Home() {
             hub_style: chosenHubStyle,
             backdrop_id: chosenHubColor,
             decoration: chosenDecoration,
-            avatar_prompt_pending: avatarDescription || null,
           }),
           12000,
           'Saving your hub took too long. Please try again.',
         )
 
+        await saveMyAvatarSettings({
+          description: avatarDescription || null,
+          presentation: avatarPresentation,
+        }, userId)
+
         setHubAvatarUrl('')
         setHubAvatarPending(avatarDescription || null)
+        setHubAvatarPresentation(avatarPresentation)
+        setAvatarSettingsLoaded(true)
         setOnboardingResumeState(null)
         setScreen('universe')
 
@@ -1345,22 +1426,17 @@ export default function Home() {
             // Only use the user's explicit avatar description for avatar generation
             if (!avatarDescription || !userId) return
             setAvatarGenerating(true)
-            const avatarUrl = await requestAvatarImage({ 0: avatarDescription }, userId, selectedStyle?.label)
+            setAvatarGenerationError('')
+            const avatarUrl = await requestAvatarImage(buildAvatarAnswers(avatarDescription, avatarPresentation), userId, selectedStyle?.label)
             if (!avatarUrl) return
             const permanentUrl = await uploadAvatarToStorage(avatarUrl, userId)
             setHubAvatarUrl(permanentUrl)
-            setHubAvatarPending(avatarDescription || null)
-            await updateHub({ avatar_url: permanentUrl, avatar_prompt_pending: avatarDescription || null })
+            await updateHub({ avatar_url: permanentUrl })
           } catch (avatarError) {
             logger.error('Avatar generation failed after hub creation', avatarError)
-            // Preserve the user's original description so Home can retry it quietly
-            // in the background and Profile can still use it later if needed.
-            if (avatarDescription) {
-              try {
-                setHubAvatarPending(avatarDescription)
-                await updateHub({ avatar_prompt_pending: avatarDescription })
-              } catch {}
-            }
+            setAvatarGenerationError(avatarError instanceof Error ? avatarError.message : 'Avatar creation did not finish.')
+            // The prompt and presentation were saved privately before generation,
+            // so background retries and profile reimagines can reuse them.
           } finally {
             setAvatarGenerating(false)
           }
@@ -1740,7 +1816,11 @@ export default function Home() {
       {screen === 'universe' && !isGuest && lettersSent === 0 && !firstStepsDismissed && !scribeOpen && !observatoryOpen && !profileOpen && !driftOpen && !pagesOpen && (
         <FirstStepsPanel
           onClose={dismissFirstSteps}
-          onExplore={dismissFirstSteps}
+          onFindPenpal={dismissFirstSteps}
+          onOpenInbox={() => {
+            dismissFirstSteps()
+            navigateToUniverseRoute('observatory')
+          }}
           onOpenProfile={() => {
             dismissFirstSteps()
             navigateToUniverseRoute('sanctum')
@@ -1803,7 +1883,7 @@ export default function Home() {
 
       {['landing', 'universe'].includes(screen) && <FeedbackButton />}
 
-      {screen === 'universe' && avatarGenerating && (
+      {screen === 'universe' && (avatarGenerating || avatarRetrying) && (
         <div style={{
           position: 'fixed',
           bottom: '88px',
@@ -1836,8 +1916,15 @@ export default function Home() {
             color: 'rgba(201,168,76,0.8)',
             textTransform: 'uppercase',
             whiteSpace: 'nowrap',
-          }}>Weaving your form...</span>
+          }}>{avatarRetrying ? 'Trying your saved avatar description again…' : 'Your avatar is taking shape…'}</span>
           <style>{`@keyframes avatar-spin { to { transform: rotate(360deg); } }`}</style>
+        </div>
+      )}
+
+      {screen === 'universe' && !hubAvatarUrl && hubAvatarPending && avatarGenerationError && !avatarRetrying && (
+        <div role="status" style={{ position: 'fixed', bottom: '84px', left: '50%', transform: 'translateX(-50%)', zIndex: 200, width: 'min(500px, calc(100vw - 28px))', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', padding: '13px 16px', borderRadius: '12px', background: 'rgba(12,8,24,0.96)', border: '1px solid rgba(230,199,110,0.35)', color: 'rgba(255,255,255,0.86)', boxShadow: '0 12px 40px rgba(0,0,0,0.4)' }}>
+          <span style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '14px', lineHeight: 1.45 }}>Your avatar didn&apos;t finish, but your description is saved. Try again when you&apos;re ready.</span>
+          <button onClick={() => { setAvatarGenerationError(''); setAvatarRetrySignal((value) => value + 1) }} disabled={avatarRetrying} style={{ background: 'transparent', border: '1px solid rgba(230,199,110,0.45)', color: '#e6c76e', borderRadius: '6px', padding: '8px 12px', whiteSpace: 'nowrap', cursor: avatarRetrying ? 'default' : 'pointer' }}>Try again</button>
         </div>
       )}
 
@@ -1977,6 +2064,7 @@ export default function Home() {
             askAbout={hubAskAbout}
             avatarUrl={hubAvatarUrl}
             avatarPromptPending={hubAvatarPending}
+            avatarPresentation={hubAvatarPresentation}
             regenCount={hubRegenCount}
             hubStyle={hubStyle}
             hubColor={hubColor}
@@ -1984,11 +2072,12 @@ export default function Home() {
             hubGlowIntensity={hubGlowIntensity}
             visitorBookEnabled={visitorBookEnabled}
             onClose={() => { navigateToStarmap(); setNavResetSignal(s => s + 1) }}
-            onUpdateHub={({ hubName: nextHubName, bio: nextBio, askAbout: nextAskAbout, avatarUrl: nextAvatarUrl, hubStyle: nextHubStyle, hubColor: nextHubColor, hubDecoration: nextHubDecoration, hubGlowIntensity: nextHubGlowIntensity, visitorBookEnabled: nextVisitorBookEnabled }) => {
+            onUpdateHub={({ hubName: nextHubName, bio: nextBio, askAbout: nextAskAbout, avatarUrl: nextAvatarUrl, avatarPresentation: nextAvatarPresentation, hubStyle: nextHubStyle, hubColor: nextHubColor, hubDecoration: nextHubDecoration, hubGlowIntensity: nextHubGlowIntensity, visitorBookEnabled: nextVisitorBookEnabled }) => {
               if (typeof nextHubName === 'string') setHubName(nextHubName)
               if (typeof nextBio === 'string') setHubBio(nextBio)
               if (typeof nextAskAbout === 'string') setHubAskAbout(nextAskAbout)
               if (typeof nextAvatarUrl === 'string') setHubAvatarUrl(nextAvatarUrl)
+              if (typeof nextAvatarPresentation === 'string') setHubAvatarPresentation(nextAvatarPresentation)
               if (nextHubStyle) setHubStyle(nextHubStyle)
               if (nextHubColor) setHubColor(nextHubColor)
               if (nextHubDecoration) setHubDecoration(nextHubDecoration)

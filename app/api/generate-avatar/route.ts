@@ -84,6 +84,12 @@ function requestsCompanionAddition(feedback: string): boolean {
 
 function buildIdentityInstruction(details: string): string {
   const lower = details.toLowerCase();
+  if (/\bandrogynous\b/.test(lower)) {
+    return "Render an androgynous gender presentation. Preserve the user's described identity and features; do not push the character toward a strongly masculine or feminine default.";
+  }
+  if (/\bnon[- ]?binary\b/.test(lower)) {
+    return "Render the character as nonbinary and follow the user's stated appearance. Do not assign a binary gender presentation unless the user specifically described it.";
+  }
   if (/\b(princess|queen|duchess|empress|goddess|girl|woman|lady|female|feminine|she\/her|she|her)\b/.test(lower)) {
     return "Render a feminine female-presenting character if that is what the user described. Never swap to a male character.";
   }

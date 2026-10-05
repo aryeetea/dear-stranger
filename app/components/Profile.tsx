@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { updateHub, signOut, deleteAccount, exportMyLetters, uploadAvatarToStorage, getVisitorBook, getMyAvatarBucketImages, deleteAvatarFromStorage, type VisitorBookEntry } from '../lib/auth'
+import { updateHub, signOut, deleteAccount, exportMyLetters, uploadAvatarToStorage, getVisitorBook, getMyAvatarBucketImages, deleteAvatarFromStorage, saveMyAvatarSettings, type VisitorBookEntry } from '../lib/auth'
+import { buildAvatarAnswers, buildAvatarIdentityDescription } from '../lib/avatar'
 import { supabase } from '../../lib/supabase'
 import { HUB_COLOR_THEMES, HUB_STYLES, HUB_DECORATIONS, HUB_GLOW_LEVELS, type HubColor, type HubStyle, type HubDecoration, type HubGlowIntensity } from './UniverseMap'
 
@@ -10,6 +11,7 @@ const MAX_REGEN_ATTEMPTS = 2
 type DeleteStep = 'idle' | 'exporting' | 'exported' | 'deleting' | 'deleted'
 type SanctumPanel = 'appearance' | 'visitors' | 'settings'
 const MAX_AVATAR_HISTORY = 8
+const AVATAR_PRESENTATION_CHOICES = ['Use my description', 'Feminine', 'Masculine', 'Androgynous', 'Nonbinary', 'No preference']
 
 function makeAvatarHistoryKey(userId: string) {
   return `ds_avatar_history_${userId}`
@@ -61,23 +63,24 @@ function getReimagineCycle(nowMs = Date.now(), timeZone = 'UTC') {
 }
 
 export default function Profile({
-  hubName, bio, askAbout, avatarUrl: initialAvatarUrl, avatarPromptPending, regenCount: initialRegenCount,
+  hubName, bio, askAbout, avatarUrl: initialAvatarUrl, avatarPromptPending, avatarPresentation: initialAvatarPresentation, regenCount: initialRegenCount,
   visitorBookEnabled: initialVisitorBookEnabled = true,
   hubStyle: initialHubStyle = 'portal', hubColor: initialHubColor = 'gold',
   hubDecoration: initialHubDecoration = 'none', hubGlowIntensity: initialHubGlowIntensity = 'normal',
   onClose, onUpdateHub,
 }: {
-  hubName?: string; bio?: string; askAbout?: string; avatarUrl?: string; avatarPromptPending?: string | null; regenCount?: number
+  hubName?: string; bio?: string; askAbout?: string; avatarUrl?: string; avatarPromptPending?: string | null; avatarPresentation?: string | null; regenCount?: number
   visitorBookEnabled?: boolean
   hubStyle?: HubStyle; hubColor?: HubColor
   hubDecoration?: HubDecoration; hubGlowIntensity?: HubGlowIntensity
   onClose?: () => void
-  onUpdateHub?: (updates: { hubName?: string; bio?: string; askAbout?: string; avatarUrl?: string; hubStyle?: HubStyle; hubColor?: HubColor; hubDecoration?: HubDecoration; hubGlowIntensity?: HubGlowIntensity; visitorBookEnabled?: boolean }) => void
+  onUpdateHub?: (updates: { hubName?: string; bio?: string; askAbout?: string; avatarUrl?: string; avatarPresentation?: string; hubStyle?: HubStyle; hubColor?: HubColor; hubDecoration?: HubDecoration; hubGlowIntensity?: HubGlowIntensity; visitorBookEnabled?: boolean }) => void
 }) {
   const [hubNameState, setHubNameState] = useState(hubName || 'Your Hub')
   const [bioState, setBioState] = useState(bio || 'A wanderer who arrived here quietly, carrying something unspoken.')
   const [askState, setAskState] = useState(askAbout || 'Silence, slow mornings, and letters that take their time.')
   const [currentAvatarUrl, setCurrentAvatarUrl] = useState(initialAvatarUrl || '')
+  const [selectedAvatarPresentation, setSelectedAvatarPresentation] = useState(initialAvatarPresentation || 'Use my description')
   // Track last prop value to only update if it changes
   const [lastAvatarProp, setLastAvatarProp] = useState(initialAvatarUrl || '')
   const [regenCount, setRegenCount] = useState(initialRegenCount ?? 0)
@@ -338,24 +341,41 @@ export default function Profile({
       setRegenLoading(true); setShowRegenInput(false)
       // If there's no existing avatar but we have the original description, generate fresh
       const hasExistingAvatar = Boolean(currentAvatarUrl)
-      const baseAnswers = avatarPromptPending
-        ? { 0: avatarPromptPending, 1: bioState, 2: askState }
-        : { 0: bioState, 1: askState }
+      const originalAvatarDescription = (avatarPromptPending || '').replace(/^Avatar gender presentation:[^\n]*\n\n/, '')
+      const avatarIdentityPrompt = originalAvatarDescription
+        ? buildAvatarIdentityDescription(originalAvatarDescription, selectedAvatarPresentation)
+        : ''
+      const baseAnswers: Record<number, string> = originalAvatarDescription
+        ? { ...buildAvatarAnswers(originalAvatarDescription, selectedAvatarPresentation), 2: bioState, 3: askState }
+        : (() => {
+            const answers = buildAvatarAnswers(bioState, selectedAvatarPresentation)
+            answers[Math.max(...Object.keys(answers).map(Number)) + 1] = askState
+            return answers
+          })()
+      const presentationFeedback = !['Use my description', 'No preference'].includes(selectedAvatarPresentation)
+        ? `Set the character's gender presentation to ${selectedAvatarPresentation}. Keep the character's other identity and features unchanged.`
+        : ''
+      const effectiveFeedback = [regenFeedback.trim(), presentationFeedback].filter(Boolean).join('\n\n')
       const requestTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
       const requestBody = {
         ...(!hasExistingAvatar && avatarPromptPending
-        ? { answers: { 0: avatarPromptPending }, feedback: regenFeedback || undefined, mode: 'reimagine', identityDescription: avatarPromptPending || undefined }
+        ? { answers: buildAvatarAnswers(originalAvatarDescription || avatarPromptPending || '', selectedAvatarPresentation), feedback: effectiveFeedback || undefined, mode: 'reimagine', identityDescription: avatarIdentityPrompt || avatarPromptPending || undefined }
         : {
             answers: baseAnswers,
-            feedback: regenFeedback,
+            feedback: effectiveFeedback,
             mode: 'reimagine',
             previousImageUrl: currentAvatarUrl || undefined,
             editCurrentAvatar: editCurrentAvatar && !forceNewAvatar,
             forceNewAvatar,
-            identityDescription: avatarPromptPending || undefined,
+            identityDescription: avatarIdentityPrompt || undefined,
           }),
         timeZone: requestTimeZone,
       }
+      await saveMyAvatarSettings({
+        description: originalAvatarDescription || null,
+        presentation: selectedAvatarPresentation,
+      })
+      onUpdateHub?.({ avatarPresentation: selectedAvatarPresentation })
       let avatarToken: string | undefined
       try {
         const { data, error } = await supabase.auth.refreshSession()
@@ -399,7 +419,7 @@ export default function Profile({
       // (browser would serve cached old image). Update DB + parent with busted URL.
       await updateHub({ avatar_url: freshUrl, regen_count: newCount })
       rememberAvatar(freshUrl)
-      onUpdateHub?.({ avatarUrl: freshUrl })
+      onUpdateHub?.({ avatarUrl: freshUrl, avatarPresentation: selectedAvatarPresentation })
     } catch (err) {
       console.error('Regen failed:', err)
       setRegenError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
@@ -813,6 +833,18 @@ export default function Profile({
             {showRegenInput && attemptsLeft > 0 && (
               <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} style={{ marginTop: '12px' }}>
                 <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(255,255,255,0.5)', marginBottom: '8px' }}>Tell the mirror what to change. It will edit your current avatar by default. Describe a completely new avatar only if you want a full replacement.</p>
+                <div style={{ marginBottom: '12px' }}>
+                  <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.2em', color: 'rgba(201,168,76,0.85)', textTransform: 'uppercase', marginBottom: '7px' }}>Avatar gender presentation</p>
+                  <div style={{ display: 'flex', gap: '7px', flexWrap: 'wrap' }}>
+                    {AVATAR_PRESENTATION_CHOICES.map((choice) => {
+                      const selected = selectedAvatarPresentation === choice
+                      return <button key={choice} type="button" onClick={() => setSelectedAvatarPresentation(choice)} aria-pressed={selected}
+                        style={{ border: `1px solid ${selected ? 'rgba(201,168,76,0.65)' : 'rgba(255,255,255,0.15)'}`, borderRadius: '999px', padding: '6px 10px', background: selected ? 'rgba(201,168,76,0.12)' : 'rgba(255,255,255,0.035)', color: selected ? '#e6c76e' : 'rgba(255,255,255,0.68)', fontFamily: "'Cormorant Garamond', serif", fontSize: '13px', cursor: 'pointer' }}>
+                        {choice}
+                      </button>
+                    })}
+                  </div>
+                </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '10px', alignItems: 'start' }}>
                   <textarea
                     value={regenFeedback}

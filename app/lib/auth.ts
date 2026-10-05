@@ -26,7 +26,6 @@ type HubRecord = {
   bio?: string | null
   ask_about?: string | null
   avatar_url?: string | null
-  avatar_prompt_pending?: string | null
   hub_style?: string | null
   backdrop_id?: string | null
   decoration?: string | null
@@ -774,6 +773,47 @@ export async function getMyHub(userId?: string) {
 
   if (error) throw error
   return data || null
+}
+
+export async function getMyAvatarSettings(userId?: string): Promise<{ description: string | null; presentation: string }> {
+  let uid = userId
+  if (!uid) {
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    if (userError) throw userError
+    if (!user) throw new Error('No user found')
+    uid = user.id
+  }
+
+  const { data, error } = await supabase
+    .from('user_avatar_settings')
+    .select('description, presentation')
+    .eq('user_id', uid)
+    .maybeSingle()
+  if (error) throw error
+  return {
+    description: data?.description || null,
+    presentation: data?.presentation || 'Use my description',
+  }
+}
+
+export async function saveMyAvatarSettings(settings: { description: string | null; presentation: string }, userId?: string) {
+  let uid = userId
+  if (!uid) {
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    if (userError) throw userError
+    if (!user) throw new Error('No user found')
+    uid = user.id
+  }
+
+  const { error } = await supabase
+    .from('user_avatar_settings')
+    .upsert({
+      user_id: uid,
+      description: settings.description,
+      presentation: settings.presentation,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id' })
+  if (error) throw error
 }
 
 export async function getAllHubs(): Promise<HubRecord[]> {

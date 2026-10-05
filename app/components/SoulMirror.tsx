@@ -86,6 +86,7 @@ export interface SoulMirrorResumeState {
   selectedVoice?: MirrorVoice
   userAnswers?: string[]
   avatarDescription?: string
+  avatarPresentation?: string
   hubName?: string
   bio?: string
   askAbout?: string
@@ -110,6 +111,7 @@ interface SoulMirrorProps {
     hubDecoration?: HubDecoration,
     avatarDescription?: string,
     firstLetterBody?: string,
+    avatarPresentation?: string,
   ) => void
 }
 
@@ -121,6 +123,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
   const [showCustomStyle, setShowCustomStyle] = useState(false)
   const [avatarMode, setAvatarMode] = useState<'guided' | 'freeform'>('guided')
   const [freeformText, setFreeformText] = useState(resumeState?.avatarDescription || '')
+  const [avatarPresentation, setAvatarPresentation] = useState(resumeState?.avatarPresentation || 'Use my description')
   const [selectedHubStyle, setSelectedHubStyle] = useState<HubStyle>(resumeState?.selectedHubStyle || 'portal')
   const [selectedHubColor, setSelectedHubColor] = useState<HubColor>(resumeState?.selectedHubColor || 'gold')
   const [selectedDecoration, setSelectedDecoration] = useState<HubDecoration>(resumeState?.decoration || 'none')
@@ -248,6 +251,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
       selectedDecoration,
       finalAvatarDescription,
       letterReleased ? generatedLetter : undefined,
+      avatarPresentation,
     )
   }
 
@@ -499,7 +503,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
                   <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '12px', color: 'rgba(255,255,255,0.3)', lineHeight: 1.5, marginTop: '6px' }}>
                     The mirror asks a few short questions, then stops when it has enough to draw you clearly.<br />
                     <span style={{ color: '#e6c76e', fontSize: '11px', display: 'block', marginTop: '6px' }}>
-                      (Tip: For the best result, mention your gender somewhere in your answers — it helps the mirror see you as you wish to be seen.)
+                      (You can choose how your avatar is gendered on the next screen.)
                     </span>
                   </p>
             </div>
@@ -574,7 +578,7 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
                 <>
                   <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
                     <textarea value={inputValue} onChange={e => setInputValue(e.target.value)}
-                      placeholder="Describe yourself — your appearance, gender (if you wish), features, skin tone, hair, how you carry yourself, colors, textures..." rows={2}
+                      placeholder="Describe your appearance, features, skin tone, hair, clothing, colors, textures, or anything else you want the mirror to capture..." rows={2}
                       disabled={loading || chatDone || Boolean(retryRequest)}
                       onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void handleSend() } }}
                       style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', color: 'rgba(255,255,255,0.9)', fontFamily: "'Cormorant Garamond', serif", fontSize: '15px', lineHeight: 1.6, padding: '10px 14px', resize: 'none', outline: 'none', caretColor: '#e6c76e' }}
@@ -606,16 +610,24 @@ export default function SoulMirror({ isReturning = false, errorMessage = '', res
               onChange={e => setFreeformText(e.target.value)}
               placeholder={avatarMode === 'guided'
                 ? 'Describe exactly how you want your avatar to appear before the mirror creates it.'
-                : 'In another world, how do you look? (Tip: Mention your gender if you want the mirror to see you as you wish.) Include features, skin tone, hair, clothing, build, and anything that makes you distinctly you.'}
+                : 'In another world, how do you look? Include features, skin tone, hair, clothing, build, and anything that makes you distinctly you.'}
               rows={8}
               style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '8px', color: 'rgba(255,255,255,0.9)', fontFamily: "'Cormorant Garamond', serif", fontSize: '16px', lineHeight: 1.8, padding: '14px 16px', outline: 'none', resize: 'none', caretColor: '#e6c76e', marginBottom: '8px' }}
               onFocus={e => { e.target.style.borderColor = 'rgba(230,199,110,0.4)' }}
               onBlur={e => { e.target.style.borderColor = 'rgba(255,255,255,0.12)' }}
             />
-            <div style={{ textAlign: 'center', marginBottom: '12px' }}>
-              <span style={{ color: '#e6c76e', fontSize: '12px' }}>
-                (Tip: For the best result, mention your gender somewhere in your description — it helps the mirror see you as you wish to be seen.)
-              </span>
+            <div style={{ margin: '8px 0 14px' }}>
+              <p style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', letterSpacing: '0.24em', color: 'rgba(230,199,110,0.85)', textTransform: 'uppercase', marginBottom: '8px' }}>How should your avatar be gendered?</p>
+              <div style={{ display: 'flex', gap: '7px', flexWrap: 'wrap' }}>
+                {['Use my description', 'Feminine', 'Masculine', 'Androgynous', 'Nonbinary', 'No preference'].map((choice) => {
+                  const selected = avatarPresentation === choice
+                  return <button key={choice} type="button" onClick={() => setAvatarPresentation(choice)} aria-pressed={selected}
+                    style={{ border: `1px solid ${selected ? 'rgba(230,199,110,0.7)' : 'rgba(255,255,255,0.16)'}`, borderRadius: '999px', padding: '7px 11px', background: selected ? 'rgba(230,199,110,0.13)' : 'rgba(255,255,255,0.035)', color: selected ? '#e6c76e' : 'rgba(255,255,255,0.72)', fontFamily: "'Cormorant Garamond', serif", fontSize: '14px', cursor: 'pointer' }}>
+                    {choice}
+                  </button>
+                })}
+              </div>
+              <p style={{ fontFamily: "'IM Fell English', serif", fontStyle: 'italic', fontSize: '12px', color: 'rgba(255,255,255,0.45)', marginTop: '7px' }}>Choose a direction, or select “Use my description” and describe it in your own words above.</p>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <button onClick={() => setPhase(avatarMode === 'freeform' ? 'style' : 'chat')} style={backBtn}>← Back</button>
